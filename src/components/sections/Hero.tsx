@@ -104,8 +104,8 @@ export function Hero() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.15 }}
         >
-          Design. Experience.{" "}
-          <span className="gradient-text">Build.</span>
+          See It Before You{" "}
+          <span className="gradient-text">Build It</span>
         </motion.h1>
 
         {/* Subtitle */}

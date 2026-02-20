@@ -36,7 +36,7 @@ function PricingCard({ plan }: { plan: (typeof PRICING_PLANS)[number] }) {
   }, []);
 
   return (
-    <div className="relative pt-4">
+    <div className="relative pt-4 h-full">
       {/* Badge sits outside the card */}
       {plan.highlighted && (
         <div className="absolute -top-0 left-1/2 -translate-x-1/2 z-20">
@@ -119,9 +119,9 @@ export function Pricing() {
         />
       </FadeInWhenVisible>
 
-      <StaggerChildren className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 max-w-5xl mx-auto">
+      <StaggerChildren className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 max-w-5xl mx-auto items-stretch">
         {PRICING_PLANS.map((plan) => (
-          <motion.div key={plan.name} variants={staggerItem}>
+          <motion.div key={plan.name} variants={staggerItem} className="h-full">
             <PricingCard plan={plan} />
           </motion.div>
         ))}

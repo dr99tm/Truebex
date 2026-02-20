@@ -137,7 +137,7 @@ export const PRICING_PLANS = [
   },
   {
     name: "Professional",
-    price: "$49",
+    price: "$99",
     period: "/month",
     description: "Full platform access for professionals who demand accuracy.",
     features: [
