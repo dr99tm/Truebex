@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
+import Image from "next/image";
 import "./globals.css";
 
 const inter = Inter({
@@ -46,7 +47,16 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={inter.variable}>
-      <body className="antialiased overflow-x-hidden">{children}</body>
+      <body className="antialiased overflow-x-hidden">
+        <Image
+          src="/images/background.png"
+          alt=""
+          fill
+          className="fixed inset-0 object-cover opacity-0 pointer-events-none z-0"
+          priority
+        />
+        <div className="relative z-10">{children}</div>
+      </body>
     </html>
   );
 }
