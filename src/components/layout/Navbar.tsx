@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Menu, X } from "lucide-react";
+import { motion, AnimatePresence } from "motion/react";
 import { NAV_LINKS } from "@/lib/constants";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/utils";
@@ -16,6 +17,18 @@ export function Navbar() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
+  // Lock body scroll when mobile menu is open
+  useEffect(() => {
+    if (mobileOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [mobileOpen]);
+
   return (
     <header
       className={cn(
@@ -25,19 +38,19 @@ export function Navbar() {
           : "bg-[var(--color-navbar)] backdrop-blur-md"
       )}
     >
-      <nav className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 md:px-8">
+      <nav className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 md:px-8 md:py-4">
         {/* Logo */}
-        <a href="#" className="text-xl font-bold tracking-tight">
+        <a href="#" className="text-xl font-bold tracking-tight shrink-0">
           <span className="gradient-text">Truebex</span>
         </a>
 
-        {/* Desktop nav */}
-        <ul className="hidden items-center gap-8 md:flex">
+        {/* Desktop nav — hidden below lg (1024px) since we have 7 links */}
+        <ul className="hidden items-center gap-6 lg:flex">
           {NAV_LINKS.map((link) => (
             <li key={link.href}>
               <a
                 href={link.href}
-                className="text-sm text-text-secondary transition-colors hover:text-text-primary"
+                className="text-sm text-text-secondary transition-colors hover:text-text-primary whitespace-nowrap"
               >
                 {link.label}
               </a>
@@ -46,7 +59,7 @@ export function Navbar() {
         </ul>
 
         {/* Desktop CTA */}
-        <div className="hidden md:block">
+        <div className="hidden lg:block shrink-0">
           <Button href="#contact" size="sm">
             Request Demo
           </Button>
@@ -54,7 +67,7 @@ export function Navbar() {
 
         {/* Mobile toggle */}
         <button
-          className="text-text-primary md:hidden"
+          className="relative z-50 text-text-primary lg:hidden"
           onClick={() => setMobileOpen(!mobileOpen)}
           aria-label="Toggle menu"
         >
@@ -62,29 +75,56 @@ export function Navbar() {
         </button>
       </nav>
 
-      {/* Mobile menu */}
-      {mobileOpen && (
-        <div className="glass border-t border-border md:hidden">
-          <ul className="flex flex-col gap-4 px-4 py-6">
-            {NAV_LINKS.map((link) => (
-              <li key={link.href}>
-                <a
-                  href={link.href}
-                  className="block text-lg text-text-secondary transition-colors hover:text-text-primary"
-                  onClick={() => setMobileOpen(false)}
+      {/* Mobile menu — fullscreen overlay */}
+      <AnimatePresence>
+        {mobileOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="fixed inset-0 top-0 z-40 bg-background/95 backdrop-blur-xl lg:hidden"
+          >
+            <div className="flex h-full flex-col items-center justify-center">
+              <ul className="flex flex-col items-center gap-6">
+                {NAV_LINKS.map((link, i) => (
+                  <motion.li
+                    key={link.href}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.05 * i, duration: 0.3 }}
+                  >
+                    <a
+                      href={link.href}
+                      className="text-2xl font-medium text-text-secondary transition-colors hover:text-text-primary"
+                      onClick={() => setMobileOpen(false)}
+                    >
+                      {link.label}
+                    </a>
+                  </motion.li>
+                ))}
+                <motion.li
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{
+                    delay: 0.05 * NAV_LINKS.length,
+                    duration: 0.3,
+                  }}
                 >
-                  {link.label}
-                </a>
-              </li>
-            ))}
-            <li>
-              <Button href="#contact" size="sm" className="w-full mt-2">
-                Request Demo
-              </Button>
-            </li>
-          </ul>
-        </div>
-      )}
+                  <Button
+                    href="#contact"
+                    size="lg"
+                    className="mt-4"
+                    onClick={() => setMobileOpen(false)}
+                  >
+                    Request Demo
+                  </Button>
+                </motion.li>
+              </ul>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </header>
   );
 }

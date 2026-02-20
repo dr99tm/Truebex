@@ -59,45 +59,6 @@
     border: 1px solid var(--color-glass-border);
   }
 
-  .glass-card {
-    background: var(--color-glass);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border: 1px solid var(--color-glass-border);
-    position: relative;
-    overflow: hidden;
-    transition: background 0.4s ease, border-color 0.4s ease, transform 0.4s ease, box-shadow 0.4s ease;
-  }
-
-  .glass-card::before {
-    content: "";
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 1px;
-    background: linear-gradient(
-      90deg,
-      transparent,
-      var(--color-accent-gradient-start),
-      var(--color-accent-gradient-end),
-      transparent
-    );
-    opacity: 0;
-    transition: opacity 0.4s ease;
-  }
-
-  .glass-card:hover {
-    background: #ffffff0d;
-    border-color: #ffffff22;
-    transform: translateY(-2px);
-    box-shadow: 0 8px 32px #00000030, 0 0 0 1px #ffffff08;
-  }
-
-  .glass-card:hover::before {
-    opacity: 1;
-  }
-
   .gradient-text {
     background: linear-gradient(
       135deg,
