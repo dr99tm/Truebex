@@ -13,7 +13,7 @@ export function CTAContact() {
       <Section>
         <div className="relative z-10 mx-auto max-w-2xl text-center">
           <FadeInWhenVisible>
-            <h2 className="text-3xl font-bold tracking-tight md:text-5xl">
+            <h2 className="text-2xl font-bold tracking-tight sm:text-3xl md:text-5xl">
               Ready to Design What{" "}
               <span className="gradient-text">Will Actually Exist?</span>
             </h2>

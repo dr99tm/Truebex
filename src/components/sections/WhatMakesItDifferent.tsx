@@ -23,7 +23,7 @@ export function WhatMakesItDifferent() {
 
       {/* Comparison header */}
       <div className="mx-auto max-w-3xl">
-        <div className="mb-6 grid grid-cols-2 gap-4">
+        <div className="mb-6 hidden grid-cols-2 gap-4 sm:grid">
           <div className="text-center text-sm font-medium text-text-muted uppercase tracking-wider">
             Traditional Workflow
           </div>
@@ -37,7 +37,7 @@ export function WhatMakesItDifferent() {
             <motion.div
               key={i}
               variants={staggerItem}
-              className="glass grid grid-cols-2 gap-4 rounded-[var(--radius-card)] p-4"
+              className="glass grid grid-cols-1 gap-2 rounded-[var(--radius-card)] p-4 sm:grid-cols-2 sm:gap-4"
             >
               <div className="flex items-center gap-3 text-text-muted">
                 <X className="h-4 w-4 shrink-0 text-red-400/60" />

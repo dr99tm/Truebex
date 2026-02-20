@@ -20,9 +20,9 @@ export function HowItWorks() {
         />
       </FadeInWhenVisible>
 
-      <StaggerChildren className="relative grid gap-8 md:grid-cols-4">
+      <StaggerChildren className="relative grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
         {/* Connecting line (desktop) */}
-        <div className="absolute top-10 left-0 right-0 hidden h-[1px] bg-gradient-to-r from-transparent via-accent/30 to-transparent md:block" />
+        <div className="absolute top-10 left-0 right-0 hidden h-[1px] bg-gradient-to-r from-transparent via-accent/30 to-transparent lg:block" />
 
         {STEPS.map((step, i) => (
           <motion.div key={step.number} variants={staggerItem}>
