@@ -9,6 +9,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL('https://truebex.com'), // or your actual domain 
   title: "Truebex — True Building Experience",
   description:
     "Design buildings, surf the market for real materials, calculate construction needs, experience spaces in VR, and make instant changes — all in one platform.",
