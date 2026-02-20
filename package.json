@@ -1,5 +1,5 @@
 {
-  "name": "truebex-temp",
+  "name": "truebex",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -9,6 +9,9 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "clsx": "^2.1.1",
+    "lucide-react": "^0.575.0",
+    "motion": "^12.34.2",
     "next": "16.1.6",
     "react": "19.2.3",
     "react-dom": "19.2.3"
