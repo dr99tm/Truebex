@@ -17,6 +17,18 @@
 /.next/
 /out/
 
+# Built files (should only be in gh-pages branch)
+/index.html
+/404.html
+/_not-found.html
+/index.txt
+/_not-found.txt
+/__next.*.txt
+/_next/
+/_not-found/
+/.nojekyll
+/CNAME
+
 # production
 /build
 
