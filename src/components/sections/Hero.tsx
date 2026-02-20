@@ -86,11 +86,23 @@ export function Hero() {
       </div>
 
       <div className="relative z-10 mx-auto max-w-4xl text-center">
-        {/* Badge */}
+        {/* Logo text */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
+          transition={{ duration: 0.4 }}
+        >
+          <span className="text-3xl font-bold tracking-tight sm:text-4xl md:text-5xl gradient-text">
+            Truebex
+          </span>
+        </motion.div>
+
+        {/* Badge */}
+        <motion.div
+          className="mt-4"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.1 }}
         >
           <span className="inline-block rounded-full border border-accent/30 bg-accent/5 px-4 py-1.5 text-sm text-accent">
             True Building Experience
