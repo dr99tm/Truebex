@@ -29,14 +29,14 @@ export const metadata: Metadata = {
     title: "Truebex — True Building Experience",
     description:
       "Design, surf the market, calculate, experience in VR, and make instant changes.",
-    images: [{ url: "/images/og-image.png", width: 1200, height: 630 }],
+    images: [{ url: "/images/og-image.jpg", width: 1200, height: 630 }],
   },
   twitter: {
     card: "summary_large_image",
     title: "Truebex — True Building Experience",
     description:
       "Design, surf the market, calculate, experience in VR, and make instant changes.",
-    images: ["/images/og-image.png"],
+    images: ["/images/og-image.jpg"],
   },
 };
 
@@ -49,7 +49,7 @@ export default function RootLayout({
     <html lang="en" className={inter.variable}>
       <body className="antialiased overflow-x-hidden">
         <Image
-          src="/images/background.png"
+          src="/images/background.jpg"
           alt=""
           fill
           className="fixed inset-0 object-cover opacity-0 pointer-events-none z-0"
