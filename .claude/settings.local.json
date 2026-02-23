@@ -4,7 +4,12 @@
       "Bash(npm install:*)",
       "Bash(npm run build:*)",
       "Bash(npx next dev)",
-      "Bash(npx next build:*)"
+      "Bash(npx next build:*)",
+      "Bash(python -m venv:*)",
+      "Bash(.venv/Scripts/pip install:*)",
+      "Bash(curl:*)",
+      "Bash(netstat:*)",
+      "Bash(taskkill:*)"
     ]
   }
 }

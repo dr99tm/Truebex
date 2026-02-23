@@ -1,10 +1,59 @@
 "use client";
 
+import { useState } from "react";
 import { Section } from "@/components/layout/Section";
 import { Button } from "@/components/ui/Button";
 import { FadeInWhenVisible } from "@/components/animations/FadeInWhenVisible";
 
+const API_URL = "https://server.truebex.com/demo-request";
+
+type FormStatus = "idle" | "loading" | "success" | "error";
+
 export function CTAContact() {
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [company, setCompany] = useState("");
+  const [projectDescription, setProjectDescription] = useState("");
+  const [status, setStatus] = useState<FormStatus>("idle");
+  const [errorMessage, setErrorMessage] = useState("");
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setStatus("loading");
+    setErrorMessage("");
+
+    try {
+      const res = await fetch(API_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name,
+          email,
+          company,
+          project_description: projectDescription,
+        }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(
+          data?.detail ?? "Something went wrong. Please try again."
+        );
+      }
+
+      setStatus("success");
+      setName("");
+      setEmail("");
+      setCompany("");
+      setProjectDescription("");
+    } catch (err: unknown) {
+      setStatus("error");
+      setErrorMessage(
+        err instanceof Error ? err.message : "Something went wrong."
+      );
+    }
+  }
+
   return (
     <section id="contact" className="relative overflow-hidden">
       {/* Background glow */}
@@ -25,34 +74,63 @@ export function CTAContact() {
           </FadeInWhenVisible>
 
           <FadeInWhenVisible delay={0.2}>
-            <form
-              className="mx-auto mt-10 max-w-md space-y-4"
-              onSubmit={(e) => e.preventDefault()}
-            >
-              <input
-                type="text"
-                placeholder="Your Name"
-                className="w-full rounded-[var(--radius-button)] border border-border bg-surface px-4 py-3 text-text-primary placeholder:text-text-muted outline-none transition-colors focus:border-accent/50"
-              />
-              <input
-                type="email"
-                placeholder="Email Address"
-                className="w-full rounded-[var(--radius-button)] border border-border bg-surface px-4 py-3 text-text-primary placeholder:text-text-muted outline-none transition-colors focus:border-accent/50"
-              />
-              <input
-                type="text"
-                placeholder="Company (optional)"
-                className="w-full rounded-[var(--radius-button)] border border-border bg-surface px-4 py-3 text-text-primary placeholder:text-text-muted outline-none transition-colors focus:border-accent/50"
-              />
-              <textarea
-                placeholder="Tell us about your project (optional)"
-                rows={3}
-                className="w-full resize-none rounded-[var(--radius-button)] border border-border bg-surface px-4 py-3 text-text-primary placeholder:text-text-muted outline-none transition-colors focus:border-accent/50"
-              />
-              <Button type="submit" size="lg" className="w-full">
-                Request a Demo
-              </Button>
-            </form>
+            {status === "success" ? (
+              <div className="mt-10 rounded-[var(--radius-button)] border border-accent/40 bg-surface p-6 text-center">
+                <p className="text-lg font-medium text-accent">
+                  Request received!
+                </p>
+                <p className="mt-2 text-text-secondary">
+                  We&apos;ll be in touch soon.
+                </p>
+              </div>
+            ) : (
+              <form
+                className="mx-auto mt-10 max-w-md space-y-4"
+                onSubmit={handleSubmit}
+              >
+                <input
+                  type="text"
+                  placeholder="Your Name"
+                  required
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="w-full rounded-[var(--radius-button)] border border-border bg-surface px-4 py-3 text-text-primary placeholder:text-text-muted outline-none transition-colors focus:border-accent/50"
+                />
+                <input
+                  type="email"
+                  placeholder="Email Address"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full rounded-[var(--radius-button)] border border-border bg-surface px-4 py-3 text-text-primary placeholder:text-text-muted outline-none transition-colors focus:border-accent/50"
+                />
+                <input
+                  type="text"
+                  placeholder="Company (optional)"
+                  value={company}
+                  onChange={(e) => setCompany(e.target.value)}
+                  className="w-full rounded-[var(--radius-button)] border border-border bg-surface px-4 py-3 text-text-primary placeholder:text-text-muted outline-none transition-colors focus:border-accent/50"
+                />
+                <textarea
+                  placeholder="Tell us about your project (optional)"
+                  rows={3}
+                  value={projectDescription}
+                  onChange={(e) => setProjectDescription(e.target.value)}
+                  className="w-full resize-none rounded-[var(--radius-button)] border border-border bg-surface px-4 py-3 text-text-primary placeholder:text-text-muted outline-none transition-colors focus:border-accent/50"
+                />
+                {status === "error" && (
+                  <p className="text-sm text-red-400">{errorMessage}</p>
+                )}
+                <Button
+                  type="submit"
+                  size="lg"
+                  className="w-full"
+                  disabled={status === "loading"}
+                >
+                  {status === "loading" ? "Sending..." : "Request a Demo"}
+                </Button>
+              </form>
+            )}
           </FadeInWhenVisible>
         </div>
       </Section>
