@@ -42,24 +42,13 @@ export function Footer() {
               Get in Touch
             </h4>
             <ul className="space-y-2 text-sm text-text-secondary">
-              <li>hello@truebex.com</li>
               <li>
-                <div className="flex gap-4 mt-4">
-                  <a
-                    href="#"
-                    className="text-text-muted transition-colors hover:text-accent"
-                    aria-label="LinkedIn"
-                  >
-                    LinkedIn
-                  </a>
-                  <a
-                    href="#"
-                    className="text-text-muted transition-colors hover:text-accent"
-                    aria-label="Twitter"
-                  >
-                    X / Twitter
-                  </a>
-                </div>
+                <a
+                  href="mailto:dr99tm@gmail.com"
+                  className="transition-colors hover:text-text-primary"
+                >
+                  dr99tm@gmail.com
+                </a>
               </li>
             </ul>
           </div>

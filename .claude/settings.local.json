@@ -9,7 +9,13 @@
       "Bash(.venv/Scripts/pip install:*)",
       "Bash(curl:*)",
       "Bash(netstat:*)",
-      "Bash(taskkill:*)"
+      "Bash(taskkill:*)",
+      "Bash(ls \"X:\\\\Truebex\")",
+      "Bash(ls \"X:\\\\Truebex_site_files\")",
+      "Bash(ls \"X:\\\\Truebex_site_files\\\\Truebex\" 2>nul)"
+    ],
+    "additionalDirectories": [
+      "X:\\Truebex"
     ]
   }
 }

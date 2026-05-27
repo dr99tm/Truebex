@@ -5,7 +5,8 @@ import { Section } from "@/components/layout/Section";
 import { Button } from "@/components/ui/Button";
 import { FadeInWhenVisible } from "@/components/animations/FadeInWhenVisible";
 
-const API_URL = "https://server.truebex.com/demo-request";
+// Google Apps Script Web App URL — set NEXT_PUBLIC_SHEETS_URL in .env.local
+const SHEETS_URL = process.env.NEXT_PUBLIC_SHEETS_URL ?? "";
 
 type FormStatus = "idle" | "loading" | "success" | "error";
 
@@ -22,24 +23,29 @@ export function CTAContact() {
     setStatus("loading");
     setErrorMessage("");
 
+    if (!SHEETS_URL) {
+      setStatus("error");
+      setErrorMessage("Form is not configured. Please try again later.");
+      return;
+    }
+
     try {
-      const res = await fetch(API_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name,
-          email,
-          company,
-          project_description: projectDescription,
-        }),
+      // Google Apps Script Web Apps reject JSON POSTs with a CORS preflight,
+      // so we send URL-encoded form data with no-cors. The response is opaque,
+      // meaning we can't read the body — absence of a network error is success.
+      const body = new URLSearchParams({
+        name,
+        email,
+        company,
+        project_description: projectDescription,
       });
 
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(
-          data?.detail ?? "Something went wrong. Please try again."
-        );
-      }
+      await fetch(SHEETS_URL, {
+        method: "POST",
+        mode: "no-cors",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body,
+      });
 
       setStatus("success");
       setName("");
