@@ -8,7 +8,11 @@ const nextConfig: NextConfig = {
   // trailingSlash makes the export emit payments/callback/index.html.
   trailingSlash: true,
   basePath: "",
-  assetPrefix: "./",
+  // Must be root-absolute, NOT "./". With trailingSlash, nested routes like
+  // /login/ resolve "./_next/..." to /login/_next/... (404) — the JS never
+  // loads and the page shows only the background. The site is served from the
+  // domain root (CNAME truebex.com), so "/" is correct for every route depth.
+  assetPrefix: "/",
   images: {
     unoptimized: true,
   },
