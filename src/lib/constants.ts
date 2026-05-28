@@ -11,14 +11,17 @@ import {
   Users,
 } from "lucide-react";
 
+// Absolute hrefs (/#section, not #section) so the links work from any route,
+// not just the homepage. From /account/ a bare #about would resolve to
+// /account/#about (no such section); /#about navigates home then scrolls.
 export const NAV_LINKS = [
-  { label: "About", href: "#about" },
-  { label: "Features", href: "#features" },
-  { label: "How It Works", href: "#how-it-works" },
-  { label: "Who It's For", href: "#who-its-for" },
-  { label: "Why Truebex", href: "#why-truebex" },
-  { label: "Pricing", href: "#pricing" },
-  { label: "Contact", href: "#contact" },
+  { label: "About", href: "/#about" },
+  { label: "Features", href: "/#features" },
+  { label: "How It Works", href: "/#how-it-works" },
+  { label: "Who It's For", href: "/#who-its-for" },
+  { label: "Why Truebex", href: "/#why-truebex" },
+  { label: "Pricing", href: "/#pricing" },
+  { label: "Contact", href: "/#contact" },
 ] as const;
 
 export const FEATURES = [

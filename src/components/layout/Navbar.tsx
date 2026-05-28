@@ -43,8 +43,8 @@ export function Navbar() {
         )}
       >
         <nav className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 md:px-8 md:py-4">
-          {/* Logo */}
-          <a href="#" className="relative z-50 text-xl font-bold tracking-tight shrink-0">
+          {/* Logo — links home (works from any route, not just the homepage) */}
+          <a href="/" className="relative z-50 text-xl font-bold tracking-tight shrink-0">
             <span className="gradient-text">Truebex</span>
           </a>
 
@@ -76,7 +76,7 @@ export function Navbar() {
                 <Button href="/login" variant="secondary" size="sm">
                   Log in
                 </Button>
-                <Button href="#contact" size="sm">
+                <Button href="/#contact" size="sm">
                   Request Demo
                 </Button>
               </>
@@ -166,7 +166,7 @@ export function Navbar() {
                       }}
                     >
                       <Button
-                        href="#contact"
+                        href="/#contact"
                         size="lg"
                         className="mt-4"
                         onClick={() => setMobileOpen(false)}
