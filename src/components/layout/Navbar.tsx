@@ -6,10 +6,13 @@ import { motion, AnimatePresence } from "motion/react";
 import { NAV_LINKS } from "@/lib/constants";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/utils";
+import { useCurrentUser } from "@/lib/useAuth";
+import { ProfileMenu } from "@/components/auth/ProfileMenu";
 
 export function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const { user } = useCurrentUser();
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 50);
@@ -60,20 +63,45 @@ export function Navbar() {
           </ul>
 
           {/* Desktop CTA */}
-          <div className="hidden lg:block shrink-0">
-            <Button href="#contact" size="sm">
-              Request Demo
-            </Button>
+          <div className="hidden lg:flex items-center gap-3 shrink-0">
+            {user ? (
+              <>
+                <Button href="/account" variant="secondary" size="sm">
+                  Dashboard
+                </Button>
+                <ProfileMenu user={user} />
+              </>
+            ) : (
+              <>
+                <Button href="/login" variant="secondary" size="sm">
+                  Log in
+                </Button>
+                <Button href="#contact" size="sm">
+                  Request Demo
+                </Button>
+              </>
+            )}
           </div>
 
-          {/* Mobile toggle */}
-          <button
-            className="relative z-50 flex h-10 w-10 items-center justify-center rounded-lg text-text-primary transition-colors hover:bg-white/10 lg:hidden"
-            onClick={() => setMobileOpen(!mobileOpen)}
-            aria-label="Toggle menu"
-          >
-            {mobileOpen ? <X size={22} /> : <Menu size={22} />}
-          </button>
+          {/* Mobile bar controls — Dashboard + avatar shown directly when
+              signed in, alongside the burger toggle. */}
+          <div className="flex items-center gap-2 lg:hidden">
+            {user && (
+              <>
+                <Button href="/account" variant="secondary" size="sm">
+                  Dashboard
+                </Button>
+                <ProfileMenu user={user} />
+              </>
+            )}
+            <button
+              className="relative z-50 flex h-10 w-10 items-center justify-center rounded-lg text-text-primary transition-colors hover:bg-white/10"
+              onClick={() => setMobileOpen(!mobileOpen)}
+              aria-label="Toggle menu"
+            >
+              {mobileOpen ? <X size={22} /> : <Menu size={22} />}
+            </button>
+          </div>
         </nav>
       </header>
 
@@ -105,23 +133,45 @@ export function Navbar() {
                     </a>
                   </motion.li>
                 ))}
-                <motion.li
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{
-                    delay: 0.05 * NAV_LINKS.length,
-                    duration: 0.3,
-                  }}
-                >
-                  <Button
-                    href="#contact"
-                    size="lg"
-                    className="mt-4"
-                    onClick={() => setMobileOpen(false)}
-                  >
-                    Request Demo
-                  </Button>
-                </motion.li>
+                {/* Signed-in users see Dashboard + profile directly in the
+                    navbar bar, so the overlay only carries page links. */}
+                {!user && (
+                  <>
+                    <motion.li
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{
+                        delay: 0.05 * NAV_LINKS.length,
+                        duration: 0.3,
+                      }}
+                    >
+                      <a
+                        href="/login"
+                        className="text-xl font-medium text-text-secondary transition-colors hover:text-text-primary sm:text-2xl"
+                        onClick={() => setMobileOpen(false)}
+                      >
+                        Log in
+                      </a>
+                    </motion.li>
+                    <motion.li
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{
+                        delay: 0.05 * (NAV_LINKS.length + 1),
+                        duration: 0.3,
+                      }}
+                    >
+                      <Button
+                        href="#contact"
+                        size="lg"
+                        className="mt-4"
+                        onClick={() => setMobileOpen(false)}
+                      >
+                        Request Demo
+                      </Button>
+                    </motion.li>
+                  </>
+                )}
               </ul>
             </div>
           </motion.div>

@@ -1,4 +1,3 @@
-import { Navbar } from "@/components/layout/Navbar";
 import { Hero } from "@/components/sections/Hero";
 import { WhatIsTruebex } from "@/components/sections/WhatIsTruebex";
 import { CoreFeatures } from "@/components/sections/CoreFeatures";
@@ -12,7 +11,6 @@ import { Footer } from "@/components/layout/Footer";
 export default function Home() {
   return (
     <>
-      <Navbar />
       <main>
         <Hero />
         <WhatIsTruebex />
