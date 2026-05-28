@@ -83,16 +83,20 @@ export function Navbar() {
             )}
           </div>
 
-          {/* Mobile bar controls — Dashboard + avatar shown directly when
-              signed in, alongside the burger toggle. */}
+          {/* Mobile bar controls — Dashboard + avatar when signed in, or a
+              direct Log in button when not, alongside the burger toggle. */}
           <div className="flex items-center gap-2 lg:hidden">
-            {user && (
+            {user ? (
               <>
                 <Button href="/account" variant="secondary" size="sm">
                   Dashboard
                 </Button>
                 <ProfileMenu user={user} />
               </>
+            ) : (
+              <Button href="/login" variant="secondary" size="sm">
+                Log in
+              </Button>
             )}
             <button
               className="relative z-50 flex h-10 w-10 items-center justify-center rounded-lg text-text-primary transition-colors hover:bg-white/10"
