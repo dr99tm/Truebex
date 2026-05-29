@@ -2,5 +2,5 @@
 2:I[73449,["/_next/static/chunks/ba5d0fca8c432e0e.js","/_next/static/chunks/5302e8f9750f2d03.js","/_next/static/chunks/f2466c863bf8b3a6.js","/_next/static/chunks/23e51fb38f600302.js"],"AuthForm"]
 3:I[97367,["/_next/static/chunks/ff1a16fafef87110.js","/_next/static/chunks/d2be314c3ece3fbe.js"],"OutletBoundary"]
 4:"$Sreact.suspense"
-0:{"buildId":"tZbCWd4wD7DDkRk_XfbyO","rsc":["$","$1","c",{"children":[["$","main",null,{"className":"flex min-h-screen items-center justify-center px-4 py-24","children":["$","$L2",null,{"mode":"signup"}]}],[["$","script","script-0",{"src":"/_next/static/chunks/23e51fb38f600302.js","async":true}]],["$","$L3",null,{"children":["$","$4",null,{"name":"Next.MetadataOutlet","children":"$@5"}]}]]}],"loading":null,"isPartial":false}
+0:{"buildId":"kTyO4_qKF15ZdqDVCSZvu","rsc":["$","$1","c",{"children":[["$","main",null,{"className":"flex min-h-screen items-center justify-center px-4 py-24","children":["$","$L2",null,{"mode":"signup"}]}],[["$","script","script-0",{"src":"/_next/static/chunks/23e51fb38f600302.js","async":true}]],["$","$L3",null,{"children":["$","$4",null,{"name":"Next.MetadataOutlet","children":"$@5"}]}]]}],"loading":null,"isPartial":false}
 5:null
