@@ -1,8 +1,9 @@
 # Demo Request → Google Sheets
 
 The demo request form posts submissions to a Google Apps Script Web App,
-which appends each one as a row in a Google Sheet. This replaces the old
-FastAPI server (`server/main.py`, now removed).
+which appends each one as a row in a Google Sheet. This replaced an earlier
+demo-request endpoint on the Python server. The current `server/` folder is
+the separate auth API and is not involved in demo requests.
 
 ## One-time setup
 
@@ -20,9 +21,10 @@ FastAPI server (`server/main.py`, now removed).
    # .env.local
    NEXT_PUBLIC_SHEETS_URL=https://script.google.com/macros/s/.../exec
    ```
-6. Rebuild and deploy the site (`build-to-directory.ps1` or
-   `deploy-to-server.bat`). The URL is baked into the static bundle at
-   build time, so a rebuild is required after changing it.
+6. Rebuild and deploy the site with `deploy-to-server.bat` (see
+   [Deployment](../README.md#deployment) in the main README). The URL is
+   baked into the static bundle at build time, so a rebuild is required
+   after changing it.
 
 ## Notes
 
