@@ -3,9 +3,9 @@
 Marketing site and account portal for **Truebex — True Building Experience**,
 live at **https://truebex.com**.
 
-It is a static Next.js export hosted on GitHub Pages, backed by three external
-services: a small FastAPI auth server, a Google Apps Script that stores demo
-requests in a Google Sheet, and the Gammal Tech payment SDK.
+It is a static Next.js export hosted on GitHub Pages, backed by two external
+services: a small FastAPI auth server, and a Google Apps Script that stores
+demo requests in a Google Sheet.
 
 > **Two repos, one GitHub project.** This folder (`X:\Truebex`, branch
 > `master`) is the **source**. The live site is the **build output**, which lives
@@ -24,7 +24,7 @@ requests in a Google Sheet, and the Gammal Tech payment SDK.
 - [Deployment](#deployment)
 - [Auth API (server/)](#auth-api-server)
 - [Demo request form](#demo-request-form)
-- [Payments (Gammal Tech)](#payments-gammal-tech)
+- [Pricing](#pricing)
 - [Known issues](#known-issues)
 
 ---
@@ -46,12 +46,10 @@ flowchart LR
     end
 
     Sheets["Google Apps Script<br/>→ Google Sheet"]
-    Gammal["Gammal Tech SDK<br/>api.gammal.tech"]
 
     Browser -->|HTML/JS| Site
-    Browser -->|"login / signup / me / billing<br/>api.truebex.com"| Tunnel
+    Browser -->|"login / signup / me<br/>api.truebex.com"| Tunnel
     Browser -->|demo request form| Sheets
-    Browser -->|card payment popup| Gammal
 ```
 
 The site is fully static, so every backend URL is **baked into the JavaScript
@@ -60,10 +58,9 @@ redeploying.
 
 | Piece | Where it lives | What it does |
 |---|---|---|
-| Frontend | `src/` → GitHub Pages | Landing page, `/login`, `/signup`, `/account`, `/payments/callback` |
-| Auth API | `server/` → `api.truebex.com` | Email/password accounts, JWT, plan activation |
+| Frontend | `src/` → GitHub Pages | Landing page, `/login`, `/signup`, `/account` |
+| Auth API | `server/` → `api.truebex.com` | Email/password accounts and JWT sessions |
 | Demo form backend | `google-apps-script/` → Google | Appends demo requests to a Google Sheet |
-| Payments | Gammal Tech Web SDK | Card checkout in a popup; card data never touches our servers |
 
 ---
 
@@ -75,14 +72,12 @@ src/
     page.tsx              Landing page (all marketing sections)
     login/ signup/        Auth pages (use components/auth/AuthForm)
     account/              Signed-in dashboard
-    payments/callback/    Gammal Tech payment landing / verification page
   components/
     sections/             Landing page sections (Hero, Pricing, CTAContact, …)
     layout/ ui/ auth/     Navbar, Footer, Button, GlassCard, ProfileMenu, …
   lib/
     constants.ts          Nav links, features, pricing plans — most copy lives here
     auth.ts, useAuth.ts   Client for the FastAPI auth server (token in localStorage)
-    gammalPay.ts          Wrapper around the Gammal Tech SDK
 public/                   Static files copied as-is (background image, .nojekyll, …)
 server/                   FastAPI auth server (Python)
 google-apps-script/       Code.gs for the demo-request Google Sheet + setup guide
@@ -146,7 +141,6 @@ Other commands: `npm run build` (static export into `out/`), `npm run lint`.
 |---|---|---|
 | `NEXT_PUBLIC_AUTH_URL` | Auth API base URL | `https://api.truebex.com` |
 | `NEXT_PUBLIC_SHEETS_URL` | Apps Script web app URL for the demo form | `https://script.google.com/macros/s/…/exec` |
-| `NEXT_PUBLIC_GAMMAL_SDK_URL` | Gammal Tech Web SDK script | `https://api.gammal.tech/sdk-web.js` |
 
 These end up **inside the public JavaScript bundle**, so never put secrets in
 `NEXT_PUBLIC_*` variables. Rebuild after any change.
@@ -220,7 +214,9 @@ JWT bearer tokens that the frontend keeps in `localStorage`.
 | POST | `/auth/register` | — | Create an account, returns a token and the user |
 | POST | `/auth/login` | — | Returns a token and the user |
 | GET | `/auth/me` | Bearer | The current user |
-| POST | `/billing/activate` | Bearer | Mark the user's plan as paid (see [Known issues](#known-issues)) |
+
+Each user has a `plan` field, shown on the dashboard. It is always `"free"`
+for now, because the site doesn't take payments.
 
 ### How production runs
 
@@ -252,20 +248,12 @@ return `{"result":"ok"}`.
 
 ---
 
-## Payments (Gammal Tech)
+## Pricing
 
-The Professional plan ($99/mo) is paid through the Gammal Tech Web SDK
-(`src/lib/gammalPay.ts`). Clicking the plan's button in **Pricing** loads the
-SDK, opens Gammal's card popup, and on success calls `confirmDelivery`.
-`/payments/callback` handles the redirect fallback (for example 3-D Secure when
-popups are blocked) by verifying the `payment_id` in the URL.
-
-Before payments work in production, Gammal Tech must **pre-approve the
-account** and **whitelist the callback page** (`https://truebex.com/payments/callback/`).
-Contact dev@gammal.tech.
-
-`public/gammal-tech.html` is a static page about Gammal Tech, served at
-`/gammal-tech.html`.
+The site has **no online payments**. The plans in `PRICING_PLANS`
+(`src/lib/constants.ts`) are display only, and every plan's button links to the
+demo request form (`/#contact`). The dashboard's "Upgrade to Pro" link goes to
+the pricing section.
 
 ---
 
@@ -274,9 +262,6 @@ Contact dev@gammal.tech.
 | Issue | Impact | Where |
 |---|---|---|
 | Auth API depends on the host PC + tunnel being up | Login, signup, and the dashboard break when the PC is off | `start-server.bat`, `start-tunnel.bat` |
-| A paid plan is never recorded: `activatePlan()` is never called after payment | Users stay on the "free" plan after paying | `src/lib/auth.ts`, `Pricing.tsx`, `payments/callback/page.tsx` |
-| `/billing/activate` trusts any `payment_id` without checking it with Gammal | Once wired up, any logged-in user could grant themselves Pro | `server/app/main.py` |
-| Dashboard "Upgrade to Pro" links to `/payments/callback` instead of pricing | The link lands on "No payment to show" | `src/app/account/page.tsx` |
 | `og-image.jpg` is referenced but missing | Social link previews have no image | `src/app/layout.tsx`, `public/images/` |
 | The demo form can't detect failures (`no-cors`) | It always shows "Request received!" | `CTAContact.tsx` |
 | Stale `gh-pages` branch | Confusing; not served | — |

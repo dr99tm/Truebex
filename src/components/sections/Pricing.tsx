@@ -1,8 +1,8 @@
 "use client";
 
-import { useRef, useCallback, useState } from "react";
+import { useRef, useCallback } from "react";
 import { motion } from "motion/react";
-import { Check, Loader2 } from "lucide-react";
+import { Check } from "lucide-react";
 import { Section } from "@/components/layout/Section";
 import { SectionHeading } from "@/components/ui/SectionHeading";
 import { Button } from "@/components/ui/Button";
@@ -13,78 +13,10 @@ import {
 } from "@/components/animations/StaggerChildren";
 import { PRICING_PLANS } from "@/lib/constants";
 import { cn } from "@/lib/utils";
-import {
-  payWithCard,
-  confirmDelivery,
-  GammalPayError,
-  type GammalPayment,
-} from "@/lib/gammalPay";
 
-type PricingPlan = (typeof PRICING_PLANS)[number];
-
-function hasPrice(plan: PricingPlan): plan is PricingPlan & { priceUSD: number } {
-  return "priceUSD" in plan && typeof plan.priceUSD === "number";
-}
-
-function errorMessage(code: GammalPayError["code"]): string {
-  switch (code) {
-    case "CARD_DECLINED":
-      return "Your card was declined. Please try a different card.";
-    case "INSUFFICIENT_FUNDS":
-      return "Insufficient funds on the card.";
-    case "3DS_FAILED":
-      return "3D Secure verification failed. Please try again.";
-    case "USER_CANCELLED":
-      return "Payment cancelled.";
-    case "INVALID_CARD":
-      return "The card details are invalid.";
-    case "SDK_LOAD_FAILED":
-      return "Couldn't reach the payment provider. Check your connection.";
-    default:
-      return "Something went wrong with the payment. Please try again.";
-  }
-}
-
-function PricingCard({ plan }: { plan: PricingPlan }) {
+function PricingCard({ plan }: { plan: (typeof PRICING_PLANS)[number] }) {
   const cardRef = useRef<HTMLDivElement>(null);
   const glowRef = useRef<HTMLDivElement>(null);
-  const [status, setStatus] = useState<
-    | { kind: "idle" }
-    | { kind: "paying" }
-    | { kind: "delivered"; payment: GammalPayment }
-    | { kind: "error"; message: string }
-  >({ kind: "idle" });
-
-  const purchasable = hasPrice(plan);
-
-  const handlePay = useCallback(async () => {
-    if (!purchasable) return;
-    setStatus({ kind: "paying" });
-    try {
-      const payment = await payWithCard({
-        amount: plan.priceUSD,
-        currency: "USD",
-        description: `Truebex ${plan.name} plan`,
-      });
-      // Hand over the product, then tell Gammal Tech it's delivered. If the
-      // confirmation call fails the user still got their payment receipt —
-      // surface a soft warning rather than treating it as a payment failure.
-      try {
-        await confirmDelivery(payment.id);
-      } catch {
-        // ignore; settlement job will retry pending deliveries
-      }
-      setStatus({ kind: "delivered", payment });
-    } catch (err) {
-      const code =
-        err instanceof GammalPayError ? err.code : "UNKNOWN";
-      if (code === "USER_CANCELLED") {
-        setStatus({ kind: "idle" });
-        return;
-      }
-      setStatus({ kind: "error", message: errorMessage(code) });
-    }
-  }, [purchasable, plan]);
 
   const handleMouseMove = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {
@@ -164,48 +96,13 @@ function PricingCard({ plan }: { plan: PricingPlan }) {
             ))}
           </ul>
 
-          {purchasable ? (
-            <Button
-              variant={plan.highlighted ? "primary" : "secondary"}
-              className="w-full"
-              onClick={handlePay}
-              disabled={status.kind === "paying"}
-            >
-              {status.kind === "paying" ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Opening checkout…
-                </>
-              ) : status.kind === "delivered" ? (
-                "Payment received ✓"
-              ) : (
-                plan.cta
-              )}
-            </Button>
-          ) : (
-            <Button
-              href="/#contact"
-              variant={plan.highlighted ? "primary" : "secondary"}
-              className="w-full"
-            >
-              {plan.cta}
-            </Button>
-          )}
-
-          {status.kind === "error" && (
-            <p
-              role="alert"
-              className="mt-3 text-xs text-red-400/90"
-            >
-              {status.message}
-            </p>
-          )}
-          {status.kind === "delivered" && (
-            <p className="mt-3 text-xs text-text-muted">
-              Card ending {status.payment.card_last4 ?? "••••"} charged{" "}
-              ${status.payment.amount.toFixed(2)} {status.payment.currency}.
-            </p>
-          )}
+          <Button
+            href="/#contact"
+            variant={plan.highlighted ? "primary" : "secondary"}
+            className="w-full"
+          >
+            {plan.cta}
+          </Button>
         </div>
       </div>
     </div>

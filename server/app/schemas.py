@@ -24,12 +24,6 @@ class UserOut(BaseModel):
     plan: str
 
 
-class BillingActivate(BaseModel):
-    # The Gammal Tech payment id, already verified client-side via the SDK.
-    payment_id: str = Field(min_length=1, max_length=128)
-    plan: str = Field(default="pro", max_length=32)
-
-
 class Token(BaseModel):
     access_token: str
     token_type: str = "bearer"

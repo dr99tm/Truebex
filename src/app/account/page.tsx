@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   LayoutGrid,
@@ -110,12 +111,12 @@ export default function AccountPage() {
               {user.plan}
             </p>
             {user.plan === "free" && (
-              <a
-                href="/payments/callback"
+              <Link
+                href="/#pricing"
                 className="mt-3 inline-flex items-center gap-1 text-sm text-accent hover:underline"
               >
                 Upgrade to Pro →
-              </a>
+              </Link>
             )}
           </GlassCard>
         </div>

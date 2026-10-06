@@ -18,7 +18,7 @@ from .config import get_settings
 from .database import get_db, init_db
 from .deps import get_current_user
 from .models import User
-from .schemas import BillingActivate, Token, UserCreate, UserLogin, UserOut
+from .schemas import Token, UserCreate, UserLogin, UserOut
 from .security import create_access_token, hash_password, verify_password
 
 settings = get_settings()
@@ -88,28 +88,4 @@ def login(payload: UserLogin, db: Session = Depends(get_db)) -> Token:
 
 @app.get("/auth/me", response_model=UserOut)
 def me(current: User = Depends(get_current_user)) -> UserOut:
-    return UserOut.model_validate(current)
-
-
-@app.post("/billing/activate", response_model=UserOut)
-def activate_plan(
-    payload: BillingActivate,
-    current: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
-) -> UserOut:
-    """Mark the authenticated user's plan active after a delivered payment.
-
-    The payment itself is processed and verified client-side by the Gammal
-    Tech SDK (card details never reach us). This records the outcome against
-    the user so the dashboard reflects it.
-
-    NOTE: this trusts the caller's bearer token + a payment_id. For stronger
-    assurance, verify `payment_id` server-side against Gammal Tech's API once
-    that integration detail is available.
-    """
-    current.plan = payload.plan
-    current.last_payment_id = payload.payment_id
-    db.add(current)
-    db.commit()
-    db.refresh(current)
     return UserOut.model_validate(current)

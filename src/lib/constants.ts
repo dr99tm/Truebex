@@ -142,7 +142,6 @@ export const PRICING_PLANS = [
     name: "Professional",
     price: "$99",
     period: "/month",
-    priceUSD: 99,
     description: "Full platform access for professionals who demand accuracy.",
     features: [
       "Advanced design tools",

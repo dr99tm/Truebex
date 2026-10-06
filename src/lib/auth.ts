@@ -110,25 +110,3 @@ export async function fetchMe(): Promise<User | null> {
 export function logout(): void {
   clearToken();
 }
-
-/**
- * Record a delivered Gammal Tech payment against the current user, activating
- * their plan. Called after the SDK verifies the payment. Requires a token.
- */
-export async function activatePlan(
-  paymentId: string,
-  plan = "pro"
-): Promise<User> {
-  const token = getToken();
-  if (!token) throw new Error("Not signed in.");
-  const res = await fetch(`${AUTH_URL}/billing/activate`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
-    body: JSON.stringify({ payment_id: paymentId, plan }),
-  });
-  if (!res.ok) await parseError(res);
-  return res.json();
-}

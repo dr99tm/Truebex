@@ -3,9 +3,9 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   output: "export",
   // GitHub Pages serves directories, not bare .html files. Without this,
-  // /payments/callback resolves to the callback/ dir (which has no
-  // index.html) and falls through to 404 — showing only the background.
-  // trailingSlash makes the export emit payments/callback/index.html.
+  // /login resolves to the login/ dir (which has no index.html) and falls
+  // through to 404 — showing only the background.
+  // trailingSlash makes the export emit login/index.html.
   trailingSlash: true,
   basePath: "",
   // Must be root-absolute, NOT "./". With trailingSlash, nested routes like

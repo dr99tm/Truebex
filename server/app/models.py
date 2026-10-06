@@ -23,7 +23,5 @@ class User(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=_utcnow, nullable=False
     )
-    # Subscription plan: "free" until a Gammal Tech payment is delivered.
+    # Subscription plan shown on the dashboard. Every account is "free" for now.
     plan: Mapped[str] = mapped_column(String(32), default="free", nullable=False)
-    # Last delivered Gammal Tech payment id, for traceability.
-    last_payment_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
