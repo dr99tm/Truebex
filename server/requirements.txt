@@ -7,3 +7,9 @@ passlib[bcrypt]==1.7.4
 bcrypt==4.0.1
 python-jose[cryptography]==3.3.0
 python-multipart==0.0.20
+# Google Sign-In ID token verification
+google-auth==2.38.0
+requests==2.32.3
+# Payment providers
+stripe==11.4.1
+httpx==0.28.1

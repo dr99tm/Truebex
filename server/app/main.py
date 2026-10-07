@@ -1,25 +1,21 @@
-"""FastAPI auth server: email/password registration + JWT login.
+"""Truebex API: accounts (email/password + Google), developer API keys,
+usage metering, and billing (Stripe + Wayl).
 
 Run locally with:
     uvicorn app.main:app --host 127.0.0.1 --port 8000
 
-Then expose via cloudflared:
-    cloudflared tunnel --url http://127.0.0.1:8000
+Production runs on :8001 behind a cloudflared tunnel (api.truebex.com);
+see start-server.bat and start-tunnel.bat at the repo root.
 """
 
 from contextlib import asynccontextmanager
 
-from fastapi import Depends, FastAPI, HTTPException, status
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy import select
-from sqlalchemy.orm import Session
 
 from .config import get_settings
-from .database import get_db, init_db
-from .deps import get_current_user
-from .models import User
-from .schemas import Token, UserCreate, UserLogin, UserOut
-from .security import create_access_token, hash_password, verify_password
+from .database import init_db
+from .routers import auth, billing, keys, usage, v1
 
 settings = get_settings()
 
@@ -30,7 +26,15 @@ async def lifespan(_app: FastAPI):
     yield
 
 
-app = FastAPI(title="Truebex Auth", version="1.0.0", lifespan=lifespan)
+app = FastAPI(
+    title="Truebex API",
+    version="2.0.0",
+    lifespan=lifespan,
+    description=(
+        "Developer API for Truebex. Authenticate with an API key from "
+        "https://truebex.com/dashboard/keys/ as `Authorization: Bearer tbx_live_…`."
+    ),
+)
 
 app.add_middleware(
     CORSMiddleware,
@@ -38,54 +42,23 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["X-RateLimit-Limit", "X-RateLimit-Remaining"],
 )
 
 
-@app.get("/health")
+@app.get("/health", tags=["meta"])
 def health() -> dict[str, str]:
     return {"status": "ok"}
 
 
-@app.post(
-    "/auth/register",
-    response_model=Token,
-    status_code=status.HTTP_201_CREATED,
-)
-def register(payload: UserCreate, db: Session = Depends(get_db)) -> Token:
-    email = payload.email.lower()
-    existing = db.scalar(select(User).where(User.email == email))
-    if existing is not None:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="An account with this email already exists.",
-        )
-
-    user = User(email=email, hashed_password=hash_password(payload.password))
-    db.add(user)
-    db.commit()
-    db.refresh(user)
-
-    token = create_access_token(subject=str(user.id))
-    return Token(access_token=token, user=UserOut.model_validate(user))
+@app.get("/config", tags=["meta"])
+def public_config() -> dict:
+    """What the website needs to know about this server's features."""
+    return {"google_client_id": settings.google_client_id or None}
 
 
-@app.post("/auth/login", response_model=Token)
-def login(payload: UserLogin, db: Session = Depends(get_db)) -> Token:
-    email = payload.email.lower()
-    user = db.scalar(select(User).where(User.email == email))
-
-    # Verify even when the user is missing to avoid leaking which emails exist
-    # via response timing.
-    if user is None or not verify_password(payload.password, user.hashed_password):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect email or password.",
-        )
-
-    token = create_access_token(subject=str(user.id))
-    return Token(access_token=token, user=UserOut.model_validate(user))
-
-
-@app.get("/auth/me", response_model=UserOut)
-def me(current: User = Depends(get_current_user)) -> UserOut:
-    return UserOut.model_validate(current)
+app.include_router(auth.router)
+app.include_router(keys.router)
+app.include_router(usage.router)
+app.include_router(billing.router)
+app.include_router(v1.router)

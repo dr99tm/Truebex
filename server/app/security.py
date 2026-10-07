@@ -1,5 +1,7 @@
-"""Password hashing and JWT helpers."""
+"""Password hashing, JWT and API key helpers."""
 
+import hashlib
+import secrets
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
@@ -12,12 +14,18 @@ settings = get_settings()
 
 _pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
+# Every key starts with this, so leaked keys are easy to spot in code scans.
+API_KEY_PREFIX = "tbx_live_"
+
 
 def hash_password(plain: str) -> str:
     return _pwd_context.hash(plain)
 
 
 def verify_password(plain: str, hashed: str) -> bool:
+    # Google-only accounts have no password hash.
+    if not hashed:
+        return False
     return _pwd_context.verify(plain, hashed)
 
 
@@ -40,3 +48,13 @@ def decode_access_token(token: str) -> str | None:
         return None
     sub = payload.get("sub")
     return sub if isinstance(sub, str) else None
+
+
+def generate_api_key() -> tuple[str, str, str]:
+    """Return (full_key, display_prefix, sha256_hash) for a new API key."""
+    key = API_KEY_PREFIX + secrets.token_urlsafe(32)
+    return key, key[: len(API_KEY_PREFIX) + 6], hash_api_key(key)
+
+
+def hash_api_key(key: str) -> str:
+    return hashlib.sha256(key.encode("utf-8")).hexdigest()

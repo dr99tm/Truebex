@@ -1,14 +1,13 @@
 @echo off
-REM Start the Truebex auth server. Creates a venv on first run.
+REM Local development server on :8000 with auto-reload. Creates the venv on
+REM first run. Production uses ..\start-server.bat (port 8001) instead.
 cd /d "%~dp0"
 
-if not exist ".venv\" (
-    echo Creating virtual environment...
-    py -m venv .venv
-    call .venv\Scripts\activate.bat
-    pip install -r requirements.txt
-) else (
-    call .venv\Scripts\activate.bat
+if not exist ".venv\Scripts\python.exe" (
+    echo Creating virtual environment with Python 3.12...
+    if exist ".venv\" rmdir /s /q .venv
+    py -3.12 -m venv .venv
+    .venv\Scripts\python.exe -m pip install -r requirements-dev.txt
 )
 
 if not exist ".env" (
@@ -16,4 +15,4 @@ if not exist ".env" (
     copy .env.example .env
 )
 
-uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
+.venv\Scripts\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
