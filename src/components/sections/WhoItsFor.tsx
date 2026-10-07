@@ -17,7 +17,7 @@ export function WhoItsFor() {
       <FadeInWhenVisible>
         <SectionHeading
           title="Who It's For"
-          subtitle="Built for every stakeholder in the building lifecycle."
+          subtitle="For everyone who needs to understand a building before it exists."
         />
       </FadeInWhenVisible>
 

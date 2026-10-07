@@ -1,4 +1,12 @@
+import type { Metadata } from "next";
 import { AuthForm } from "@/components/auth/AuthForm";
+
+export const metadata: Metadata = {
+  title: "Log in",
+  description: "Sign in to your Truebex dashboard with Google or email.",
+  alternates: { canonical: "/login/" },
+  robots: { index: false, follow: true },
+};
 
 export default function LoginPage() {
   return (

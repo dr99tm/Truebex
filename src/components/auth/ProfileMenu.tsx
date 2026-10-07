@@ -6,8 +6,23 @@ import { motion, AnimatePresence } from "motion/react";
 import { LayoutDashboard, LogOut } from "lucide-react";
 import { logout, type User } from "@/lib/auth";
 
-/** Circular avatar showing the first letter of the user's email. */
-function Avatar({ email, size = 36 }: { email: string; size?: number }) {
+/** Circular avatar: the Google photo when there is one, else the email's
+ *  first letter. */
+export function Avatar({ user, size = 36 }: { user: User; size?: number }) {
+  if (user.avatar_url) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element -- remote Google photo, static export
+      <img
+        src={user.avatar_url}
+        alt=""
+        width={size}
+        height={size}
+        referrerPolicy="no-referrer"
+        className="shrink-0 rounded-full ring-1 ring-accent/30"
+      />
+    );
+  }
+  const email = user.email;
   return (
     <span
       className="flex shrink-0 items-center justify-center rounded-full bg-accent/15 font-semibold uppercase text-accent ring-1 ring-accent/30"
@@ -57,7 +72,7 @@ export function ProfileMenu({ user }: { user: User }) {
         aria-label="Open account menu"
         aria-expanded={open}
       >
-        <Avatar email={user.email} />
+        <Avatar user={user} />
       </button>
 
       <AnimatePresence>
@@ -70,17 +85,19 @@ export function ProfileMenu({ user }: { user: User }) {
             className="absolute right-0 mt-2 w-60 overflow-hidden rounded-[var(--radius-card)] border border-border bg-surface-elevated shadow-[0_8px_32px_#00000050]"
           >
             <div className="flex items-center gap-3 border-b border-border px-4 py-3">
-              <Avatar email={user.email} size={40} />
+              <Avatar user={user} size={40} />
               <div className="min-w-0">
                 <p className="truncate text-sm font-medium text-text-primary">
                   {user.email}
                 </p>
-                <p className="text-xs text-text-muted">Signed in</p>
+                <p className="text-xs text-text-muted">
+                  {user.name ?? "Signed in"} · <span className="capitalize">{user.plan}</span>
+                </p>
               </div>
             </div>
             <nav className="p-1.5">
               <a
-                href="/account"
+                href="/dashboard/"
                 onClick={() => setOpen(false)}
                 className="flex items-center gap-3 rounded-[var(--radius-button)] px-3 py-2 text-sm text-text-secondary transition-colors hover:bg-white/5 hover:text-text-primary"
               >

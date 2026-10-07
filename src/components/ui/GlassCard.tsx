@@ -18,7 +18,7 @@ export function GlassCard({ className, children }: GlassCardProps) {
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
     glowRef.current.style.opacity = "1";
-    glowRef.current.style.background = `radial-gradient(300px circle at ${x}px ${y}px, rgba(0, 191, 255, 0.15), transparent 70%)`;
+    glowRef.current.style.background = `radial-gradient(300px circle at ${x}px ${y}px, rgba(160, 206, 255, 0.10), transparent 70%)`;
   }, []);
 
   const handleMouseLeave = useCallback(() => {

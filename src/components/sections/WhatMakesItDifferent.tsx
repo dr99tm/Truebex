@@ -17,7 +17,7 @@ export function WhatMakesItDifferent() {
       <FadeInWhenVisible>
         <SectionHeading
           title="What Makes Truebex Different"
-          subtitle="We didn't optimize for pretty lies. We built for truth preservation."
+          subtitle="Not prettier pictures — a truer model. What you see is what you drew."
         />
       </FadeInWhenVisible>
 

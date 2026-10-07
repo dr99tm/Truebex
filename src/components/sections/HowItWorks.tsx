@@ -16,7 +16,7 @@ export function HowItWorks() {
       <FadeInWhenVisible>
         <SectionHeading
           title="How It Works"
-          subtitle="From first sketch to VR walkthrough — in four seamless steps."
+          subtitle="From the first wall to a first-person walkthrough — in one session."
         />
       </FadeInWhenVisible>
 
@@ -24,7 +24,7 @@ export function HowItWorks() {
         {/* Connecting line (desktop) */}
         <div className="absolute top-10 left-0 right-0 hidden h-[1px] bg-gradient-to-r from-transparent via-accent/30 to-transparent lg:block" />
 
-        {STEPS.map((step, i) => (
+        {STEPS.map((step) => (
           <motion.div key={step.number} variants={staggerItem}>
             <div className="relative flex flex-col items-center text-center md:items-center">
               {/* Step number */}

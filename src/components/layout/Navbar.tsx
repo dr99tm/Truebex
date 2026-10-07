@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import { Menu, X } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { NAV_LINKS } from "@/lib/constants";
@@ -8,6 +9,7 @@ import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/utils";
 import { useCurrentUser } from "@/lib/useAuth";
 import { ProfileMenu } from "@/components/auth/ProfileMenu";
+import { Lockup } from "@/components/brand/Logo";
 
 export function Navbar() {
   const [scrolled, setScrolled] = useState(false);
@@ -44,9 +46,13 @@ export function Navbar() {
       >
         <nav className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 md:px-8 md:py-4">
           {/* Logo — links home (works from any route, not just the homepage) */}
-          <a href="/" className="relative z-50 text-xl font-bold tracking-tight shrink-0">
-            <span className="gradient-text">Truebex</span>
-          </a>
+          <Link
+            href="/"
+            className="relative z-50 shrink-0 text-xl transition-opacity hover:opacity-80"
+            aria-label="Truebex home"
+          >
+            <Lockup />
+          </Link>
 
           {/* Desktop nav — hidden below lg (1024px) since we have 7 links */}
           <ul className="hidden items-center gap-6 lg:flex">
@@ -66,7 +72,7 @@ export function Navbar() {
           <div className="hidden lg:flex items-center gap-3 shrink-0">
             {user ? (
               <>
-                <Button href="/account" variant="secondary" size="sm">
+                <Button href="/dashboard/" variant="secondary" size="sm">
                   Dashboard
                 </Button>
                 <ProfileMenu user={user} />
@@ -88,7 +94,7 @@ export function Navbar() {
           <div className="flex items-center gap-2 lg:hidden">
             {user ? (
               <>
-                <Button href="/account" variant="secondary" size="sm">
+                <Button href="/dashboard/" variant="secondary" size="sm">
                   Dashboard
                 </Button>
                 <ProfileMenu user={user} />

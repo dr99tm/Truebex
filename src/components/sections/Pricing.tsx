@@ -25,7 +25,7 @@ function PricingCard({ plan }: { plan: (typeof PRICING_PLANS)[number] }) {
       const x = e.clientX - rect.left;
       const y = e.clientY - rect.top;
       glowRef.current.style.opacity = "1";
-      glowRef.current.style.background = `radial-gradient(300px circle at ${x}px ${y}px, rgba(0, 191, 255, 0.15), transparent 70%)`;
+      glowRef.current.style.background = `radial-gradient(300px circle at ${x}px ${y}px, rgba(160, 206, 255, 0.10), transparent 70%)`;
     },
     []
   );
@@ -97,7 +97,7 @@ function PricingCard({ plan }: { plan: (typeof PRICING_PLANS)[number] }) {
           </ul>
 
           <Button
-            href="/#contact"
+            href={plan.href}
             variant={plan.highlighted ? "primary" : "secondary"}
             className="w-full"
           >
@@ -115,7 +115,7 @@ export function Pricing() {
       <FadeInWhenVisible>
         <SectionHeading
           title="Pricing"
-          subtitle="Start free. Scale when you're ready."
+          subtitle="Start free. Upgrade when Truebex becomes part of your daily work."
         />
       </FadeInWhenVisible>
 

@@ -73,9 +73,9 @@ export function CTAContact() {
               <span className="gradient-text">Will Actually Exist?</span>
             </h2>
             <p className="mt-6 text-lg text-text-secondary">
-              Experience the platform that unifies design, market, calculations,
-              and VR into a single source of truth. Request a demo and see
-              Truebex in action.
+              See a building designed, lit and walked through in one live
+              session. Request a demo and we&apos;ll show you Truebex on a
+              project like yours.
             </p>
           </FadeInWhenVisible>
 

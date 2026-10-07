@@ -1,28 +1,20 @@
 "use client";
 
-// Client-side auth helpers that talk to the FastAPI server.
-// Set NEXT_PUBLIC_AUTH_URL in .env.local to your cloudflared hostname, e.g.
-//   NEXT_PUBLIC_AUTH_URL=https://auth.yourdomain.com
-const AUTH_URL = process.env.NEXT_PUBLIC_AUTH_URL ?? "http://127.0.0.1:8000";
+// Account calls against the Truebex API. Session tokens live in
+// localStorage; see lib/api.ts.
+import { api, ApiError, clearToken, getToken, setToken } from "@/lib/api";
 
-const TOKEN_KEY = "truebex_token";
-
-// Fired on the window whenever the token is set or cleared. The native
-// `storage` event only fires in *other* tabs, so we dispatch our own so the
-// current tab (e.g. the Navbar) can react to login/logout immediately.
-export const AUTH_CHANGE_EVENT = "truebex-auth-change";
-
-function emitAuthChange(): void {
-  if (typeof window !== "undefined") {
-    window.dispatchEvent(new Event(AUTH_CHANGE_EVENT));
-  }
-}
+export { AUTH_CHANGE_EVENT, getToken } from "@/lib/api";
 
 export interface User {
   id: number;
   email: string;
   created_at: string;
   plan: string;
+  name: string | null;
+  avatar_url: string | null;
+  has_password: boolean;
+  google_linked: boolean;
 }
 
 export interface AuthResult {
@@ -31,82 +23,58 @@ export interface AuthResult {
   user: User;
 }
 
-export function getToken(): string | null {
-  if (typeof window === "undefined") return null;
-  return window.localStorage.getItem(TOKEN_KEY);
-}
-
-export function setToken(token: string): void {
-  window.localStorage.setItem(TOKEN_KEY, token);
-  emitAuthChange();
-}
-
-export function clearToken(): void {
-  window.localStorage.removeItem(TOKEN_KEY);
-  emitAuthChange();
-}
-
-/** Throw an Error carrying the server's `detail` message when present. */
-async function parseError(res: Response): Promise<never> {
-  let detail = `Request failed (${res.status})`;
-  try {
-    const data = await res.json();
-    if (typeof data?.detail === "string") {
-      detail = data.detail;
-    } else if (Array.isArray(data?.detail) && data.detail[0]?.msg) {
-      // FastAPI validation errors come back as a list of {msg, ...}.
-      detail = data.detail[0].msg;
-    }
-  } catch {
-    /* response had no JSON body */
-  }
-  throw new Error(detail);
-}
-
-export async function register(
-  email: string,
-  password: string
-): Promise<AuthResult> {
-  const res = await fetch(`${AUTH_URL}/auth/register`, {
+async function signIn(path: string, body: unknown): Promise<AuthResult> {
+  const data = await api<AuthResult>(path, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, password }),
+    json: body,
+    auth: false,
   });
-  if (!res.ok) await parseError(res);
-  const data: AuthResult = await res.json();
   setToken(data.access_token);
   return data;
 }
 
-export async function login(
-  email: string,
-  password: string
-): Promise<AuthResult> {
-  const res = await fetch(`${AUTH_URL}/auth/login`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, password }),
-  });
-  if (!res.ok) await parseError(res);
-  const data: AuthResult = await res.json();
-  setToken(data.access_token);
-  return data;
+export function register(email: string, password: string): Promise<AuthResult> {
+  return signIn("/auth/register", { email, password });
+}
+
+export function login(email: string, password: string): Promise<AuthResult> {
+  return signIn("/auth/login", { email, password });
+}
+
+/** Exchange a Google Identity Services credential for a Truebex session. */
+export function googleLogin(credential: string): Promise<AuthResult> {
+  return signIn("/auth/google", { credential });
 }
 
 export async function fetchMe(): Promise<User | null> {
-  const token = getToken();
-  if (!token) return null;
-  const res = await fetch(`${AUTH_URL}/auth/me`, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-  if (res.status === 401) {
-    clearToken();
-    return null;
+  if (!getToken()) return null;
+  try {
+    return await api<User>("/auth/me");
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 401) return null;
+    throw err;
   }
-  if (!res.ok) await parseError(res);
-  return res.json();
 }
 
 export function logout(): void {
   clearToken();
+}
+
+let configPromise: Promise<{ google_client_id: string | null }> | null = null;
+
+/** Server feature flags (e.g. the Google client id). Cached per page load. */
+export function fetchPublicConfig(): Promise<{ google_client_id: string | null }> {
+  configPromise ??= api<{ google_client_id: string | null }>("/config", {
+    auth: false,
+  }).catch((err) => {
+    configPromise = null;
+    throw err;
+  });
+  return configPromise;
+}
+
+/** Only allow same-site relative redirects after login (no open redirect). */
+export function safeNext(next: string | null | undefined): string {
+  if (next && next.startsWith("/") && !next.startsWith("//")) return next;
+  return "/dashboard";
 }
