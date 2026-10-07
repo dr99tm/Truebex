@@ -1,6 +1,7 @@
 "use client";
 
 import { Suspense, useState } from "react";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { GoogleButton } from "@/components/auth/GoogleButton";
@@ -104,7 +105,13 @@ function AuthFormInner({ mode }: { mode: Mode }) {
         </form>
       </div>
 
-      <p className="mt-6 text-center text-sm text-text-secondary">
+      <p className="mt-6 text-center text-xs text-text-muted">
+        By continuing you agree to the{" "}
+        <Link href="/terms/" className="underline hover:text-text-secondary">Terms</Link> and{" "}
+        <Link href="/privacy/" className="underline hover:text-text-secondary">Privacy Policy</Link>.
+      </p>
+
+      <p className="mt-4 text-center text-sm text-text-secondary">
         {isSignup ? "Already have an account? " : "Don't have an account? "}
         <a href={otherHref} className="text-accent hover:underline">
           {isSignup ? "Log in" : "Sign up"}

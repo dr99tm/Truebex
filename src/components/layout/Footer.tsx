@@ -7,6 +7,8 @@ const RESOURCES = [
   { label: "Dashboard", href: "/dashboard/" },
   { label: "Create account", href: "/signup/" },
   { label: "Brand assets", href: "/brand/truebex-mark-grey.svg" },
+  { label: "Privacy", href: "/privacy/" },
+  { label: "Terms", href: "/terms/" },
 ] as const;
 
 export function Footer() {
