@@ -6,7 +6,7 @@ Sources (the Unreal project owns the brand; this script only reads it):
     T:/unreal5_7_4_projects/truebex_compact/Brand/Truebex/logo/figma_original/*.svg
     T:/unreal5_7_4_projects/truebex_compact/Content/Brand/{Logo,Lockup}.png
     T:/unreal5_7_4_projects/truebex_compact/Content/Fonts/Segoe/*.ttf   (raster text only)
-    T:/unreal5_7_4_projects/MultiWindow/Saved/CadTool/*.png             (in-app captures)
+    T:/unreal5_7_4_projects/MultiWindow/Saved/CadTool/face8F.png        (the in-app capture)
 
 Writes (all committed):
     public/brand/*.svg                  mark / wordmark in brand grey and white (media kit)
@@ -117,16 +117,20 @@ def crop_hud(path: str, top: int = 96) -> Image.Image:
 
 
 def product_shots() -> dict[str, Image.Image]:
-    shots = {
-        "rooms-area-labels": crop_hud(f"{SHOTS}/roomsdemo3d_living.png", 90),
-        "first-person-walkthrough": crop_hud(f"{SHOTS}/face8F.png", 50),
-        "wall-face-panels": crop_hud(f"{SHOTS}/island3d_reveal.png", 110),
-    }
-    for name, im in shots.items():
-        w = 1200
-        im.resize((w, round(im.height * w / im.width)), Image.LANCZOS).save(
-            out("public", "images", "product", f"{name}.jpg"), quality=84, optimize=True, progressive=True
-        )
+    """The one capture the site shows: daylight through a doorway.
+
+    Writes the full frame (4:3) and a wide 16:9 crop for the hero showcase.
+    Only clean captures belong here — no HUD, labels or debug overlays.
+    """
+    im = crop_hud(f"{SHOTS}/face8F.png", 50)
+    shots = {"daylight-doorway": im}
+    full = im.resize((1600, round(im.height * 1600 / im.width)), Image.LANCZOS)
+    full.save(out("public", "images", "product", "daylight-doorway.jpg"), quality=86, optimize=True, progressive=True)
+    # 16:9, keeping the doorway and the light falling through it.
+    h = round(im.width * 9 / 16)
+    top = round((im.height - h) * 0.45)
+    wide = im.crop((0, top, im.width, top + h)).resize((1600, 900), Image.LANCZOS)
+    wide.save(out("public", "images", "product", "daylight-doorway-wide.jpg"), quality=86, optimize=True, progressive=True)
     return shots
 
 
@@ -137,7 +141,7 @@ def og_image(shots: dict[str, Image.Image]) -> None:
     grid(img, 120, 14)
 
     # Product capture on the right, fading into the page on its left edge.
-    shot = shots["first-person-walkthrough"]
+    shot = shots["daylight-doorway"]
     sh = H
     sw = round(shot.width * sh / shot.height)
     shot = shot.resize((sw, sh), Image.LANCZOS).convert("RGBA")
@@ -160,7 +164,7 @@ def og_image(shots: dict[str, Image.Image]) -> None:
     d.text((72, 286), "you build it.", font=font("Segoe UI Bold.ttf", 66), fill=ACCENT)
     d.text(
         (72, 392),
-        "Real-time 2D + 3D building design.\nLumen light, first-person walkthroughs,\nand live areas on Unreal Engine 5.7.",
+        "The building design platform where\ndaylight is measured, surfaces design\nthemselves, and every change is instant.",
         font=font("Segoe UI.ttf", 28),
         fill=(168, 168, 168),
         spacing=10,

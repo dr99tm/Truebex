@@ -3,8 +3,9 @@
 Website, account portal and developer API for **Truebex — True Building
 Experience**, live at **https://truebex.com**.
 
-Truebex itself is a real-time 2D + 3D building design tool (Revit-style CAD on
-Unreal Engine 5.7). This repo is everything around it on the web:
+Truebex itself is a desktop building design platform: measured daylight,
+self-arranging surfaces, assets that update everywhere. This repo is everything
+around it on the web:
 
 - **Marketing site:** a static Next.js export on GitHub Pages.
 - **Dashboard:** sign in with Google or email, manage API keys, see usage, and handle billing.
@@ -333,7 +334,11 @@ through the whole checkout without real money.
 - **Regenerating assets:** `py -3.12 scripts/make_web_assets.py` rebuilds the
   icons, OG card, SVG media kit and product captures.
 - **Site copy:** all of it lives in `src/lib/constants.ts`. Only shipped features go in
-  `FEATURES`; planned ones go in `ROADMAP`.
+  `FEATURES`; planned ones go in `ROADMAP`. Public copy never names the
+  engine or other software, and leads with distinctive features only (see
+  `truebex-brand-voice`).
+- **Product image:** the site shows a single clean capture (daylight through
+  a doorway). Add more only if they have no HUD or labels.
 - **Project skills** (Claude Code picks these up automatically in this repo):
   - `truebex-brand-voice`: voice, claims rules, visual tokens.
   - `truebex-seo`: per-page checklist, keyword map, indexing and distribution playbook.

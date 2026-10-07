@@ -73,7 +73,7 @@ export function CTAContact() {
               <span className="gradient-text">Will Actually Exist?</span>
             </h2>
             <p className="mt-6 text-lg text-text-secondary">
-              See a building designed, lit and walked through in one live
+              See a building designed, daylit and refined in one live
               session. Request a demo and we&apos;ll show you Truebex on a
               project like yours.
             </p>

@@ -6,7 +6,7 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "Truebex — True Building Experience",
     short_name: "Truebex",
-    description: "Real-time 2D + 3D building design on Unreal Engine 5.7.",
+    description: "The building design platform where daylight is measured and surfaces design themselves.",
     start_url: "/",
     display: "standalone",
     background_color: "#161616",

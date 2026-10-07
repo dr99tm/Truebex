@@ -5,9 +5,28 @@ description: Truebex brand identity, voice and content rules for truebex.com. Us
 
 # Truebex brand voice
 
-Truebex — **True Building Experience**. A real-time 2D + 3D building design
-tool (Revit-style CAD) built on Unreal Engine 5.7. The brand promise is in the
-name: *what you see is true.* Every word on the site has to keep that promise.
+Truebex — **True Building Experience**. A building design platform where
+daylight is measured, surfaces design themselves, and one change updates the
+whole project. The brand promise is in the name: *what you see is true.* Every
+word on the site has to keep that promise.
+
+## Positioning rules (from the owner, 2026-10-07)
+
+1. **Truebex stands alone.** Never name, compare to, or position against any
+   other software, engine or vendor in public copy: no "built on <engine>",
+   no "<tool> alternative", no "<tool>-style", no engine feature names
+   (render tech, upscalers) and no engine trademarks. Describe what Truebex
+   does in its own words. (Internal docs and code may name the stack.)
+2. **Lead with what's distinctive.** Don't market table-stakes features every
+   design tool has (room areas, walking around the model, basic modelling).
+   The headline features are: measured daylight through every opening,
+   self-arranging surface fills, assets that update everywhere, design
+   intent that holds (constraints/references), instant edits at any size,
+   projects that remember their light and view.
+3. **One image, clean.** Only show captures with no HUD, labels or debug
+   overlays. Today the site uses exactly one: daylight through a doorway
+   (`public/images/product/daylight-doorway*.jpg`). Add others only when they
+   are equally clean and beautiful.
 
 ## The one rule: only claim what ships
 
@@ -17,17 +36,23 @@ confirm it in the product docs:
 - `T:\unreal5_7_4_projects\truebex_compact\Docs\cad\implemented\README.md` — every shipped plan (01–38)
 - `T:\unreal5_7_4_projects\truebex_compact\Docs\roadmap\README.md` — what's in progress
 
-Shipped (safe to claim): walls, rooms/regions, doors/windows (openings), slabs,
-stairs, arcs/ellipses, groups, reference planes, dimension locks, constraints;
-live room areas; wall-face panels, nested regions, dynamic fills, face-as-asset
-library; sweeps; Lumen GI, sun/sky, measured opening light, hardware ray
-tracing, path tracing, DLSS 4.5; first-person walk mode with collision; section
-cuts, storey navigator, view cube; `.tbxp` projects / `.tbxa` assets; edits in
-milliseconds (drag 240 ms → 4.3 ms benchmark).
+Shipped — the internal fact list. These are engineering names; translate them
+into Truebex's own words before they reach public copy (rule 1), and only
+headline the distinctive ones (rule 2):
+walls, rooms/regions, doors/windows (openings), slabs, stairs, arcs/ellipses,
+groups, reference planes, dimension locks, constraints; wall-face panels,
+nested regions, dynamic fills ("fill tree"), face-as-asset library + asset
+workbench (edit an asset, every instance updates); sweeps; global
+illumination, sun/sky, measured opening light (interior doors pass light on),
+ray tracing, path tracing; lighting profiles and the view saved in the
+project, lighting on the undo stack; section cuts, storey navigator;
+`.tbxp` projects / `.tbxa` assets; edits in milliseconds (drag 240 ms →
+4.3 ms benchmark). Also shipped but *not* marketed (table stakes): live room
+areas, first-person walk mode.
 
 **Not shipped — roadmap only** (label "On the roadmap", never present tense):
-real-product marketplace, quantity take-off & cost estimates, VR headsets,
-project/asset API. Content lives in `ROADMAP` in `src/lib/constants.ts`;
+drawing sheets & PDF, dynamic objects (cabinets, doors, stairs from
+parameters), paint/wallpaper/3D patterns, real-product marketplace. Content lives in `ROADMAP` in `src/lib/constants.ts`;
 never move an item into `FEATURES` until the product docs show it shipped.
 
 Payments: say "rolling out" for Stripe and Wayl until `/billing/plans` on the
@@ -37,21 +62,24 @@ API lists them as enabled.
 
 | Be | Not |
 |---|---|
-| Precise — numbers, units, named features ("20.36 m²", "4.3 ms") | Vague superlatives ("revolutionary", "next-gen", "seamless") |
+| Precise — numbers, units, named features ("4.3 ms", "30 days") | Vague superlatives ("revolutionary", "next-gen", "seamless") |
 | Calm and confident — short declarative sentences | Hype, exclamation marks, ALL CAPS |
-| Architect-literate — walls, openings, slabs, sections, daylight | Gamer/engine jargon in headlines (shaders, cvars, PPV) |
+| Architect-literate — walls, openings, slabs, sections, daylight | Engine/render jargon or any third-party product name |
 | Visual — what you *see* and *feel* in the space | Abstract platform-speak ("unified ecosystem", "single source of truth") |
 | Honest about limits | Implying features we don't have |
 
 Signature lines (reuse, don't dilute): **"See it before you build it."** ·
-"What you draw is what you see." · "Draw it, light it, measure it, walk through it."
+"What you draw is what you see." · "Daylight, measured — not painted." ·
+"Make it once, update everywhere."
 
-Headline pattern: concrete promise + payoff. ("Real light, in real time." /
-"Walk through it.") Keep H2s ≤ 6 words, subtitles one sentence.
+Headline pattern: concrete promise + payoff. ("Daylight, measured — not
+painted." / "Make it once, update everywhere.") Keep H2s ≤ 6 words, subtitles
+one sentence.
 
-Vocabulary: say *design, draw, model, light, walk through, room, wall, opening,
-daylight, area*. Avoid *metaverse, AI-powered* (unless true), *synergy,
-platform* as a noun on its own, *VR* (unless roadmap).
+Vocabulary: say *design, draw, shape, light, daylight, room, wall, opening,
+surface, asset, platform*. Avoid *metaverse, AI-powered* (unless true),
+*synergy*, *VR*, *walkthrough*, *area calculation*, and any other product's
+or engine's name.
 
 ## Visual identity (source of truth: the app)
 
@@ -85,7 +113,7 @@ components; use the Tailwind token (`text-accent`, `bg-surface`, `fill-chart`).
 
 ## Checklist before shipping copy
 
-1. Every capability claim is in the "shipped" list above (or labelled roadmap).
+1. Every capability claim is in the "shipped" list above (or labelled roadmap), and no other software or engine is named.
 2. Numbers have units; no orphan superlatives.
 3. Headline ≤ 8 words, includes a concrete noun.
 4. Alt text describes what the image shows *and* the feature it proves.

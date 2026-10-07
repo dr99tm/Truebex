@@ -1,34 +1,23 @@
 "use client";
 
+import Image from "next/image";
 import { motion } from "motion/react";
 import { Button } from "@/components/ui/Button";
 import { Lockup } from "@/components/brand/Logo";
+import { PRODUCT_SHOT } from "@/lib/constants";
 
 export function Hero() {
   return (
-    <section className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden px-4 pt-24 pb-16">
-      {/* Drafting grid + soft brand-blue light, like the app's viewport */}
+    <section className="relative overflow-hidden px-4 pt-32 pb-20 md:pt-40">
+      {/* Drafting grid + soft brand-blue light */}
       <div className="pointer-events-none absolute inset-0">
-        <div className="blueprint-grid absolute inset-0 [mask-image:radial-gradient(ellipse_at_center,black_30%,transparent_75%)]" />
-        <motion.div
-          className="absolute top-1/4 left-1/4 h-[600px] w-[600px]"
+        <div className="blueprint-grid absolute inset-0 [mask-image:radial-gradient(ellipse_at_top,black_25%,transparent_70%)]" />
+        <div
+          className="absolute left-1/2 top-24 h-[520px] w-[900px] -translate-x-1/2"
           style={{
             background:
-              "radial-gradient(circle, rgba(160,206,255,0.07) 0%, rgba(160,206,255,0.02) 40%, transparent 70%)",
-            willChange: "transform",
+              "radial-gradient(ellipse, rgba(160,206,255,0.08) 0%, rgba(91,157,255,0.03) 45%, transparent 70%)",
           }}
-          animate={{ x: [0, 80, -40, 0], y: [0, -60, 40, 0] }}
-          transition={{ duration: 22, repeat: Infinity, ease: "easeInOut" }}
-        />
-        <motion.div
-          className="absolute right-1/4 bottom-1/4 h-[500px] w-[500px]"
-          style={{
-            background:
-              "radial-gradient(circle, rgba(91,157,255,0.07) 0%, rgba(91,157,255,0.02) 40%, transparent 70%)",
-            willChange: "transform",
-          }}
-          animate={{ x: [0, -70, 50, 0], y: [0, 50, -70, 0] }}
-          transition={{ duration: 18, repeat: Infinity, ease: "easeInOut" }}
         />
       </div>
 
@@ -48,7 +37,7 @@ export function Hero() {
           transition={{ duration: 0.5, delay: 0.1 }}
         >
           <span className="inline-block rounded-full border border-accent/25 bg-accent/5 px-4 py-1.5 text-sm text-accent">
-            True Building Experience · Built on Unreal Engine 5.7
+            True Building Experience
           </span>
         </motion.p>
 
@@ -67,9 +56,9 @@ export function Hero() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.3 }}
         >
-          Real-time architectural design in 2D and 3D. Draw walls and rooms,
-          light them with Lumen, watch the areas update, and walk through the
-          space in first person — while you design.
+          The building design platform where daylight is measured through
+          every opening, surfaces design themselves, and one change updates
+          the whole project — instantly.
         </motion.p>
 
         <motion.div
@@ -87,18 +76,29 @@ export function Hero() {
         </motion.div>
       </div>
 
-      <motion.div
-        className="absolute bottom-8 left-1/2 -translate-x-1/2"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 1, duration: 0.6 }}
-        aria-hidden
+      {/* Product showcase */}
+      <motion.figure
+        className="relative z-10 mx-auto mt-16 max-w-6xl"
+        initial={{ opacity: 0, y: 30 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.8, delay: 0.55 }}
       >
-        <div className="flex flex-col items-center gap-2">
-          <span className="text-xs text-text-muted">Scroll</span>
-          <div className="h-8 w-[1px] bg-gradient-to-b from-text-muted to-transparent" />
+        <div className="absolute -inset-x-10 -inset-y-6 rounded-[32px] bg-accent/10 blur-3xl" aria-hidden />
+        <div className="relative overflow-hidden rounded-[var(--radius-card)] border border-white/10 shadow-[0_30px_80px_#00000080]">
+          <Image
+            src={PRODUCT_SHOT.wide}
+            alt={PRODUCT_SHOT.alt}
+            width={1600}
+            height={900}
+            priority
+            sizes="(min-width: 1200px) 1152px, 100vw"
+            className="h-auto w-full"
+          />
         </div>
-      </motion.div>
+        <figcaption className="mt-4 text-center text-sm text-text-muted">
+          {PRODUCT_SHOT.caption}
+        </figcaption>
+      </motion.figure>
     </section>
   );
 }

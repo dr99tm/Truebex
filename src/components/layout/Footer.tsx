@@ -18,8 +18,8 @@ export function Footer() {
             <Lockup className="text-xl" />
             <p className="mt-3 text-sm text-text-secondary">{SITE.tagline}</p>
             <p className="mt-4 max-w-xs text-xs text-text-muted">
-              Real-time 2D + 3D building design on Unreal Engine 5.7. Draw it,
-              light it, measure it, walk through it.
+              The building design platform where daylight is measured,
+              surfaces design themselves and every change is instant.
             </p>
           </div>
 
@@ -82,8 +82,7 @@ export function Footer() {
         </div>
 
         <div className="mt-12 border-t border-border pt-6 text-center text-xs text-text-muted">
-          &copy; {new Date().getFullYear()} Truebex. All rights reserved. Unreal
-          Engine is a trademark of Epic Games, Inc.
+          &copy; {new Date().getFullYear()} Truebex. All rights reserved.
         </div>
       </div>
     </footer>

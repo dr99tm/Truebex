@@ -20,15 +20,11 @@ const homeLd = {
       name: "Truebex",
       url: SITE.url,
       applicationCategory: "DesignApplication",
-      applicationSubCategory: "Architectural design and BIM",
+      applicationSubCategory: "Building design",
       operatingSystem: "Windows",
       description: SITE.description,
       image: `${SITE.url}/images/og-image.jpg`,
-      screenshot: [
-        `${SITE.url}/images/product/rooms-area-labels.jpg`,
-        `${SITE.url}/images/product/first-person-walkthrough.jpg`,
-        `${SITE.url}/images/product/wall-face-panels.jpg`,
-      ],
+      screenshot: `${SITE.url}/images/product/daylight-doorway.jpg`,
       featureList: FEATURES.map((f) => f.title),
       publisher: { "@id": `${SITE.url}/#organization` },
       offers: [

@@ -1,14 +1,14 @@
 import {
-  PenTool,
   Sun,
-  Footprints,
-  Ruler,
   LayoutPanelTop,
+  Layers,
+  Link2,
   Zap,
+  Bookmark,
+  FileText,
+  Armchair,
+  Paintbrush,
   ShoppingBag,
-  Calculator,
-  Glasses,
-  Code2,
   Building2,
   Palette,
   HardHat,
@@ -16,17 +16,20 @@ import {
   Users,
 } from "lucide-react";
 
-// Content follows the brand voice in .claude/skills/truebex-brand-voice.
-// Claims here must be true of the shipping desktop app; anything planned
-// goes in ROADMAP, never in FEATURES.
+// Content follows .claude/skills/truebex-brand-voice:
+// - Truebex is its own platform. Never name or compare to other software or
+//   engines.
+// - Lead with what is distinctive; skip table-stakes features every design
+//   tool has.
+// - Claims must be true of the shipping app; planned work goes in ROADMAP.
 
 export const SITE = {
   name: "Truebex",
   url: "https://truebex.com",
   tagline: "True Building Experience",
-  title: "Truebex — Real-Time Architectural Design on Unreal Engine 5.7",
+  title: "Truebex — See It Before You Build It",
   description:
-    "Truebex is a real-time 2D + 3D building design tool. Draw walls and rooms, light them with Lumen, see live room areas, and walk through your design in first person — while you design.",
+    "Truebex is a building design platform where daylight is measured through every opening, surfaces design themselves, and one change updates the whole project — instantly.",
   email: "dr99tm@gmail.com",
 } as const;
 
@@ -45,121 +48,107 @@ export const NAV_LINKS = [
 
 export const FEATURES = [
   {
-    id: "model",
-    icon: PenTool,
-    title: "One model, plan and 3D",
-    description:
-      "Draw walls, rooms, doors, windows, slabs and stairs in plan — the 3D building forms as you draw. Arcs, groups, reference planes and locked dimensions keep your design intent intact.",
-  },
-  {
-    id: "light",
+    id: "daylight",
     icon: Sun,
-    title: "Real light, in real time",
+    title: "Daylight, measured — not painted",
     description:
-      "Lumen global illumination, sun and sky, and daylight measured through every window and door. Hardware ray tracing and path tracing when you need the final word.",
+      "Every window and door reads the sky and sun on its far side and lets exactly that light into the room. Open a door between a bright room and a dark one, and the light follows.",
   },
   {
-    id: "walk",
-    icon: Footprints,
-    title: "Walk through it",
-    description:
-      "Switch to first person at any moment and walk the rooms at eye height, with collision. Feel the proportions of a space before anyone pours a foundation.",
-  },
-  {
-    id: "measure",
-    icon: Ruler,
-    title: "Live areas and dimensions",
-    description:
-      "Rooms know their size. Areas update the instant a wall moves, and dimensions you lock hold their numbers while everything else adapts.",
-  },
-  {
-    id: "faces",
+    id: "fills",
     icon: LayoutPanelTop,
-    title: "Wall faces as design surfaces",
+    title: "Surfaces that design themselves",
     description:
-      "Panel any wall face, nest regions, and fill them with dynamic patterns. Save a face as an asset — edit it once and every placed copy updates.",
+      "Split any wall into panels and fill them with rule-based patterns — start, end, centre, alternating. They re-flow on their own when the wall grows, shrinks or gains an opening.",
   },
   {
-    id: "speed",
-    icon: Zap,
-    title: "Changes in milliseconds",
+    id: "assets",
+    icon: Layers,
+    title: "Make it once, update everywhere",
     description:
-      "Edits cost only what they change. Dragging a wall in a full scene went from 240 ms to 4.3 ms in our benchmark, so the model keeps up with your thinking.",
+      "Save a finished wall face as an asset and place it anywhere. Open the asset, change it, and every copy across the project updates in one step.",
+  },
+  {
+    id: "intent",
+    icon: Link2,
+    title: "Design intent that holds",
+    description:
+      "Offsets, links, locked dimensions and reference planes keep shapes in relationship while the walls they belong to move and resize.",
+  },
+  {
+    id: "instant",
+    icon: Zap,
+    title: "Instant at any size",
+    description:
+      "An edit costs only what it changes. Moving a wall in a full building takes milliseconds — 240 ms became 4.3 ms in our benchmark — so the model never lags behind your idea.",
+  },
+  {
+    id: "memory",
+    icon: Bookmark,
+    title: "A project that remembers its light",
+    description:
+      "Lighting setups and the exact view — camera, section, storey — are saved inside the project, and every lighting change can be undone like any other edit.",
   },
 ] as const;
 
 // Where the platform is going. Shown as "on the roadmap", never as shipped.
 export const ROADMAP = [
   {
+    icon: FileText,
+    title: "Drawing sheets & PDF",
+    description: "Plans, sections and dimensions laid out into sheets automatically.",
+  },
+  {
+    icon: Armchair,
+    title: "Dynamic objects",
+    description: "Cabinets, doors, windows and stairs generated from a few parameters.",
+  },
+  {
+    icon: Paintbrush,
+    title: "Paint, wallpaper, 3D patterns",
+    description: "Finishes on any face, driven by the same panel system.",
+  },
+  {
     icon: ShoppingBag,
     title: "Real-product marketplace",
-    description: "Place sourceable materials and products straight into the model.",
-  },
-  {
-    icon: Calculator,
-    title: "Quantities and cost",
-    description: "Take-offs and estimates generated from the same live model.",
-  },
-  {
-    icon: Glasses,
-    title: "VR headsets",
-    description: "The first-person walk mode, in a headset.",
-  },
-  {
-    icon: Code2,
-    title: "Project API",
-    description: "Read and drive projects and assets through the developer API.",
+    description: "Place sourceable materials and products straight into the design.",
   },
 ] as const;
 
-export const PRODUCT_SHOTS = [
-  {
-    src: "/images/product/rooms-area-labels.jpg",
-    alt: "Truebex 3D view of a living room and bedroom with live room-area labels (Living Room 20.36 m², Bedroom 20.06 m²)",
-    caption: "Rooms label their own areas — and update as walls move.",
-    width: 1200,
-    height: 863,
-  },
-  {
-    src: "/images/product/first-person-walkthrough.jpg",
-    alt: "First-person walkthrough inside a daylit Truebex interior rendered with Lumen",
-    caption: "First person at eye height, lit by Lumen.",
-    width: 1200,
-    height: 897,
-  },
-  {
-    src: "/images/product/wall-face-panels.jpg",
-    alt: "A wall face in Truebex split into panel regions around a window opening, with region area and fill",
-    caption: "Panels, regions and fills on any wall face.",
-    width: 1200,
-    height: 778,
-  },
-] as const;
+// The one capture the site shows (clean frames only — no HUD or labels).
+export const PRODUCT_SHOT = {
+  src: "/images/product/daylight-doorway.jpg",
+  wide: "/images/product/daylight-doorway-wide.jpg",
+  alt: "Soft daylight falling through a doorway into a quiet white room, designed and lit in Truebex",
+  caption: "Daylight measured through a doorway — captured in Truebex.",
+  width: 1600,
+  height: 1196,
+} as const;
 
 export const STEPS = [
   {
     number: "01",
     title: "Draw the plan",
     description:
-      "Lay out walls, rooms and openings in 2D. The 3D building forms with every line.",
+      "Lay out walls, rooms and openings. The building forms in 3D with every line.",
   },
   {
     number: "02",
     title: "Shape the surfaces",
     description:
-      "Panel wall faces, nest regions and apply fills. Save what works as a reusable asset.",
+      "Panel the walls and set fill rules. Patterns arrange themselves and keep up with every change.",
   },
   {
     number: "03",
-    title: "Light it",
+    title: "Let the light in",
     description:
-      "Sun, sky and Lumen global illumination show how daylight really reaches each room.",
+      "Daylight is measured through every opening, room by room, as you design.",
   },
   {
     number: "04",
-    title: "Walk it",
+    title: "Make it reusable",
     description:
-      "Drop into first person, walk the rooms, change a wall — and keep walking.",
+      "Save what works as an asset. Change it once and the whole project follows.",
   },
 ] as const;
 
@@ -168,31 +157,31 @@ export const AUDIENCES = [
     icon: Building2,
     title: "Architects",
     description:
-      "Design in plan and judge the space in real light, at real scale, in the same session.",
+      "Judge daylight and proportion while you draw — not weeks later.",
   },
   {
     icon: Palette,
     title: "Interior Designers",
     description:
-      "Shape wall faces, panels and finishes, then walk the room to see how they read in daylight.",
+      "Panels, fills and finishes that adapt when the room changes.",
   },
   {
     icon: HardHat,
     title: "Developers & Contractors",
     description:
-      "Live room areas and locked dimensions keep the numbers honest as the design moves.",
+      "One asset, placed across every unit, updated in one step.",
   },
   {
     icon: Wrench,
     title: "Engineers",
     description:
-      "Reference planes, constraints and dimension locks keep relationships intact while hosts resize.",
+      "References and constraints that keep relationships intact as the design evolves.",
   },
   {
     icon: Users,
     title: "Clients & Stakeholders",
     description:
-      "Walk the space before it exists and decide with confidence, not from a flat render.",
+      "See the real light in the real room before anything is built.",
   },
 ] as const;
 
@@ -204,9 +193,9 @@ export const PRICING_PLANS = [
     period: "",
     description: "Explore Truebex and build against the developer API.",
     features: [
-      "2D plan + 3D model",
-      "First-person walk mode",
-      "Live room areas",
+      "Plan and 3D design in one model",
+      "Measured daylight",
+      "Dynamic surface fills",
       "Developer API: 1,000 requests / month",
       "2 API keys",
     ],
@@ -219,11 +208,11 @@ export const PRICING_PLANS = [
     name: "Professional",
     price: "$99",
     period: "/month",
-    description: "For professionals who design, light and present every day.",
+    description: "For professionals who design and present every day.",
     features: [
       "Everything in Starter",
-      "Full lighting suite: Lumen, ray tracing, path tracing",
-      "Wall-face panels, fills and asset library",
+      "Full lighting suite: ray tracing and path tracing",
+      "Asset library that updates everywhere",
       "Developer API: 100,000 requests / month",
       "20 API keys",
       "Priority support",
@@ -251,49 +240,45 @@ export const PRICING_PLANS = [
   },
 ] as const;
 
-export const DIFFERENTIATORS = [
+// The ideas Truebex is built on (shown in the "Why Truebex" section).
+export const PRINCIPLES = [
   {
-    traditional: "Model in one tool, render in another",
-    truebex: "Model and light live in the same real-time engine",
+    title: "Truth, not decoration",
+    description:
+      "What you see is computed from the sun, the sky and the openings you placed — not dressed up afterwards.",
   },
   {
-    traditional: "Wait for overnight renders",
-    truebex: "Lumen light updates while you draw",
+    title: "Intent survives change",
+    description:
+      "Relationships, dimensions and patterns hold while the design moves around them.",
   },
   {
-    traditional: "Fly-through videos made after the design is done",
-    truebex: "Walk through it in first person, any time",
-  },
-  {
-    traditional: "Re-measure areas by hand after every change",
-    truebex: "Room areas update as walls move",
-  },
-  {
-    traditional: "Redraw the same wall detail on every project",
-    truebex: "Save a wall face as an asset — edit once, update everywhere",
+    title: "Make it once",
+    description:
+      "Every good detail becomes an asset you can place, refine and update everywhere at once.",
   },
 ] as const;
 
 export const FAQS = [
   {
     q: "What is Truebex?",
-    a: "Truebex is a desktop building design tool that works in 2D plan and 3D at once. It runs on Unreal Engine 5.7, so the model you draw is lit with real-time global illumination and can be walked through in first person while you design.",
+    a: "Truebex is a building design platform for Windows. You draw in plan and design in 3D at the same time, with daylight measured through every opening, surfaces that arrange themselves, and assets that update everywhere when you change them.",
   },
   {
-    q: "Is Truebex a Revit alternative?",
-    a: "Truebex works the way architects expect from BIM tools — walls, rooms, openings, dimensions and reference planes — but it is its own application, not a Revit plug-in. Its difference is that design, lighting and walkthrough happen in the same real-time model.",
+    q: "How is the lighting in Truebex different?",
+    a: "Each window and door measures the sky and sun outside it and lets that exact amount of light into the room. Move a window, widen a door or add a wall, and the light in every room responds — including rooms that only receive light through another room.",
   },
   {
-    q: "Can I walk through my design?",
-    a: "Yes. First-person mode puts you inside the model at eye height with collision, and you can switch to it at any point while designing.",
+    q: "What are dynamic surface fills?",
+    a: "Patterns that understand the surface they sit on. You set the rules — what goes at the start, the end, the centre or in between — and Truebex lays them out, re-flowing them whenever the wall or its openings change.",
   },
   {
-    q: "Does Truebex calculate areas?",
-    a: "Rooms show their area live and update as walls move. Full quantity take-offs and cost estimates are on the roadmap.",
+    q: "What happens when I edit an asset?",
+    a: "Open any saved asset, change it, and save. Every copy placed across the project updates in a single step, so a detail is only ever designed once.",
   },
   {
-    q: "What hardware do I need?",
-    a: "A Windows PC with a modern DirectX 12 graphics card. NVIDIA RTX cards also unlock DLSS 4.5 and hardware ray tracing.",
+    q: "What do I need to run Truebex?",
+    a: "A Windows PC with a modern graphics card. An NVIDIA RTX card unlocks the highest lighting quality, including ray tracing and path tracing.",
   },
   {
     q: "Is there an API for developers?",

@@ -35,10 +35,10 @@ real searches, share-ready previews, and repeated distribution.
 | Cluster | Example queries | Target page |
 |---|---|---|
 | Brand | truebex, truebex app | `/` |
-| Real-time arch design | real-time architectural design software, architecture in unreal engine 5, lumen architecture | `/` → future `/features/lighting/` |
-| BIM alternatives | revit alternative, lightweight BIM software, CAD for architects with real-time rendering | future `/compare/revit/` |
-| Walkthroughs | architectural walkthrough software, first person house walkthrough | future `/features/walkthrough/` |
-| Interior | interior design software with real lighting, wall panel design software | future `/use-cases/interior-design/` |
+| Daylight design | daylight design software, natural light simulation for architects, how much light will my room get | `/` → future `/features/daylight/` |
+| Parametric surfaces | wall panel design software, parametric wall pattern, feature wall design tool | future `/features/surfaces/` |
+| Reuse / consistency | reusable design assets architecture, update design across units | future `/features/assets/` |
+| Interior | interior design software with real lighting, wall panelling design | future `/use-cases/interior-design/` |
 | Developers | truebex api, architecture api | `/developers/` |
 | Regional (Iraq/MENA) | برنامج تصميم معماري, تصميم داخلي ثلاثي الأبعاد | future Arabic pages (`/ar/`) — large, under-served market; Wayl already targets Iraq |
 
@@ -47,9 +47,10 @@ generic listicle: real captures, concrete numbers, a short how-to, an FAQ.
 
 ## Content engine (what to publish next, in order)
 
-1. `/features/lighting/` — "Real-time daylight for architects": Lumen, measured window light, before/after captures.
-2. `/compare/revit/` — honest comparison table (what Truebex does differently, what Revit does that Truebex doesn't yet).
-3. `/use-cases/interior-design/` — wall-face panels & fills walkthrough.
+1. `/features/daylight/` — "Daylight, measured": how each opening lets in what it measures; clean captures only.
+2. `/features/surfaces/` — self-arranging fills: rules, re-flow, examples.
+3. `/use-cases/interior-design/` — panels, fills and assets on a real interior.
+Never write comparison pages against named products (see brand-voice positioning rules).
 4. `/changelog/` — one entry per shipped plan (the UE docs' As-built notes are ready-made material); fresh content signals an active product.
 5. Arabic landing page `/ar/` with `hreflang` alternates.
 
@@ -62,11 +63,11 @@ generic listicle: real captures, concrete numbers, a short how-to, an FAQ.
 ## Distribution playbook (where views actually come from)
 
 Short real captures of the app outperform any copy. For each feature, cut a
-10–20 s clip (draw a wall → light updates → walk in) and post it natively:
+10–20 s clip (place a window → daylight pours into the room; resize a wall → the pattern re-flows) and post it natively:
 
-- **X / LinkedIn / Instagram Reels / TikTok / YouTube Shorts** — same clip, platform-native caption, one line + link. Architects live on LinkedIn and Instagram; Unreal devs on X and YouTube.
-- **Reddit** — r/unrealengine (tech angle: "Lumen CAD tool, drag cost 240→4.3 ms"), r/architecture, r/Revit, r/InteriorDesign. Post as a builder sharing work, not an ad; answer every comment.
-- **Unreal forums / Epic showcase**, **ArchDaily / Archinect** product listings, **Product Hunt** launch day (prepare: OG card, 4 captures, first comment with story).
+- **X / LinkedIn / Instagram Reels / TikTok / YouTube Shorts** — same clip, platform-native caption, one line + link. Architects and interior designers live on LinkedIn and Instagram.
+- **Reddit** — r/architecture, r/InteriorDesign and other design communities. Lead with the daylight clip; post as a builder sharing work, not an ad; answer every comment.
+- **ArchDaily / Archinect** product listings, **Product Hunt** launch day (prepare: OG card, clean captures, first comment with the story).
 - Every share uses a page URL with a matching OG card — test previews with the LinkedIn Post Inspector and X card validator.
 - Ask early users for a 1-line quote + capture; add them as testimonials (with permission) — social proof converts the traffic.
 

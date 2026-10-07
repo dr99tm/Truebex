@@ -16,8 +16,8 @@ export function CoreFeatures() {
     <Section id="features">
       <FadeInWhenVisible>
         <SectionHeading
-          title="Everything happens in one live model"
-          subtitle="Design, light, measure and walk — without exporting, re-rendering or waiting."
+          title="What only Truebex does"
+          subtitle="Six capabilities at the heart of the platform."
         />
       </FadeInWhenVisible>
 

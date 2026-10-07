@@ -16,7 +16,7 @@ export function HowItWorks() {
       <FadeInWhenVisible>
         <SectionHeading
           title="How It Works"
-          subtitle="From the first wall to a first-person walkthrough — in one session."
+          subtitle="From the first wall to a reusable, daylit design — in one session."
         />
       </FadeInWhenVisible>
 
