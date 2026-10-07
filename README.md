@@ -260,12 +260,15 @@ message rather than logging people out.
   - an existing email/password account gets Google linked to it;
   - otherwise a password-less account is created.
 
-To turn it on:
-1. In Google Cloud Console, create an **OAuth client ID** of type *Web application*.
-2. Add these authorized JavaScript origins: `https://truebex.com`,
-   `https://www.truebex.com`, `http://localhost:3001`.
-3. Put the ID in `server/.env` as `GOOGLE_CLIENT_ID`.
-4. Restart `start-server.bat`.
+**Configured (2026-10-07).** Google Cloud project `truebex`, Google Auth
+Platform app "Truebex" (External, **In production**, basic scopes only, no
+logo, so no verification is needed). Its Web client "Truebex Website" allows the
+JavaScript origins `https://truebex.com`, `https://www.truebex.com`,
+`http://localhost:3001` and `http://localhost:3000`. The client ID is in
+`server/.env` as `GOOGLE_CLIENT_ID`. The consent screen links to
+[`/privacy/`](https://truebex.com/privacy/) and [`/terms/`](https://truebex.com/terms/),
+so keep those pages live. Adding a logo to the consent screen would trigger
+Google's verification review.
 
 ---
 
@@ -358,7 +361,6 @@ a Google Sheet. See [`google-apps-script/README.md`](google-apps-script/README.m
 | Issue | Impact | Where |
 |---|---|---|
 | API depends on the host PC + tunnel being up | Sign-in, dashboard and billing stop when the PC is off | `start-server.bat`, `start-tunnel.bat` |
-| Google sign-in needs an OAuth client ID | Google button hidden until `GOOGLE_CLIENT_ID` is set | `server/.env` |
 | Payment providers need merchant keys | Billing shows "being set up" until keys are added | `server/.env` |
 | Desktop app doesn't read the plan yet | Pro features aren't gated in the app itself | Unreal project |
 | `npm run dev` exhausts RAM on this PC | Use build + static server for local checks | — |
