@@ -118,9 +118,9 @@ First steps when one fires: `ssh truebex@<vm>`, `cd /opt/truebex`, `docker compo
 ## Local trial (no Cloudflare, no backups)
 
 ```powershell
-docker compose --env-file infra/host/local/local.env -f infra/host/compose.yaml -f infra/host/compose.local.yaml up --build
+docker compose --env-file infra/host/local/compose.trial -f infra/host/compose.yaml -f infra/host/compose.local.yaml up --build
 curl http://127.0.0.1/health/deep        # {"db":"ok","storage":"ok","worker_heartbeat_s":…}
-docker compose --env-file infra/host/local/local.env -f infra/host/compose.yaml -f infra/host/compose.local.yaml down -v
+docker compose --env-file infra/host/local/compose.trial -f infra/host/compose.yaml -f infra/host/compose.local.yaml down -v
 ```
 
 ## Postgres tests

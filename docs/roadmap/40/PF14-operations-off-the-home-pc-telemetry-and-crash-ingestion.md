@@ -239,7 +239,7 @@ The eight `telemetry.md` §10 platform tests come first. Postgres tests carry `@
 ## As-built
 
 * **Date, branch, commits:** 2026-10-09, `ap/t3-pf14-operations-off-the-home-pc` (base `master` at 744a9f3);
-  `ac58ec4` (ingestion, plumbing, Postgres, `infra/`, site) and the docs commit that ticks this row.
+  `ac58ec4` (ingestion, plumbing, Postgres, `infra/`, site), `7d8c901` (docs, operator scripts, this row ticked), `0418574` (jobs on demand, 10-minute rollup) and the commit renaming the local-trial env files to `*.trial`.
 * **Counts:** pytest 24 → 61 (`tests/test_telemetry.py` 18, `tests/test_ops.py` 17 (15 tests, two parameterised),
   `tests/test_site_pf14.py` 2). The verify gate on SQLite: 58 passed, 3 Postgres-marked skipped. With
   `TEST_DATABASE_URL` and `TEST_APP_DATABASE_URL` against a local Postgres 16.2 (the whole suite with the app on
