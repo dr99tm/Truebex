@@ -51,9 +51,7 @@ export default function ArabicHome() {
             <div className="blueprint-grid absolute inset-0 [mask-image:radial-gradient(ellipse_at_top,black_25%,transparent_70%)]" />
           </div>
           <div className="relative z-10 mx-auto max-w-4xl text-center">
-            <div dir="ltr">
-              <Lockup className="text-3xl sm:text-4xl" />
-            </div>
+            <Lockup className="text-3xl sm:text-4xl" />
             <p className="mt-5">
               <span className="inline-block rounded-full border border-accent/25 bg-accent/5 px-4 py-1.5 text-sm text-accent">
                 {t.hero.badge}

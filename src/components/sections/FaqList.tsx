@@ -1,9 +1,22 @@
+import { cn } from "@/lib/utils";
+
 // Native <details> so answers are in the HTML (crawlable) and work without
 // JS. Every page that shows a FaqList emits the same list as FAQPage
 // structured data; `data-faq-question` lets the build checks compare them.
-export function FaqList({ items }: { items: readonly { q: string; a: string }[] }) {
+export function FaqList({
+  items,
+  align = "center",
+}: {
+  items: readonly { q: string; a: string }[];
+  align?: "center" | "start";
+}) {
   return (
-    <div className="mx-auto max-w-3xl divide-y divide-border rounded-[var(--radius-card)] border border-border bg-surface/60">
+    <div
+      className={cn(
+        "max-w-3xl divide-y divide-border rounded-[var(--radius-card)] border border-border bg-surface/60",
+        align === "center" && "mx-auto"
+      )}
+    >
       {items.map((item) => (
         <details key={item.q} className="group px-5 py-4 [&_summary::-webkit-details-marker]:hidden">
           <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-start font-medium text-text-primary">

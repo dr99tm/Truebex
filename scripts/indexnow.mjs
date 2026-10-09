@@ -42,7 +42,11 @@ if (args.includes("--sitemap")) {
 }
 if (targets.length === 0) fail("give the changed paths or URLs, or --sitemap");
 
-const urlList = [...new Set(targets)].map((t) => {
+// Git Bash turns a "/pricing/" argument into "C:/Program Files/Git/pricing/";
+// take such a path back to the site path it was.
+const unmangle = (t) => t.replace(/^[A-Za-z]:[\\/](?:.*[\\/])?Git[\\/]/, "/").replace(/\\/g, "/");
+
+const urlList = [...new Set(targets.map(unmangle))].map((t) => {
   const url = new URL(t, SITE);
   if (url.host !== HOST) fail(`${t} is not on ${HOST}`);
   return url.href;

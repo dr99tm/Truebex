@@ -82,7 +82,7 @@ export default function GrowthPage() {
             : "Sign-ups, downloads, trials and checkouts per day."
         }
         actions={
-          <div role="radiogroup" aria-label="Range" className="inline-flex rounded-full border border-border bg-surface p-1">
+          <div role="radiogroup" aria-label="Range" className="inline-flex shrink-0 rounded-full border border-border bg-surface p-1">
             {RANGES.map((r) => (
               <button
                 key={r}
@@ -91,7 +91,7 @@ export default function GrowthPage() {
                 aria-checked={days === r}
                 onClick={() => setDays(r)}
                 className={cn(
-                  "rounded-full px-3 py-1 text-sm transition-colors",
+                  "whitespace-nowrap rounded-full px-3 py-1 text-sm transition-colors",
                   days === r ? "bg-accent text-background" : "text-text-secondary hover:text-text-primary"
                 )}
               >

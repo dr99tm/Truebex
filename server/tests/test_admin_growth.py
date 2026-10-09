@@ -106,3 +106,14 @@ def test_download_events_hold_no_personal_data(client):
     with SessionLocal() as db:
         ev = record_download(db, version="1.1.0", platform="win64", channel="beta")
         assert ev.at.date() <= date.today() + timedelta(days=1)
+
+
+def test_admin_cli_sets_flag(client):
+    from app.admin_cli import main
+
+    h = signup(client, "cli@example.com")
+    assert main(["nobody@example.com"]) == 1
+    assert main(["cli@example.com"]) == 0
+    assert client.get("/admin/growth", headers=h).status_code == 200
+    assert main(["cli@example.com", "--off"]) == 0
+    assert client.get("/admin/growth", headers=h).status_code == 403

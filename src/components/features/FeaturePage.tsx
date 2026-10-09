@@ -130,7 +130,7 @@ export function FeaturePage({
 
         <section className="mt-20">
           <h2 className="mb-8 text-2xl font-bold tracking-tight sm:text-3xl">{FEATURE_PAGE_UI.faqTitle}</h2>
-          <FaqList items={page.faq} />
+          <FaqList items={page.faq} align="start" />
         </section>
 
         <section className="mt-20 rounded-[var(--radius-card)] border border-border bg-surface p-6 md:p-10">
