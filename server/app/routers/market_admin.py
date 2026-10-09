@@ -10,6 +10,7 @@ from fastapi import APIRouter, Depends, File, Form, Query, UploadFile, status
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from ..config import get_settings
 from ..contract_http import ContractError, enveloped
 from ..database import get_db
 from ..deps import require_admin
@@ -98,7 +99,9 @@ def summary(db: Session = Depends(get_db)) -> dict:
         "quotes": counts(MarketOrder.state, MarketOrder.kind == "quote"),
         "commissions": counts(Commission.state),
         "feeds": counts(FeedRun.state),
-        "payments_enabled": checkout.enabled(),
+        # The flag (GD5's sign-off) and whether Stripe is configured to take payments.
+        "payments_enabled": get_settings().market_payments_enabled,
+        "stripe_ready": checkout.enabled(),
         "listing_plans": listing.plans_json(),
     }
 
@@ -177,8 +180,6 @@ def add_member(supplier_id: str, body: MemberIn, db: Session = Depends(get_db)) 
 def connect_onboarding(supplier_id: str, db: Session = Depends(get_db)) -> dict:
     """A Stripe Connect onboarding link to send to the supplier (PF8's
     portal shows it to the supplier itself)."""
-    from ..config import get_settings
-
     supplier = _supplier(db, supplier_id)
     site = get_settings().site_url.rstrip("/")
     url = checkout.onboarding_link(

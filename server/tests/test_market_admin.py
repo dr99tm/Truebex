@@ -100,7 +100,10 @@ def test_market_admin_approvals(client, monkeypatch):
     error_of(client.post("/admin/market/categories", json={"path": "sheets/a4", "label": "X"}, headers=admin), 422, "validation_failed")
     summary = client.get("/admin/market/summary", headers=admin).json()
     assert summary["products"] == {"approved": 1, "rejected": 1} and summary["suppliers"] == {"verified": 1}
-    assert summary["payments_enabled"] is False and summary["listing_plans"][0]["id"] == "founding"
+    assert summary["payments_enabled"] is False and summary["stripe_ready"] is False
+    assert summary["listing_plans"][0]["id"] == "founding"
+    payments_on(monkeypatch)
+    assert client.get("/admin/market/summary", headers=admin).json()["payments_enabled"] is True
     fake = FakeGateway()
     monkeypatch.setattr(checkout, "gateway", lambda: fake)
     res = client.post(f"/admin/market/suppliers/{sid}/connect", headers=admin)

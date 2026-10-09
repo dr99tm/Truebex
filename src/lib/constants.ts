@@ -470,6 +470,7 @@ export const MARKET = {
     },
     paymentsOff: "Card payments for orders are off (MARKET_PAYMENTS_ENABLED): every supplier takes requests for quote only.",
     paymentsOn: "Card payments for orders are on.",
+    paymentsNoStripe: "Card payments for orders are switched on, but Stripe is not configured on this server (STRIPE_SECRET_KEY): Pay answers 503.",
     verify: "Verify",
     suspend: "Suspend",
     reinstate: "Reinstate",

@@ -95,8 +95,8 @@ class ClipOnnxEmbedder:
 
                 self.tokenizer = Tokenizer.from_file(str(tok_path))
                 self.text = ort.InferenceSession(str(text_path), opts, providers=["CPUExecutionProvider"])
-            except ImportError:  # the tokenizers package is optional
-                log.info("tokenizers is not installed: picture search by description is off")
+            except ImportError:  # requirements.txt pins it; a host without it searches descriptions by text
+                log.info("tokenizers is not installed: descriptions go to the text index")
 
     def _pixels(self, data: bytes) -> np.ndarray:
         from PIL import Image

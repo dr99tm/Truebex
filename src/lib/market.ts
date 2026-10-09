@@ -205,6 +205,7 @@ export interface MarketSummary {
   orders: Record<string, number>;
   quotes: Record<string, number>;
   payments_enabled: boolean;
+  stripe_ready: boolean;
 }
 
 const post = <T,>(path: string, json?: unknown) => api<T>(path, { method: "POST", json });

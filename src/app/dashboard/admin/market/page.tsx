@@ -477,7 +477,9 @@ export default function AdminMarketPage() {
     <>
       <PageHeader title={A.title} description={A.description} />
       {summary.data && (
-        <p className="mb-4 text-sm text-text-muted">{summary.data.payments_enabled ? A.paymentsOn : A.paymentsOff}</p>
+        <p className="mb-4 text-sm text-text-muted">
+          {!summary.data.payments_enabled ? A.paymentsOff : summary.data.stripe_ready ? A.paymentsOn : A.paymentsNoStripe}
+        </p>
       )}
       <nav aria-label={A.title} className="mb-6 flex flex-wrap gap-1 border-b border-border">
         {(Object.keys(A.tabs) as Tab[]).map((t) => (
