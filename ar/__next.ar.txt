@@ -1,0 +1,5 @@
+1:"$Sreact.fragment"
+2:I[39756,["/_next/static/chunks/ff1a16fafef87110.js","/_next/static/chunks/d2be314c3ece3fbe.js"],"default"]
+3:I[37457,["/_next/static/chunks/ff1a16fafef87110.js","/_next/static/chunks/d2be314c3ece3fbe.js"],"default"]
+:HL["/_next/static/chunks/0e2d11c4a71c68ab.css","style"]
+0:{"buildId":"dX3r6qZQGS4ko42scuDsK","rsc":["$","$1","c",{"children":[[["$","link","0",{"rel":"stylesheet","href":"/_next/static/chunks/0e2d11c4a71c68ab.css","precedence":"next"}]],["$","div",null,{"lang":"ar","dir":"rtl","className":"noto_sans_arabic_6aa54e5b-module__CMoq7W__variable","style":{"fontFamily":"'Noto Sans Arabic', 'Noto Sans Arabic Fallback', var(--font-sans)"},"children":[["$","style",null,{"children":"html[lang=\"ar\"] body{font-family:'Noto Sans Arabic', 'Noto Sans Arabic Fallback', var(--font-sans)}"}],["$","$L2",null,{"parallelRouterKey":"children","template":["$","$L3",null,{}]}]]}]]}],"loading":null,"isPartial":false}

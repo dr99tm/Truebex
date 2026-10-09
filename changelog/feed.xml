@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <id>https://truebex.com/changelog/</id>
+  <title>Truebex changelog</title>
+  <subtitle>Releases and milestones of the Truebex building design platform.</subtitle>
+  <link rel="self" type="application/atom+xml" href="https://truebex.com/changelog/feed.xml"/>
+  <link rel="alternate" type="text/html" href="https://truebex.com/changelog/"/>
+  <updated>2026-10-07T00:00:00Z</updated>
+  <author><name>Truebex</name><uri>https://truebex.com/</uri></author>
+  <icon>https://truebex.com/icon-192.png</icon>
+  <entry>
+    <id>https://truebex.com/changelog/#1.0.0</id>
+    <title>Truebex 1.0.0</title>
+    <link rel="alternate" type="text/html" href="https://truebex.com/changelog/#1.0.0"/>
+    <updated>2026-10-07T00:00:00Z</updated>
+    <published>2026-10-07T00:00:00Z</published>
+    <content type="html">&lt;p&gt;The first release build: a 445 MB install that starts in 4.6 s, with drawing sheets, finishes, references, dynamic objects and the asset library on board.&lt;/p&gt;</content>
+  </entry>
+  <entry>
+    <id>https://truebex.com/changelog/#assets</id>
+    <title>One library for every asset</title>
+    <link rel="alternate" type="text/html" href="https://truebex.com/changelog/#assets"/>
+    <updated>2026-10-04T00:00:00Z</updated>
+    <published>2026-10-04T00:00:00Z</published>
+    <content type="html">&lt;p&gt;Textures, meshes, objects, sections, faces and sheet templates live in one library with categories, tags, search and favourites. Save embedded, linked or both; missing links heal on relink.&lt;/p&gt;</content>
+  </entry>
+  <entry>
+    <id>https://truebex.com/changelog/#curved-mouldings</id>
+    <title>Mouldings at door jambs and along curved walls</title>
+    <link rel="alternate" type="text/html" href="https://truebex.com/changelog/#curved-mouldings"/>
+    <updated>2026-10-03T00:00:00Z</updated>
+    <published>2026-10-03T00:00:00Z</published>
+    <content type="html">&lt;p&gt;Skirtings and mouldings stop flush at door jambs, follow the door, and run along curved walls; ceiling panels and slabs meet cleanly at the soffit.&lt;/p&gt;</content>
+  </entry>
+  <entry>
+    <id>https://truebex.com/changelog/#objects</id>
+    <title>Doors, windows, cabinets and stairs from numbers</title>
+    <link rel="alternate" type="text/html" href="https://truebex.com/changelog/#objects"/>
+    <updated>2026-10-03T00:00:00Z</updated>
+    <published>2026-10-03T00:00:00Z</published>
+    <content type="html">&lt;p&gt;Dynamic doors, windows, cabinets and custom objects regenerate with their host wall, stairs build from a run, and category prototypes stand in until you swap in the real thing.&lt;/p&gt;</content>
+  </entry>
+  <entry>
+    <id>https://truebex.com/changelog/#ui-kit</id>
+    <title>One look for every screen</title>
+    <link rel="alternate" type="text/html" href="https://truebex.com/changelog/#ui-kit"/>
+    <updated>2026-09-29T00:00:00Z</updated>
+    <published>2026-09-29T00:00:00Z</published>
+    <content type="html">&lt;p&gt;Every panel, menu and dialog shares one kit and a live theme: accent colour, corner radius, density, light and dark.&lt;/p&gt;</content>
+  </entry>
+  <entry>
+    <id>https://truebex.com/changelog/#curved-walls</id>
+    <title>Walls from any curve</title>
+    <link rel="alternate" type="text/html" href="https://truebex.com/changelog/#curved-walls"/>
+    <updated>2026-09-29T00:00:00Z</updated>
+    <published>2026-09-29T00:00:00Z</published>
+    <content type="html">&lt;p&gt;Draw walls from lines, arcs, splines and other curves, with smooth curved surfaces, and resize anything with the Scale command.&lt;/p&gt;</content>
+  </entry>
+  <entry>
+    <id>https://truebex.com/changelog/#models</id>
+    <title>Models with a feature list</title>
+    <link rel="alternate" type="text/html" href="https://truebex.com/changelog/#models"/>
+    <updated>2026-09-29T00:00:00Z</updated>
+    <published>2026-09-29T00:00:00Z</published>
+    <content type="html">&lt;p&gt;Build models step by step with a feature list and an edit mode, sweeps that face the viewer, and control points that place handles and fixtures.&lt;/p&gt;</content>
+  </entry>
+  <entry>
+    <id>https://truebex.com/changelog/#auto-dimensions</id>
+    <title>Dimensions that keep up</title>
+    <link rel="alternate" type="text/html" href="https://truebex.com/changelog/#auto-dimensions"/>
+    <updated>2026-09-29T00:00:00Z</updated>
+    <published>2026-09-29T00:00:00Z</published>
+    <content type="html">&lt;p&gt;Dimension styles for plan, 3D and sheets, auto dimensions that stay current as the model moves, relevance per view, and pins that keep chosen dimensions visible.&lt;/p&gt;</content>
+  </entry>
+  <entry>
+    <id>https://truebex.com/changelog/#panels-any-face</id>
+    <title>Panels and finishes on any face</title>
+    <link rel="alternate" type="text/html" href="https://truebex.com/changelog/#panels-any-face"/>
+    <updated>2026-09-29T00:00:00Z</updated>
+    <published>2026-09-29T00:00:00Z</published>
+    <content type="html">&lt;p&gt;Paint, wallpaper and three-dimensional patterns, and panels on floors, ceilings, slabs and models as well as walls.&lt;/p&gt;</content>
+  </entry>
+  <entry>
+    <id>https://truebex.com/changelog/#drawing-sheets</id>
+    <title>Drawing sheets that lay themselves out</title>
+    <link rel="alternate" type="text/html" href="https://truebex.com/changelog/#drawing-sheets"/>
+    <updated>2026-09-26T00:00:00Z</updated>
+    <published>2026-09-26T00:00:00Z</published>
+    <content type="html">&lt;p&gt;One command creates the sheet set: cover, plans, sections, stair sheets, face sketches, renders and schedules, with forms you fill once. Truebex writes its own vector PDF, with selectable text and fillable fields, and DXF.&lt;/p&gt;</content>
+  </entry>
+  <entry>
+    <id>https://truebex.com/changelog/#import</id>
+    <title>Textures and meshes from your own files</title>
+    <link rel="alternate" type="text/html" href="https://truebex.com/changelog/#import"/>
+    <updated>2026-09-26T00:00:00Z</updated>
+    <published>2026-09-26T00:00:00Z</published>
+    <content type="html">&lt;p&gt;Import textures with full compression and mip levels, and meshes in glTF, GLB, OBJ and FBX, then compose your own objects from them.&lt;/p&gt;</content>
+  </entry>
+  <entry>
+    <id>https://truebex.com/changelog/#references</id>
+    <title>Anything references anything</title>
+    <link rel="alternate" type="text/html" href="https://truebex.com/changelog/#references"/>
+    <updated>2026-09-22T00:00:00Z</updated>
+    <published>2026-09-22T00:00:00Z</published>
+    <content type="html">&lt;p&gt;Lines, objects and faces can reference each other and follow what they reference when it moves.&lt;/p&gt;</content>
+  </entry>
+</feed>
