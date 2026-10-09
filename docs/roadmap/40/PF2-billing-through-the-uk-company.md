@@ -4,7 +4,9 @@
 
 ## Status
 
-Stripe subscriptions and Wayl 30-day links exist; no tax handling, one monthly price, no seats, no invoices. Verified with Grep on 2026-10-09:
+**Built (2026-10-09, branch `ap/t4-pf2-billing-through-the-uk-compa`, not yet merged; see As-built).** Paddle is the default provider behind `BillingProvider` (`server/app/billing/base.py`), with adapters `paddle_provider.py`, `stripe_provider.py` (Stripe Tax, annual, seats, consent box, invoices) and `wayl_provider.py` (dormant behind `WAYL_ENABLED`). Prices per tier, interval and currency are in `server/app/catalogue.json`, mirrored by `server/scripts/sync_prices.py` into `provider_prices`. The API has checkout with consent, seats, coupons and founding places; seat and plan changes; invoices with signed PDF links; the portal; and de-duplicated, ordered webhooks. Two jobs run: `billing.founding.expire` and `billing.reconcile`. The site has `/checkout/` (Paddle.js, noindex) and a rewritten `/dashboard/billing/`. Wayl is gone from every public page. The licence entitlement test waits for PF1 (skipped until its router is merged).
+
+Before PF2 — Stripe subscriptions and Wayl 30-day links existed; no tax handling, one monthly price, no seats, no invoices. Verified with Grep on 2026-10-09:
 
 | Area | Where | Today |
 |---|---|---|
@@ -150,12 +152,12 @@ Settings: `BILLING_PROVIDER=paddle|stripe`, `PADDLE_ENV=sandbox|production`, `PA
 
 ## Deliverables
 
-- [ ] `server/app/billing/base.py` (`BillingProvider`), `paddle_provider.py`, `stripe_provider.py`, `wayl_provider.py`; `providers.py` kept as the registry re-exporting what the tests patch (`_wayl_client`, `server/tests/test_billing.py:47`)
-- [ ] `server/app/billing/service.py`: `upsert_subscription`, founding count, event de-duplication
-- [ ] `server/app/routers/billing.py` endpoints above; `schemas.py` new models; settings and `.env.example`
-- [ ] `server/scripts/sync_prices.py`; catalogue price fields; `server/tests/mock_paddle.py` (a local stand-in like `mock_wayl.py`)
-- [ ] `src/app/checkout/`, billing page rewrite, `src/lib/developer.ts`, copy in `constants.ts`, terms, privacy, README
-- [ ] the tests below
+- [x] `server/app/billing/base.py` (`BillingProvider`), `paddle_provider.py`, `stripe_provider.py`, `wayl_provider.py`; `providers.py` kept as the registry re-exporting what the tests patch (`_wayl_client`, `server/tests/test_billing.py:47`)
+- [x] `server/app/billing/service.py`: `upsert_subscription`, founding count, event de-duplication
+- [x] `server/app/routers/billing.py` endpoints above; `schemas.py` new models; settings and `.env.example`
+- [x] `server/scripts/sync_prices.py`; catalogue price fields; `server/tests/mock_paddle.py` (a local stand-in like `mock_wayl.py`)
+- [x] `src/app/checkout/`, billing page rewrite, `src/lib/developer.ts`, copy in `constants.ts`, terms, privacy, README
+- [x] the tests below (`test_billing_entitlement_follows_purchase` is written and skipped until PF1's `/licence/*` router is merged)
 
 ## Tests
 
@@ -209,8 +211,65 @@ Settings: `BILLING_PROVIDER=paddle|stripe`, `PADDLE_ENV=sandbox|production`, `PA
 
 ## As-built
 
-* Date, branch, commits:
-* Counts (pytest before → after):
-* Deviations from Design and why:
-* GD5 wording and GD7 prices adopted (dates):
-* Carry-over → which feature (e.g. DMCC renewal reminders):
+* **Date, branch, commits:** 2026-10-09, `ap/t4-pf2-billing-through-the-uk-compa` (base `master` 744a9f3). Commits:
+  * `c93947c`: API (interface, three adapters, catalogue, sync script, mock, jobs).
+  * `ba7d77f`: site (billing page, `/checkout/`, copy, terms, privacy, README).
+  * `900fab1` and `130e250`: review fixes.
+  * The docs commit that writes this section.
+* **Counts:**
+  * pytest: 24 → 66 passed, plus 1 skipped (the PF1 joint test).
+  * New test files: `server/tests/test_billing_pf2.py` (39 tests) and `server/tests/test_site_pf2.py` (4 build checks).
+  * `server/tests/test_billing.py`: rewritten for the new request shapes; the Wayl tests run with the flag on.
+  * `out/`: 20 routes (+ `/checkout/`).
+  * Verify gate: green (`scripts/autopilot-verify.ps1`).
+  * Self-tests: an end-to-end run over real HTTP (API, `tests/mock_paddle.py`, signed webhooks) and a headless-Edge drive of `/dashboard/billing/` → mock pay → back on billing with plan, invoice and PDF. Both pass.
+* **Deviations from Design, and why:**
+  1. **Founding places are counted per subscription, not per Team seat.** One place covers all of a subscription's seats, including seats added later. Counting seats would either let seat changes bypass the cap or stop a founding team from adding a colleague once the offer sells out. The UI says "N founding seats left". To confirm with GD7.
+  2. **The lasting discount is a separate founding price** per tier, interval and currency, synced like any other price, rather than a provider discount object. The price paid *is* the founding flag. A coupon replaces the founding price: one discount per checkout. Paddle.js runs with `showAddDiscounts: false`, and Stripe gets no promotion-code box on founding checkouts.
+  3. **Tier, interval and founding come only from the synced price a subscription pays.** Paddle.js accepts a buyer's own `custom_data` with the public token, so `custom_data` only names the account. A price we never synced grants nothing. A payment matches only its own transaction id, so renewals don't overwrite it.
+  4. **Extra endpoint `GET /billing/invoices/{id}/pdf?u&p&exp&sig`.** The `pdf_url` must open in a browser without the session header. Each link is HMAC-signed per user and invoice, valid for 1 h, and 302s to a fresh provider URL (Paddle PDF URLs are short-lived; Stripe ones go through it too).
+  5. **`POST /billing/checkout` also answers 409** while a Paddle or Stripe subscription is live, past due or paused. This prevents double billing; the page offers Change plan or Manage instead.
+  6. **`/billing/plans` adds fields.** It also returns `currencies`, `providers` (every enabled one; `wayl` only with the flag) and `founding.tiers`. `founding.enabled` also requires a checkout provider, so no offer shows while payment is off.
+  7. **Expired holds also cancel their checkout.** `billing.founding.expire` cancels the unpaid checkout (Paddle `PATCH /transactions/{id}` to canceled; Stripe `Session.expire`), and founding Stripe sessions expire after 31 min. A founding price paid anyway (a race, or bought straight from its id in Paddle.js) is still counted.
+  8. **`billing.reconcile` works differently from the Design.** It re-fetches pending checkouts of the last 48 h and every subscription not cancelled long ago, instead of listing changes. It also runs at start-up, which covers the PC being off.
+  9. **Stripe subscription events re-fetch the subscription before applying it.** Stripe stamps events to the second. Paddle events are ordered by `occurred_at`.
+  10. **Columns and indexes beyond the Data table:**
+      * `subscriptions.last_event_at`: ordering.
+      * `provider_prices.founding`.
+      * `founding_reservations.seats`: always 1.
+      * Unique index `uq_subscriptions_provider_sub`, with one retry in `upsert_subscription`.
+      * `updated_at` moves only on a real change.
+  11. **Past due takes the plan away** (`is_live` = active), as before; the plan card asks the customer to update the card under Manage.
+  12. **The mock opens its own pay page.** `tests/mock_paddle.py` checkout links open the mock's pay page (no Paddle.js) so the flow can be clicked through locally without a Paddle account. Tests use the real `/checkout/?_ptxn=` shape.
+  13. **PF1 was not merged; this branch stands in for it:**
+      * It creates `server/app/catalogue.json` with PF1's schema (tiers `free` … `enterprise`, contract §6.3 placeholder features and limits, `api` quotas) plus PF2's `prices`, `per_seat`, `min_seats` and `founding`.
+      * `plans.py` reads it, and ranks come from it.
+      * It adds `subscriptions.seats`.
+      * It creates `server/app/tasks.py` to the PF14 Plumbing signature (`@periodic`, `run_due`, `start_inline`; `BACKGROUND_TASKS`).
+      * It renames plans Free and Pro in `PRICING_PLANS`, the home JSON-LD offers and the developer docs table.
+      * **Merge:** keep one catalogue (PF1's matrix plus these price fields), one `tasks.py`, one `seats` column.
+  14. **Tax mode is left to each account.** Prices follow each provider account's default tax mode (Paddle `tax_mode: account_setting`, Stripe unspecified): GD5 decides inclusive or exclusive.
+* **GD5 wording and GD7 prices adopted:** none; neither guide is written as of 2026-10-09. Placeholders until then, with `"prices_final": false` in the catalogue for PF13 to honour:
+  * **Monthly prices** (annual = 10× monthly):
+    * Pro: £79 / $99 / €95.
+    * Studio: £159 / $199 / €189.
+    * Team: £89 / $109 / €105 per seat, minimum 2.
+  * **Founding offer:** 100 places, 30 % off, ending 2027-03-31, on Pro, Studio and Team.
+  * **Consent text:** version `2026-10-09`, in `BILLING.consent` and `server/app/billing/consent.py`.
+  * **Wording:** the terms' "Paid plans" and the privacy processors.
+  * Paddle's reseller wording follows its standard text.
+* **Carry-over → which feature:**
+  * **DMCC Act 2024 subscription rules** (renewal reminders, easy exit notices): when GD5 confirms the commencement date. A PF2 follow-up with PF14's mail plumbing.
+  * **PF1:** `test_billing_entitlement_follows_purchase` runs once `/licence/*` is merged. `seat_source(user)` must read `subscriptions.seats`, and the Account panel's `manage_url` is `/dashboard/billing/`.
+  * **Contract `licence-api.md` §11:** no row changes. PF2 adds no app-facing endpoint.
+  * **PF3:** `org_id` in the checkout's `custom_data`; `service.seats_assigned` (409 below assigned seats) becomes real.
+  * **PF6, PF11:** call `providers.get_provider(sub.provider).charge_usage(...)`.
+  * **PF7, PF8:** call `providers.get_provider("stripe").create_invoice(...)`.
+  * **PF13:**
+    * The pricing page reads `src/lib/catalogue.ts` at build time and `/billing/plans` after load.
+    * Checkout links are `/dashboard/billing/?tier=&interval=&seats=&currency=&code=`.
+    * It updates the `truebex-seo` keyword map, whose Arabic row still cites Wayl.
+  * **PF14:** the `worker` process for `tasks.py`, and Postgres.
+  * **Owner:**
+    * Paddle seller and domain approval; notification destinations; `sync_prices.py` per environment; the Stripe terms-of-service URL.
+    * Archive the founding prices in Paddle and Stripe when the offer closes. They stay purchasable by id until then; such purchases are counted, not blocked.
