@@ -22,7 +22,7 @@ A task ticks ONLY its own row, on its own branch.
 
 | Done | Feature | Needs | Prio | Code today | Notes |
 |---|---|---|---|---|---|
-| [ ] | [PF1](PF1-licence-api-releases-and-downloads.md) licence API, releases and downloads | — | 1 | — | |
+| [x] | [PF1](PF1-licence-api-releases-and-downloads.md) licence API, releases and downloads | — | 1 | `server/app/licence/`, `server/app/releases/`, `/download/`, `/dashboard/link/` | 2026-10-09, Autopilot T1; PF13 merge notes in its As-built |
 | [ ] | [PF2](PF2-billing-through-the-uk-company.md) billing through the UK company | PF1 | 1 | — | |
 | [ ] | [PF3](PF3-organisations-seats-and-sso.md) organisations, seats and SSO | PF1 | 2 | — | |
 | [ ] | [PF4](PF4-project-service-log-storage-sync-versions-and-sharing.md) project service: log storage, sync, versions and sharing | PF1 | 2 | — | |

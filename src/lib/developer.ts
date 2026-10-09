@@ -43,7 +43,8 @@ export interface PlanInfo {
 export interface Subscription {
   plan: string;
   status: string;
-  provider: Provider | null;
+  // "trial": the one 14-day Pro trial (started from the app).
+  provider: Provider | "trial" | null;
   current_period_end: string | null;
   can_manage: boolean;
 }

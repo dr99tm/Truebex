@@ -8,11 +8,11 @@ from pathlib import Path
 from urllib.parse import parse_qs, urlencode, urlsplit
 
 import pytest
-from sqlalchemy import func, select
+from sqlalchemy import select
 
 from app.database import SessionLocal
 from app.licence import signing
-from app.models import Release, ReleaseDownload, User
+from app.models import DownloadEvent, Release, User
 from app.releases import service
 from app.storage import get_store, local
 
@@ -139,7 +139,8 @@ def test_download_url_expires(client, tmp_path, monkeypatch):
     error_of(client.get("/releases/not-a-version/download", headers=CONTRACT), 404, "not_found")
     error_of(client.get("/releases/1.1.0/download?platform=mac", headers=CONTRACT), 422, "validation_failed")
     with SessionLocal() as db:
-        assert db.scalar(select(func.count()).select_from(ReleaseDownload)) == 2
+        events = list(db.scalars(select(DownloadEvent)))
+        assert len(events) == 2 and {(e.version, e.platform, e.channel) for e in events} == {("1.1.0", "win64", "stable")}
 
 
 def _form(manifest: dict, signature: dict, data: bytes):

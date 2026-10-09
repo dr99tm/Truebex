@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 
 export default function PrivacyPage() {
   return (
-    <LegalPage title="Privacy Policy" updated="October 7, 2026">
+    <LegalPage title="Privacy Policy" updated="October 9, 2026">
       <p>
         This policy explains what information Truebex (&ldquo;we&rdquo;)
         collects when you use truebex.com, your Truebex account, the
@@ -37,6 +37,16 @@ export default function PrivacyPage() {
           its name, and per-day counts of the API endpoints each key called.
           We use this to authenticate requests, enforce plan limits and show
           you your usage.
+        </li>
+        <li>
+          <strong>Devices.</strong> When you sign in to the Truebex app on a
+          computer, we record the computer&rsquo;s name, its operating system,
+          the app version, when it was activated and last seen, and a
+          fingerprint: a one-way hash the app makes from the computer&rsquo;s
+          identifiers, never the identifiers themselves. We use them to keep
+          the computer signed in, to count your devices against your plan,
+          to offer the free trial once per computer, and to show the list in
+          your dashboard, where you can remove any of them.
         </li>
         <li>
           <strong>Billing records.</strong> Your plan, payment amounts,
@@ -87,7 +97,7 @@ export default function PrivacyPage() {
 
       <h2>Your choices and rights</h2>
       <ul>
-        <li>Revoke any API key at any time from your dashboard.</li>
+        <li>Revoke any API key, or remove any signed-in computer, at any time from your dashboard.</li>
         <li>
           Ask us for a copy of your data, to correct it, or to delete your
           account and its data, by emailing{" "}
@@ -111,7 +121,7 @@ export default function PrivacyPage() {
 
       <h2>Security</h2>
       <p>
-        Passwords and API keys are stored only as one-way hashes, all traffic
+        Passwords, API keys and device sign-in tokens are stored only as one-way hashes, all traffic
         uses HTTPS, and plan changes are accepted only from payment events we
         verify with the provider.
       </p>

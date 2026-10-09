@@ -30,6 +30,7 @@ around it on the web:
 - [API server](#api-server-server)
 - [Google sign-in](#google-sign-in)
 - [API keys and usage](#api-keys-and-usage)
+- [Licences, releases and downloads](#licences-releases-and-downloads)
 - [Billing: Stripe and Wayl](#billing-stripe-and-wayl)
 - [Brand, content and SEO](#brand-content-and-seo)
 - [Demo request form](#demo-request-form)
@@ -86,7 +87,9 @@ src/
     page.tsx               Landing page (+ SoftwareApplication & FAQPage JSON-LD)
     layout.tsx             Global metadata, fonts, Organization JSON-LD
     login/ signup/         Auth pages (Google + email)
-    dashboard/             Signed-in area: overview, keys/, usage/, billing/
+    dashboard/             Signed-in area: overview (download, licence, devices), billing/,
+                           link/ (approve a sign-in from the app), keys/ + usage/ (Developer)
+    download/ changelog/   Public Download and Changelog pages (from src/content/releases.json)
     developers/            Public API docs (indexable)
     account/               Redirect to /dashboard/ (old URL)
     sitemap.ts robots.ts manifest.ts icon.svg apple-icon.png favicon.ico
@@ -94,25 +97,35 @@ src/
     brand/Logo.tsx         Lockup / LogoMark / Wordmark from the Figma masters
     sections/              Landing sections (Hero, CoreFeatures, Pricing, FAQ, …)
     dashboard/             Shell (auth guard, nav), UsageChart, UsageMeter
+    releases/              DownloadPanel, ReleaseNotes
     auth/                  AuthForm, GoogleButton, ProfileMenu
   lib/
     constants.ts           ALL site copy: features, roadmap, pricing, FAQ, SITE
     api.ts                 fetch wrapper, session token, date helpers
     auth.ts                accounts + Google sign-in
     developer.ts           keys, usage, billing calls
+    licence.ts             licence API calls (devices, link approval, release feed)
+    catalogue.ts           plan names and limits from server/app/catalogue.json
+    releaseNotes.ts        the release-notes Markdown subset, parsed to a React-rendered tree
+  content/releases.json    the release feed as of the last `npm run sync:releases`
 public/
   brand/                   SVG media kit (mark + wordmark, grey/white/dark)
   images/product/          In-app captures (generated)
   images/og-image.jpg      1200×630 social card (generated)
 scripts/make_web_assets.py Regenerates brand assets from the Unreal project
+scripts/sync-releases.mjs  `npm run sync:releases`: release feed → src/content/releases.json
 server/
   app/
     main.py                App + routers
-    routers/               auth, keys, usage, billing, v1 (developer API)
+    routers/               auth, keys, usage, billing, v1 (developer API), licence, releases, admin, files
     billing/               service.py (plan state) · providers.py (Stripe, Wayl)
+    licence/               devices, link codes, seats, signed entitlements (Ed25519 over RFC 8785 JSON)
+    releases/              signed release manifests, feed, download links
+    contract_http.py       contract header + shared error envelope · ratelimit.py · tasks.py · storage/
     models.py database.py  SQLAlchemy models + additive SQLite migrations
-    plans.py               Plan catalog: prices, request quotas, key limits
-  tests/                   pytest suite (+ mock_wayl.py for click-through tests)
+    catalogue.json plans.py Plan catalogue: tiers, entitlement matrix, request quotas, key limits
+  scripts/                 make_signing_key.py · publish_release.py · make_licence_fixtures.py
+  tests/                   pytest suite (+ mock_wayl.py; contracts/licence/ = contract fixtures)
 .claude/skills/            truebex-brand-voice · truebex-seo · truebex-deploy
 google-apps-script/        Code.gs for the demo-request sheet
 deploy-to-server.bat       Build → copy into the deploy repo → commit → push
@@ -185,6 +198,11 @@ These end up in the public JavaScript, so never put secrets in them.
 | `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_PRO` | All three enable Stripe |
 | `WAYL_API_KEY`, `WAYL_WEBHOOK_SECRET` | Both enable Wayl |
 | `WAYL_ENV`, `WAYL_PRICE_PRO_IQD` | `live`/`test`; IQD price per 30 days (default 130,000) |
+| `LICENCE_SIGNING_KEY`, `LICENCE_KEY_ID` | The `lic-*` Ed25519 seed that signs entitlements (`scripts/make_signing_key.py --kind lic`). Empty = licensing off (503). |
+| `RELEASE_PUBLIC_KEYS` | Public `rel-*` keys as `kid:key,…` (the seeds never live on the API host) |
+| `SIGNING_KEYS_EXTRA`, `TRIAL_DAYS` | Old `lic-*` public keys during a rotation; trial length (14) |
+| `STORAGE_BACKEND`, `STORAGE_DIR`, `STORAGE_URL_SECRET` | `local` files under `./storage`, served by signed `/files` URLs on `API_URL` |
+| `BACKGROUND_TASKS` | `inline` (jobs run in the API process: link purge, 90-day device lapse) or `off` |
 
 ---
 
@@ -234,6 +252,16 @@ in `localStorage`. New columns are added on startup by
 | POST | `/billing/portal` | session | Stripe customer portal URL |
 | POST | `/billing/webhooks/stripe` · `/wayl` | provider | Payment events |
 | GET | `/v1/ping` · `/v1/account` | **API key** | Developer API (metered) |
+| POST | `/licence/link` · `/licence/link/poll` | — / poll secret | The app starts a browser sign-in and polls for its session |
+| POST | `/licence/link/approve` · GET `/licence/link/{code}` | session | The website shows the device and approves or denies |
+| POST | `/licence/activate` | session | Register a device → device token + signed entitlement |
+| POST | `/licence/entitlement` · `/licence/trial` · `/licence/deactivate` | **device** | Fresh entitlement · the 14-day Pro trial · sign out |
+| GET | `/licence/account` | **device** | The app's Account panel |
+| GET / DELETE | `/licence/devices`, `/licence/devices/{id}` | session or device | List and remove devices |
+| GET | `/licence/keys` | — | Published public keys (`lic-*`, `rel-*`) |
+| GET | `/releases/feed` · `/releases/{version}/download` | — | Signed release manifests · a 15-minute download link |
+| GET / POST / PATCH | `/admin/releases`, `/admin/releases/{version}` | admin | Upload (≤ 90 MB, signed off-host), withdraw, new notes |
+| GET / PUT | `/files/{key}` | signed URL | Local storage downloads and uploads (HMAC, expiring) |
 
 ### Running in production
 
@@ -277,16 +305,54 @@ Google's verification review.
 - Keys look like `tbx_live_…`. Only a SHA-256 hash is stored, and the full key is shown once at creation.
 - Clients send the key as `Authorization: Bearer <key>` or `X-API-Key: <key>`.
 - Every `/v1` call is counted per key, per endpoint, per UTC day (`usage_daily`).
-- The monthly quota per plan is in `server/app/plans.py`. Over quota returns `429`.
+- The monthly quota per plan is in `server/app/catalogue.json` (read by `plans.py`; the site imports the same file). Over quota returns `429`.
 - Responses carry `X-RateLimit-Limit` and `X-RateLimit-Remaining`.
 
 | Plan | Requests / month | Active keys |
 |---|---|---|
-| Starter (`free`) | 1,000 | 2 |
-| Professional (`pro`) | 100,000 | 20 |
+| Free (`free`) | 1,000 | 2 |
+| Pro (`pro`) | 100,000 | 20 |
+| Studio, Team (`studio`, `team`) | 100,000 (placeholder until GD7) | 20 |
 | Enterprise | 5,000,000 (set by hand) | 200 |
 
 Public docs: [`/developers/`](https://truebex.com/developers/).
+
+---
+
+## Licences, releases and downloads
+
+The desktop app's licence API follows the contract `licence-api` v1.0.0, which
+lives in the Unreal project (`Docs/roadmap/40/contracts/licence-api.md`; the app
+side is authoritative). Every licence route echoes `X-Truebex-Contract:
+licence-api/1.0` and answers errors as `{detail, code, status, request_id,
+retry_after_s, data}`.
+
+- **Sign-in.** The app asks for a link code (`/licence/link`), opens
+  `/dashboard/link/?code=…`, and polls until the signed-in person presses
+  Approve. Email + password sign-in from the app uses `/auth/login` unchanged.
+- **Devices.** `/licence/activate` returns a `tbx_dev_…` device token (stored as
+  SHA-256) and a signed entitlement. Two devices per seat for now; the same
+  computer keeps its device. Tokens lapse after 90 days unused.
+- **Entitlements.** Ed25519 over the RFC 8785 bytes of the document, kid
+  `lic-*`; refresh after 24 h, honoured offline for 14 days (floating seats:
+  30 min / 2 h). The plan comes from `licence/seats.py` `seat_source(user)`;
+  features and limits from `catalogue.json` (the contract's placeholder matrix
+  until GD7).
+- **Trial.** One 14-day Pro trial per account and per computer, stored as a
+  `subscriptions` row with `provider="trial"`.
+- **Releases.** Publish on the host:
+
+  ```powershell
+  cd server
+  .venv\Scripts\python.exe scripts\make_signing_key.py --kind rel --out D:\keys\rel-2026-10.json   # once; keep it off the API host
+  .venv\Scripts\python.exe scripts\publish_release.py --version 1.1.0 --channel stable --platform win64 `
+      --file D:\builds\Truebex-Setup-1.1.0.exe --notes notes.md --key-file D:\keys\rel-2026-10.json
+  cd ..; npm run sync:releases   # then build and deploy the site
+  ```
+
+  The feed (`/releases/feed`) serves the manifests exactly as signed; downloads
+  get a 15-minute signed URL and need no account. Check any envelope or
+  manifest with `python -m app.licence.signing verify <file> [--keys <url>]`.
 
 ---
 
@@ -362,7 +428,8 @@ a Google Sheet. See [`google-apps-script/README.md`](google-apps-script/README.m
 |---|---|---|
 | API depends on the host PC + tunnel being up | Sign-in, dashboard and billing stop when the PC is off | `start-server.bat`, `start-tunnel.bat` |
 | Payment providers need merchant keys | Billing shows "being set up" until keys are added | `server/.env` |
-| Desktop app doesn't read the plan yet | Pro features aren't gated in the app itself | Unreal project |
+| Desktop app doesn't read the plan yet | The licence API is live, but the app's sign-in and gates (LC1, LC3) are not shipped | Unreal project |
+| Installers are served from this PC | Downloads go through the home tunnel until PF14 adds object storage and a CDN | `server/storage/` |
 | `npm run dev` exhausts RAM on this PC | Use build + static server for local checks | — |
 | The demo form can't detect failures (`no-cors`) | It always shows "Request received!" | `CTAContact.tsx` |
 | Stale `gh-pages` branch | Confusing; not served | — |

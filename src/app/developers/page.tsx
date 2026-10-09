@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Footer } from "@/components/layout/Footer";
 import { Button } from "@/components/ui/Button";
+import { tier } from "@/lib/plans";
 
 const API = "https://api.truebex.com";
 
@@ -23,10 +24,16 @@ const ENDPOINTS = [
   { method: "GET", path: "/v1/account", desc: "The key's owner, plan and this month's usage." },
 ];
 
+const nf = new Intl.NumberFormat("en-US");
+
+// API limits come from the plan catalogue (server/app/catalogue.json).
 const LIMITS = [
-  { plan: "Starter", requests: "1,000", keys: "2" },
-  { plan: "Professional", requests: "100,000", keys: "20" },
-  { plan: "Enterprise", requests: "Custom", keys: "Custom" },
+  ...[tier("free"), tier("pro")].map((t) => ({
+    plan: t.name,
+    requests: nf.format(t.api.monthly_requests),
+    keys: String(t.api.max_api_keys),
+  })),
+  { plan: tier("enterprise").name, requests: "Custom", keys: "Custom" },
 ];
 
 const ERRORS = [
@@ -186,7 +193,7 @@ X-RateLimit-Remaining: 958`}</code>
           </p>
           <pre>
             <code>{`HTTP/1.1 429 Too Many Requests
-{ "detail": "Monthly limit of 1000 requests reached for the Starter plan." }`}</code>
+{ "detail": "Monthly limit of 1000 requests reached for the Free plan." }`}</code>
           </pre>
           <table>
             <thead>

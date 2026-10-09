@@ -47,6 +47,15 @@ def get_current_user(
     return user
 
 
+def require_admin(current: User = Depends(get_current_user)) -> User:
+    """Admin-only routes (`users.is_admin`, set by hand like "enterprise")."""
+    if not current.is_admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Admins only."
+        )
+    return current
+
+
 @dataclass
 class ApiCaller:
     user: User
@@ -202,9 +211,3 @@ def get_session_or_device(
         raise _unauthenticated("API keys are not accepted here. Sign in instead.")
     return LicenceCaller(user=get_current_user(creds, db), device=None)
 
-
-def require_admin(current: User = Depends(get_current_user)) -> User:
-    """Admins are flagged by hand (users.is_admin), like the enterprise plan."""
-    if not current.is_admin:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admins only.")
-    return current

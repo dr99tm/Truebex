@@ -15,7 +15,8 @@ from .conftest import LICENCE_FIXTURES, REL_SEED, TEST_KEY
 
 ROOT = Path(__file__).resolve().parents[2]
 OUT = ROOT / "out"
-RELEASES = ROOT / "src" / "content" / "releases.json"
+CONTENT = ROOT / "src" / "content"
+FEEDS = {"stable": CONTENT / "releases.json", "beta": CONTENT / "releases-beta.json"}
 built = pytest.mark.skipif(not (OUT / "index.html").is_file(), reason="out/ not built (the verify gate builds it first)")
 NODE = shutil.which("node")
 needs_node = pytest.mark.skipif(NODE is None, reason="node is not installed")
@@ -25,12 +26,18 @@ def _html(page: str) -> str:
     return (OUT / page / "index.html").read_text(encoding="utf-8")
 
 
+def _feed(channel: str) -> dict:
+    return json.loads(FEEDS[channel].read_text(encoding="utf-8"))
+
+
 def _site_releases() -> list[dict]:
-    data = json.loads(RELEASES.read_text(encoding="utf-8"))
+    """Every manifest the build saw (stable and beta feeds, as saved by sync:releases)."""
     seen: dict[str, dict] = {}
     for channel in ("stable", "beta"):
-        for r in data[channel]["releases"]:
-            seen.setdefault(r["version"], r)
+        feed = _feed(channel)
+        assert feed["schema"] == "truebex-releases/1" and feed["channel"] == channel
+        for entry in feed["releases"]:
+            seen.setdefault(entry["manifest"]["version"], entry["manifest"])
     return list(seen.values())
 
 
@@ -46,7 +53,7 @@ def test_site_pf1_download_page():
     assert "Download Truebex for Windows" in html
     assert _canonical(html) == "https://truebex.com/download/"
     assert 'href="/signup/' in html  # the licence: a free account
-    latest = json.loads(RELEASES.read_text(encoding="utf-8"))["stable"]["latest"]
+    latest = _feed("stable")["latest"]
     if latest:
         assert f'data-release="{latest}"' in html and latest in html
     else:
@@ -93,24 +100,30 @@ def test_site_pf1_sitemap_and_no_secrets():
 
 @needs_node
 def test_sync_releases_from_fixture_feed(tmp_path):
-    out = tmp_path / "releases.json"
     run = subprocess.run(
-        [NODE, str(ROOT / "scripts" / "sync-releases.mjs"), "--from", str(LICENCE_FIXTURES), "--out", str(out)],
+        [NODE, str(ROOT / "scripts" / "sync-releases.mjs"), "--from", str(LICENCE_FIXTURES), "--out-dir", str(tmp_path)],
         capture_output=True, text=True, timeout=60, cwd=ROOT,
     )
     assert run.returncode == 0, run.stderr
-    data = json.loads(out.read_text(encoding="utf-8"))
-    assert data["schema"] == "truebex-site-releases/1"
-    assert data["stable"]["latest"] == "1.1.0" and data["beta"]["latest"] == "1.2.0-beta.1"
-    fixture_versions = {
-        e["manifest"]["version"]
-        for e in json.loads((LICENCE_FIXTURES / "releases-beta.json").read_text(encoding="utf-8"))["body"]["releases"]
-    }
-    assert {r["version"] for r in data["beta"]["releases"]} == fixture_versions
-    assert all(not re.search(r"-", r["version"]) for r in data["stable"]["releases"])
-    first = data["stable"]["releases"][0]
-    assert set(first) >= {"version", "channel", "published_at", "notes_md", "notes_url", "installer"}
-    assert first["installer"]["bytes"] == 4096
+    for channel, name in (("stable", "releases.json"), ("beta", "releases-beta.json")):
+        saved = json.loads((tmp_path / name).read_text(encoding="utf-8"))
+        fixture = json.loads((LICENCE_FIXTURES / f"releases-{channel}.json").read_text(encoding="utf-8"))["body"]
+        assert saved == fixture  # saved exactly as served: manifests and signatures intact
+    stable = json.loads((tmp_path / "releases.json").read_text(encoding="utf-8"))
+    assert stable["latest"] == "1.1.0" and all("-" not in e["manifest"]["version"] for e in stable["releases"])
+    assert json.loads((tmp_path / "releases-beta.json").read_text(encoding="utf-8"))["latest"] == "1.2.0-beta.1"
+
+    # A broken feed changes nothing.
+    bad = tmp_path / "bad"
+    bad.mkdir()
+    (bad / "releases-stable.json").write_text('{"schema": "nope"}', encoding="utf-8")
+    (bad / "releases-beta.json").write_text('{"schema": "nope"}', encoding="utf-8")
+    before = (tmp_path / "releases.json").read_bytes()
+    run = subprocess.run(
+        [NODE, str(ROOT / "scripts" / "sync-releases.mjs"), "--from", str(bad), "--out-dir", str(tmp_path)],
+        capture_output=True, text=True, timeout=60, cwd=ROOT,
+    )
+    assert run.returncode == 1 and (tmp_path / "releases.json").read_bytes() == before
 
 
 @needs_node
@@ -119,7 +132,7 @@ def test_release_notes_renderer_subset():
     md = (
         "### What's new\n"
         "* **Bold** and a [link](https://truebex.com/changelog/#1.1.0)\n"
-        "* <script>alert(1)</script> & [bad](javascript:alert(1))\n"
+        "* <script>alert(1)</script> & [bad](javascript:void)\n"
         "\n"
         "Plain paragraph.\n"
     )

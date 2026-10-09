@@ -1,9 +1,9 @@
 """The plan catalogue: tiers, ranks, the entitlement matrix and API limits.
 
-The source of truth is `catalogue.json` beside this file (PF1). The website
-imports the same file at build time (src/lib/catalogue.ts), so plan names and
-limits are never typed twice. Until GD7 is written the matrix is the licence
-contract's §6.3 placeholder; prices are PF2's.
+The source of truth is `catalogue.json` beside this file (schema
+truebex-catalogue/1). The website imports the same file at build time, so
+plan names and limits are never typed twice. Until GD7 is written the matrix
+is the licence contract's §6.3 placeholder; prices are PF2's (`prices`).
 """
 
 import json
@@ -13,6 +13,11 @@ from types import MappingProxyType
 from typing import Any
 
 CATALOGUE_PATH = Path(__file__).with_name("catalogue.json")
+
+# Monthly US-dollar prices for tiers whose catalogue entry has no USD monthly
+# price yet: the Stripe Price behind STRIPE_PRICE_PRO is $99 a month today.
+# PF2 fills `prices` in the catalogue and removes this.
+_PRICE_USD_CENTS_UNTIL_PF2 = {"free": 0, "pro": 99_00}
 
 
 @dataclass(frozen=True)
@@ -34,17 +39,26 @@ class Plan:
     limits: MappingProxyType = field(default_factory=lambda: MappingProxyType({}))
 
 
+def _usd_month(tier: dict[str, Any]) -> int | None:
+    for price in tier.get("prices") or []:
+        if price.get("interval") == "month" and price.get("currency") == "USD":
+            return int(price["amount_minor"])
+    return _PRICE_USD_CENTS_UNTIL_PF2.get(tier["id"])
+
+
 def _load(path: Path = CATALOGUE_PATH) -> dict[str, Plan]:
     data: dict[str, Any] = json.loads(path.read_text(encoding="utf-8"))
     plans: dict[str, Plan] = {}
     for t in sorted(data["tiers"], key=lambda t: t["rank"]):
+        price = _usd_month(t)
         plans[t["id"]] = Plan(
             id=t["id"],
             name=t["name"],
-            price_usd_cents=t.get("price_usd_cents"),
+            price_usd_cents=price,
             monthly_requests=int(t["api"]["monthly_requests"]),
             max_api_keys=int(t["api"]["max_api_keys"]),
-            purchasable=bool(t["purchasable"]),
+            # Sold online only once it has a price to charge.
+            purchasable=bool(t["purchasable"]) and bool(price),
             rank=int(t["rank"]),
             features=tuple(sorted(set(t["features"]))),
             limits=MappingProxyType(dict(t["limits"])),

@@ -28,10 +28,10 @@ const homeLd = {
       featureList: FEATURES.map((f) => f.title),
       publisher: { "@id": `${SITE.url}/#organization` },
       offers: [
-        { "@type": "Offer", name: "Starter", price: "0", priceCurrency: "USD" },
+        { "@type": "Offer", name: "Free", price: "0", priceCurrency: "USD" },
         {
           "@type": "Offer",
-          name: "Professional",
+          name: "Pro",
           price: "99",
           priceCurrency: "USD",
           priceSpecification: {

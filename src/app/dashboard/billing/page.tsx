@@ -13,6 +13,7 @@ import {
 import { useApiData } from "@/components/dashboard/useApiData";
 import { Button } from "@/components/ui/Button";
 import { formatDate } from "@/lib/api";
+import { planName } from "@/lib/plans";
 import {
   formatMoney,
   getCatalog,
@@ -96,6 +97,7 @@ function BillingInner() {
   const providers = catalog.data?.providers ?? [];
   const plan = sub.data?.plan ?? user.plan;
   const isPaid = plan !== "free";
+  const isTrial = sub.data?.provider === "trial";
 
   return (
     <>
@@ -115,8 +117,16 @@ function BillingInner() {
       <div className="grid gap-6 lg:grid-cols-2">
         <Panel>
           <h2 className="font-semibold">Current plan</h2>
-          <p className="mt-4 text-3xl font-semibold capitalize">{plan === "free" ? "Starter" : plan}</p>
-          {sub.data && isPaid && (
+          <p className="mt-4 text-3xl font-semibold">
+            {planName(plan)}
+            {isTrial && " trial"}
+          </p>
+          {sub.data && isTrial && (
+            <p className="mt-2 text-sm text-text-secondary">
+              Trial ends {formatDate(sub.data.current_period_end)}
+            </p>
+          )}
+          {sub.data && isPaid && !isTrial && (
             <p className="mt-2 text-sm text-text-secondary">
               {sub.data.provider === "wayl" ? "Paid through " : "Renews "}
               {formatDate(sub.data.current_period_end)}
@@ -137,9 +147,9 @@ function BillingInner() {
         </Panel>
 
         {pro && (
-          <Panel className={cn(!isPaid && "border-accent/40")}>
+          <Panel className={cn((!isPaid || isTrial) && "border-accent/40")}>
             <div className="flex items-baseline justify-between">
-              <h2 className="font-semibold">Professional</h2>
+              <h2 className="font-semibold">{pro.name}</h2>
               <p>
                 <span className="text-2xl font-semibold">
                   {formatMoney(pro.price_usd_cents ?? 0, "USD")}

@@ -8,6 +8,8 @@ export default function sitemap(): MetadataRoute.Sitemap {
   const now = new Date();
   return [
     { url: `${SITE.url}/`, lastModified: now, changeFrequency: "weekly", priority: 1 },
+    { url: `${SITE.url}/download/`, lastModified: now, changeFrequency: "weekly", priority: 0.9 },
+    { url: `${SITE.url}/changelog/`, lastModified: now, changeFrequency: "weekly", priority: 0.6 },
     { url: `${SITE.url}/developers/`, lastModified: now, changeFrequency: "monthly", priority: 0.7 },
     { url: `${SITE.url}/signup/`, lastModified: now, changeFrequency: "yearly", priority: 0.4 },
     { url: `${SITE.url}/privacy/`, lastModified: now, changeFrequency: "yearly", priority: 0.2 },

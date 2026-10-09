@@ -3,6 +3,8 @@ import { NAV_LINKS, SITE } from "@/lib/constants";
 import { Lockup } from "@/components/brand/Logo";
 
 const RESOURCES = [
+  { label: "Download", href: "/download/" },
+  { label: "Changelog", href: "/changelog/" },
   { label: "Developer docs", href: "/developers/" },
   { label: "Dashboard", href: "/dashboard/" },
   { label: "Create account", href: "/signup/" },

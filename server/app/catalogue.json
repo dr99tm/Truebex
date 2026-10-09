@@ -1,71 +1,193 @@
 {
-  "source": "licence-api.md v1.0.0 §6.3 placeholder matrix (2026-10-09). TODO GD7: replace features, limits and api with guides/GD7-entitlement-matrix.json once GD7 is written; prices are PF2's.",
+  "schema": "truebex-catalogue/1",
+  "source": "licence-api 1.0.0 section 6.3 placeholder matrix (2026-10-09); prices, seats and the founding offer are set from the pricing guide",
   "tiers": [
     {
       "id": "free",
       "name": "Free",
       "rank": 0,
       "purchasable": false,
-      "price_usd_cents": 0,
-      "features": ["export.dxf", "export.pdf", "lighting.full", "render.panorama"],
-      "limits": {"storeys": 1, "devices": 2, "share_links": 1, "cloud_cu_month": 0, "ai_credits_month": 0},
-      "api": {"monthly_requests": 1000, "max_api_keys": 2}
+      "per_seat": false,
+      "min_seats": 1,
+      "features": [
+        "export.dxf",
+        "export.pdf",
+        "lighting.full",
+        "render.panorama"
+      ],
+      "limits": {
+        "storeys": 1,
+        "devices": 2,
+        "share_links": 1,
+        "cloud_cu_month": 0,
+        "ai_credits_month": 0
+      },
+      "api": {
+        "monthly_requests": 1000,
+        "max_api_keys": 2
+      },
+      "prices": []
     },
     {
       "id": "pro",
       "name": "Pro",
       "rank": 1,
       "purchasable": true,
-      "price_usd_cents": 9900,
+      "per_seat": false,
+      "min_seats": 1,
       "features": [
-        "ai.byok", "ai.metered", "analysis.reports", "assets.library", "cloud.panoramas", "cloud.sync",
-        "collab.live", "export.clean", "export.dwg", "export.dxf", "export.ifc", "export.pdf",
-        "lighting.full", "market.cost", "mep", "render.panorama", "share.links", "vr.pc"
+        "ai.byok",
+        "ai.metered",
+        "analysis.reports",
+        "assets.library",
+        "cloud.panoramas",
+        "cloud.sync",
+        "collab.live",
+        "export.clean",
+        "export.dwg",
+        "export.dxf",
+        "export.ifc",
+        "export.pdf",
+        "lighting.full",
+        "market.cost",
+        "mep",
+        "render.panorama",
+        "share.links",
+        "vr.pc"
       ],
-      "limits": {"storeys": null, "devices": 2, "share_links": 1, "cloud_cu_month": 0, "ai_credits_month": 0},
-      "api": {"monthly_requests": 100000, "max_api_keys": 20}
+      "limits": {
+        "storeys": null,
+        "devices": 2,
+        "share_links": 1,
+        "cloud_cu_month": 0,
+        "ai_credits_month": 0
+      },
+      "api": {
+        "monthly_requests": 100000,
+        "max_api_keys": 20
+      },
+      "prices": []
     },
     {
       "id": "studio",
       "name": "Studio",
       "rank": 2,
-      "purchasable": false,
-      "price_usd_cents": null,
+      "purchasable": true,
+      "per_seat": false,
+      "min_seats": 1,
       "features": [
-        "ai.byok", "ai.metered", "analysis.reports", "assets.library", "cloud.panoramas", "cloud.sync",
-        "collab.live", "export.clean", "export.dwg", "export.dxf", "export.ifc", "export.pdf",
-        "lighting.full", "market.cost", "mep", "render.panorama", "share.links", "vr.pc"
+        "ai.byok",
+        "ai.metered",
+        "analysis.reports",
+        "assets.library",
+        "cloud.panoramas",
+        "cloud.sync",
+        "collab.live",
+        "export.clean",
+        "export.dwg",
+        "export.dxf",
+        "export.ifc",
+        "export.pdf",
+        "lighting.full",
+        "market.cost",
+        "mep",
+        "render.panorama",
+        "share.links",
+        "vr.pc"
       ],
-      "limits": {"storeys": null, "devices": 2, "share_links": 1, "cloud_cu_month": 0, "ai_credits_month": 0},
-      "api": {"monthly_requests": 100000, "max_api_keys": 20}
+      "limits": {
+        "storeys": null,
+        "devices": 2,
+        "share_links": 1,
+        "cloud_cu_month": 0,
+        "ai_credits_month": 0
+      },
+      "api": {
+        "monthly_requests": 100000,
+        "max_api_keys": 20
+      },
+      "prices": []
     },
     {
       "id": "team",
       "name": "Team",
       "rank": 3,
-      "purchasable": false,
-      "price_usd_cents": null,
+      "purchasable": true,
+      "per_seat": true,
+      "min_seats": 1,
       "features": [
-        "ai.byok", "ai.metered", "analysis.reports", "assets.library", "cloud.panoramas", "cloud.sync",
-        "collab.live", "export.clean", "export.dwg", "export.dxf", "export.ifc", "export.pdf",
-        "lighting.full", "market.cost", "mep", "render.panorama", "share.links", "vr.pc"
+        "ai.byok",
+        "ai.metered",
+        "analysis.reports",
+        "assets.library",
+        "cloud.panoramas",
+        "cloud.sync",
+        "collab.live",
+        "export.clean",
+        "export.dwg",
+        "export.dxf",
+        "export.ifc",
+        "export.pdf",
+        "lighting.full",
+        "market.cost",
+        "mep",
+        "render.panorama",
+        "share.links",
+        "vr.pc"
       ],
-      "limits": {"storeys": null, "devices": 2, "share_links": 1, "cloud_cu_month": 0, "ai_credits_month": 0},
-      "api": {"monthly_requests": 100000, "max_api_keys": 20}
+      "limits": {
+        "storeys": null,
+        "devices": 2,
+        "share_links": 1,
+        "cloud_cu_month": 0,
+        "ai_credits_month": 0
+      },
+      "api": {
+        "monthly_requests": 100000,
+        "max_api_keys": 20
+      },
+      "prices": []
     },
     {
       "id": "enterprise",
       "name": "Enterprise",
       "rank": 4,
       "purchasable": false,
-      "price_usd_cents": null,
+      "per_seat": false,
+      "min_seats": 1,
       "features": [
-        "ai.byok", "ai.metered", "analysis.reports", "assets.library", "cloud.panoramas", "cloud.sync",
-        "collab.live", "export.clean", "export.dwg", "export.dxf", "export.ifc", "export.pdf",
-        "lighting.full", "market.cost", "mep", "render.panorama", "share.links", "vr.pc"
+        "ai.byok",
+        "ai.metered",
+        "analysis.reports",
+        "assets.library",
+        "cloud.panoramas",
+        "cloud.sync",
+        "collab.live",
+        "export.clean",
+        "export.dwg",
+        "export.dxf",
+        "export.ifc",
+        "export.pdf",
+        "lighting.full",
+        "market.cost",
+        "mep",
+        "render.panorama",
+        "share.links",
+        "vr.pc"
       ],
-      "limits": {"storeys": null, "devices": 2, "share_links": 1, "cloud_cu_month": 0, "ai_credits_month": 0},
-      "api": {"monthly_requests": 5000000, "max_api_keys": 200}
+      "limits": {
+        "storeys": null,
+        "devices": 2,
+        "share_links": 1,
+        "cloud_cu_month": 0,
+        "ai_credits_month": 0
+      },
+      "api": {
+        "monthly_requests": 5000000,
+        "max_api_keys": 200
+      },
+      "prices": []
     }
-  ]
+  ],
+  "founding": null
 }

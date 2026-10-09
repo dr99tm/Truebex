@@ -32,7 +32,7 @@ def test_catalogue_matches_contract_placeholder():
         assert list(tier.features) == sorted(set(tier.features))
 
     raw = json.loads(CATALOGUE_PATH.read_text(encoding="utf-8"))
-    assert "GD7" in raw["source"]  # the TODO until GD7's matrix is copied in
+    assert raw["schema"] == "truebex-catalogue/1" and "6.3" in raw["source"]  # placeholder until GD7
     for t in raw["tiers"]:
         assert set(t) >= {"id", "name", "rank", "purchasable", "features", "limits", "api"}
         assert set(t["api"]) == {"monthly_requests", "max_api_keys"}

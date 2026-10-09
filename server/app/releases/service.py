@@ -22,7 +22,7 @@ from ..config import get_settings
 from ..contract_http import ContractError
 from ..licence import clock, signing
 from ..licence.jcs import canonicalize
-from ..models import Release, ReleaseDownload
+from ..models import DownloadEvent, Release
 from ..storage import Store
 from . import semver
 
@@ -250,7 +250,8 @@ def download_url(db: Session, store: Store, row: Release) -> dict:
     inst = manifest["installer"]
     url = store.signed_get_url(row.storage_key, expires_in=DOWNLOAD_TTL_S, filename=inst["file"])
     now = clock.now()
-    db.add(ReleaseDownload(version=row.version, platform=row.platform, at=now))
+    # Counted for the admin Growth panel (PF13's download_events): no personal data.
+    db.add(DownloadEvent(version=row.version[:32], platform=row.platform, channel=row.channel, at=now))
     db.commit()
     return {
         "url": url,

@@ -50,9 +50,9 @@ _ADDED_COLUMNS: dict[str, list[tuple[str, str]]] = {
         ("google_sub", "VARCHAR(64)"),
         ("name", "VARCHAR(200)"),
         ("avatar_url", "VARCHAR(1024)"),
+        ("is_admin", "BOOLEAN"),
         # PF1 (licence API)
         ("author_id", "VARCHAR(32)"),
-        ("is_admin", "BOOLEAN"),
         ("trial_used_at", "DATETIME"),
     ],
     "subscriptions": [

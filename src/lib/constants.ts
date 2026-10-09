@@ -236,8 +236,8 @@ export const AUDIENCES = [
 export const PRICING_PLANS = [
   {
     id: "free",
-    name: "Starter",
-    price: "Free",
+    name: "Free",
+    price: "$0",
     period: "",
     description: "Explore Truebex and build against the developer API.",
     features: [
@@ -253,12 +253,12 @@ export const PRICING_PLANS = [
   },
   {
     id: "pro",
-    name: "Professional",
+    name: "Pro",
     price: "$99",
     period: "/month",
     description: "For professionals who design and present every day.",
     features: [
-      "Everything in Starter",
+      "Everything in Free",
       "Full lighting suite: ray tracing and path tracing",
       "Asset library that updates everywhere",
       "Developer API: 100,000 requests / month",
@@ -276,7 +276,7 @@ export const PRICING_PLANS = [
     period: "",
     description: "For teams and organisations designing at scale.",
     features: [
-      "Everything in Professional",
+      "Everything in Pro",
       "Team onboarding",
       "Custom asset libraries",
       "High-volume API limits",
@@ -338,6 +338,55 @@ export const FAQS = [
   },
   {
     q: "How can I pay?",
-    a: "Professional plans are billed monthly by card. Payments are rolling out; the pricing section shows the plans.",
+    a: "Pro plans are billed monthly by card. Payments are rolling out; the pricing section shows the plans.",
   },
 ] as const;
+
+// The Download page (/download/) and the dashboard's Download panel. The
+// version, size and date come from src/content/releases.json (saved by
+// `npm run sync:releases` from the release feed), never typed here.
+export const DOWNLOAD = {
+  metaTitle: "Download Truebex for Windows",
+  description:
+    "Download Truebex for Windows: the building design platform with measured daylight. The installer needs no account; a free account holds your licence.",
+  eyebrow: "Download",
+  h1: "Download Truebex for Windows",
+  intro:
+    "One installer for Windows. Downloading needs no account, and every download is a signed release whose size and checksum are listed here.",
+  cta: "Download for Windows",
+  ctaBeta: "Download the beta",
+  preparing: "Preparing your download…",
+  noRelease: "The installer is published here with each release. Check back soon.",
+  offline: "We can't reach the download server right now. Please try again in a moment.",
+  version: "Version",
+  released: "Released",
+  size: "Size",
+  checksum: "SHA-256",
+  beta: "Beta",
+  requirementsTitle: "What you need",
+  requirements: [
+    "A Windows 10 or Windows 11 PC (64-bit).",
+    "A modern graphics card. A card with hardware ray tracing unlocks the highest lighting quality, including ray tracing and path tracing.",
+    "About 450 MB of disk space for the installed app.",
+  ],
+  accountTitle: "Your licence lives in your account",
+  accountText:
+    "A free Truebex account holds your plan and the computers you use it on, so you can see and remove them from your dashboard.",
+  accountCta: "Create a free account",
+  changelogCta: "See what's new",
+} as const;
+
+// The Changelog page (/changelog/): one section per release from the feed,
+// with the release's version as its anchor (#1.1.0, the manifest's notes_url).
+export const CHANGELOG_PAGE = {
+  metaTitle: "Changelog",
+  description:
+    "Every Truebex release and what changed in it, newest first: notes for each version of the building design platform for Windows, with a link to download.",
+  eyebrow: "Changelog",
+  h1: "What's new in Truebex",
+  intro: "Every release of Truebex for Windows, newest first.",
+  empty: "Release notes appear here with each release.",
+  release: "Truebex",
+  beta: "Beta",
+  downloadCta: "Download the latest release",
+} as const;
