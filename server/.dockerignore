@@ -1,0 +1,11 @@
+.venv
+.env
+.env.*
+*.db
+*.db-*
+storage
+tests
+__pycache__
+*.pyc
+.pytest_cache
+run.bat

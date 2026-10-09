@@ -1,0 +1,74 @@
+#cloud-config
+# The Truebex API host (PF14), Ubuntu 24.04 LTS. Rendered by infra/tofu
+# (templatefile) with the owner's SSH key and Cloudflare's ranges; everything
+# after first boot (Compose files, secrets, timers) comes from infra/deploy.ps1.
+
+users:
+  - name: truebex
+    groups: [sudo]
+    shell: /bin/bash
+    sudo: "ALL=(ALL) NOPASSWD:ALL"
+    lock_passwd: true
+    ssh_authorized_keys:
+      - ${ssh_public_key}
+
+disable_root: true
+ssh_pwauth: false
+
+package_update: true
+package_upgrade: true
+packages:
+  - ca-certificates
+  - curl
+  - jq
+  - ufw
+  - unattended-upgrades
+  - docker.io
+  - docker-compose-v2
+
+write_files:
+  # SSH by key only.
+  - path: /etc/ssh/sshd_config.d/10-truebex.conf
+    content: |
+      PasswordAuthentication no
+      KbdInteractiveAuthentication no
+      PermitRootLogin no
+      AllowUsers truebex
+  # Unattended security upgrades; a reboot they need happens at 04:00 UTC.
+  - path: /etc/apt/apt.conf.d/52truebex-upgrades
+    content: |
+      Unattended-Upgrade::Automatic-Reboot "true";
+      Unattended-Upgrade::Automatic-Reboot-Time "04:00";
+      Unattended-Upgrade::Remove-Unused-Dependencies "true";
+  - path: /etc/apt/apt.conf.d/20auto-upgrades
+    content: |
+      APT::Periodic::Update-Package-Lists "1";
+      APT::Periodic::Unattended-Upgrade "1";
+  # Container and system logs: 14 days (telemetry.md §6.5, request logs).
+  - path: /etc/systemd/journald.conf.d/10-truebex.conf
+    content: |
+      [Journal]
+      MaxRetentionSec=14day
+      SystemMaxUse=2G
+  - path: /etc/docker/daemon.json
+    content: |
+      {"log-driver": "journald", "live-restore": true}
+
+runcmd:
+  - [systemctl, restart, ssh]
+  - [systemctl, restart, systemd-journald]
+  - [usermod, -aG, docker, truebex]
+  - [systemctl, enable, --now, docker]
+  - [mkdir, -p, /opt/truebex/bin, /opt/truebex/secrets, /var/log/truebex/caddy, /var/lib/truebex]
+  - [chown, -R, "truebex:truebex", /opt/truebex]
+  - [chmod, "0700", /opt/truebex/secrets]
+  # Host firewall, behind the provider firewall (infra/tofu/modules/vm): SSH,
+  # and 443 from Cloudflare only. Docker-published ports bypass ufw, so the
+  # provider firewall is the control that matters for 443.
+  - [ufw, default, deny, incoming]
+  - [ufw, default, allow, outgoing]
+  - [ufw, allow, 22/tcp]
+%{ for cidr in cloudflare_ranges ~}
+  - [ufw, allow, proto, tcp, from, "${cidr}", to, any, port, "443"]
+%{ endfor ~}
+  - [ufw, --force, enable]

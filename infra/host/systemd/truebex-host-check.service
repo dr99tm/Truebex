@@ -1,0 +1,7 @@
+[Unit]
+Description=Truebex: host checks (disk, memory, load, containers, 5xx rate, certificate)
+After=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/opt/truebex/bin/host-check.sh

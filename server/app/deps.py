@@ -11,9 +11,14 @@ from sqlalchemy.orm import Session
 from . import usage
 from .billing.service import effective_plan
 from .database import get_db
-from .models import ApiKey, User
+from .models import ApiKey, Device, User
 from .plans import get_plan
-from .security import API_KEY_PREFIX, decode_access_token, hash_api_key
+from .security import (
+    API_KEY_PREFIX,
+    DEVICE_TOKEN_PREFIX,
+    decode_access_token,
+    hash_api_key,
+)
 
 _bearer = HTTPBearer(auto_error=False)
 
@@ -44,6 +49,26 @@ def get_current_user(
     if user is None:
         raise invalid
     return user
+
+
+def require_admin(current: User = Depends(get_current_user)) -> User:
+    """Admins only (`users.is_admin`, set by hand): 401 signed out, 403 others."""
+    if not current.is_admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="This page is for admins only."
+        )
+    return current
+
+
+def device_for_token(db: Session, raw: str | None) -> Device | None:
+    """The active device behind a `tbx_dev_…` token, or None (unknown,
+    removed, signed out, or not a device token at all)."""
+    if not raw or not raw.startswith(DEVICE_TOKEN_PREFIX):
+        return None
+    device = db.scalar(select(Device).where(Device.token_hash == hash_api_key(raw)))
+    if device is None or device.deactivated_at is not None:
+        return None
+    return device
 
 
 @dataclass

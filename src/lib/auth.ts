@@ -15,6 +15,8 @@ export interface User {
   avatar_url: string | null;
   has_password: boolean;
   google_linked: boolean;
+  /** Truebex staff: opens the admin pages (set by hand on the server). */
+  is_admin?: boolean;
 }
 
 export interface AuthResult {

@@ -1,0 +1,11 @@
+# Plain HTTP for the local trial (compose.local.yaml); production uses Caddyfile.
+{
+	admin 127.0.0.1:2019
+	auto_https off
+}
+
+:80 {
+	reverse_proxy api:8000 {
+		flush_interval -1
+	}
+}

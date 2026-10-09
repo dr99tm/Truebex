@@ -1,0 +1,21 @@
+{
+  "schema": "truebex-telemetry/1",
+  "install_id": "4a1ffea151643db7fe803e815865e053",
+  "session_id": "751889acd132ac226168e0ac5328d5f8",
+  "batch_id": "0e5ee8269c2727f6f399714748c8b110",
+  "app": {"version": "1.1.0", "channel": "stable", "build": "shipping"},
+  "os": "windows 10.0.26200",
+  "locale": "en-GB",
+  "plan": "pro",
+  "hw": {"gpu": "NVIDIA GeForce RTX 4070", "vram_gb": 12, "ram_gb": 32, "cpu_threads": 16, "displays": 2},
+  "events": [
+    {"seq": 1, "at": "2026-10-09T12:00:00Z", "name": "app.start", "props": {"cold_start_ms": 4600, "first_lit_hitch_ms": 180}},
+    {"seq": 2, "at": "2026-10-09T12:00:41Z", "name": "tool.open", "props": {"tool": "SectionCut"}},
+    {"seq": 3, "at": "2026-10-09T12:01:02Z", "name": "command.run", "props": {"command": "Wall", "ms": 12}},
+    {"seq": 4, "at": "2026-10-09T12:01:30Z", "name": "command.run", "props": {"command": "Wall", "ms": 9}},
+    {"seq": 5, "at": "2026-10-09T12:03:10Z", "name": "export.run", "props": {"kind": "pdf", "ms": 1840, "pages": 6}},
+    {"seq": 6, "at": "2026-10-09T12:04:00Z", "name": "perf.frame", "props": {"p50_ms": 7, "p95_ms": 16, "mode": "Lit"}},
+    {"seq": 7, "at": "2026-10-09T12:05:00Z", "name": "feature.gated", "props": {"feature": "export.dwg", "plan": "pro"}},
+    {"seq": 8, "at": "2026-10-09T12:20:00Z", "name": "app.exit", "props": {"session_s": 1200, "clean": true}}
+  ]
+}

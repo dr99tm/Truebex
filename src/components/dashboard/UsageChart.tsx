@@ -34,7 +34,17 @@ function label(day: string): string {
   });
 }
 
-export function UsageChart({ data }: { data: Point[] }) {
+export function UsageChart({
+  data,
+  unit = "requests",
+  label: chartLabel = "Daily API requests this month",
+}: {
+  data: Point[];
+  /** What a bar counts, plural ("requests", "installations"). */
+  unit?: string;
+  /** What the whole chart shows, for screen readers. */
+  label?: string;
+}) {
   const [active, setActive] = useState<number | null>(null);
   const [showTable, setShowTable] = useState(false);
   const wrap = useRef<HTMLDivElement>(null);
@@ -54,7 +64,7 @@ export function UsageChart({ data }: { data: Point[] }) {
           preserveAspectRatio="none"
           className="h-[180px] w-full overflow-visible"
           role="img"
-          aria-label={`Daily API requests this month: ${nf.format(total)} in total over ${data.length} days.`}
+          aria-label={`${chartLabel}: ${nf.format(total)} in total over ${data.length} days.`}
         >
           {/* recessive grid */}
           {ticks.map((t) => {
@@ -98,7 +108,7 @@ export function UsageChart({ data }: { data: Point[] }) {
                   fill="transparent"
                   tabIndex={0}
                   role="button"
-                  aria-label={`${label(d.day)}: ${nf.format(d.count)} requests`}
+                  aria-label={`${label(d.day)}: ${nf.format(d.count)} ${unit}`}
                   onPointerEnter={() => setActive(i)}
                   onPointerLeave={() => setActive(null)}
                   onFocus={() => setActive(i)}
@@ -134,7 +144,7 @@ export function UsageChart({ data }: { data: Point[] }) {
             role="status"
           >
             <p className="font-semibold tabular-nums text-text-primary">
-              {nf.format(data[active].count)} requests
+              {nf.format(data[active].count)} {unit}
             </p>
             <p className="text-text-muted">{label(data[active].day)}</p>
           </div>
@@ -155,7 +165,7 @@ export function UsageChart({ data }: { data: Point[] }) {
             <thead className="sticky top-0 bg-surface-elevated text-left text-text-muted">
               <tr>
                 <th className="px-3 py-2 font-medium">Day</th>
-                <th className="px-3 py-2 text-right font-medium">Requests</th>
+                <th className="px-3 py-2 text-right font-medium capitalize">{unit}</th>
               </tr>
             </thead>
             <tbody>

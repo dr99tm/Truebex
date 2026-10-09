@@ -16,6 +16,8 @@ _pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # Every key starts with this, so leaked keys are easy to spot in code scans.
 API_KEY_PREFIX = "tbx_live_"
+# Device tokens held by the desktop app (licence-api.md §4), hashed like keys.
+DEVICE_TOKEN_PREFIX = "tbx_dev_"
 
 
 def hash_password(plain: str) -> str:

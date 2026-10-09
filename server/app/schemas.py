@@ -32,6 +32,7 @@ class UserOut(BaseModel):
     avatar_url: str | None = None
     has_password: bool = True
     google_linked: bool = False
+    is_admin: bool = False
 
 
 class Token(BaseModel):

@@ -1,0 +1,9 @@
+[Unit]
+Description=Truebex: restore the latest backup into a scratch container and compare row counts
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/opt/truebex/bin/restore-test.sh
+TimeoutStartSec=45min

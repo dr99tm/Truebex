@@ -46,6 +46,51 @@ class Settings(BaseSettings):
     # Price of one Pro month in IQD (Wayl's minimum is 1000).
     wayl_price_pro_iqd: int = 130_000
 
+    # --- Operations (PF14) ----------------------------------------------------
+    # Blob storage: "local" (files under storage_dir, served by /files with
+    # HMAC-signed URLs) or "s3" (any S3-compatible bucket, presigned URLs).
+    storage_backend: str = "local"
+    storage_dir: str = "./storage"
+    # Signs /files URLs of the local adapter. Empty = derived from secret_key.
+    storage_signing_key: str = ""
+    s3_endpoint: str = ""
+    s3_region: str = "auto"
+    s3_bucket: str = ""
+    s3_access_key_id: str = ""
+    s3_secret_access_key: str = ""
+    # CDN hostname in front of the public, cacheable prefixes (tiles/, shares/,
+    # releases/). Empty = presigned URLs for everything.
+    cdn_base_url: str = ""
+
+    # Mail: "console" (kept in app.mail.OUTBOX and logged) or "smtp".
+    mail_backend: str = "console"
+    mail_from: str = "Truebex <hello@truebex.com>"
+    support_email: str = "hello@truebex.com"
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_user: str = ""
+    smtp_password: str = ""
+
+    # Background jobs: "inline" (asyncio loop inside the API process),
+    # "worker" (the separate `python -m app.worker` process) or "off".
+    background_tasks: str = "inline"
+    # "memory" (one API process) or "db" (shared buckets in the database).
+    ratelimit_backend: str = "memory"
+
+    # Alerts from the server's own checks (backups); uptime alerts come from
+    # the hosted monitor. alert_push_url: an ntfy-style topic URL (phone push).
+    alert_email: str = ""
+    alert_push_url: str = ""
+    # True on the production host: a missing backup marker is then an alert.
+    backup_expected: bool = False
+
+    # Telemetry ingestion (contracts/telemetry.md). The kill switch stops
+    # usage events (5.1 `enabled: false`); ingestion off answers 503.
+    telemetry_events_enabled: bool = True
+    telemetry_ingestion_enabled: bool = True
+    # rust-minidump's stackwalker; absent = symbolicate the sent callstack only.
+    minidump_stackwalk: str = "minidump-stackwalk"
+
     @property
     def cors_origin_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]

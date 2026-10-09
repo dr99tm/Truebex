@@ -341,3 +341,75 @@ export const FAQS = [
     a: "Professional plans are billed monthly by card. Payments are rolling out; the pricing section shows the plans.",
   },
 ] as const;
+
+// --- PF14: desktop app telemetry on the privacy page, the processors, and the
+// admin telemetry dashboard. Periods are contracts/telemetry.md §6.5.
+
+export const APP_TELEMETRY_PRIVACY = {
+  heading: "Desktop app: usage events, crash reports and feedback",
+  intro:
+    "The Truebex desktop app can send three kinds of operational data. Nothing is sent unless you agree, on every plan, and none of it carries your projects: no file names, folder paths, project titles, room, storey, sheet or layer names, typed text, coordinates or geometry.",
+  kinds: [
+    {
+      name: "Usage events",
+      consent: "Off until you say yes.",
+      holds:
+        "Which commands and tools run and how long they take, which kinds of export you make, the app version, Windows version, language and plan, and hardware model names (graphics card, memory, processor threads, number of displays).",
+    },
+    {
+      name: "Crash reports",
+      consent: "Off until you say yes.",
+      holds:
+        "A minidump — the call stacks, the list of loaded modules and the error, never the app's memory, so never your open project — and the end of the app's log, with your user folder, project names and email addresses replaced before it leaves your computer. You can see both before they are sent.",
+    },
+    {
+      name: "Feedback",
+      consent: "Sent only when you send it.",
+      holds:
+        "Your message, a screenshot of the Truebex window that you preview first (never your desktop) and, if you tick it, the end of the log. Your account's email address is attached only when you ask for a reply.",
+    },
+  ],
+  identity:
+    "Usage events and crash reports carry a random installation id, not your account. We do not store your IP address with any of them; it is used only, in memory, to limit how often requests can arrive.",
+  retentionHeading: "How long we keep the app's data",
+  retention: [
+    { data: "Usage events", kept: "13 months", then: "only daily totals per event and app version remain" },
+    { data: "Crash files (minidump and log)", kept: "180 days", then: "the crash signature and counts remain" },
+    { data: "Feedback", kept: "2 years, or until you ask us to delete it", then: "deleted with its screenshot and log" },
+    { data: "Server request logs", kept: "14 days", then: "deleted" },
+    { data: "Database backups", kept: "30 days", then: "rotated, so deleted data leaves the backups within 30 days" },
+  ],
+  deletion:
+    "Delete my data, in the app's privacy settings, asks us to delete everything your installation has sent. We complete it within 30 days. Resetting the installation there starts a new installation id.",
+} as const;
+
+// Who processes data for Truebex (privacy page). Named providers are the ones
+// in use; the categories are named once the guides choose them (GD3, GD5).
+export const PROCESSORS = [
+  { name: "Google", role: "Sign in with Google, and the spreadsheet that stores demo requests." },
+  { name: "Stripe", role: "card payments, when you pay by card." },
+  { name: "Wayl", role: "QiCard, FIB and ZainCash payments in Iraq, when you pay with Wayl." },
+  { name: "Cloudflare", role: "network security and delivery for truebex.com and the API." },
+  { name: "GitHub", role: "hosting of the public website." },
+  { name: "Server hosting", role: "the data centre that runs the Truebex API and its database." },
+  {
+    name: "Object storage",
+    role: "files the API keeps, such as crash reports and feedback screenshots, and encrypted database backups held with a second provider.",
+  },
+  { name: "Email delivery", role: "replies to your feedback and account emails." },
+  { name: "Uptime monitoring", role: "checks from outside that the API is running; it sees only our status pages, no personal data." },
+] as const;
+
+export const ADMIN_TELEMETRY = {
+  title: "Telemetry",
+  description: "Opt-in usage, crashes and feedback from the desktop app.",
+  adminsOnly: "This page is for Truebex admins.",
+  tabs: { overview: "Overview", crashes: "Crashes", feedback: "Feedback" },
+  windows: [7, 30, 90],
+  exportCsv: "Export CSV",
+  installsChart: "Active installations per day",
+  installsUnit: "installations",
+  emptyOverview: "No usage events in this period yet.",
+  emptyCrashes: "No crashes reported. Good.",
+  emptyFeedback: "No feedback yet.",
+} as const;

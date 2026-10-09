@@ -1,0 +1,6 @@
+[Unit]
+Description=Truebex: monthly reboot (kernel and library updates take effect)
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/systemctl reboot

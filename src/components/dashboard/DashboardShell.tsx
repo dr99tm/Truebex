@@ -3,7 +3,7 @@
 import { createContext, useContext, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { CreditCard, Gauge, KeyRound, LayoutGrid, BookOpen } from "lucide-react";
+import { Activity, CreditCard, Gauge, KeyRound, LayoutGrid, BookOpen } from "lucide-react";
 import { useCurrentUser } from "@/lib/useAuth";
 import { getToken } from "@/lib/auth";
 import type { User } from "@/lib/auth";
@@ -14,6 +14,11 @@ const NAV = [
   { href: "/dashboard/keys/", label: "API keys", icon: KeyRound },
   { href: "/dashboard/usage/", label: "Usage", icon: Gauge },
   { href: "/dashboard/billing/", label: "Billing", icon: CreditCard },
+] as const;
+
+// Shown only to admins (users.is_admin).
+const ADMIN_NAV = [
+  { href: "/dashboard/admin/telemetry/", label: "Telemetry", icon: Activity },
 ] as const;
 
 const UserContext = createContext<User | null>(null);
@@ -62,6 +67,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
     );
   }
 
+  const nav = user.is_admin ? [...NAV, ...ADMIN_NAV] : NAV;
   const isActive = (href: string) =>
     href === "/dashboard/"
       ? pathname === "/dashboard" || pathname === "/dashboard/"
@@ -72,7 +78,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
       <div className="mx-auto flex min-h-screen max-w-7xl gap-8 px-4 pb-24 pt-24 md:px-8">
         <aside className="hidden w-56 shrink-0 md:block">
           <nav aria-label="Dashboard" className="sticky top-24 space-y-1">
-            {NAV.map(({ href, label, icon: Icon }) => (
+            {nav.map(({ href, label, icon: Icon }) => (
               <Link
                 key={href}
                 href={href}
@@ -105,7 +111,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
             aria-label="Dashboard"
             className="-mx-4 mb-6 flex gap-1 overflow-x-auto border-b border-border px-4 md:hidden"
           >
-            {NAV.map(({ href, label }) => (
+            {nav.map(({ href, label }) => (
               <Link
                 key={href}
                 href={href}

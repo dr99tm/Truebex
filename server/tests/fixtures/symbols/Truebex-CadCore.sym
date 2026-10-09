@@ -1,0 +1,14 @@
+MODULE windows x86_64 4C1D9A0E5B7F4A3C9E2D1F0A8B7C6D5E1 Truebex-CadCore.pdb
+INFO CODE_ID 6720A1B21F0000 Truebex-CadCore.dll
+FILE 0 CadWall.cpp
+FILE 1 CadWallSystem.cpp
+FILE 2 CadDocument.cpp
+FUNC c4400 30 0 FCadDocument::ApplyEdit(FCadEdit const&)
+c4400 18 211 2
+c4418 18 214 2
+FUNC 1a0f00 40 0 FCadWallSystem::Tick(float)
+1a0f00 40 88 1
+FUNC 1a2b00 80 0 FCadWall::RebuildMesh(FCadWallBuildContext&)
+1a2b00 3c 402 0
+1a2b3c 44 405 0
+PUBLIC 1000 0 DllMain
