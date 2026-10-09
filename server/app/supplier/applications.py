@@ -15,13 +15,13 @@ from ..config import get_settings
 from ..contract_http import ContractError
 from ..market import hooks
 from ..market.catalogue import add_member, create_supplier, set_supplier_regions
-from ..market.common import new_id, now, rfc3339
+from ..market.common import invalid, new_id, now, rfc3339
 from ..market.models import Supplier
 from ..market.taxonomy import active_regions
 from ..models import User
 from ..storage import get_store
 from . import notify
-from .common import portal_url
+from .common import memberships, portal_url
 from .models import SupplierApplication
 from .schemas import ApplicationIn
 
@@ -58,16 +58,12 @@ def apply(db: Session, user: User, body: ApplicationIn) -> SupplierApplication:
     """409 `already_applied` when this account already applied or owns a supplier."""
     if db.scalar(select(SupplierApplication.application_id).where(SupplierApplication.submitted_by == user.id)):
         raise ContractError("already_applied", 409, "This account has already applied. Open the supplier portal.")
-    from .common import memberships
-
     if any(role == "owner" for _s, role in memberships(db, user)):
         raise ContractError("already_applied", 409, "This account already owns a supplier. Open the supplier portal.")
     known = active_regions(db)
     regions = {}
     for code in body.regions:
         if code.upper() not in known:
-            from ..market.common import invalid
-
             raise invalid("regions", f"{code!r} is not a region Truebex serves ({', '.join(known)})", "body")
         regions[code.upper()] = known[code.upper()]
     supplier = create_supplier(
