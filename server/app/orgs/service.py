@@ -24,7 +24,8 @@ from ..contract_http import ContractError
 from ..licence import clock, devices
 from ..licence.ids import uuid7_hex
 from ..models import Subscription, User
-from ..plans import get_plan, plan_rank
+from ..plans import get_plan
+from ..plans import rank as plan_rank
 from . import audit
 from .models import OrgInvite, OrgMember, Organisation, SeatAssignment
 

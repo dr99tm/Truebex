@@ -13,6 +13,7 @@ from lxml import etree
 from sqlalchemy import select
 
 from app import tasks
+from app.config import get_settings
 from app.database import SessionLocal
 from app.routers import auth as auth_router
 from app.sso import domains, oidc
@@ -23,6 +24,8 @@ from .conftest import signup
 from .org_helpers import _clean_mail_and_caches, envelope, make_org, me  # noqa: F401
 
 DOMAIN = "northstudio.com"
+# This API's public URL (conftest sets API_URL so signed /files URLs reach the TestClient).
+API = get_settings().api_url.rstrip("/")
 ISSUER = "https://idp.test"
 SAML_SSO = "https://idp.test/saml/sso"
 
@@ -74,7 +77,7 @@ def _authorize(location: str) -> dict:
         res = idp_client.get(location, follow_redirects=False)
     assert res.status_code == 302, res.text
     back = urlsplit(res.headers["location"])
-    assert f"{back.scheme}://{back.netloc}{back.path}" == "https://api.truebex.com/auth/sso/oidc/callback"
+    assert f"{back.scheme}://{back.netloc}{back.path}" == f"{API}/auth/sso/oidc/callback"
     return {k: v[0] for k, v in parse_qs(back.query).items()}
 
 
@@ -143,7 +146,7 @@ def test_sso_settings_owner_only_secret_write_only(client, idp):
     h, org = _verified_org(client, idp)
     out = _oidc(client, h, org)
     assert out["kind"] == "oidc" and out["has_client_secret"] is True and "client_secret" not in out
-    assert out["sp"]["oidc_redirect_uri"] == "https://api.truebex.com/auth/sso/oidc/callback"
+    assert out["sp"]["oidc_redirect_uri"] == f"{API}/auth/sso/oidc/callback"
     assert mock_oidc.CLIENT_SECRET not in client.get(f"/orgs/{org['id']}/sso", headers=h).text
     with SessionLocal() as db:
         sealed = db.get(SsoConnection, org["id"]).client_secret_enc
@@ -190,7 +193,7 @@ def test_sso_oidc_login_jit(client, idp):
     url = client.get("/auth/sso/start", params={"email": f"C@{DOMAIN}", "format": "json"}).json()["url"]
     q = parse_qs(urlsplit(url).query)
     assert url.startswith(f"{ISSUER}/authorize?") and q["code_challenge_method"] == ["S256"]
-    assert q["login_hint"] == [f"c@{DOMAIN}"] and q["redirect_uri"] == ["https://api.truebex.com/auth/sso/oidc/callback"]
+    assert q["login_hint"] == [f"c@{DOMAIN}"] and q["redirect_uri"] == [f"{API}/auth/sso/oidc/callback"]
     assert len(q["code_challenge"][0]) == 43 and q["scope"] == ["openid email profile"]
 
     res = _oidc_login(client, f"c@{DOMAIN}")
@@ -279,7 +282,7 @@ def test_sso_saml_login_signed_assertion(client, idp):
     out = _saml(client, h, org)
     assert out["kind"] == "saml" and out["idp_entity_id"] == mock_saml_idp.ENTITY_ID and out["idp_sso_url"] == SAML_SSO
     sp = out["sp"]
-    assert sp["saml_acs_url"] == "https://api.truebex.com/auth/sso/saml/studio-north/acs"
+    assert sp["saml_acs_url"] == f"{API}/auth/sso/saml/studio-north/acs"
 
     # SP metadata parses and names the entity id and the ACS.
     res = client.get("/auth/sso/saml/studio-north/metadata")

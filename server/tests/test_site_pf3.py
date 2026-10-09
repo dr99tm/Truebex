@@ -57,7 +57,9 @@ def test_mail_templates_render_and_escape():
         "org_removed": {"org_name": "Studio <North>", "actor": "Ann", "link": "https://truebex.com/"},
     }
     for name, values in data.items():
-        subject, text, html = mail.render(name, values)
+        msg = mail.render(name, values)  # PF14's Message
+        subject, text, html = msg.subject, msg.text, msg.html
+        assert msg.template == name
         assert "$" not in subject + text + html, name
         assert "Studio <North>" in text and "Studio &lt;North&gt;" in html, name
         assert "\n" not in subject

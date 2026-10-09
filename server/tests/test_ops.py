@@ -250,7 +250,7 @@ def _fresh_python(code: str, tmp_path) -> str:
 
 
 def test_worker_process_registers_every_feature_job(tmp_path):
-    # The worker imports only app.worker: PF1's and PF2's jobs must still run there.
+    # The worker imports only app.worker: PF1's, PF2's and PF3's jobs must still run there.
     names = set(json.loads(_fresh_python("import json; from app import tasks; print(json.dumps(tasks.registered()))", tmp_path)))
     for job in (
         "telemetry.rollup",
@@ -259,6 +259,10 @@ def test_worker_process_registers_every_feature_job(tmp_path):
         "licence.devices.lapse",
         "billing.founding.expire",
         "billing.reconcile",
+        "licence.leases.expire",
+        "orgs.invites.expire",
+        "audit.purge",
+        "sso.requests.purge",
     ):
         assert job in names, job
 
@@ -459,12 +463,17 @@ def _seed_sqlite(url: str) -> None:
 
 
 def test_sqlite_to_postgres_lists_every_feature_table(tmp_path):
-    # A fresh process (the cutover runs the script on its own): PF1's tables too.
+    # A fresh process (the cutover runs the script on its own): PF1's and PF3's tables too.
     code = "import json; from scripts import sqlite_to_postgres as s; print(json.dumps([t.name for t in s._models()]))"
     tables = json.loads(_fresh_python(code, tmp_path))
-    for table in ("users", "subscriptions", "provider_prices", "devices", "releases", "telemetry_events", "crash_reports"):
+    for table in (
+        "users", "subscriptions", "provider_prices", "devices", "releases", "telemetry_events", "crash_reports",
+        "organisations", "org_members", "org_invites", "seat_assignments", "floating_leases", "org_domains",
+        "audit_events", "sso_connections", "sso_requests", "sso_assertions_seen",
+    ):
         assert table in tables, table
     assert tables.index("users") < tables.index("devices")  # parents first
+    assert tables.index("organisations") < tables.index("org_members")
 
 
 def test_sqlite_to_postgres_on_sqlite_target_and_precheck(tmp_path):

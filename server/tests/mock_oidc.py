@@ -24,7 +24,10 @@ from fastapi import FastAPI, Form, HTTPException, Request
 from fastapi.responses import RedirectResponse
 from jose import jwk, jwt
 
+from .fixtures.sso import make_test_keys
+
 FIXTURES = Path(__file__).parent / "fixtures" / "sso"
+make_test_keys.ensure()  # *.pem is git-ignored: a fresh checkout makes its own
 KEY_PEM = (FIXTURES / "oidc_test_key.pem").read_text(encoding="ascii")
 KID = "mock-1"
 CLIENT_ID = "truebex-local"

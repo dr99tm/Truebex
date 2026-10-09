@@ -1,4 +1,4 @@
-"""Give an organisation a tier and seats by hand (PF3), as `enterprise` is
+r"""Give an organisation a tier and seats by hand (PF3), as `enterprise` is
 set by hand today: for Enterprise contracts arranged off-line and for local
 tests before PF2's checkout sells seats.
 

@@ -2,22 +2,30 @@
 
 from datetime import datetime
 
-from sqlalchemy.orm import Session
-
+from ..database import SessionLocal
 from ..tasks import periodic
 from . import audit, seats, service
 
 
 @periodic("licence.leases.expire", 60)
-def expire_leases(db: Session, now: datetime) -> int:
-    return seats.expire_leases(db, now)
+def expire_leases(now: datetime) -> int:
+    with SessionLocal() as db:
+        n = seats.expire_leases(db, now)
+        db.commit()
+        return n
 
 
 @periodic("orgs.invites.expire", 24 * 3600)
-def expire_invites(db: Session, now: datetime) -> int:
-    return service.expire_invites(db, now)
+def expire_invites(now: datetime) -> int:
+    with SessionLocal() as db:
+        n = service.expire_invites(db, now)
+        db.commit()
+        return n
 
 
 @periodic("audit.purge", 24 * 3600)
-def purge_audit(db: Session, now: datetime) -> int:
-    return audit.purge(db, now)
+def purge_audit(now: datetime) -> int:
+    with SessionLocal() as db:
+        n = audit.purge(db, now)
+        db.commit()
+        return n

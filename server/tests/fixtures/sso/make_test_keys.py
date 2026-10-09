@@ -1,6 +1,9 @@
 r"""Writes the SSO test keys and certificates in this folder (TEST ONLY: they
 sign the local mock providers' tokens and assertions and are worthless
 anywhere else). Run from server/: .venv\Scripts\python.exe tests/fixtures/sso/make_test_keys.py
+
+The repo ignores `*.pem`, so a fresh checkout has none: the mock providers
+call `ensure()` on import, which writes the set when a file is missing.
 """
 
 from datetime import datetime, timedelta, timezone
@@ -12,6 +15,13 @@ from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.x509.oid import NameOID
 
 HERE = Path(__file__).parent
+FILES = (
+    "oidc_test_key.pem",
+    "saml_idp_key.pem",
+    "saml_idp_cert.pem",
+    "saml_other_key.pem",
+    "saml_other_cert.pem",
+)
 
 
 def _key() -> rsa.RSAPrivateKey:
@@ -47,6 +57,12 @@ def main() -> None:
         (HERE / f"{name}_key.pem").write_bytes(_pem(key))
         (HERE / f"{name}_cert.pem").write_bytes(_cert(key, cn))
     print("written to", HERE)
+
+
+def ensure() -> None:
+    """Write a fresh set unless every file is already here."""
+    if not all((HERE / name).is_file() for name in FILES):
+        main()
 
 
 if __name__ == "__main__":
