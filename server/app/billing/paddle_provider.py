@@ -419,10 +419,17 @@ class PaddleProvider(BillingProvider):
     def reconcile(self, db: Session, subs: list[Subscription], payments: list[Payment]) -> int:
         checked = 0
         for payment in payments:
-            self.verify_payment(db, payment)
-            checked += 1
+            try:
+                self.verify_payment(db, payment)
+                checked += 1
+            except ProviderError:
+                log.exception("reconcile: payment %s", payment.reference)
         for sub in subs:
-            if sub.provider_subscription_id:
+            if not sub.provider_subscription_id:
+                continue
+            try:
                 self._fetch_subscription(db, sub.provider_subscription_id)
                 checked += 1
+            except ProviderError:
+                log.exception("reconcile: subscription %s", sub.provider_subscription_id)
         return checked

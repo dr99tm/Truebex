@@ -299,8 +299,10 @@ function BillingInner() {
   const selectedUnit = tier ? unitPrice(tier, interval) : null;
 
   const current = sub.data;
-  const managedActive = !!current?.provider && MANAGED.has(current.provider) && current.status === "active";
-  const showChoose = !managedActive && (current?.tier ?? user.plan) !== "enterprise";
+  const managed = !!current?.provider && MANAGED.has(current.provider);
+  const managedActive = managed && current?.status === "active";
+  // A past-due or paused subscription is fixed under Manage, not bought again.
+  const showChoose = !managed && (current?.tier ?? user.plan) !== "enterprise";
 
   async function checkout() {
     if (!tier || !consent) return;

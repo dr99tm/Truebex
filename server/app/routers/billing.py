@@ -309,10 +309,12 @@ def checkout(
             detail="Online payment isn't available yet.",
         )
     existing = service.managed_subscription(db, current)
-    if existing is not None and service.is_live(existing):
+    if existing is not None and (
+        service.is_live(existing) or existing.status in ("past_due", "paused")
+    ):
         raise HTTPException(
             status_code=409,
-            detail="You already have a subscription. Change its plan or seats instead.",
+            detail="You already have a subscription. Change it, or update its card under Manage.",
         )
 
     discount = None

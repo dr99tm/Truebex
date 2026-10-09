@@ -17,6 +17,7 @@ from sqlalchemy.orm import Session
 
 from ..config import Settings
 from ..models import Payment, ProviderPrice, Subscription, User
+from ..plans import FOUNDING
 from . import pricing
 
 
@@ -106,9 +107,9 @@ class BillingProvider(ABC):
         the subscription was bought at it). Raises PriceUnavailable."""
         tier = tier or sub.plan
         interval = interval or sub.interval or "month"
-        price = pricing.resolve(
-            db, self.name, tier, interval, sub.currency or "USD", bool(sub.founding)
-        )
+        # The founding price follows the subscription to tiers the offer covers.
+        founding = bool(sub.founding) and tier in FOUNDING.tiers
+        price = pricing.resolve(db, self.name, tier, interval, sub.currency or "USD", founding)
         plan = pricing.plan(tier)
         seats = seats if seats is not None else (sub.seats or 1)
         seats = max(seats, plan.min_seats) if plan.per_seat else 1

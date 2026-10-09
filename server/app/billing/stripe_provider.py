@@ -353,11 +353,18 @@ class StripeProvider(BillingProvider):
     def reconcile(self, db: Session, subs: list[Subscription], payments: list[Payment]) -> int:
         checked = 0
         for payment in payments:
-            self.verify_payment(db, payment)
-            checked += 1
+            try:
+                self.verify_payment(db, payment)
+                checked += 1
+            except stripe.StripeError:
+                log.exception("reconcile: payment %s", payment.reference)
         for sub in subs:
-            if sub.provider_subscription_id:
+            if not sub.provider_subscription_id:
+                continue
+            try:
                 fresh = stripe.Subscription.retrieve(sub.provider_subscription_id, api_key=self._key)
                 self._apply_subscription(db, fresh, None)
                 checked += 1
+            except stripe.StripeError:
+                log.exception("reconcile: subscription %s", sub.provider_subscription_id)
         return checked

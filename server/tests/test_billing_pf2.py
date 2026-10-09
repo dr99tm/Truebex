@@ -200,7 +200,17 @@ def test_billing_checkout_coupon_passed_to_paddle(client, paddle):
 
 def test_billing_checkout_conflict_when_subscribed(client, paddle):
     h = signup(client)
-    buy(client, h, paddle)
+    _, events = buy(client, h, paddle)
+    res = client.post("/billing/checkout", json=checkout_body(tier="studio"), headers=h)
+    assert res.status_code == 409
+    # A failed renewal: the plan lapses, the card is fixed under Manage, and a
+    # second subscription cannot be bought on top.
+    created = next(e for e in events if e["event_type"] == "subscription.created")["data"]
+    overdue = {**copy.deepcopy(created), "status": "past_due"}
+    paddle_post(client, paddle.event("subscription.past_due", overdue))
+    assert me(client, h)["plan"] == "free"
+    sub = client.get("/billing/subscription", headers=h).json()
+    assert sub["status"] == "past_due" and sub["can_manage"]
     res = client.post("/billing/checkout", json=checkout_body(tier="studio"), headers=h)
     assert res.status_code == 409
 
