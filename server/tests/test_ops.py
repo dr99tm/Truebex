@@ -249,6 +249,27 @@ def _fresh_python(code: str, tmp_path) -> str:
     return out.stdout
 
 
+@pytest.mark.skipif(sys.platform != "win32", reason="WMI exists only on Windows")
+def test_fresh_process_never_queries_wmi(tmp_path):
+    # SQLAlchemy calls platform.machine() at import. Python 3.12 answers it with
+    # a WMI query that times out on a busy machine; the fallback that follows can
+    # kill the process with 0xC000070A (app/__init__.py). No server process may
+    # reach WMI, whatever imported `platform` first.
+    spy = (
+        "import json, _wmi; calls = []; real = _wmi.exec_query; "
+        "_wmi.exec_query = lambda q: calls.append(q) or real(q); "
+    )
+    probe = "; import platform; platform.uname(); platform.processor(); print(json.dumps(calls))"
+    for entry in (
+        "from scripts import sqlite_to_postgres",  # imports SQLAlchemy before app
+        "import platform; from app import tasks",  # platform first, as uvicorn does
+        "import app.main",
+    ):
+        assert json.loads(_fresh_python(spy + entry + probe, tmp_path)) == [], entry
+    machine = json.loads(_fresh_python("import json, app, platform; print(json.dumps(platform.machine()))", tmp_path))
+    assert machine == (os.environ.get("PROCESSOR_ARCHITEW6432") or os.environ["PROCESSOR_ARCHITECTURE"])
+
+
 def test_worker_process_registers_every_feature_job(tmp_path):
     # The worker imports only app.worker: PF1's and PF2's jobs must still run there.
     names = set(json.loads(_fresh_python("import json; from app import tasks; print(json.dumps(tasks.registered()))", tmp_path)))
