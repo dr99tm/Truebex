@@ -529,9 +529,11 @@ def import_rows(
     existing_products = {p.sku: p for p in db.scalars(select(Product).where(Product.supplier_id == supplier.supplier_id))}
     pids = [p.product_id for p in existing_products.values()]
     existing_variants: dict[tuple[str, str], ProductVariant] = {}
+    variants_of: dict[str, list[ProductVariant]] = defaultdict(list)  # product_id → its variants
     for start in range(0, len(pids), 500):
         for v in db.scalars(select(ProductVariant).where(ProductVariant.product_id.in_(pids[start : start + 500]))):
             existing_variants[(v.product_id, v.variant_id)] = v
+            variants_of[v.product_id].append(v)
     media_of: dict[tuple[str, str], dict] = {}
     fetched: dict[str, object] = {}
     by_variant: dict[tuple[str, str], list[Checked]] = defaultdict(list)
@@ -642,7 +644,7 @@ def import_rows(
         db.flush()
 
         variant_changed: dict[str, bool] = {}
-        sort_next = max((v.sort for (pid, _), v in existing_variants.items() if pid == product.product_id), default=-1) + 1
+        sort_next = max((v.sort for v in variants_of[product.product_id]), default=-1) + 1
         for c in group:
             vid = c.variant["variant_id"]
             if vid in variant_changed:
@@ -653,6 +655,7 @@ def import_rows(
                 v = ProductVariant(product_id=product.product_id, variant_id=vid, sort=sort_next, options={}, materials=[], images=[])
                 sort_next += 1
                 existing_variants[(product.product_id, vid)] = v
+                variants_of[product.product_id].append(v)
                 changed = True
             m = media_of.get((sku, vid), {"geometry": None, "images": []})
             geometry = None
@@ -689,8 +692,8 @@ def import_rows(
             variant_changed[vid] = changed
 
         images: list[str] = []
-        for (pid, _), v in sorted(existing_variants.items(), key=lambda kv: kv[1].sort):
-            if pid == product.product_id and v.status != "hidden":
+        for v in sorted(variants_of[product.product_id], key=lambda x: x.sort):
+            if v.status != "hidden":
                 images += [sha for sha in (v.images or []) if sha not in images]
         if not dry_run and not _same(product.images, images):
             if (product.images or [None])[0] != (images or [None])[0]:
