@@ -444,3 +444,36 @@ def test_share_fixtures_consistent():
         assert case["manifest"]["schema"] in ("truebex-share/1", "truebex-share/2")
     visits = fixture_json("visits.json")
     assert visits["expect"]["total"] == len(visits["visits"])
+
+
+def test_demo_share_script(client, monkeypatch, capsys):
+    """scripts/demo_share.py (the human test's uploader) sends every part once."""
+    import importlib.util
+    from pathlib import Path
+
+    spec = importlib.util.spec_from_file_location("demo_share", Path(__file__).parents[1] / "scripts" / "demo_share.py")
+    demo = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(demo)
+
+    class _Same:
+        def __init__(self, *a, **kw):
+            pass
+
+        def __enter__(self):
+            return client
+
+        def __exit__(self, *exc):
+            return False
+
+    monkeypatch.setattr(demo.httpx, "Client", _Same)
+    token, _ = device_token(client)
+    fixture = str(Path(__file__).parent / "contracts" / "share-bundle" / "manifest-house.json")
+    argv = ["--token", token, "--fixture", fixture, "--api", "http://testserver"]
+    assert demo.main(argv) == 0
+    first = capsys.readouterr().out
+    assert "5 parts sent" in first and "state live" in first
+    assert demo.main(argv) == 0
+    second = capsys.readouterr().out
+    assert "0 parts sent" in second
+    url = [line for line in first.splitlines() if line.startswith("url ")]
+    assert url and url == [line for line in second.splitlines() if line.startswith("url ")]
