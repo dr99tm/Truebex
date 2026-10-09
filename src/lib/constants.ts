@@ -413,7 +413,8 @@ export const PAYMENT_PROCESSORS = [
 // catalogue (server/app/catalogue.json, read at build time by
 // src/lib/catalogue.ts); this block holds only words. A tier without a price
 // shows `priceAtLaunch`; the founding block stays hidden until the catalogue
-// has its numbers. Tokens: {api} requests per month, {devices} computers per
+// has its numbers. Prices and the founding offer reach these pages only once
+// the catalogue's `prices_final` is true (src/lib/catalogue.ts publicCatalogue). Tokens: {api} requests per month, {devices} computers per
 // person, {n} seats, {total} founding seats, {pct} discount, {remaining}.
 // ---------------------------------------------------------------------------
 

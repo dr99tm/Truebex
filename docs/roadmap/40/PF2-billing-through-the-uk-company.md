@@ -258,6 +258,12 @@ Settings: `BILLING_PROVIDER=paddle|stripe`, `PADDLE_ENV=sandbox|production`, `PA
   * **Consent text:** version `2026-10-09`, in `BILLING.consent` and `server/app/billing/consent.py`.
   * **Wording:** the terms' "Paid plans" and the privacy processors.
   * Paddle's reseller wording follows its standard text.
+* **Merged with PF13 (2026-10-09, Autopilot T15, `ap/t15-merge-t4-pf2-billing-through-the`):**
+  * One `server/app/catalogue.json`: this branch's prices, `currencies`, `founding` and `prices_final: false`, plus PF13's `"schema": "truebex-catalogue/1"`. PF2 owns the price fields, so Team keeps `min_seats` 2 and Enterprise `per_seat` true.
+  * PF13 honours `prices_final`: `publicCatalogue()` in `src/lib/catalogue.ts` (applied by `loadCatalogue()`) empties the prices and the founding offer for the public pages while it is false. `/pricing/`, the home teaser, `/ar/` and the JSON-LD offers stay at "Price at launch" (no founding block); `/dashboard/billing/` still lists the API's placeholder prices. A catalogue without the flag (`scripts/fixtures/catalogue-sample.json`) shows its prices, and its checkout links open the billing page preselected.
+  * `src/lib/catalogue.ts` is PF13's types and helpers plus `foundingPrice`; this branch's `STATIC_CATALOG` moved to `src/lib/billing-catalog.ts`, so the public pricing bundles don't carry the catalogue JSON.
+  * `PRICING_PLANS` and the hand-written home JSON-LD offers were dropped: PF13 renders both from the catalogue. `/developers/` takes PF13's catalogue table. The billing page's "Compare plans" link goes to `/pricing/`.
+  * Tests: `test_site_pf13_catalogue_placeholder_shape` now expects `prices_final: false` instead of empty prices; the PF13 build checks compare against the public view; new `test_site_pf13_placeholder_prices_stay_private` and `test_admin_growth_counts_billing_checkouts` (a mock-Paddle checkout and paid webhook show in `/admin/growth`).
 * **Carry-over → which feature:**
   * **DMCC Act 2024 subscription rules** (renewal reminders, easy exit notices): when GD5 confirms the commencement date. A PF2 follow-up with PF14's mail plumbing.
   * **PF1:** `test_billing_entitlement_follows_purchase` runs once `/licence/*` is merged. `seat_source(user)` must read `subscriptions.seats`, and the Account panel's `manage_url` is `/dashboard/billing/`.

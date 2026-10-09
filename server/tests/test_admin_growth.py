@@ -117,3 +117,27 @@ def test_admin_cli_sets_flag(client):
     assert client.get("/admin/growth", headers=h).status_code == 200
     assert main(["cli@example.com", "--off"]) == 0
     assert client.get("/admin/growth", headers=h).status_code == 403
+
+
+def test_admin_growth_counts_billing_checkouts(client, paddle):
+    """PF2 x PF13: a checkout through the billing API counts as a checkout,
+    and once Paddle's signed webhook marks it paid, as paid."""
+    from .test_billing_pf2 import paddle_post, start_checkout, txn_of
+
+    admin = signup(client, "admin4@example.com")
+    _make_admin("admin4@example.com")
+    buyer = signup(client, "buyer@example.com")
+    today = datetime.now(timezone.utc).date().isoformat()
+
+    def totals():
+        res = client.get(f"/admin/growth?from={today}&to={today}", headers=admin)
+        assert res.status_code == 200, res.text
+        return res.json()["totals"]
+
+    co = start_checkout(client, buyer, tier="team", interval="year", currency="EUR", seats=3)
+    assert totals() == {"signups": 2, "downloads": 0, "trials": 0, "checkouts": 1, "paid": 0}
+    for ev in paddle.pay(txn_of(co["url"])):
+        assert paddle_post(client, ev).status_code == 200
+    assert totals() == {"signups": 2, "downloads": 0, "trials": 0, "checkouts": 1, "paid": 1}
+    # A paid subscription is not a trial.
+    assert client.get("/billing/subscription", headers=buyer).json()["tier"] == "team"
