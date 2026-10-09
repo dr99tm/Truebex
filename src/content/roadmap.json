@@ -1,0 +1,357 @@
+{
+  "_about": "The public roadmap in Truebex's own words. Titles and descriptions are written by hand (brand voice); `status` is written by scripts/sync-roadmap.mjs from the app and platform trackers. Nothing here moves into FEATURES automatically.",
+  "themes": [
+    {
+      "id": "exchange",
+      "title": "Work with every file"
+    },
+    {
+      "id": "model",
+      "title": "Model more of the building"
+    },
+    {
+      "id": "drawings",
+      "title": "Drawings and quantities"
+    },
+    {
+      "id": "light",
+      "title": "Light, comfort and analysis"
+    },
+    {
+      "id": "share",
+      "title": "Present and share"
+    },
+    {
+      "id": "together",
+      "title": "Together, in the cloud"
+    },
+    {
+      "id": "market",
+      "title": "Real products, real prices"
+    },
+    {
+      "id": "assistant",
+      "title": "Assistant and automation"
+    },
+    {
+      "id": "platform",
+      "title": "Account and platform"
+    }
+  ],
+  "items": [
+    {
+      "id": "exchange",
+      "title": "Works with IFC and DWG",
+      "description": "Exchange models and drawings with every other tool on the project.",
+      "icon": "FileInput",
+      "theme": "exchange",
+      "plan_ids": [
+        "IO1",
+        "IO2",
+        "IO3",
+        "IO4"
+      ],
+      "status": "planned",
+      "home": true
+    },
+    {
+      "id": "other-tools",
+      "title": "Projects from other tools",
+      "description": "Bring in reference scenes and whole projects from the tools your partners use, without a plugin.",
+      "icon": "FolderInput",
+      "theme": "exchange",
+      "plan_ids": [
+        "IO5",
+        "IO6"
+      ],
+      "status": "planned"
+    },
+    {
+      "id": "handover",
+      "title": "Point clouds, checks and handover",
+      "description": "Point clouds, coordination issues, model checks against requirements, and building data handed over in open formats.",
+      "icon": "ClipboardCheck",
+      "theme": "exchange",
+      "plan_ids": [
+        "IO7",
+        "IO8"
+      ],
+      "status": "planned"
+    },
+    {
+      "id": "structure",
+      "title": "Roofs, curtain walls and structure",
+      "description": "Roofs with skylights, glazing systems, columns, beams, foundations, railings, ramps and lifts.",
+      "icon": "Building2",
+      "theme": "model",
+      "plan_ids": [
+        "MD1",
+        "MD2",
+        "MD3",
+        "MD4"
+      ],
+      "status": "planned"
+    },
+    {
+      "id": "materials",
+      "title": "Site, wall layers and materials",
+      "description": "Topography, layered wall assemblies and a material library with physical properties.",
+      "icon": "Layers",
+      "theme": "model",
+      "plan_ids": [
+        "MD5",
+        "MD6",
+        "MD10"
+      ],
+      "status": "planned"
+    },
+    {
+      "id": "clashes",
+      "title": "Clash detection",
+      "description": "Find where elements collide before anyone on site does.",
+      "icon": "Crosshair",
+      "theme": "model",
+      "plan_ids": [
+        "MD9"
+      ],
+      "status": "planned"
+    },
+    {
+      "id": "services",
+      "title": "Building services",
+      "description": "Ducts, pipes and circuits that route and size themselves.",
+      "icon": "Cable",
+      "theme": "model",
+      "plan_ids": [
+        "ME1",
+        "ME2",
+        "ME3",
+        "ME4",
+        "ME5"
+      ],
+      "status": "planned",
+      "home": true
+    },
+    {
+      "id": "documentation",
+      "title": "Elevations, revisions and print sets",
+      "description": "Elevations, legends, keynotes, detail views, revisions, view templates, phases and design options.",
+      "icon": "FileStack",
+      "theme": "drawings",
+      "plan_ids": [
+        "DC1",
+        "DC2",
+        "DC3",
+        "DC4"
+      ],
+      "status": "planned"
+    },
+    {
+      "id": "quantities",
+      "title": "Schedules of everything",
+      "description": "Quantities, bills of quantities and material take-off that update as you draw.",
+      "icon": "Table",
+      "theme": "drawings",
+      "plan_ids": [
+        "DC5",
+        "DC6"
+      ],
+      "status": "planned"
+    },
+    {
+      "id": "reports",
+      "title": "Daylight, energy, sound and wind reports",
+      "description": "Measured results from the one true model, on demand or as you work.",
+      "icon": "Wind",
+      "theme": "light",
+      "plan_ids": [
+        "AN1",
+        "AN2",
+        "AN3",
+        "AN4",
+        "AN5",
+        "AN6"
+      ],
+      "status": "planned",
+      "home": true
+    },
+    {
+      "id": "present",
+      "title": "Panoramas, tours and share links",
+      "description": "Panoramas, 360° tours, videos and sun studies, shared with a link that opens on any phone.",
+      "icon": "Share2",
+      "theme": "share",
+      "plan_ids": [
+        "PR3",
+        "PR4",
+        "PF5"
+      ],
+      "status": "planned"
+    },
+    {
+      "id": "headset",
+      "title": "Step inside with a headset",
+      "description": "Walk the model in a PC headset, and see cloud panoramas on a standalone one.",
+      "icon": "Glasses",
+      "theme": "share",
+      "plan_ids": [
+        "PR1",
+        "PR5"
+      ],
+      "status": "planned"
+    },
+    {
+      "id": "room-themes",
+      "title": "Room themes",
+      "description": "A whole look for a room, applied in one step.",
+      "icon": "Palette",
+      "theme": "share",
+      "plan_ids": [
+        "PR2"
+      ],
+      "status": "planned"
+    },
+    {
+      "id": "together",
+      "title": "Your team on one model",
+      "description": "Several people in one project, with every change in a history you can rewind.",
+      "icon": "Users",
+      "theme": "together",
+      "plan_ids": [
+        "CL0",
+        "CL1",
+        "CL2",
+        "PF3",
+        "PF4"
+      ],
+      "status": "planned",
+      "home": true
+    },
+    {
+      "id": "everywhere",
+      "title": "On your phone and in a headset",
+      "description": "Panoramas rendered in the cloud, refreshed the moment anything changes, and edits from wherever you are.",
+      "icon": "Smartphone",
+      "theme": "together",
+      "plan_ids": [
+        "CL3",
+        "CL4",
+        "PF6",
+        "PF9",
+        "PF10"
+      ],
+      "status": "planned",
+      "home": true
+    },
+    {
+      "id": "prices-itself",
+      "title": "The model prices itself",
+      "description": "Real products with live prices and stock, by region, so the bill of quantities updates as you draw.",
+      "icon": "Calculator",
+      "theme": "market",
+      "plan_ids": [
+        "MK1",
+        "MK2",
+        "MK3",
+        "MK4",
+        "PF7",
+        "PF8"
+      ],
+      "status": "planned",
+      "home": true
+    },
+    {
+      "id": "assistant",
+      "title": "An assistant that edits the model",
+      "description": "Ask for a window on the north wall and it appears, with the light measured and the change undoable.",
+      "icon": "Bot",
+      "theme": "assistant",
+      "plan_ids": [
+        "AI1",
+        "AI2",
+        "AI3",
+        "AI4",
+        "AI5",
+        "AI6",
+        "AI7",
+        "PF11"
+      ],
+      "status": "planned",
+      "home": true
+    },
+    {
+      "id": "automation",
+      "title": "Checks and layouts made for you",
+      "description": "Code checks, furniture layouts by room type, and presentation packs prepared automatically.",
+      "icon": "Wand2",
+      "theme": "assistant",
+      "plan_ids": [
+        "AU1",
+        "AU2",
+        "AU3"
+      ],
+      "status": "planned"
+    },
+    {
+      "id": "scripting",
+      "title": "Scripts for repeat work",
+      "description": "A script console over the same actions as the assistant, with scripts saved as assets.",
+      "icon": "Terminal",
+      "theme": "assistant",
+      "plan_ids": [
+        "PL1"
+      ],
+      "status": "planned"
+    },
+    {
+      "id": "arabic",
+      "title": "Arabic, right to left",
+      "description": "The whole app in Arabic, with metric and imperial units.",
+      "icon": "Languages",
+      "theme": "platform",
+      "plan_ids": [
+        "LO1"
+      ],
+      "status": "planned",
+      "home": true
+    },
+    {
+      "id": "licence",
+      "title": "Sign in, trial and updates",
+      "description": "Sign in from the app, try Pro free for 14 days, and get updates on a stable or beta channel.",
+      "icon": "BadgeCheck",
+      "theme": "platform",
+      "plan_ids": [
+        "LC1",
+        "LC2",
+        "LC3",
+        "PF1",
+        "PF2"
+      ],
+      "status": "planned"
+    },
+    {
+      "id": "developers",
+      "title": "A public API, webhooks and SDKs",
+      "description": "Work with your projects from your own code, with webhooks and ready-made SDKs.",
+      "icon": "Code",
+      "theme": "platform",
+      "plan_ids": [
+        "PF12"
+      ],
+      "status": "planned"
+    },
+    {
+      "id": "reliability",
+      "title": "Feedback and reliability",
+      "description": "Opt-in crash reports, in-app feedback with a screenshot, and a platform that stays up.",
+      "icon": "LifeBuoy",
+      "theme": "platform",
+      "plan_ids": [
+        "OP1",
+        "PF14"
+      ],
+      "status": "planned"
+    }
+  ]
+}

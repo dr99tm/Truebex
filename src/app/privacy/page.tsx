@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { LegalPage } from "@/components/layout/LegalPage";
-import { SITE } from "@/lib/constants";
+import { SITE, WEBSITE_ANALYTICS_NOTICE } from "@/lib/constants";
 
 export const metadata: Metadata = {
   title: "Privacy Policy",
@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 
 export default function PrivacyPage() {
   return (
-    <LegalPage title="Privacy Policy" updated="October 7, 2026">
+    <LegalPage title="Privacy Policy" updated="October 9, 2026">
       <p>
         This policy explains what information Truebex (&ldquo;we&rdquo;)
         collects when you use truebex.com, your Truebex account, the
@@ -55,6 +55,11 @@ export default function PrivacyPage() {
         </li>
       </ul>
 
+      <h2>{WEBSITE_ANALYTICS_NOTICE.title}</h2>
+      {WEBSITE_ANALYTICS_NOTICE.paragraphs.map((p) => (
+        <p key={p}>{p}</p>
+      ))}
+
       <h2>How we use it</h2>
       <ul>
         <li>To provide your account, dashboard, API keys and the API itself.</li>
@@ -72,7 +77,7 @@ export default function PrivacyPage() {
         <li><strong>Google</strong> — Sign in with Google, and the spreadsheet that stores demo requests.</li>
         <li><strong>Stripe</strong> — card payments, when you pay by card.</li>
         <li><strong>Wayl</strong> — QiCard, FIB and ZainCash payments in Iraq, when you pay with Wayl.</li>
-        <li><strong>Cloudflare</strong> — network security and delivery for truebex.com and the API.</li>
+        <li><strong>Cloudflare</strong> — network security and delivery for truebex.com and the API, and cookieless page-view counts (Cloudflare Web Analytics).</li>
         <li><strong>GitHub</strong> — hosting of the public website.</li>
       </ul>
       <p>We share information with others only when the law requires it.</p>

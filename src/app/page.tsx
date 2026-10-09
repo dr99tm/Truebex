@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { Hero } from "@/components/sections/Hero";
 import { WhatIsTruebex } from "@/components/sections/WhatIsTruebex";
 import { CoreFeatures } from "@/components/sections/CoreFeatures";
@@ -8,59 +9,24 @@ import { Pricing } from "@/components/sections/Pricing";
 import { FAQ } from "@/components/sections/FAQ";
 import { CTAContact } from "@/components/sections/CTAContact";
 import { Footer } from "@/components/layout/Footer";
-import { FAQS, FEATURES, SITE } from "@/lib/constants";
+import { loadCatalogue } from "@/lib/catalogue-data";
+import { FAQS } from "@/lib/constants";
+import { softwareApplicationLd } from "@/lib/pricing";
+import { faqLd, HOME_LANGUAGES, ldJson } from "@/lib/seo";
 
-// Structured data: the product (SoftwareApplication) and the FAQ, which can
-// earn rich results in Google. Keep in step with the visible content.
-const homeLd = {
-  "@context": "https://schema.org",
-  "@graph": [
-    {
-      "@type": "SoftwareApplication",
-      name: "Truebex",
-      url: SITE.url,
-      applicationCategory: "DesignApplication",
-      applicationSubCategory: "Building design",
-      operatingSystem: "Windows",
-      description: SITE.description,
-      image: `${SITE.url}/images/og-image.jpg`,
-      screenshot: `${SITE.url}/images/product/daylight-doorway.jpg`,
-      featureList: FEATURES.map((f) => f.title),
-      publisher: { "@id": `${SITE.url}/#organization` },
-      offers: [
-        { "@type": "Offer", name: "Starter", price: "0", priceCurrency: "USD" },
-        {
-          "@type": "Offer",
-          name: "Professional",
-          price: "99",
-          priceCurrency: "USD",
-          priceSpecification: {
-            "@type": "UnitPriceSpecification",
-            price: "99",
-            priceCurrency: "USD",
-            unitCode: "MON",
-          },
-        },
-      ],
-    },
-    {
-      "@type": "FAQPage",
-      mainEntity: FAQS.map((f) => ({
-        "@type": "Question",
-        name: f.q,
-        acceptedAnswer: { "@type": "Answer", text: f.a },
-      })),
-    },
-  ],
+// The English home is paired with the Arabic landing page (hreflang).
+export const metadata: Metadata = {
+  alternates: { canonical: "/", languages: HOME_LANGUAGES },
 };
 
 export default function Home() {
+  // Structured data: the product (SoftwareApplication, offers from the plan
+  // catalogue) and the FAQ, which can earn rich results in Google. Built from
+  // the same constants as the visible content so the two stay in step.
+  const homeLd = ldJson([softwareApplicationLd(loadCatalogue()), faqLd(FAQS)]);
   return (
     <>
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(homeLd) }}
-      />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: homeLd }} />
       <main>
         <Hero />
         <WhatIsTruebex />

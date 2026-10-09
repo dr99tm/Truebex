@@ -46,6 +46,15 @@ def get_current_user(
     return user
 
 
+def require_admin(current: User = Depends(get_current_user)) -> User:
+    """Admin-only routes (`users.is_admin`, set by hand like "enterprise")."""
+    if not current.is_admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Admins only."
+        )
+    return current
+
+
 @dataclass
 class ApiCaller:
     user: User
