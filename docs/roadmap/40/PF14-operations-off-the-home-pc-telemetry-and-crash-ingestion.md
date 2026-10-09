@@ -4,7 +4,7 @@
 
 ## Status
 
-Nothing of the VPS, Postgres, backups, monitoring, infrastructure as code or telemetry exists (`00-contract.md` P.1). What runs today, verified with Grep on 2026-10-09:
+**Built on branch `ap/t3-pf14-operations-off-the-home-pc` (2026-10-09), awaiting merge, the owner's GD3 choices and the cutover (`infra/CUTOVER.md`); see As-built.** The telemetry contract's five endpoints, the admin dashboard, the jobs, the shared Plumbing, Postgres readiness and `infra/` are in place and tested; the VM does not exist until the owner runs `tofu apply`. Before this task, nothing of the VPS, Postgres, backups, monitoring, infrastructure as code or telemetry existed (`00-contract.md` P.1). What ran then, verified with Grep on 2026-10-09:
 
 | Area | Where | Today |
 |---|---|---|
@@ -168,14 +168,14 @@ Cutover runbook (the task writes it to `infra/CUTOVER.md`; the owner runs it):
 
 ## Deliverables
 
-- [ ] `infra/` (`tofu/` modules for DNS, buckets, VM, firewall; `host/cloud-init.yaml`, `host/compose.yaml`, `host/Caddyfile`; `secrets/*.sops.env`; `deploy.ps1`, `restore-test.ps1`, `CUTOVER.md`)
-- [ ] `server/Dockerfile`, `.dockerignore`; `psycopg`, `boto3` pinned in `server/requirements.txt`; `moto` and `PyYAML` in `requirements-dev.txt`
-- [ ] `server/app/usage.py` dialect-aware upsert; `server/scripts/sqlite_to_postgres.py`
-- [ ] Plumbing: `storage/s3.py`, `mail/smtp.py`, `app/worker.py`, the Postgres rate limiter; the interfaces themselves where no earlier task created them
-- [ ] `server/app/telemetry/` (`service.py`, `config.json`, `scanner.py`, `symbolicate.py`), `server/app/routers/telemetry.py`, admin routes, `/health/deep`
-- [ ] `server/tests/contracts/telemetry/` copied from the app repo's fixtures (copied, never edited)
-- [ ] `src/app/dashboard/admin/telemetry/`, privacy page section, README and deploy-skill updates
-- [ ] contract §11 rows recorded in As-built
+- [x] `infra/` (`tofu/` modules for DNS, buckets, VM, firewall; `host/cloud-init.yaml`, `host/compose.yaml`, `host/Caddyfile`; `secrets/*.sops.env`; `deploy.ps1`, `restore-test.ps1`, `CUTOVER.md`)
+- [x] `server/Dockerfile`, `.dockerignore`; `psycopg`, `boto3` pinned in `server/requirements.txt`; `moto` and `PyYAML` in `requirements-dev.txt`
+- [x] `server/app/usage.py` dialect-aware upsert; `server/scripts/sqlite_to_postgres.py`
+- [x] Plumbing: `storage/s3.py`, `mail/smtp.py`, `app/worker.py`, the Postgres rate limiter; the interfaces themselves where no earlier task created them
+- [x] `server/app/telemetry/` (`service.py`, `config.json`, `scanner.py`, `symbolicate.py`), `server/app/routers/telemetry.py`, admin routes, `/health/deep`
+- [x] `server/tests/contracts/telemetry/` copied from the app repo's fixtures (copied, never edited)
+- [x] `src/app/dashboard/admin/telemetry/`, privacy page section, README and deploy-skill updates
+- [x] contract §11 rows recorded in As-built
 
 ## Tests
 
@@ -238,9 +238,99 @@ The eight `telemetry.md` §10 platform tests come first. Postgres tests carry `@
 
 ## As-built
 
-* Date, branch, commits:
-* Counts (pytest before → after; Postgres-marked tests run where):
-* Deviations from Design and why:
-* GD3 numbers adopted (provider, size, region, backup retention):
-* Contract §11 rows for the owner to set to "PF14: done" in `contracts/telemetry.md` at merge:
-* Carry-over → which feature:
+* **Date, branch, commits:** 2026-10-09, `ap/t3-pf14-operations-off-the-home-pc` (base `master` at 744a9f3);
+  `ac58ec4` (ingestion, plumbing, Postgres, `infra/`, site), `7d8c901` (docs, operator scripts, this row ticked), `0418574` (jobs on demand, 10-minute rollup) and the commit renaming the local-trial env files to `*.trial`.
+* **Counts:** pytest 24 → 61 (`tests/test_telemetry.py` 18, `tests/test_ops.py` 17 (15 tests, two parameterised),
+  `tests/test_site_pf14.py` 2). The verify gate on SQLite: 58 passed, 3 Postgres-marked skipped. With
+  `TEST_DATABASE_URL` and `TEST_APP_DATABASE_URL` against a local Postgres 16.2 (the whole suite with the app on
+  Postgres): 60 passed, 1 skipped (the SQLite-only parameter). `tofu validate` green (OpenTofu 1.13.1, providers
+  locked for linux, windows and darwin); cloud-init renders to valid YAML. `out/`: 18 routes (+
+  `/dashboard/admin/telemetry/`). A live run (uvicorn, SQLite, inline jobs) took the fixtures through all five
+  endpoints, symbolicated the fixture crash within a minute of `scripts.upload_symbols`, and served the signed
+  minidump download and the CSV export. Headless Edge on the served `out/` (built against the local API) rendered
+  `/dashboard/admin/telemetry/` for an admin: the Telemetry nav link, the Overview stats, chart and tables, the
+  symbolicated crash group with its frames and edit form, and the feedback card with its screenshot preview.
+  `infra/deploy.ps1` dry-run with stubbed ssh / scp / sops: LF release archive, `bash -n` clean install and host
+  scripts, decrypted files removed afterwards.
+* **Deviations from Design and why:**
+  1. *Fixtures authored here.* The app repo had no `Docs/roadmap/fixtures/contracts/telemetry/` yet, so PF14
+     wrote the §9 set to the letter of `telemetry.md` v1.0.0 into `server/tests/contracts/telemetry/` (with a
+     README); OP1 copies it to the app repo or replaces it, after which it is re-copied. Byte-exact via
+     `.gitattributes` (`-text`).
+  2. *Contract details the text left open*, proposed as a 1.0.1 PATCH for the app side to write (`telemetry.md`
+     §3): `install_id` = first 32 hex of SHA-256 over the secret's 32 **raw bytes**; the signature joins the top
+     five normalised frames with `\n`, a named frame normalises to `Module!Function` (parameter list and
+     `+0x…` dropped), a raw `Module+0xOFF` to `Module!0xoff`; sizes are MiB (256 KiB, 21/20/9/8 MiB); `dropped`
+     counts dropped events plus dropped props; 5.4 repeats also answer `"duplicate": true`; `privacy_violation`
+     carries `data.reason` (`email`, `path`, `type`, `log`) beside `data.field`; feedback `text` is exempt from
+     the scanner (the person writes it); a missing `X-Truebex-Contract` is served as the current version; the
+     server's log scrubber replaces a whole absolute path ending in `.tbxp` / `.tbxa` / `.tbxpack` with
+     `<project>` (it cannot know folder names) and refuses a tail the scrubber would still change.
+  3. *PF1 pieces created first*, exactly at the Plumbing paths and signatures: `contract_http.py`, `storage/`
+     (`local` and `s3`), `tasks.py`, `ratelimit.py`, `users.is_admin` + `require_admin`, and the `devices` table
+     in PF1's full shape with `device_for_token` (PF14 only reads it for 5.4 replies). The PF1 merge keeps one
+     copy of each.
+  4. `telemetry_events` is a plain table with indexes on `received_at`, `at`, `install_id`; retention deletes by
+     `received_at`. Monthly partitions wait for measured volume (they need a composite key SQLite cannot
+     auto-increment).
+  5. `crash_groups` gained `kind` and `merged_into`: a raw group stays as an alias after symbolication so later
+     raw reports of the same build join the symbolicated group at ingest. `known_issue` is answered whenever the
+     group has `fixed_in`.
+  6. Symbols: `POST /admin/symbols` (≤ 90 MB) and `server/scripts/upload_symbols.py` (runs `dump_syms` on
+     `.pdb`, takes `.sym` as is; `upload()` is what PF1's `publish_release.py --symbols` calls). Store layout is
+     Breakpad's: `symbols/{module.pdb}/{debug_id}/{module}.sym`. Frames are named by `minidump-stackwalk` when
+     the binary is present (it is in the image), otherwise from the sent callstack against the FUNC / PUBLIC
+     records.
+  7. Monitoring without a separate metrics agent: `infra/host/bin/host-check.sh` (systemd, every minute: disk,
+     memory, load, container restarts and health, Caddy 5xx rate from its JSON log, origin-certificate expiry,
+     PF6 queue-depth hook) pings the uptime monitor's heartbeat, so a dead host alerts too; the worker's
+     `backup.check` reads `pg_stat_archiver` and the `backup.base` marker.
+  8. `deploy.ps1` builds the image on the VM by default (this PC has no Docker); `-BuildLocally` builds on a PC
+     with Docker, `-Registry` pushes to the private registry and the VM pulls.
+  9. `infra/secrets/*.sops.env` cannot exist without the owner's age key: the task ships `.sops.yaml` with a
+     placeholder recipient, `*.env.example` templates and `secrets/README.md`; the owner encrypts.
+  10. Every FastAPI 422 is now the shared envelope (`code: validation_failed`, `detail` = the first message,
+      `data.fields`), which the site's `toError` already reads; other existing errors are unchanged.
+  11. Human test step 1 runs `infra/host/compose.local.yaml` (plain HTTP on 127.0.0.1:80, no backups), because
+      the production Caddyfile only serves 443 with the origin certificate; it needs Docker Desktop.
+  12. `/privacy/` names the new processors by role (server hosting, object storage, email delivery, uptime
+      monitoring) until GD3 / GD5 name the companies; Wayl stays.
+  13. `telemetry.rollup` runs every 10 minutes instead of every hour (it only recomputes the days that received
+      events, so the dashboard is at most 10 minutes behind); `python -m app.worker --run <job> …` runs any job
+      at once (operators, the human test).
+* **GD3 numbers adopted (placeholders):** Hetzner Cloud `cpx31` (4 vCPU / 8 GB / 160 GB SSD) in `nbg1` (EU; no
+  UK region); data bucket at the VM provider's S3-compatible storage, versioned, old versions 30 days; backups
+  with wal-g (WAL every ≤ 60 s, nightly base 02:30 UTC, `retain FULL 30`, bucket expiry 37 days, libsodium
+  encryption) at a second provider (Backblaze B2 EU in the example); Better Stack for uptime (60 s, four
+  regions, e-mail + push, host heartbeat 60 s + 240 s grace); any SMTP relay with DKIM; Postgres 18; RPO 5 min,
+  RTO 2 h. All in `infra/tofu/variables.tf`, `terraform.tfvars.example`, `infra/README.md`.
+* **Contract §11 rows for the owner to set to "PF14: done" in `contracts/telemetry.md` at merge:**
+  `GET /telemetry/config`, `POST /telemetry/events`, `POST /telemetry/crashes`, `POST /telemetry/feedback`,
+  `POST /telemetry/delete` — each "PF14: done (2026-10-09, `ap/t3-pf14-operations-off-the-home-pc`)".
+* **Carry-over → which feature:**
+  * **Owner (before any paid launch):** GD3 choices into `terraform.tfvars`; the age key and the encrypted
+    secrets; `tofu import` of the existing `api` (and, later, mail) records; `tofu apply`; `deploy.ps1` against
+    staging; the restore test; `infra/CUTOVER.md`; the monitor's phone app; set the §11 rows; re-install the
+    server venv (`pip install -r requirements-dev.txt`: psycopg, boto3, moto, PyYAML).
+  * **PF1:** `publish_release.py --symbols <dir>` → `scripts.upload_symbols.upload()`; keep one copy of the
+    shared files listed in deviation 3.
+  * **OP1 (app):** copy the fixtures; adopt deviation 2 in the contract and the client.
+  * **GD5:** processor names and the legal wording of the telemetry section on `/privacy/`.
+  * **PF5 / PF6:** `share_target` and `cdn_target` in `terraform.tfvars`; PF6's queue depth as
+    `/opt/truebex/bin/queue-depth`.
+  * **Later:** monthly partitions of `telemetry_events` when volume calls for them. The image's
+    `minidump-stackwalk` (0.27.0) and `wal-g` (v3.0.9) builds are first exercised by `deploy.ps1` (no Docker on
+    this PC).
+* **Merged with PF1, PF2 and PF13 (2026-10-10, Autopilot T17, `ap/t17-merge-t3-pf14-operations-off-the`):** one copy
+  of each shared file. `storage/` is PF1's committed package (`check_key`, `BlobInfo.bytes` + `sha256`,
+  `STORAGE_URL_SECRET`) plus PF14's `s3.py` and a `BlobInfo.size` alias; PF14's own `storage/` had never been
+  committed (`server/.gitignore`'s unanchored `storage/` hid it; now `/storage/`). `contract()` and `limit()`
+  return `Depends` (PF1's form) and `limit` takes `name=`; every 422 is still the envelope (deviation 10), other
+  errors only on contract routes. `tasks.py` keeps both APIs and its loader imports `licence.jobs` and
+  `billing.jobs`, so the worker process runs PF1's and PF2's jobs too. `devices` is PF1's table
+  (`licence/models.py`); `deps.device_for_token` reads it through `licence.devices`. `_ADDED_COLUMNS` uses
+  `TIMESTAMP WITH TIME ZONE` (Postgres has no `DATETIME`) and PF2's unique index is created on the database being
+  migrated; `scripts/sqlite_to_postgres.py` lists PF1's tables too. A valid upload link with the wrong
+  Content-Type answers 415 (PF1), not 403. `/privacy/` lists PF2's processors (Paddle, Stripe; Wayl removed by
+  PF2) with PF14's. `infra/secrets/server.env.example` gained the PF1 and PF2 settings. The whole suite also
+  passed with the app on Postgres 17. Still open for PF1: `publish_release.py --symbols` → `upload_symbols.upload()`.

@@ -35,7 +35,7 @@ from .licence_helpers import (
     ts,
     verify_with,
 )
-from .test_billing import _stripe_post, _sub_event
+from .test_billing import stripe_post as _stripe_post, stripe_sub_event as _sub_event
 
 CODE_RE = re.compile(r"^[ABCDEFGHJKMNPQRSTUVWXYZ23456789]{4}-[ABCDEFGHJKMNPQRSTUVWXYZ23456789]{4}$")
 LINK_BODY = {"device_name": "TEST-PC", "fingerprint": FP1, "app_version": "1.0.0"}

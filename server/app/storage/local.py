@@ -1,28 +1,28 @@
-"""The `local` storage adapter: files under STORAGE_DIR, one JSON sidecar per
-blob for its size, SHA-256 and content type, and HMAC-SHA256 signed URLs that
-`routers/files.py` serves (GET with Range, PUT up to `max` bytes).
+"""The `local` storage adapter: files on this machine's disk.
 
-A URL signs the method, the key, its expiry and what else it fixes (the
-download file name; the upload's content type and size cap), so altering any
-of them answers 403. The key is STORAGE_URL_SECRET, or one derived from
-SECRET_KEY.
+Each blob is a file under STORAGE_DIR with a `<file>.meta.json` beside it
+(content type, size, SHA-256). Signed URLs point at this API's /files route
+(server/app/routers/files.py) and carry `exp` (Unix seconds) and `sig`, an
+HMAC-SHA256 over the method, key, expiry and the URL's other parameters.
 """
 
 import base64
 import hashlib
 import hmac
-import io
 import json
 import os
+import tempfile
 import time
+from collections.abc import Callable
+from datetime import datetime, timezone
 from pathlib import Path
-from typing import BinaryIO, Iterator
+from typing import BinaryIO
 from urllib.parse import quote, urlencode
 
-from . import META_SUFFIX, BlobInfo, check_key
+from . import BlobInfo, check_key
 
-# Unix seconds; patched by tests to move time.
-clock = time.time
+# Patched by tests to move time.
+clock: Callable[[], float] = time.time
 
 _CHUNK = 1024 * 1024
 
@@ -32,111 +32,146 @@ def _b64(raw: bytes) -> str:
 
 
 class LocalStore:
-    def __init__(self, root: str | os.PathLike) -> None:
+    def __init__(self, root: str | Path, *, base_url: str, secret: bytes) -> None:
         self.root = Path(root).resolve()
+        self.base_url = base_url.rstrip("/")
+        self._secret = secret
 
-    # --- paths ------------------------------------------------------------------
+    @classmethod
+    def from_settings(cls, s) -> "LocalStore":
+        secret = (s.storage_url_secret or "").encode() or hmac.new(
+            s.secret_key.encode(), b"truebex-storage-urls", hashlib.sha256
+        ).digest()
+        return cls(s.storage_dir, base_url=s.api_url, secret=secret)
 
-    def file_path(self, key: str) -> Path:
+    # --- paths ---------------------------------------------------------------
+
+    def _path(self, key: str) -> Path:
         path = (self.root / check_key(key)).resolve()
         if self.root not in path.parents:
-            raise ValueError("key escapes the store")
+            raise ValueError("invalid storage key")
         return path
 
-    def _meta_path(self, key: str) -> Path:
-        path = self.file_path(key)
-        return path.with_name(path.name + META_SUFFIX)
+    @staticmethod
+    def _meta_path(path: Path) -> Path:
+        return path.with_name(path.name + ".meta.json")
 
-    # --- blobs ------------------------------------------------------------------
+    # --- blobs ---------------------------------------------------------------
 
     def put(
-        self, key: str, data: bytes | BinaryIO, *, content_type: str, cache_control: str | None = None
+        self,
+        key: str,
+        data: bytes | BinaryIO,
+        *,
+        content_type: str,
+        cache_control: str | None = None,
     ) -> BlobInfo:
-        path = self.file_path(key)
+        path = self._path(key)
         path.parent.mkdir(parents=True, exist_ok=True)
-        source = io.BytesIO(data) if isinstance(data, (bytes, bytearray)) else data
         digest = hashlib.sha256()
         size = 0
-        tmp = path.with_name(path.name + ".part")
-        with open(tmp, "wb") as out:
-            while chunk := source.read(_CHUNK):
-                digest.update(chunk)
-                size += len(chunk)
-                out.write(chunk)
-        os.replace(tmp, path)
-        info = BlobInfo(key, size, digest.hexdigest(), content_type, cache_control)
-        self._meta_path(key).write_text(
-            json.dumps({"bytes": size, "sha256": info.sha256, "content_type": content_type,
-                        "cache_control": cache_control}),
-            encoding="utf-8",
+        fd, tmp = tempfile.mkstemp(dir=path.parent, prefix=".upload-")
+        try:
+            with os.fdopen(fd, "wb") as out:
+                if isinstance(data, (bytes, bytearray, memoryview)):
+                    chunk = bytes(data)
+                    out.write(chunk)
+                    digest.update(chunk)
+                    size = len(chunk)
+                else:
+                    while chunk := data.read(_CHUNK):
+                        out.write(chunk)
+                        digest.update(chunk)
+                        size += len(chunk)
+            os.replace(tmp, path)
+        except BaseException:
+            Path(tmp).unlink(missing_ok=True)
+            raise
+        meta = {
+            "content_type": content_type,
+            "cache_control": cache_control,
+            "bytes": size,
+            "sha256": digest.hexdigest(),
+        }
+        self._meta_path(path).write_text(json.dumps(meta), encoding="utf-8")
+        return self._info(key, path, meta)
+
+    def _info(self, key: str, path: Path, meta: dict) -> BlobInfo:
+        return BlobInfo(
+            key=key,
+            bytes=int(meta["bytes"]),
+            content_type=meta["content_type"],
+            sha256=meta["sha256"],
+            cache_control=meta.get("cache_control"),
+            modified_at=datetime.fromtimestamp(path.stat().st_mtime, tz=timezone.utc),
         )
-        return info
 
     def open(self, key: str) -> BinaryIO:
-        return open(self.file_path(key), "rb")
+        return self._path(key).open("rb")
+
+    def file_path(self, key: str) -> Path:
+        """The file on disk (the /files route streams it)."""
+        return self._path(key)
 
     def stat(self, key: str) -> BlobInfo | None:
-        path = self.file_path(key)
-        meta = self._meta_path(key)
-        if not path.is_file() or not meta.is_file():
+        path = self._path(key)
+        meta_path = self._meta_path(path)
+        if not path.is_file() or not meta_path.is_file():
             return None
-        data = json.loads(meta.read_text(encoding="utf-8"))
-        return BlobInfo(key, int(data["bytes"]), data["sha256"], data["content_type"], data.get("cache_control"))
+        return self._info(key, path, json.loads(meta_path.read_text(encoding="utf-8")))
 
     def delete(self, key: str) -> None:
-        for path in (self.file_path(key), self._meta_path(key)):
-            path.unlink(missing_ok=True)
+        path = self._path(key)
+        path.unlink(missing_ok=True)
+        self._meta_path(path).unlink(missing_ok=True)
 
-    def list(self, prefix: str) -> Iterator[BlobInfo]:
+    def list(self, prefix: str = "") -> list[BlobInfo]:
         if not self.root.is_dir():
-            return iter(())
-        found = []
-        for path in self.root.rglob("*"):
-            if not path.is_file() or path.name.endswith((META_SUFFIX, ".part")):
-                continue
+            return []
+        out = []
+        for meta_path in sorted(self.root.rglob("*.meta.json")):
+            path = meta_path.with_name(meta_path.name[: -len(".meta.json")])
             key = path.relative_to(self.root).as_posix()
-            if key.startswith(prefix):
-                info = self.stat(key)
-                if info is not None:
-                    found.append(info)
-        return iter(sorted(found, key=lambda b: b.key))
+            if key.startswith(prefix) and path.is_file():
+                out.append(self._info(key, path, json.loads(meta_path.read_text(encoding="utf-8"))))
+        return out
 
-    # --- signed URLs --------------------------------------------------------------
+    # --- signed URLs -----------------------------------------------------------
 
-    @staticmethod
-    def _secret() -> bytes:
-        from ..config import get_settings
+    def _sign(self, method: str, key: str, exp: int, extra: str) -> str:
+        msg = f"{method}\n{key}\n{exp}\n{extra}".encode()
+        return _b64(hmac.new(self._secret, msg, hashlib.sha256).digest())
 
-        s = get_settings()
-        if s.storage_url_secret:
-            return s.storage_url_secret.encode("utf-8")
-        return hashlib.sha256(b"truebex-storage-urls/1\n" + s.secret_key.encode("utf-8")).digest()
-
-    def _sign(self, method: str, key: str, exp: str, extra: str) -> str:
-        msg = f"{method}\n{key}\n{exp}\n{extra}".encode("utf-8")
-        return _b64(hmac.new(self._secret(), msg, hashlib.sha256).digest())
-
-    def verify(self, method: str, key: str, exp: str | None, sig: str | None, extra: str = "") -> bool:
-        if not exp or not sig or not exp.isdigit() or int(exp) < clock():
-            return False
-        return hmac.compare_digest(self._sign(method, key, exp, extra), sig)
-
-    @staticmethod
-    def _base(key: str) -> str:
-        from ..config import get_settings
-
-        return f"{get_settings().api_url.rstrip('/')}/files/{quote(key, safe='/')}"
+    def _url(self, key: str, params: dict[str, str]) -> str:
+        return f"{self.base_url}/files/{quote(key)}?{urlencode(params)}"
 
     def signed_get_url(self, key: str, *, expires_in: int = 900, filename: str | None = None) -> str:
         check_key(key)
-        exp = str(int(clock()) + int(expires_in))
-        query = {"exp": exp, "sig": self._sign("GET", key, exp, filename or "")}
+        exp = int(clock()) + int(expires_in)
+        params = {"exp": str(exp)}
         if filename:
-            query["fn"] = filename
-        return f"{self._base(key)}?{urlencode(query)}"
+            params["fn"] = filename
+        params["sig"] = self._sign("GET", key, exp, filename or "")
+        return self._url(key, params)
 
-    def signed_put_url(self, key: str, *, expires_in: int = 900, content_type: str, max_bytes: int) -> str:
+    def signed_put_url(
+        self, key: str, *, expires_in: int = 900, content_type: str, max_bytes: int
+    ) -> str:
         check_key(key)
-        exp = str(int(clock()) + int(expires_in))
-        sig = self._sign("PUT", key, exp, f"{content_type}\n{int(max_bytes)}")
-        return f"{self._base(key)}?{urlencode({'exp': exp, 'sig': sig, 'ct': content_type, 'max': int(max_bytes)})}"
+        exp = int(clock()) + int(expires_in)
+        extra = f"{content_type}\n{int(max_bytes)}"
+        params = {
+            "exp": str(exp),
+            "ct": content_type,
+            "max": str(int(max_bytes)),
+            "sig": self._sign("PUT", key, exp, extra),
+        }
+        return self._url(key, params)
+
+    def verify(self, method: str, key: str, exp: str | None, sig: str | None, extra: str = "") -> bool:
+        """True when the URL's signature matches and it has not expired."""
+        if not exp or not sig or not exp.isdigit():
+            return False
+        if int(exp) <= clock():
+            return False
+        return hmac.compare_digest(self._sign(method, key, int(exp), extra), sig)

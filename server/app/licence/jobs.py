@@ -2,17 +2,22 @@
 
 from datetime import datetime
 
-from sqlalchemy.orm import Session
-
+from ..database import SessionLocal
 from ..tasks import periodic
 from . import devices, links
 
 
 @periodic("licence.links.purge", 600)
-def purge_links(db: Session, now: datetime) -> int:
-    return links.purge(db, now)
+def purge_links(now: datetime) -> int:
+    with SessionLocal() as db:
+        n = links.purge(db, now)
+        db.commit()
+        return n
 
 
 @periodic("licence.devices.lapse", 24 * 3600)
-def lapse_devices(db: Session, now: datetime) -> int:
-    return devices.lapse_unused(db, now)
+def lapse_devices(now: datetime) -> int:
+    with SessionLocal() as db:
+        n = devices.lapse_unused(db, now)
+        db.commit()
+        return n

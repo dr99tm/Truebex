@@ -7,9 +7,11 @@
 * `ContractError(code, status, detail, data)`: raised anywhere in a contract
   route; its handler writes the shared error envelope
   `{detail, code, status, request_id, retry_after_s, data}`.
-* On contract routes, plain HTTPExceptions and FastAPI's 422 list are
-  rewritten to the same envelope (`validation_failed` with `data.fields`).
-  Other routers keep their existing `{"detail": …}` bodies.
+* FastAPI's 422 list becomes the same envelope on every route
+  (`validation_failed` with `data.fields`; `detail` stays a string, as the
+  site's `toError` expects, src/lib/api.ts). On contract routes plain
+  HTTPExceptions are rewritten to the envelope too; other routers keep their
+  existing `{"detail": …}` bodies for every other error.
 * `RequestIdMiddleware`: every response carries `X-Request-Id`; the envelope
   repeats it as `request_id`. Logs carry it, never tokens or poll secrets.
 """
@@ -20,12 +22,10 @@ import secrets
 from typing import Any
 
 from fastapi import Depends, FastAPI, Request, Response
-from fastapi.exception_handlers import (
-    http_exception_handler,
-    request_validation_exception_handler,
-)
+from fastapi.exception_handlers import http_exception_handler
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
+from starlette.datastructures import MutableHeaders
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
@@ -93,9 +93,9 @@ class RequestIdMiddleware:
 
         async def send_with_id(message: Message) -> None:
             if message["type"] == "http.response.start":
-                headers = list(message.get("headers", []))
-                headers.append((REQUEST_ID_HEADER.lower().encode(), rid.encode()))
-                message["headers"] = headers
+                headers = MutableHeaders(scope=message)
+                if REQUEST_ID_HEADER.lower() not in headers:
+                    headers.append(REQUEST_ID_HEADER, rid)
             await send(message)
 
         await self.app(scope, receive, send_with_id)
@@ -150,6 +150,9 @@ def envelope_response(
 ) -> JSONResponse:
     rid = request_id(request)
     out_headers = dict(headers or {})
+    # Set here as well: errors from ServerErrorMiddleware never pass through
+    # RequestIdMiddleware.
+    out_headers[REQUEST_ID_HEADER] = rid
     contract_name = getattr(request.state, "contract", None)
     if contract_name:
         out_headers[CONTRACT_HEADER] = contract_name
@@ -171,13 +174,27 @@ def envelope_response(
     )
 
 
-def _fields(exc: RequestValidationError) -> list[dict[str, str]]:
+_LOCATIONS = ("body", "query", "path", "header", "cookie")
+
+
+def _field_path(loc: tuple | list) -> str:
+    """`("body", "events", 0, "name")` -> `events[0].name`."""
+    parts = list(loc[1:] if loc and loc[0] in _LOCATIONS else loc)
+    out = ""
+    for part in parts:
+        out += f"[{part}]" if isinstance(part, int) else (f".{part}" if out else str(part))
+    return out
+
+
+def validation_fields(errors: list[dict]) -> list[dict[str, str]]:
+    """Pydantic / FastAPI errors as `data.fields`: `{field, in, message}`."""
     fields = []
-    for err in exc.errors():
-        loc = [str(p) for p in err.get("loc", ())]
-        where = loc[0] if loc else ""
-        name = ".".join(loc[1:]) if len(loc) > 1 else where
-        fields.append({"field": name, "in": where, "message": str(err.get("msg", "invalid"))})
+    for err in errors:
+        loc = tuple(err.get("loc", ()))
+        where = str(loc[0]) if loc and loc[0] in _LOCATIONS else "body"
+        fields.append(
+            {"field": _field_path(loc), "in": where, "message": str(err.get("msg", "invalid"))}
+        )
     return fields
 
 
@@ -212,11 +229,13 @@ def install(app: FastAPI) -> None:
 
     @app.exception_handler(RequestValidationError)
     async def _validation_error(request: Request, exc: RequestValidationError):
-        if not _wants_envelope(request):
-            return await request_validation_exception_handler(request, exc)
-        fields = _fields(exc)
-        first = fields[0] if fields else {"field": "", "message": "invalid request"}
-        detail = f"{first['field']}: {first['message']}" if first["field"] else first["message"]
+        fields = validation_fields(list(exc.errors()))
+        first = fields[0] if fields else {"field": "", "message": "Invalid request."}
+        if _wants_envelope(request) and first["field"]:
+            detail = f"{first['field']}: {first['message']}"
+        else:
+            # The first message alone, as the site showed it before (detail[0].msg).
+            detail = first["message"]
         return envelope_response(
             request, status=422, code="validation_failed", detail=detail, data={"fields": fields}
         )

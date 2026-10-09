@@ -5,10 +5,12 @@
   "scripts": {
     "sync:releases": "node scripts/sync-releases.mjs",
     "dev": "next dev",
-    "build": "next build",
-    "build:custom": "next build && xcopy /E /I /Y /H out\\* X:\\Truebex_site_files\\Truebex\\",
+    "build": "next build && node scripts/postbuild-lang.mjs",
+    "build:custom": "npm run build && xcopy /E /I /Y /H out\\* X:\\Truebex_site_files\\Truebex\\",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "sync:roadmap": "node scripts/sync-roadmap.mjs",
+    "indexnow": "node scripts/indexnow.mjs"
   },
   "dependencies": {
     "clsx": "^2.1.1",

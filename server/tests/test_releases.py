@@ -10,6 +10,7 @@ from urllib.parse import parse_qs, urlencode, urlsplit
 import pytest
 from sqlalchemy import select
 
+from app.config import get_settings
 from app.database import SessionLocal
 from app.licence import signing
 from app.models import DownloadEvent, User
@@ -102,7 +103,8 @@ def test_download_url_expires(client, tmp_path, monkeypatch):
     res = client.get("/releases/1.1.0/download?platform=win64", headers=CONTRACT, follow_redirects=False)
     assert res.status_code == 302 and res.headers["X-Truebex-Contract"] == "licence-api/1.0"
     url = res.headers["location"]
-    assert url.startswith("https://api.truebex.com/files/releases/1.1.0/win64/Truebex-Setup-1.1.0.exe?")
+    # A signed /files URL on the API's own host (API_URL; tests: http://testserver).
+    assert url.startswith(f"{get_settings().api_url}/files/releases/1.1.0/win64/Truebex-Setup-1.1.0.exe?")
     query = parse_qs(urlsplit(url).query)
     assert int(query["exp"][0]) - datetime.now(timezone.utc).timestamp() == pytest.approx(900, abs=5)
 

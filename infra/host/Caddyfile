@@ -1,0 +1,50 @@
+# Caddy on the API host (PF14). Cloudflare proxies api.truebex.com here over
+# HTTPS ("Full (strict)"); Caddy presents the Cloudflare origin certificate and
+# forwards to the API. Only Cloudflare's ranges reach :443 (the VM firewall),
+# so CF-Connecting-IP is trusted from them alone.
+#
+# Env (caddy.env, written by infra/deploy.ps1):
+#   API_HOSTS           "api.truebex.com, api-staging.truebex.com"
+#   CF_TRUSTED_PROXIES  Cloudflare's published IPv4 and IPv6 ranges, space-separated
+
+{
+	admin 127.0.0.1:2019
+	servers {
+		trusted_proxies static {$CF_TRUSTED_PROXIES}
+		client_ip_headers CF-Connecting-IP X-Forwarded-For
+	}
+}
+
+{$API_HOSTS:api.truebex.com} {
+	tls /etc/caddy/certs/origin.pem /etc/caddy/certs/origin.key
+
+	encode zstd gzip
+
+	# Request logs: JSON, kept 14 days (telemetry.md §6.5). The host check
+	# reads the 5xx rate from here.
+	log {
+		output file /var/log/caddy/access.log {
+			roll_size 50MiB
+			roll_keep_for 336h
+		}
+		format json
+	}
+
+	# Crash reports are one request of at most 21 MB (telemetry.md §5.3);
+	# everything else stays under Cloudflare's 100 MB body limit.
+	request_body /telemetry/crashes {
+		max_size 22MB
+	}
+	request_body {
+		max_size 100MB
+	}
+
+	reverse_proxy api:8000 {
+		# Stream long polls and downloads at once (PF4 pulls, PF6 status).
+		flush_interval -1
+		header_up X-Forwarded-For {client_ip}
+		transport http {
+			read_timeout 90s
+		}
+	}
+}

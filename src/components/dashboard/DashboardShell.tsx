@@ -3,7 +3,7 @@
 import { createContext, useContext, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { CreditCard, Gauge, KeyRound, LayoutGrid, BookOpen } from "lucide-react";
+import { CreditCard, Gauge, KeyRound, LayoutGrid, BookOpen, TrendingUp } from "lucide-react";
 import {
   Activity,
   Building2,
@@ -67,6 +67,15 @@ function orgGroup(role: Role | null): { label: string; items: NavItem[] } {
   return { label: "Organisation", items };
 }
 
+// Shown to admins only (users.is_admin); the API enforces it either way.
+const ADMIN_GROUP: { label: string; items: NavItem[] } = {
+  label: "Admin",
+  items: [
+    { href: "/dashboard/admin/growth/", label: "Growth", icon: TrendingUp },
+    { href: "/dashboard/admin/telemetry/", label: "Telemetry", icon: Activity },
+  ],
+};
+
 const UserContext = createContext<User | null>(null);
 
 /** The signed-in user. Only valid inside the dashboard. */
@@ -125,8 +134,14 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
 }
 
 function ShellLayout({ pathname, children }: { pathname: string; children: React.ReactNode }) {
+  const user = useDashboardUser();
   const { current } = useOrgs();
-  const groups = [NAV_GROUPS[0], orgGroup(current?.role ?? null), ...NAV_GROUPS.slice(1)];
+  const groups = [
+    NAV_GROUPS[0],
+    orgGroup(current?.role ?? null),
+    ...NAV_GROUPS.slice(1),
+    ...(user.is_admin ? [ADMIN_GROUP] : []),
+  ];
   const NAV = groups.flatMap((g) => g.items);
   const trimmed = pathname.replace(/\/$/, "");
   const isActive = (item: NavItem) =>

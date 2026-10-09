@@ -75,7 +75,7 @@ def test_tasks_run_due(client):
     calls = []
 
     @tasks.periodic("test.job", 60)
-    def job(db, now):
+    def job(now):
         calls.append(now)
 
     try:
@@ -87,7 +87,7 @@ def test_tasks_run_due(client):
         assert "test.job" in tasks.run_due(t0 + timedelta(seconds=60))
         assert len(calls) == 2
     finally:
-        tasks.JOBS.pop("test.job", None)
+        tasks._JOBS.pop("test.job", None)
 
 
 def test_uuid7_ids_ordered_and_formatted():

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { LegalPage } from "@/components/layout/LegalPage";
-import { SITE } from "@/lib/constants";
+import { APP_TELEMETRY_PRIVACY, PROCESSORS, SITE, WEBSITE_ANALYTICS_NOTICE } from "@/lib/constants";
 
 export const metadata: Metadata = {
   title: "Privacy Policy",
@@ -14,7 +14,7 @@ export default function PrivacyPage() {
       <p>
         This policy explains what information Truebex (&ldquo;we&rdquo;)
         collects when you use truebex.com, your Truebex account, the
-        dashboard and the Truebex API, and what we do with it. We collect only
+        dashboard, the Truebex API and the desktop app, and what we do with it. We collect only
         what we need to run the service, and we do not sell personal
         information.
       </p>
@@ -59,10 +59,11 @@ export default function PrivacyPage() {
           address and name with us; we use them only to sign you in.
         </li>
         <li>
-          <strong>Billing records.</strong> Your plan, payment amounts,
-          dates, status and the payment provider&rsquo;s reference. Card and
-          wallet details are entered on the provider&rsquo;s own page and
-          never reach our servers.
+          <strong>Billing records.</strong> Your plan, billing interval and
+          seats, payment amounts and tax, invoices, dates, status, the payment
+          provider&rsquo;s reference, and the version and time of the
+          cancellation terms you accepted at checkout. Card details are entered
+          on the provider&rsquo;s own checkout and never reach our servers.
         </li>
         <li>
           <strong>Demo requests.</strong> The name, email, company and project
@@ -74,6 +75,11 @@ export default function PrivacyPage() {
           use advertising or tracking cookies.
         </li>
       </ul>
+
+      <h2>{WEBSITE_ANALYTICS_NOTICE.title}</h2>
+      {WEBSITE_ANALYTICS_NOTICE.paragraphs.map((p) => (
+        <p key={p}>{p}</p>
+      ))}
 
       <h2>How we use it</h2>
       <ul>
@@ -89,13 +95,33 @@ export default function PrivacyPage() {
         service:
       </p>
       <ul>
-        <li><strong>Google</strong> — Sign in with Google, and the spreadsheet that stores demo requests.</li>
-        <li><strong>Stripe</strong> — card payments, when you pay by card.</li>
-        <li><strong>Wayl</strong> — QiCard, FIB and ZainCash payments in Iraq, when you pay with Wayl.</li>
-        <li><strong>Cloudflare</strong> — network security and delivery for truebex.com and the API.</li>
-        <li><strong>GitHub</strong> — hosting of the public website.</li>
+        {PROCESSORS.map((p) => (
+          <li key={p.name}>
+            <strong>{p.name}</strong> — {p.role}
+          </li>
+        ))}
       </ul>
       <p>We share information with others only when the law requires it.</p>
+
+      <h2>{APP_TELEMETRY_PRIVACY.heading}</h2>
+      <p>{APP_TELEMETRY_PRIVACY.intro}</p>
+      <ul>
+        {APP_TELEMETRY_PRIVACY.kinds.map((k) => (
+          <li key={k.name}>
+            <strong>{k.name}.</strong> {k.consent} {k.holds}
+          </li>
+        ))}
+      </ul>
+      <p>{APP_TELEMETRY_PRIVACY.identity}</p>
+      <h3>{APP_TELEMETRY_PRIVACY.retentionHeading}</h3>
+      <ul>
+        {APP_TELEMETRY_PRIVACY.retention.map((r) => (
+          <li key={r.data}>
+            <strong>{r.data}:</strong> {r.kept}; then {r.then}.
+          </li>
+        ))}
+      </ul>
+      <p>{APP_TELEMETRY_PRIVACY.deletion}</p>
 
       <h2>How long we keep it</h2>
       <p>
@@ -108,6 +134,10 @@ export default function PrivacyPage() {
       <h2>Your choices and rights</h2>
       <ul>
         <li>Revoke any API key, or remove any signed-in computer, at any time from your dashboard.</li>
+        <li>
+          Turn the desktop app&rsquo;s usage events and crash reports on or off
+          at any time in its privacy settings.
+        </li>
         <li>
           Ask us for a copy of your data, to correct it, or to delete your
           account and its data, by emailing{" "}

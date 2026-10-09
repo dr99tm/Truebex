@@ -1,0 +1,118 @@
+# The Truebex API host (PF14): one Linux VM, four services.
+#
+#   caddy    :443 only, Cloudflare origin certificate, proxies to api:8000
+#   api      uvicorn (2 processes), the image built from server/Dockerfile
+#   worker   the same image running `python -m app.worker` (every background job)
+#   postgres Postgres 18 + wal-g: WAL archived continuously, nightly base backups
+#
+# Lives in /opt/truebex on the VM next to `.env` (API_IMAGE, written by
+# infra/deploy.ps1), `caddy.env` (Cloudflare's ranges) and `secrets/` (decrypted
+# from infra/secrets/*.sops.env at deploy, mode 0600). Postgres publishes no
+# port: it is reachable only on this Compose network.
+
+name: truebex
+
+x-logging: &logging
+  # journald keeps 14 days (cloud-init: MaxRetentionSec=14day), telemetry.md §6.5.
+  driver: journald
+  options:
+    tag: "truebex/{{.Name}}"
+
+services:
+  postgres:
+    build: ./postgres
+    image: truebex-postgres:18
+    restart: unless-stopped
+    env_file: [./secrets/postgres.env]
+    environment:
+      PGDATA: /var/lib/postgresql/18/docker
+    command:
+      - postgres
+      - -c
+      - wal_level=replica
+      - -c
+      - archive_mode=on
+      - -c
+      - archive_command=/usr/local/bin/wal-g wal-push %p
+      # RPO: a segment is archived at least every 60 s even when idle.
+      - -c
+      - archive_timeout=60
+      - -c
+      - shared_buffers=1GB
+      - -c
+      - max_wal_size=2GB
+    shm_size: 256m
+    volumes:
+      - pgdata:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 30s
+    logging: *logging
+
+  api:
+    image: ${API_IMAGE:?set API_IMAGE in /opt/truebex/.env}
+    restart: unless-stopped
+    env_file: [./secrets/server.env]
+    environment:
+      BACKGROUND_TASKS: worker
+      RATELIMIT_BACKEND: db
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import sys, urllib.request; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=4).status == 200 else 1)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    logging: *logging
+
+  worker:
+    image: ${API_IMAGE:?set API_IMAGE in /opt/truebex/.env}
+    restart: unless-stopped
+    command: ["python", "-m", "app.worker"]
+    env_file: [./secrets/server.env]
+    environment:
+      BACKGROUND_TASKS: worker
+      RATELIMIT_BACKEND: db
+      BACKUP_EXPECTED: "true"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-m", "app.worker", "--check"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    logging: *logging
+
+  caddy:
+    image: caddy:2.11
+    restart: unless-stopped
+    ports:
+      - "443:443"
+    env_file: [./caddy.env]
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./secrets/origin.pem:/etc/caddy/certs/origin.pem:ro
+      - ./secrets/origin.key:/etc/caddy/certs/origin.key:ro
+      - /var/log/truebex/caddy:/var/log/caddy
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - api
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:2019/config/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    logging: *logging
+
+volumes:
+  pgdata:
+  caddy_data:
+  caddy_config:

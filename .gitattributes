@@ -1,0 +1,7 @@
+# Files that run on the Linux host keep LF on every checkout.
+*.sh text eol=lf
+infra/host/** text eol=lf
+infra/tofu/** text eol=lf
+# Contract fixtures are byte-exact copies of the app repo's (never edited).
+server/tests/contracts/** -text
+server/tests/fixtures/** -text
