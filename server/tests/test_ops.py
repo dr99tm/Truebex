@@ -8,6 +8,9 @@ Postgres database (see conftest.py).
 
 import io
 import json
+import os
+import subprocess
+import sys
 import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -235,6 +238,31 @@ def test_tasks_run_due_respects_interval():
         assert job in names
 
 
+def _fresh_python(code: str, tmp_path) -> str:
+    """Run `code` in a new interpreter in server/ (nothing imported yet), as
+    the worker container and the copy script start."""
+    env = dict(os.environ, DATABASE_URL=f"sqlite:///{tmp_path / 'fresh.db'}", BACKGROUND_TASKS="off")
+    out = subprocess.run(
+        [sys.executable, "-c", code], cwd=SERVER, env=env, capture_output=True, text=True, timeout=120
+    )
+    assert out.returncode == 0, out.stderr
+    return out.stdout
+
+
+def test_worker_process_registers_every_feature_job(tmp_path):
+    # The worker imports only app.worker: PF1's and PF2's jobs must still run there.
+    names = set(json.loads(_fresh_python("import json; from app import tasks; print(json.dumps(tasks.registered()))", tmp_path)))
+    for job in (
+        "telemetry.rollup",
+        "worker.heartbeat",
+        "licence.links.purge",
+        "licence.devices.lapse",
+        "billing.founding.expire",
+        "billing.reconcile",
+    ):
+        assert job in names, job
+
+
 def test_worker_heartbeat_and_check(client, capsys):
     from app import worker
 
@@ -428,6 +456,15 @@ def _seed_sqlite(url: str) -> None:
         db.add(User(id=10, email="late@example.com", hashed_password="", name="Late"))
         db.commit()
     engine.dispose()
+
+
+def test_sqlite_to_postgres_lists_every_feature_table(tmp_path):
+    # A fresh process (the cutover runs the script on its own): PF1's tables too.
+    code = "import json; from scripts import sqlite_to_postgres as s; print(json.dumps([t.name for t in s._models()]))"
+    tables = json.loads(_fresh_python(code, tmp_path))
+    for table in ("users", "subscriptions", "provider_prices", "devices", "releases", "telemetry_events", "crash_reports"):
+        assert table in tables, table
+    assert tables.index("users") < tables.index("devices")  # parents first
 
 
 def test_sqlite_to_postgres_on_sqlite_target_and_precheck(tmp_path):

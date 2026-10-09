@@ -13,21 +13,8 @@ from pathlib import Path
 if __package__ in (None, ""):  # run as a file: make `app` importable
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from sqlalchemy import select  # noqa: E402
-
-from app.database import SessionLocal, init_db  # noqa: E402
-from app.models import User  # noqa: E402
-
-
-def set_admin(email: str, admin: bool = True) -> bool:
-    init_db()
-    with SessionLocal() as db:
-        user = db.scalar(select(User).where(User.email == email.strip().lower()))
-        if user is None:
-            return False
-        user.is_admin = admin
-        db.commit()
-        return True
+# One implementation of the flag: app.admin_cli (`python -m app.admin_cli`).
+from app.admin_cli import set_admin  # noqa: E402, F401
 
 
 def main(argv: list[str] | None = None) -> int:

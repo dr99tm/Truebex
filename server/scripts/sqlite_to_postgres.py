@@ -69,7 +69,11 @@ class Report:
 
 
 def _models() -> list[Table]:
-    from app import models  # noqa: F401  (registers every table)
+    # Every module with tables (the same set init_db creates), so a fresh
+    # process sees PF1's devices and releases too.
+    from app import models  # noqa: F401
+    from app.licence import models as _licence  # noqa: F401
+    from app.releases import models as _releases  # noqa: F401
 
     return list(Base.metadata.sorted_tables)  # parents before children
 

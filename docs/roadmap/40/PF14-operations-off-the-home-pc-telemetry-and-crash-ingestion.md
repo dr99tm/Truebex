@@ -321,3 +321,16 @@ The eight `telemetry.md` §10 platform tests come first. Postgres tests carry `@
   * **Later:** monthly partitions of `telemetry_events` when volume calls for them. The image's
     `minidump-stackwalk` (0.27.0) and `wal-g` (v3.0.9) builds are first exercised by `deploy.ps1` (no Docker on
     this PC).
+* **Merged with PF1, PF2 and PF13 (2026-10-10, Autopilot T17, `ap/t17-merge-t3-pf14-operations-off-the`):** one copy
+  of each shared file. `storage/` is PF1's committed package (`check_key`, `BlobInfo.bytes` + `sha256`,
+  `STORAGE_URL_SECRET`) plus PF14's `s3.py` and a `BlobInfo.size` alias; PF14's own `storage/` had never been
+  committed (`server/.gitignore`'s unanchored `storage/` hid it; now `/storage/`). `contract()` and `limit()`
+  return `Depends` (PF1's form) and `limit` takes `name=`; every 422 is still the envelope (deviation 10), other
+  errors only on contract routes. `tasks.py` keeps both APIs and its loader imports `licence.jobs` and
+  `billing.jobs`, so the worker process runs PF1's and PF2's jobs too. `devices` is PF1's table
+  (`licence/models.py`); `deps.device_for_token` reads it through `licence.devices`. `_ADDED_COLUMNS` uses
+  `TIMESTAMP WITH TIME ZONE` (Postgres has no `DATETIME`) and PF2's unique index is created on the database being
+  migrated; `scripts/sqlite_to_postgres.py` lists PF1's tables too. A valid upload link with the wrong
+  Content-Type answers 415 (PF1), not 403. `/privacy/` lists PF2's processors (Paddle, Stripe; Wayl removed by
+  PF2) with PF14's. `infra/secrets/server.env.example` gained the PF1 and PF2 settings. The whole suite also
+  passed with the app on Postgres 17. Still open for PF1: `publish_release.py --symbols` → `upload_symbols.upload()`.

@@ -291,6 +291,27 @@ def test_feedback_reply_attaches_account_email(client):
         assert db.get(Feedback, gone["feedback_id"]) is None
 
 
+def test_feedback_reply_with_a_device_from_the_licence_api(client):
+    # Where PF1 meets PF14: the device token the licence API issued, then
+    # its sign-out (5.10), decide whether a feedback reply carries the e-mail.
+    from .licence_helpers import activated, bearer
+
+    h = signup(client, "lina@example.com")
+    device = activated(client, h)
+    token = device["device_token"]
+
+    fb = dict(load("feedback.json"), feedback_id=new_id(), reply=True)
+    res = post_feedback(client, fb, headers={**H, "Authorization": f"Bearer {token}"})
+    assert res.status_code == 202, res.text
+    with SessionLocal() as db:
+        assert db.get(Feedback, fb["feedback_id"]).email == "lina@example.com"
+
+    assert client.post("/licence/deactivate", headers=bearer(token)).status_code == 200
+    after = dict(fb, feedback_id=new_id())
+    res = post_feedback(client, after, headers={**H, "Authorization": f"Bearer {token}"})
+    assert_envelope(res, 401, "unauthenticated")
+
+
 def test_delete_by_install_secret(client):
     assert service.install_id_from_secret(SECRET) == INSTALL
     other = load("events-batch.json")

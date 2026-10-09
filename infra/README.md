@@ -145,7 +145,7 @@ Every feature codes against these; the production adapters are PF14's.
 
 | Module | Settings |
 |---|---|
-| `storage/` (`local`, `s3`) | `STORAGE_BACKEND`, `STORAGE_DIR`, `S3_ENDPOINT`, `S3_REGION`, `S3_BUCKET`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `CDN_BASE_URL` |
+| `storage/` (`local`, `s3`) | `STORAGE_BACKEND`, `STORAGE_DIR`, `STORAGE_URL_SECRET` (local signed URLs), `S3_ENDPOINT`, `S3_REGION`, `S3_BUCKET`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `CDN_BASE_URL` |
 | `mail/` (`console`, `smtp`) | `MAIL_BACKEND`, `MAIL_FROM`, `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD` |
 | `tasks.py` + `worker.py` | `BACKGROUND_TASKS=inline\|worker\|off` |
 | `ratelimit.py` (`memory`, `db`) | `RATELIMIT_BACKEND` |
