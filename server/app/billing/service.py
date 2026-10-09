@@ -38,6 +38,15 @@ FOUNDING_HOLD = timedelta(minutes=30)
 # Providers whose subscriptions the customer manages (portal, seats, change).
 MANAGED_PROVIDERS = ("paddle", "stripe")
 
+# Trials are subscriptions rows too (licence contract 5.6).
+TRIAL_PROVIDER = "trial"
+
+
+def _rank(sub: Subscription) -> tuple[int, int]:
+    # Higher tier wins (ranks come from catalogue.json); on a tie a paid row
+    # beats a trial, so a user who buys Pro mid-trial reads as a paid seat.
+    return rank(sub.plan), 0 if sub.provider == TRIAL_PROVIDER else 1
+
 
 def _now() -> datetime:
     return datetime.now(timezone.utc)
@@ -61,7 +70,7 @@ def live_subscription(db: Session, user: User) -> Subscription | None:
     subs = db.scalars(select(Subscription).where(Subscription.user_id == user.id))
     best: Subscription | None = None
     for sub in subs:
-        if is_live(sub) and (best is None or rank(sub.plan) > rank(best.plan)):
+        if is_live(sub) and (best is None or _rank(sub) > _rank(best)):
             best = sub
     return best
 
@@ -296,7 +305,7 @@ def _end_trials(db: Session, user_id: int) -> None:
     for trial in db.scalars(
         select(Subscription).where(
             Subscription.user_id == user_id,
-            Subscription.provider == "trial",
+            Subscription.provider == TRIAL_PROVIDER,
             Subscription.status == "active",
         )
     ):

@@ -5,7 +5,7 @@ import { Check, Copy, KeyRound } from "lucide-react";
 import { ErrorNote, PageHeader, Panel } from "@/components/dashboard/DashboardShell";
 import { useApiData } from "@/components/dashboard/useApiData";
 import { Button } from "@/components/ui/Button";
-import { formatDate } from "@/lib/api";
+import { API_URL, formatDate } from "@/lib/api";
 import { createKey, listKeys, revokeKey, type CreatedApiKey } from "@/lib/developer";
 
 export default function KeysPage() {
@@ -182,6 +182,14 @@ export default function KeysPage() {
             </ul>
           </details>
         )}
+      </Panel>
+
+      <Panel className="mt-6">
+        <h2 className="font-semibold">Quick start</h2>
+        <p className="mt-2 text-sm text-text-secondary">Create a key above, then:</p>
+        <pre className="mt-4 overflow-x-auto rounded-[var(--radius-button)] border border-border bg-background p-4 font-mono text-sm text-text-primary">
+          {`curl ${API_URL}/v1/ping \\\n  -H "Authorization: Bearer tbx_live_…"`}
+        </pre>
       </Panel>
     </>
   );

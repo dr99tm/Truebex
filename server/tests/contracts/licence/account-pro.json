@@ -1,0 +1,33 @@
+{
+  "http_status": 200,
+  "body": {
+    "user": {
+      "id": 42,
+      "email": "a@b.com",
+      "name": "A B",
+      "avatar_url": null
+    },
+    "author_id": "01a085d31b8070f18d5e6f7081920314",
+    "plan": "pro",
+    "plan_name": "Pro",
+    "trial": {
+      "used": true,
+      "active": false,
+      "ends_at": null
+    },
+    "seat": {
+      "kind": "personal",
+      "org_id": null,
+      "org_name": null
+    },
+    "seats": {
+      "total": 1,
+      "assigned": 1
+    },
+    "devices": {
+      "active": 2,
+      "limit": 2
+    },
+    "manage_url": "https://truebex.com/dashboard/billing/"
+  }
+}

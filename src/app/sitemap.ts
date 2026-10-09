@@ -18,6 +18,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
   return [
     { url: `${SITE.url}/`, lastModified: now, changeFrequency: "weekly", priority: 1, alternates: homeAlternates },
     { url: `${SITE.url}/ar/`, lastModified: now, changeFrequency: "weekly", priority: 0.9, alternates: homeAlternates },
+    { url: `${SITE.url}/download/`, lastModified: now, changeFrequency: "weekly", priority: 0.9 },
     { url: `${SITE.url}/pricing/`, lastModified: now, changeFrequency: "weekly", priority: 0.9 },
     ...FEATURE_PAGES.map((p) => ({
       url: `${SITE.url}/features/${p.slug}/`,

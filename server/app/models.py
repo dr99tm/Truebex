@@ -36,6 +36,15 @@ class User(Base):
     # Cached plan id ("free", "pro", ...). Billing keeps it in sync with the
     # user's active subscription; see billing.service.effective_plan.
     plan: Mapped[str] = mapped_column(String(32), default="free", nullable=False)
+    # PF1 (licence API):
+    # 32-hex UUIDv7 carried by project-log operations; minted on first use.
+    author_id: Mapped[str | None] = mapped_column(
+        String(32), unique=True, index=True, nullable=True
+    )
+    # When the account's one trial started (contract 5.6).
+    trial_used_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     # Google account id (the ID token's `sub`), set once the user signs in
     # with Google.
     google_sub: Mapped[str | None] = mapped_column(

@@ -9,15 +9,37 @@ import { getToken } from "@/lib/auth";
 import type { User } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 
-const NAV = [
-  { href: "/dashboard/", label: "Overview", icon: LayoutGrid },
-  { href: "/dashboard/keys/", label: "API keys", icon: KeyRound },
-  { href: "/dashboard/usage/", label: "Usage", icon: Gauge },
-  { href: "/dashboard/billing/", label: "Billing", icon: CreditCard },
-] as const;
+interface NavItem {
+  href: string;
+  label: string;
+  icon: typeof LayoutGrid;
+}
+
+// The developer pages keep their URLs (/dashboard/keys/, /dashboard/usage/):
+// links to them live in the API, the docs and old emails.
+const NAV_GROUPS: { label: string | null; items: NavItem[] }[] = [
+  {
+    label: null,
+    items: [
+      { href: "/dashboard/", label: "Overview", icon: LayoutGrid },
+      { href: "/dashboard/billing/", label: "Billing", icon: CreditCard },
+    ],
+  },
+  {
+    label: "Developer",
+    items: [
+      { href: "/dashboard/keys/", label: "API keys", icon: KeyRound },
+      { href: "/dashboard/usage/", label: "Usage", icon: Gauge },
+      { href: "/developers/", label: "API docs", icon: BookOpen },
+    ],
+  },
+];
 
 // Shown to admins only (users.is_admin); the API enforces it either way.
-const ADMIN_NAV = [{ href: "/dashboard/admin/growth/", label: "Growth", icon: TrendingUp }] as const;
+const ADMIN_GROUP = {
+  label: "Admin",
+  items: [{ href: "/dashboard/admin/growth/", label: "Growth", icon: TrendingUp }],
+};
 
 const UserContext = createContext<User | null>(null);
 
@@ -35,7 +57,9 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!loading && !user && !getToken()) {
-      router.replace(`/login/?next=${encodeURIComponent(pathname)}`);
+      // Keep the query: /dashboard/link/?code=… must survive signing in.
+      const next = pathname + window.location.search;
+      router.replace(`/login/?next=${encodeURIComponent(next)}`);
     }
   }, [loading, user, router, pathname]);
 
@@ -65,9 +89,8 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
     );
   }
 
-  const nav: readonly { href: string; label: string; icon: typeof LayoutGrid }[] = user.is_admin
-    ? [...NAV, ...ADMIN_NAV]
-    : NAV;
+  const groups = user.is_admin ? [...NAV_GROUPS, ADMIN_GROUP] : NAV_GROUPS;
+  const nav = groups.flatMap((g) => g.items);
 
   const isActive = (href: string) =>
     href === "/dashboard/"
@@ -78,31 +101,35 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
     <UserContext.Provider value={user}>
       <div className="mx-auto flex min-h-screen max-w-7xl gap-8 px-4 pb-24 pt-24 md:px-8">
         <aside className="hidden w-56 shrink-0 md:block">
-          <nav aria-label="Dashboard" className="sticky top-24 space-y-1">
-            {nav.map(({ href, label, icon: Icon }) => (
-              <Link
-                key={href}
-                href={href}
-                aria-current={isActive(href) ? "page" : undefined}
-                className={cn(
-                  "flex items-center gap-3 rounded-[var(--radius-button)] px-3 py-2 text-sm transition-colors",
-                  isActive(href)
-                    ? "bg-accent/10 text-accent"
-                    : "text-text-secondary hover:bg-white/5 hover:text-text-primary"
+          <nav aria-label="Dashboard" className="sticky top-24">
+            {groups.map((group) => (
+              <div key={group.label ?? "main"} className={group.label ? "mt-6" : undefined}>
+                {group.label && (
+                  <p className="mb-2 px-3 text-xs font-semibold uppercase tracking-wider text-text-muted">
+                    {group.label}
+                  </p>
                 )}
-              >
-                <Icon size={16} aria-hidden />
-                {label}
-              </Link>
+                <ul className="space-y-1">
+                  {group.items.map(({ href, label, icon: Icon }) => (
+                    <li key={href}>
+                      <Link
+                        href={href}
+                        aria-current={isActive(href) ? "page" : undefined}
+                        className={cn(
+                          "flex items-center gap-3 rounded-[var(--radius-button)] px-3 py-2 text-sm transition-colors",
+                          isActive(href)
+                            ? "bg-accent/10 text-accent"
+                            : "text-text-secondary hover:bg-white/5 hover:text-text-primary"
+                        )}
+                      >
+                        <Icon size={16} aria-hidden />
+                        {label}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </div>
             ))}
-            <div className="my-3 h-px bg-border" />
-            <Link
-              href="/developers/"
-              className="flex items-center gap-3 rounded-[var(--radius-button)] px-3 py-2 text-sm text-text-secondary transition-colors hover:bg-white/5 hover:text-text-primary"
-            >
-              <BookOpen size={16} aria-hidden />
-              API docs
-            </Link>
           </nav>
         </aside>
 

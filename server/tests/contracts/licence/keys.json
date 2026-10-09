@@ -1,0 +1,12 @@
+{
+  "note": "TEST key for the licence contract fixtures. Never used in production.",
+  "keys": [
+    {
+      "kid": "test-2026-10",
+      "alg": "Ed25519",
+      "use": "test",
+      "public_key": "TEof-OQH03qMXbJDVWp8zI3Eq5eposIHOxWIGgRk-0I",
+      "private_key": "AXjCDn8F7o08-DVzljVMQleTBTrmkhJfb_96Ic292dI"
+    }
+  ]
+}

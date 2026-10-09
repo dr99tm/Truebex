@@ -1,9 +1,12 @@
-"""The plan catalogue: tiers, prices and API limits, read from catalogue.json.
+"""The plan catalogue: tiers, ranks, prices, the entitlement matrix and API
+limits, read from catalogue.json.
 
-`server/app/catalogue.json` is the one source: the API reads it here, the
-website imports it at build time (src/lib/catalogue.ts) and
+`server/app/catalogue.json` is the one source: the API reads it here (the
+licence entitlements take `features` and `limits` from it), the website
+imports it at build time (src/lib/catalogue.ts) and
 `server/scripts/sync_prices.py` mirrors its prices to the payment providers.
-Prices and the founding offer are placeholders until guides/GD7.
+Until GD7 is written the matrix is the licence contract's §6.3 placeholder;
+prices and the founding offer are placeholders too.
 """
 
 import json
@@ -47,6 +50,8 @@ class Plan:
     monthly_requests: int
     # Active (non-revoked) API keys allowed at once.
     max_api_keys: int
+    # Entitlement keys this tier unlocks (sorted, unique) and its limits
+    # (an integer, or None = no limit).
     features: tuple[str, ...]
     limits: dict[str, int | None]
 
@@ -88,7 +93,7 @@ def _plan(raw: dict[str, Any]) -> Plan:
         ),
         monthly_requests=int(api.get("monthly_requests", 0)),
         max_api_keys=int(api.get("max_api_keys", 0)),
-        features=tuple(raw.get("features") or ()),
+        features=tuple(sorted(set(raw.get("features") or ()))),
         limits=dict(raw.get("limits") or {}),
     )
 

@@ -73,6 +73,29 @@ class Settings(BaseSettings):
     # Price of one Pro month in IQD (Wayl's minimum is 1000).
     wayl_price_pro_iqd: int = 130_000
 
+    # --- Licence API (PF1, contract licence-api) -------------------------------
+    # base64url Ed25519 seed that signs entitlements (server/scripts/
+    # make_signing_key.py --kind lic). Lives only in server/.env. Empty
+    # switches activation, entitlements and trials off (503 unavailable).
+    licence_signing_key: str = ""
+    licence_key_id: str = "lic-2026-10"
+    # Public halves published by GET /licence/keys, as "kid:key,kid:key".
+    # The rel-* private seeds never live on this host.
+    release_public_keys: str = ""
+    # Older lic-* public keys kept valid during a rotation (contract §3).
+    signing_keys_extra: str = ""
+    trial_days: int = 14
+
+    # --- Shared plumbing (PF14 owns the production adapters) -----------------
+    # "local": files under storage_dir, served by /files with HMAC-signed URLs.
+    storage_backend: str = "local"
+    storage_dir: str = "./storage"
+    # HMAC key for local signed URLs; empty derives one from secret_key.
+    storage_url_secret: str = ""
+    # background_tasks (inline | worker | off) is under Billing above.
+    # memory (in-process token buckets).
+    ratelimit_backend: str = "memory"
+
     @property
     def cors_origin_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]

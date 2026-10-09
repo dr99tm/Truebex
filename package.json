@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "sync:releases": "node scripts/sync-releases.mjs",
     "dev": "next dev",
     "build": "next build && node scripts/postbuild-lang.mjs",
     "build:custom": "npm run build && xcopy /E /I /Y /H out\\* X:\\Truebex_site_files\\Truebex\\",

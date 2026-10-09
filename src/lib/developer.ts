@@ -69,6 +69,8 @@ export interface Subscription {
   interval: Interval | null;
   seats: number;
   status: string;
+  // "paddle" | "stripe" | "wayl", or "trial": the one 14-day Pro trial
+  // (started from the app).
   provider: string | null;
   current_period_end: string | null;
   cancel_at_period_end: boolean;

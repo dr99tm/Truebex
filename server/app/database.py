@@ -73,6 +73,10 @@ _ADDED_COLUMNS: dict[str, list[tuple[str, str]]] = {
     ],
 }
 
+# PF1 (licence API), in its own block so parallel features add theirs beside it.
+_ADDED_COLUMNS["users"] += [("author_id", "VARCHAR(32)"), ("trial_used_at", "DATETIME")]
+# subscriptions.seats (NULL = 1) is in the PF2 block above: PF2 writes it.
+
 
 def _migrate() -> None:
     insp = inspect(engine)
@@ -88,6 +92,13 @@ def _migrate() -> None:
             text(
                 "CREATE UNIQUE INDEX IF NOT EXISTS ix_users_google_sub "
                 "ON users (google_sub)"
+            )
+        )
+        # PF1
+        conn.execute(
+            text(
+                "CREATE UNIQUE INDEX IF NOT EXISTS ix_users_author_id "
+                "ON users (author_id)"
             )
         )
     # PF2: one row per provider subscription. Files with duplicates from before
@@ -107,6 +118,8 @@ def _migrate() -> None:
 def init_db() -> None:
     """Create tables and apply additive migrations."""
     from . import models  # noqa: F401  (ensures models are registered)
+    from .licence import models as _licence_models  # noqa: F401  (PF1)
+    from .releases import models as _release_models  # noqa: F401  (PF1)
 
     Base.metadata.create_all(bind=engine)
     _migrate()

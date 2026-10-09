@@ -1,7 +1,9 @@
-// The changelog's entries: releases from the release feed
-// (src/content/releases.json, written by `npm run sync:releases`) and the
-// product's history (src/content/history.json). Used by /changelog/ and its
-// Atom feed at build time.
+// The changelog's entries: releases from the release feeds
+// (src/content/releases.json and releases-beta.json, written by
+// `npm run sync:releases`) and the product's history
+// (src/content/history.json). Used by /changelog/ and its Atom feed at build
+// time.
+import betaFeed from "@/content/releases-beta.json";
 import releasesFeed from "@/content/releases.json";
 import history from "@/content/history.json";
 
@@ -24,21 +26,36 @@ export interface ChangelogEntry {
   title: string;
   summary?: string;
   notes?: string;
+  /** A release from the beta channel. */
+  beta?: boolean;
 }
 
 interface Feed {
   releases: { manifest: ReleaseManifest }[];
 }
 
-export function releaseEntries(): ChangelogEntry[] {
-  return ((releasesFeed as unknown as Feed).releases ?? []).map(({ manifest }) => ({
+function feedEntries(feed: unknown, beta: boolean): ChangelogEntry[] {
+  return ((feed as Feed).releases ?? []).map(({ manifest }) => ({
     id: manifest.version,
     kind: "release",
     date: manifest.published_at.slice(0, 10),
     updated: manifest.published_at,
     title: `Truebex ${manifest.version}`,
     notes: manifest.notes_md ?? "",
+    ...(beta ? { beta: true } : {}),
   }));
+}
+
+/** Stable releases: the page and the Atom feed. */
+export function releaseEntries(): ChangelogEntry[] {
+  return feedEntries(releasesFeed, false);
+}
+
+/** Beta releases not in the stable feed: the page only (each beta manifest's
+ *  notes_url points at its anchor there), never the Atom feed. */
+export function betaEntries(): ChangelogEntry[] {
+  const stable = new Set(releaseEntries().map((r) => r.id));
+  return feedEntries(betaFeed, true).filter((r) => !stable.has(r.id));
 }
 
 /** Milestones; one that shares its id with a release (1.0.0 once the feed

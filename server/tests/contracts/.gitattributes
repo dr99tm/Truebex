@@ -1,0 +1,3 @@
+# Contract fixtures are byte-exact (signatures, canonical JSON, a binary installer stub):
+# never convert line endings.
+* -text

@@ -1,0 +1,58 @@
+{
+  "note": "Team on a floating seat: refresh after 30 min, expires after 2 h.",
+  "stub_now": "2026-10-09T12:00:00Z",
+  "canonical": "{\"account\":{\"author_id\":\"01a085d31b8070f18d5e6f7081920314\",\"email\":\"a@b.com\",\"org_id\":\"019feb54538071359e6f708192031425\",\"user_id\":42},\"device_id\":\"01a12051e3807068ab3c4d5e6f708192\",\"expires_at\":\"2026-10-09T13:00:00Z\",\"features\":[\"ai.byok\",\"ai.metered\",\"analysis.reports\",\"assets.library\",\"cloud.panoramas\",\"cloud.sync\",\"collab.live\",\"export.clean\",\"export.dwg\",\"export.dxf\",\"export.ifc\",\"export.pdf\",\"lighting.full\",\"market.cost\",\"mep\",\"render.panorama\",\"share.links\",\"vr.pc\"],\"fingerprint\":\"892ed7b1e8cc4cd81ca9ea52b28522379bd2791987a71201163bc57e6990bdb5\",\"issued_at\":\"2026-10-09T11:00:00Z\",\"limits\":{\"ai_credits_month\":0,\"cloud_cu_month\":0,\"devices\":2,\"share_links\":1,\"storeys\":null},\"nonce\":\"93db3bbd2a476cabb2303bda3b8e7817\",\"plan\":\"team\",\"plan_period_end\":\"2026-11-01T00:00:00Z\",\"refresh_after\":\"2026-10-09T11:30:00Z\",\"schema\":\"truebex-entitlement/1\",\"seat_kind\":\"floating\",\"trial\":false}",
+  "envelope": {
+    "document": {
+      "schema": "truebex-entitlement/1",
+      "plan": "team",
+      "features": [
+        "ai.byok",
+        "ai.metered",
+        "analysis.reports",
+        "assets.library",
+        "cloud.panoramas",
+        "cloud.sync",
+        "collab.live",
+        "export.clean",
+        "export.dwg",
+        "export.dxf",
+        "export.ifc",
+        "export.pdf",
+        "lighting.full",
+        "market.cost",
+        "mep",
+        "render.panorama",
+        "share.links",
+        "vr.pc"
+      ],
+      "limits": {
+        "storeys": null,
+        "devices": 2,
+        "share_links": 1,
+        "cloud_cu_month": 0,
+        "ai_credits_month": 0
+      },
+      "seat_kind": "floating",
+      "trial": false,
+      "device_id": "01a12051e3807068ab3c4d5e6f708192",
+      "fingerprint": "892ed7b1e8cc4cd81ca9ea52b28522379bd2791987a71201163bc57e6990bdb5",
+      "issued_at": "2026-10-09T11:00:00Z",
+      "refresh_after": "2026-10-09T11:30:00Z",
+      "expires_at": "2026-10-09T13:00:00Z",
+      "plan_period_end": "2026-11-01T00:00:00Z",
+      "nonce": "93db3bbd2a476cabb2303bda3b8e7817",
+      "account": {
+        "user_id": 42,
+        "email": "a@b.com",
+        "author_id": "01a085d31b8070f18d5e6f7081920314",
+        "org_id": "019feb54538071359e6f708192031425"
+      }
+    },
+    "signature": {
+      "alg": "Ed25519",
+      "kid": "test-2026-10",
+      "value": "jtJ4pR15IMENKQh08QbNlzDkWHeCsWGzspIwv4-gqQXCKKZaTt2DapK_muCcIhkFj2J36nCkfV35xGCU2IRjDg"
+    }
+  }
+}

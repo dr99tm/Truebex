@@ -1,5 +1,8 @@
 """Background jobs (PF14 Plumbing): `@periodic(name, seconds)`, `run_due(now)`,
-`start_inline(app)`.
+`start_inline(app)`. First users: PF1 (licence.*) and PF2 (billing.*).
+
+    @periodic("licence.links.purge", 600)
+    def purge(now): ...  # opens its own DB session
 
 BACKGROUND_TASKS=inline runs due jobs from an asyncio loop started in the
 app's lifespan; `worker` leaves them to `python -m app.worker` (PF14); `off`
@@ -9,6 +12,7 @@ at its next slot.
 """
 
 import asyncio
+import contextlib
 import logging
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -45,12 +49,13 @@ def jobs() -> dict[str, Job]:
     return dict(_JOBS)
 
 
-def run_due(now: datetime | None = None) -> list[str]:
-    """Run every job whose slot has come. Returns the names that ran."""
+def run_due(now: datetime | None = None, *, force: bool = False) -> list[str]:
+    """Run every job whose slot has come (every job with `force`). Returns the
+    names that ran."""
     now = now or datetime.now(timezone.utc)
     ran = []
     for job in list(_JOBS.values()):
-        if job.next_run is not None and job.next_run > now:
+        if not force and job.next_run is not None and job.next_run > now:
             continue
         try:
             job.fn(now)
@@ -66,7 +71,8 @@ def start_inline(app: object) -> "asyncio.Task[None]":
 
     async def loop() -> None:
         while True:
-            await asyncio.to_thread(run_due)
+            with contextlib.suppress(Exception):
+                await asyncio.to_thread(run_due)
             await asyncio.sleep(TICK_S)
 
-    return asyncio.get_running_loop().create_task(loop())
+    return asyncio.get_running_loop().create_task(loop(), name="truebex-tasks")

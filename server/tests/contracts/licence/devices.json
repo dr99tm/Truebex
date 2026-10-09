@@ -1,0 +1,26 @@
+{
+  "http_status": 200,
+  "body": {
+    "devices": [
+      {
+        "device_id": "01a12051e3807068ab3c4d5e6f708192",
+        "name": "DESKTOP-7Q2",
+        "os": "windows 10.0.26200",
+        "app_version": "1.0.0",
+        "activated_at": "2026-10-09T11:00:00Z",
+        "last_seen_at": "2026-10-09T11:55:00Z",
+        "current": true
+      },
+      {
+        "device_id": "01a11b2b878070acbc4d5e6f70819203",
+        "name": "STUDIO-LAPTOP",
+        "os": "windows 10.0.22631",
+        "app_version": "1.0.0",
+        "activated_at": "2026-10-08T11:00:00Z",
+        "last_seen_at": "2026-10-08T18:20:00Z",
+        "current": false
+      }
+    ],
+    "limit": 2
+  }
+}

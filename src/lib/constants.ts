@@ -249,6 +249,40 @@ export const FAQS = [
   },
 ] as const;
 
+// The Download page (/download/) and the dashboard's Download panel. The
+// version, size and date come from src/content/releases.json (saved by
+// `npm run sync:releases` from the release feed), never typed here.
+export const DOWNLOAD = {
+  metaTitle: "Download Truebex for Windows",
+  description:
+    "Download Truebex for Windows: the building design platform with measured daylight. The installer needs no account; a free account holds your licence.",
+  eyebrow: "Download",
+  h1: "Download Truebex for Windows",
+  intro:
+    "One installer for Windows. Downloading needs no account, and every download is a signed release whose size and checksum are listed here.",
+  cta: "Download for Windows",
+  ctaBeta: "Download the beta",
+  preparing: "Preparing your download…",
+  noRelease: "The installer is published here with each release. Check back soon.",
+  offline: "We can't reach the download server right now. Please try again in a moment.",
+  version: "Version",
+  released: "Released",
+  size: "Size",
+  checksum: "SHA-256",
+  beta: "Beta",
+  requirementsTitle: "What you need",
+  requirements: [
+    "A Windows 10 or Windows 11 PC (64-bit).",
+    "A modern graphics card. A card with hardware ray tracing unlocks the highest lighting quality, including ray tracing and path tracing.",
+    "About 450 MB of disk space for the installed app.",
+  ],
+  accountTitle: "Your licence lives in your account",
+  accountText:
+    "A free Truebex account holds your plan and the computers you use it on, so you can see and remove them from your dashboard.",
+  accountCta: "Create a free account",
+  changelogCta: "See what's new",
+} as const;
+
 // --- Billing (PF2) -------------------------------------------------------------
 // The dashboard billing page, /checkout/ and the payment parts of the terms
 // and privacy pages. Prices are never typed here: they come from the API
@@ -279,6 +313,9 @@ export const BILLING = {
     paused: "Paused. Resume it under Manage.",
     manage: "Manage card and cancellation",
     opening: "Opening…",
+    // The one 14-day Pro trial, started from the app (provider "trial").
+    trial: "trial",
+    trialEnds: "Trial ends on",
   },
   choose: {
     heading: "Choose a plan",
@@ -969,6 +1006,9 @@ export const CHANGELOG = {
   releasesTitle: "Releases",
   historyTitle: "Milestones",
   version: "Version",
+  // Beta releases show on the page (their notes link here) but not in the feed.
+  beta: "Beta",
+  downloadCta: "Download the latest release",
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -991,6 +1031,7 @@ export const FOOTER = {
   demo: "Request a demo",
   rights: "All rights reserved.",
   links: [
+    { label: "Download", href: "/download/" },
     { label: "Developer docs", href: "/developers/" },
     { label: "Changelog", href: "/changelog/" },
     { label: "Roadmap", href: "/roadmap/" },
@@ -1290,6 +1331,7 @@ export const AR_HOME = {
       marketplace: "سوق المنتجات",
     },
     links: [
+      { label: "التنزيل", href: "/download/" },
       { label: "توثيق المطوّرين", href: "/developers/" },
       { label: "سجل التغييرات", href: "/changelog/" },
       { label: "خارطة الطريق", href: "/roadmap/" },

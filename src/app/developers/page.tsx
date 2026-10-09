@@ -189,7 +189,7 @@ X-RateLimit-Remaining: 958`}</code>
           </p>
           <pre>
             <code>{`HTTP/1.1 429 Too Many Requests
-{ "detail": "Monthly limit of 1000 requests reached for the Starter plan." }`}</code>
+{ "detail": "Monthly limit of 1000 requests reached for the Free plan." }`}</code>
           </pre>
           <table>
             <thead>

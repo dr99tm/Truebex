@@ -179,7 +179,9 @@ function CurrentPlan({
 }) {
   const tier = sub?.tier ?? fallbackPlan;
   const name = cat.tiers.find((t) => t.id === tier)?.name ?? tier;
-  const hasSub = !!sub?.provider;
+  // A trial is a subscription row without billing (licence contract 5.6).
+  const isTrial = sub?.provider === "trial";
+  const hasSub = !!sub?.provider && !isTrial;
   return (
     <Panel>
       <div className="flex items-start justify-between gap-3">
@@ -190,7 +192,15 @@ function CurrentPlan({
           </span>
         )}
       </div>
-      <p className="mt-4 text-3xl font-semibold">{name}</p>
+      <p className="mt-4 text-3xl font-semibold">
+        {name}
+        {isTrial && ` ${BILLING.plan.trial}`}
+      </p>
+      {isTrial && sub?.current_period_end && (
+        <p className="mt-2 text-sm text-text-secondary">
+          {BILLING.plan.trialEnds} {formatDate(sub.current_period_end)}
+        </p>
+      )}
       {!hasSub && tier === "free" && (
         <p className="mt-2 text-sm text-text-secondary">{BILLING.plan.free}</p>
       )}
