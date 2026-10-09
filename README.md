@@ -431,7 +431,8 @@ retry_after_s, data}`.
   cd server
   .venv\Scripts\python.exe scripts\make_signing_key.py --kind rel --out D:\keys\rel-2026-10.json   # once; keep it off the API host
   .venv\Scripts\python.exe scripts\publish_release.py --version 1.1.0 --channel stable --platform win64 `
-      --file D:\builds\Truebex-Setup-1.1.0.exe --notes notes.md --key-file D:\keys\rel-2026-10.json
+      --file D:\builds\Truebex-Setup-1.1.0.exe --notes notes.md --key-file D:\keys\rel-2026-10.json `
+      --symbols D:\builds\1.1.0\Symbols   # the build's .pdb / .sym files, for crash symbolication
   cd ..; npm run sync:releases   # then build and deploy the site
   ```
 
