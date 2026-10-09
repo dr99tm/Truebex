@@ -1,0 +1,643 @@
+{
+  "schema": "truebex-market-fixture/1",
+  "note": "The stub's catalogue (contract marketplace-api §9). Each variant carries its §6.3 price, delivery and availability per region under `regions`; the stub answers 5.3-5.5 for the asked region from them. `images` and `geometry.file` are files beside this one; `geometry_url` and `image_urls` are the URLs the feed files give for the same files (media-map.json). Fixture data, never public copy.",
+  "at": "2026-10-09T10:00:00Z",
+  "supplier": {
+    "supplier_id": "f8afe1ba2b0bf97f23ef888f040cf46a",
+    "name": "Nord Living",
+    "legal_name": "Nord Living Ltd",
+    "country": "GB",
+    "company_number": "00000000",
+    "vat_id": "GB000000000",
+    "website": "https://nordliving.example.com",
+    "contact_email": "orders@nordliving.example.com",
+    "regions": [
+      "GB",
+      "AE"
+    ],
+    "verified": true
+  },
+  "products": [
+    {
+      "product_id": "00e167c6f66b6daa824878b7cb698fa9",
+      "sku": "SOFA-OSLO-3",
+      "name": "Oslo 3-seater sofa",
+      "kind": "object",
+      "category": "furniture/seating/sofas",
+      "description": "Three-seat sofa on a solid oak frame, with removable covers.",
+      "brand": "Nord Living",
+      "classification": [
+        "uniclass:Pr_40_50_12_81"
+      ],
+      "images": [
+        "thumbs/sofa-oslo-oat.png",
+        "thumbs/sofa-oslo-charcoal.png"
+      ],
+      "includes": [],
+      "status": "approved",
+      "variants": [
+        {
+          "variant_id": "oat-linen",
+          "gtin": "9501101530003",
+          "options": {
+            "size": "3-seater",
+            "colour": "Oat",
+            "finish": "Linen"
+          },
+          "dims_mm": [
+            2100,
+            850,
+            950
+          ],
+          "materials": [
+            "linen",
+            "oak"
+          ],
+          "geometry": {
+            "file": "geometry/sofa-oslo.tbxa",
+            "format": "tbxa",
+            "sha256": "e27743b24a1e2909d385d695b22e7a9759892d2fa151bdc697121b1166bcc071",
+            "bytes": 415,
+            "asset": {
+              "id": "a056ef970553b8b0c166014ca5907ad0",
+              "name": "Oslo 3-seater",
+              "rev": 3,
+              "kind": "object"
+            }
+          },
+          "geometry_url": "https://cdn.example.com/catalogue/sofa-oslo-3/sofa-oslo.tbxa",
+          "images": [
+            "thumbs/sofa-oslo-oat.png"
+          ],
+          "image_urls": [
+            "https://cdn.example.com/catalogue/sofa-oslo-3/oat-linen-1.png"
+          ],
+          "regions": {
+            "GB": {
+              "price": {
+                "amount": 129900,
+                "currency": "GBP",
+                "exponent": 2,
+                "region": "GB",
+                "includes_tax": true,
+                "tax_rate_bp": 2000,
+                "at": "2026-10-09T10:00:00Z"
+              },
+              "delivery": {
+                "fee": {
+                  "amount": 4900,
+                  "currency": "GBP",
+                  "exponent": 2
+                },
+                "days_min": 7,
+                "days_max": 14
+              },
+              "availability": {
+                "state": "in_stock",
+                "stock": 12,
+                "lead_time_days": null,
+                "updated_at": "2026-10-09T10:00:00Z"
+              }
+            },
+            "AE": {
+              "price": {
+                "amount": 129900,
+                "currency": "AED",
+                "exponent": 2,
+                "region": "AE",
+                "includes_tax": true,
+                "tax_rate_bp": 500,
+                "at": "2026-10-09T10:00:00Z"
+              },
+              "delivery": {
+                "fee": {
+                  "amount": 15000,
+                  "currency": "AED",
+                  "exponent": 2
+                },
+                "days_min": 7,
+                "days_max": 14
+              },
+              "availability": {
+                "state": "in_stock",
+                "stock": 4,
+                "lead_time_days": null,
+                "updated_at": "2026-10-09T10:00:00Z"
+              }
+            }
+          }
+        },
+        {
+          "variant_id": "charcoal-wool",
+          "gtin": "9501101530010",
+          "options": {
+            "size": "3-seater",
+            "colour": "Charcoal",
+            "finish": "Wool"
+          },
+          "dims_mm": [
+            2100,
+            850,
+            950
+          ],
+          "materials": [
+            "wool",
+            "oak"
+          ],
+          "geometry": {
+            "file": "geometry/sofa-oslo.tbxa",
+            "format": "tbxa",
+            "sha256": "e27743b24a1e2909d385d695b22e7a9759892d2fa151bdc697121b1166bcc071",
+            "bytes": 415,
+            "asset": {
+              "id": "c72093322ebe8047744b73695da1291c",
+              "name": "Oslo 3-seater",
+              "rev": 3,
+              "kind": "object"
+            }
+          },
+          "geometry_url": "https://cdn.example.com/catalogue/sofa-oslo-3/sofa-oslo.tbxa",
+          "images": [
+            "thumbs/sofa-oslo-charcoal.png"
+          ],
+          "image_urls": [
+            "https://cdn.example.com/catalogue/sofa-oslo-3/charcoal-wool-1.png"
+          ],
+          "regions": {
+            "GB": {
+              "price": {
+                "amount": 144900,
+                "currency": "GBP",
+                "exponent": 2,
+                "region": "GB",
+                "includes_tax": true,
+                "tax_rate_bp": 2000,
+                "at": "2026-10-09T10:00:00Z"
+              },
+              "delivery": {
+                "fee": {
+                  "amount": 4900,
+                  "currency": "GBP",
+                  "exponent": 2
+                },
+                "days_min": 7,
+                "days_max": 14
+              },
+              "availability": {
+                "state": "made_to_order",
+                "stock": null,
+                "lead_time_days": 42,
+                "updated_at": "2026-10-09T10:00:00Z"
+              }
+            },
+            "AE": {
+              "price": {
+                "amount": 144900,
+                "currency": "AED",
+                "exponent": 2,
+                "region": "AE",
+                "includes_tax": true,
+                "tax_rate_bp": 500,
+                "at": "2026-10-09T10:00:00Z"
+              },
+              "delivery": {
+                "fee": {
+                  "amount": 15000,
+                  "currency": "AED",
+                  "exponent": 2
+                },
+                "days_min": 7,
+                "days_max": 14
+              },
+              "availability": {
+                "state": "made_to_order",
+                "stock": null,
+                "lead_time_days": 42,
+                "updated_at": "2026-10-09T10:00:00Z"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "product_id": "0c43d3d652b501a06c09f66170d432e7",
+      "sku": "TABLE-AKER-CT",
+      "name": "Aker coffee table",
+      "kind": "object",
+      "category": "furniture/tables/coffee-tables",
+      "description": "Low oak coffee table with a lower shelf. No longer made.",
+      "brand": "Nord Living",
+      "images": [
+        "thumbs/table-aker.png"
+      ],
+      "status": "approved",
+      "variants": [
+        {
+          "variant_id": "default",
+          "options": {
+            "colour": "Oak"
+          },
+          "dims_mm": [
+            1200,
+            420,
+            600
+          ],
+          "materials": [
+            "oak"
+          ],
+          "status": "discontinued",
+          "images": [
+            "thumbs/table-aker.png"
+          ],
+          "regions": {
+            "GB": {
+              "price": {
+                "amount": 24900,
+                "currency": "GBP",
+                "exponent": 2,
+                "region": "GB",
+                "includes_tax": true,
+                "tax_rate_bp": 2000,
+                "at": "2026-10-09T10:00:00Z"
+              },
+              "delivery": {
+                "fee": {
+                  "amount": 2900,
+                  "currency": "GBP",
+                  "exponent": 2
+                },
+                "days_min": 5,
+                "days_max": 10
+              },
+              "availability": {
+                "state": "discontinued",
+                "stock": null,
+                "lead_time_days": null,
+                "updated_at": "2026-10-09T10:00:00Z"
+              }
+            },
+            "AE": {
+              "price": {
+                "amount": 114900,
+                "currency": "AED",
+                "exponent": 2,
+                "region": "AE",
+                "includes_tax": true,
+                "tax_rate_bp": 500,
+                "at": "2026-10-09T10:00:00Z"
+              },
+              "delivery": {
+                "fee": {
+                  "amount": 9000,
+                  "currency": "AED",
+                  "exponent": 2
+                },
+                "days_min": 7,
+                "days_max": 14
+              },
+              "availability": {
+                "state": "discontinued",
+                "stock": null,
+                "lead_time_days": null,
+                "updated_at": "2026-10-09T10:00:00Z"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "product_id": "520a4dc6012477c516f811506f74873a",
+      "sku": "TABLE-FJORD-CT",
+      "name": "Fjord coffee table",
+      "kind": "object",
+      "category": "furniture/tables/coffee-tables",
+      "description": "Ash coffee table with rounded corners.",
+      "brand": "Nord Living",
+      "images": [
+        "thumbs/table-fjord.png"
+      ],
+      "status": "approved",
+      "variants": [
+        {
+          "variant_id": "default",
+          "options": {
+            "colour": "Ash"
+          },
+          "dims_mm": [
+            1100,
+            400,
+            550
+          ],
+          "materials": [
+            "ash"
+          ],
+          "images": [
+            "thumbs/table-fjord.png"
+          ],
+          "regions": {
+            "GB": {
+              "price": {
+                "amount": 27900,
+                "currency": "GBP",
+                "exponent": 2,
+                "region": "GB",
+                "includes_tax": true,
+                "tax_rate_bp": 2000,
+                "at": "2026-10-09T10:00:00Z"
+              },
+              "delivery": {
+                "fee": {
+                  "amount": 2900,
+                  "currency": "GBP",
+                  "exponent": 2
+                },
+                "days_min": 5,
+                "days_max": 10
+              },
+              "availability": {
+                "state": "in_stock",
+                "stock": 20,
+                "lead_time_days": null,
+                "updated_at": "2026-10-09T10:00:00Z"
+              }
+            },
+            "AE": {
+              "price": {
+                "amount": 119900,
+                "currency": "AED",
+                "exponent": 2,
+                "region": "AE",
+                "includes_tax": true,
+                "tax_rate_bp": 500,
+                "at": "2026-10-09T10:00:00Z"
+              },
+              "delivery": {
+                "fee": {
+                  "amount": 9000,
+                  "currency": "AED",
+                  "exponent": 2
+                },
+                "days_min": 7,
+                "days_max": 14
+              },
+              "availability": {
+                "state": "in_stock",
+                "stock": 8,
+                "lead_time_days": null,
+                "updated_at": "2026-10-09T10:00:00Z"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "product_id": "cfdc4581e6f8c03d089dee2029b17fde",
+      "sku": "PAINT-CHALK",
+      "name": "Chalk White matt emulsion",
+      "kind": "finish",
+      "category": "finishes/paint/interior",
+      "description": "Water-based matt emulsion for interior walls and ceilings.",
+      "brand": "Nord Living",
+      "images": [
+        "thumbs/paint-chalk.png"
+      ],
+      "status": "approved",
+      "variants": [
+        {
+          "variant_id": "2-5l",
+          "options": {
+            "size": "2.5 L",
+            "colour": "Chalk White",
+            "finish": "Matt"
+          },
+          "dims_mm": null,
+          "materials": [
+            "acrylic emulsion"
+          ],
+          "images": [
+            "thumbs/paint-chalk.png"
+          ],
+          "regions": {
+            "GB": {
+              "price": {
+                "amount": 4200,
+                "currency": "GBP",
+                "exponent": 2,
+                "region": "GB",
+                "includes_tax": true,
+                "tax_rate_bp": 2000,
+                "at": "2026-10-09T10:00:00Z"
+              },
+              "delivery": {
+                "fee": {
+                  "amount": 495,
+                  "currency": "GBP",
+                  "exponent": 2
+                },
+                "days_min": 2,
+                "days_max": 4
+              },
+              "availability": {
+                "state": "in_stock",
+                "stock": 120,
+                "lead_time_days": null,
+                "updated_at": "2026-10-09T10:00:00Z"
+              }
+            },
+            "AE": {
+              "price": {
+                "amount": 18900,
+                "currency": "AED",
+                "exponent": 2,
+                "region": "AE",
+                "includes_tax": true,
+                "tax_rate_bp": 500,
+                "at": "2026-10-09T10:00:00Z"
+              },
+              "delivery": {
+                "fee": {
+                  "amount": 2500,
+                  "currency": "AED",
+                  "exponent": 2
+                },
+                "days_min": 3,
+                "days_max": 5
+              },
+              "availability": {
+                "state": "in_stock",
+                "stock": 60,
+                "lead_time_days": null,
+                "updated_at": "2026-10-09T10:00:00Z"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "product_id": "7477cfd90cf55817bf52bc37fead9756",
+      "sku": "WP-LATTICE",
+      "name": "Lattice wallpaper",
+      "kind": "finish",
+      "category": "finishes/wallpaper/patterned",
+      "description": "Non-woven wallpaper with a fine lattice pattern, 10 m roll.",
+      "brand": "Nord Living",
+      "images": [
+        "thumbs/wallpaper-lattice.png"
+      ],
+      "status": "approved",
+      "variants": [
+        {
+          "variant_id": "sage",
+          "options": {
+            "size": "10 m roll",
+            "colour": "Sage"
+          },
+          "dims_mm": null,
+          "materials": [
+            "non-woven paper"
+          ],
+          "images": [
+            "thumbs/wallpaper-lattice.png"
+          ],
+          "regions": {
+            "GB": {
+              "price": {
+                "amount": 6500,
+                "currency": "GBP",
+                "exponent": 2,
+                "region": "GB",
+                "includes_tax": true,
+                "tax_rate_bp": 2000,
+                "at": "2026-10-09T10:00:00Z"
+              },
+              "delivery": {
+                "fee": {
+                  "amount": 495,
+                  "currency": "GBP",
+                  "exponent": 2
+                },
+                "days_min": 2,
+                "days_max": 4
+              },
+              "availability": {
+                "state": "low_stock",
+                "stock": 3,
+                "lead_time_days": null,
+                "updated_at": "2026-10-09T10:00:00Z"
+              }
+            },
+            "AE": {
+              "price": {
+                "amount": 29900,
+                "currency": "AED",
+                "exponent": 2,
+                "region": "AE",
+                "includes_tax": true,
+                "tax_rate_bp": 500,
+                "at": "2026-10-09T10:00:00Z"
+              },
+              "delivery": {
+                "fee": {
+                  "amount": 2500,
+                  "currency": "AED",
+                  "exponent": 2
+                },
+                "days_min": 3,
+                "days_max": 5
+              },
+              "availability": {
+                "state": "in_stock",
+                "stock": 40,
+                "lead_time_days": null,
+                "updated_at": "2026-10-09T10:00:00Z"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "product_id": "ecdd2c8b6381850d548bf42c8369539b",
+      "sku": "THEME-NORDIC-LIVING",
+      "name": "Nordic calm living room",
+      "kind": "theme",
+      "category": "decoration/themes",
+      "description": "A calm living-room theme: the Oslo sofa, Chalk White walls and a sage lattice feature wall.",
+      "brand": "Nord Living",
+      "images": [
+        "thumbs/theme-nordic.png"
+      ],
+      "includes": [
+        {
+          "supplier_id": "f8afe1ba2b0bf97f23ef888f040cf46a",
+          "sku": "SOFA-OSLO-3",
+          "variant_id": "oat-linen"
+        },
+        {
+          "supplier_id": "f8afe1ba2b0bf97f23ef888f040cf46a",
+          "sku": "PAINT-CHALK",
+          "variant_id": "2-5l"
+        },
+        {
+          "supplier_id": "f8afe1ba2b0bf97f23ef888f040cf46a",
+          "sku": "WP-LATTICE",
+          "variant_id": "sage"
+        }
+      ],
+      "status": "approved",
+      "variants": [
+        {
+          "variant_id": "default",
+          "options": {},
+          "dims_mm": null,
+          "materials": [],
+          "images": [
+            "thumbs/theme-nordic.png"
+          ],
+          "regions": {
+            "GB": {
+              "price": {
+                "amount": 1900,
+                "currency": "GBP",
+                "exponent": 2,
+                "region": "GB",
+                "includes_tax": true,
+                "tax_rate_bp": 2000,
+                "at": "2026-10-09T10:00:00Z"
+              },
+              "delivery": null,
+              "availability": {
+                "state": "in_stock",
+                "stock": null,
+                "lead_time_days": null,
+                "updated_at": "2026-10-09T10:00:00Z"
+              }
+            },
+            "AE": {
+              "price": {
+                "amount": 8900,
+                "currency": "AED",
+                "exponent": 2,
+                "region": "AE",
+                "includes_tax": true,
+                "tax_rate_bp": 500,
+                "at": "2026-10-09T10:00:00Z"
+              },
+              "delivery": null,
+              "availability": {
+                "state": "in_stock",
+                "stock": null,
+                "lead_time_days": null,
+                "updated_at": "2026-10-09T10:00:00Z"
+              }
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,168 @@
+{
+  "schema": "truebex-feed/1",
+  "products": [
+    {
+      "sku": "SOFA-OSLO-3",
+      "name": "Oslo 3-seater sofa",
+      "category": "furniture/seating/sofas",
+      "kind": "object",
+      "description": "Three-seat sofa on a solid oak frame, with removable covers.",
+      "brand": "Nord Living",
+      "classification": [
+        "uniclass:Pr_40_50_12_81"
+      ],
+      "variants": [
+        {
+          "variant_id": "oat-linen",
+          "gtin": "9501101530003",
+          "options": {
+            "size": "3-seater",
+            "colour": "Oat",
+            "finish": "Linen"
+          },
+          "materials": [
+            "linen",
+            "oak"
+          ],
+          "dims_mm": [
+            2100,
+            850,
+            950
+          ],
+          "geometry_url": "https://cdn.example.com/catalogue/sofa-oslo-3/sofa-oslo.tbxa",
+          "image_urls": [
+            "https://cdn.example.com/catalogue/sofa-oslo-3/oat-linen-1.png"
+          ],
+          "prices": [
+            {
+              "region": "GB",
+              "currency": "GBP",
+              "price": "1299.00",
+              "tax_rate_percent": "20",
+              "delivery_fee": "49.00",
+              "price_includes_tax": true,
+              "delivery_days_min": 7,
+              "delivery_days_max": 14,
+              "stock": 12
+            },
+            {
+              "region": "AE",
+              "currency": "AED",
+              "price": "1299.00",
+              "tax_rate_percent": "5",
+              "delivery_fee": "150.00",
+              "price_includes_tax": true,
+              "delivery_days_min": 7,
+              "delivery_days_max": 14,
+              "stock": 4
+            }
+          ]
+        },
+        {
+          "variant_id": "charcoal-wool",
+          "gtin": "9501101530010",
+          "options": {
+            "size": "3-seater",
+            "colour": "Charcoal",
+            "finish": "Wool"
+          },
+          "materials": [
+            "wool",
+            "oak"
+          ],
+          "dims_mm": [
+            2100,
+            850,
+            950
+          ],
+          "geometry_url": "https://cdn.example.com/catalogue/sofa-oslo-3/sofa-oslo.tbxa",
+          "image_urls": [
+            "https://cdn.example.com/catalogue/sofa-oslo-3/charcoal-wool-1.png"
+          ],
+          "prices": [
+            {
+              "region": "GB",
+              "currency": "GBP",
+              "price": "1449.00",
+              "tax_rate_percent": "20",
+              "delivery_fee": "49.00",
+              "price_includes_tax": true,
+              "delivery_days_min": 7,
+              "delivery_days_max": 14,
+              "lead_time_days": 42
+            },
+            {
+              "region": "AE",
+              "currency": "AED",
+              "price": "1449.00",
+              "tax_rate_percent": "5",
+              "delivery_fee": "150.00",
+              "price_includes_tax": true,
+              "delivery_days_min": 7,
+              "delivery_days_max": 14,
+              "lead_time_days": 42
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "sku": "CHAIR-BERGEN",
+      "name": "Bergen lounge chair",
+      "category": "furniture/seating/armchairs",
+      "kind": "object",
+      "description": "Lounge chair in olive boucle on a beech frame.",
+      "brand": "Nord Living",
+      "classification": [
+        "uniclass:Pr_40_50_12_02"
+      ],
+      "variants": [
+        {
+          "variant_id": "olive-boucle",
+          "gtin": "9501101530027",
+          "options": {
+            "colour": "Olive",
+            "finish": "Boucle"
+          },
+          "materials": [
+            "boucle",
+            "beech"
+          ],
+          "dims_mm": [
+            780,
+            760,
+            820
+          ],
+          "geometry_url": "https://cdn.example.com/catalogue/chair-bergen/olive-boucle.glb",
+          "image_urls": [
+            "https://cdn.example.com/catalogue/chair-bergen/olive-boucle-1.png"
+          ],
+          "prices": [
+            {
+              "region": "GB",
+              "currency": "GBP",
+              "price": "649.00",
+              "tax_rate_percent": "20",
+              "delivery_fee": "39.00",
+              "price_includes_tax": true,
+              "delivery_days_min": 5,
+              "delivery_days_max": 10,
+              "stock": 7
+            },
+            {
+              "region": "AE",
+              "currency": "AED",
+              "price": "2999.00",
+              "tax_rate_percent": "5",
+              "delivery_fee": "120.00",
+              "price_includes_tax": true,
+              "delivery_days_min": 7,
+              "delivery_days_max": 14,
+              "stock": 3
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

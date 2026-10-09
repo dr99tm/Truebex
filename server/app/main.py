@@ -19,7 +19,9 @@ from . import contract_http, tasks
 from .config import get_settings
 from .database import init_db
 from .licence import jobs as _licence_jobs  # noqa: F401  (registers the licence jobs)
+from .market import jobs as _market_jobs  # noqa: F401  (PF7: registers the marketplace jobs)
 from .routers import admin, files, licence, releases
+from .routers import market, market_admin
 from .routers import auth, billing, keys, usage, v1
 
 settings = get_settings()
@@ -57,6 +59,8 @@ app.add_middleware(
         "X-RateLimit-Remaining",
         contract_http.CONTRACT_HEADER,
         contract_http.REQUEST_ID_HEADER,
+        "ETag",
+        "Idempotency-Replayed",
     ],
 )
 # X-Request-Id on every response; the shared error envelope on contract routes.
@@ -79,6 +83,11 @@ app.include_router(licence.router)
 app.include_router(releases.router)
 app.include_router(admin.router)
 app.include_router(files.router)
+
+# PF7: marketplace API, its platform routes and admin
+app.include_router(market.router)
+app.include_router(market.internal)
+app.include_router(market_admin.router)
 
 app.include_router(auth.router)
 app.include_router(keys.router)

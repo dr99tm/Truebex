@@ -90,6 +90,13 @@ def init_db() -> None:
     from . import models  # noqa: F401  (ensures models are registered)
     from .licence import models as _licence_models  # noqa: F401  (PF1)
     from .releases import models as _release_models  # noqa: F401  (PF1)
+    from .market import models as _market_models  # noqa: F401  (PF7)
 
     Base.metadata.create_all(bind=engine)
     _migrate()
+
+    # PF7: the marketplace's categories (rooted on the app's taxonomy) and regions.
+    from .market import taxonomy as _market_taxonomy
+
+    with SessionLocal() as db:
+        _market_taxonomy.seed(db)
