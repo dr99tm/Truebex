@@ -208,15 +208,15 @@ def deactivate(caller: DeviceCaller = Depends(get_device_any), db: Session = Dep
 # --- 5.11 floating seats (PF3) -----------------------------------------------------
 
 
-@router.post("/release", status_code=status.HTTP_204_NO_CONTENT)
-def release(caller: DeviceCaller = Depends(get_device), db: Session = Depends(get_db)) -> Response:
+@router.post("/release", status_code=status.HTTP_204_NO_CONTENT, response_class=Response)
+def release(caller: DeviceCaller = Depends(get_device), db: Session = Depends(get_db)) -> None:
     """5.11: hand this device's floating seat back at exit (repeating it is
     harmless); 409 `not_floating` when the device's seat does not float."""
     from ..orgs import seats as org_seats
 
     if not org_seats.release(db, caller.device, clock.now()):
         raise ContractError("not_floating", 409, "This device's seat is not a floating seat.")
-    return Response(status_code=status.HTTP_204_NO_CONTENT)
+    # None: the 204 keeps the X-Truebex-Contract header the router set.
 
 
 # --- 5.12 published keys ----------------------------------------------------------

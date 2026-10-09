@@ -149,7 +149,7 @@ def save(db: Session, org: Organisation, actor: int, body, now: datetime) -> dic
     db.add(conn)
     audit.record(
         db, org.id, "sso.configured", actor=actor, target_kind="org", target_id=org.id, at=now,
-        kind=conn.kind, enabled=conn.enabled, issuer=conn.issuer or conn.idp_entity_id,
+        protocol=conn.kind, enabled=conn.enabled, issuer=conn.issuer or conn.idp_entity_id,
     )
     code = None
     if body.required != bool(org.sso_required):

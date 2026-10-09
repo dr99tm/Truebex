@@ -180,7 +180,7 @@ def assign(db: Session, org: Organisation, actor_id: int | None, user_id: int, k
         end_leases(db, org_id=org.id, user_id=user_id, reason="seat_changed", now=now)
     audit.record(
         db, org.id, "seat.assigned", actor=actor_id, target_kind="user", target_id=user_id, at=now,
-        kind=kind, previous=previous,
+        seat=kind, previous=previous,
     )
     db.commit()
     member = db.get(User, user_id)

@@ -122,8 +122,10 @@ def unique_slug(db: Session, name: str) -> str:
 
 def create(db: Session, user: User, name: str, now: datetime) -> tuple[Organisation, OrgMember]:
     org = Organisation(id=uuid7_hex(), name=name, slug=unique_slug(db, name), created_by=user.id, created_at=now)
+    db.add(org)
+    db.flush()  # the organisation row first: org_members references it
     member = OrgMember(org_id=org.id, user_id=user.id, role="owner", joined_at=now)
-    db.add_all([org, member])
+    db.add(member)
     audit.record(db, org.id, "org.created", actor=user.id, target_kind="org", target_id=org.id, at=now, name=name)
     db.commit()
     return org, member

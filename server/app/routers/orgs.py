@@ -200,7 +200,7 @@ def org_audit(
     if format == "csv":
         rows = audit.all_events(db, org.id, kind=kind, now=now)
         audit.record(db, org.id, "audit.exported", actor=current.id, target_kind="org", target_id=org.id, at=now,
-                     rows=len(rows), kind=kind)
+                     rows=len(rows), filter=kind)
         db.commit()
         name = f"{org.slug}-audit-{now.strftime('%Y-%m-%d')}.csv"
         return Response(
