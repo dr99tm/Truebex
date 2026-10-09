@@ -340,6 +340,28 @@ def _take_lease(db: Session, seat: Seat, user: User, device: Device, now: dateti
         )
     )
     if mine is not None:  # a refresh renews the lease with the document
+        org = db.get(Organisation, seat.org_id)
+        keep = pool(db, org, now).floating_total if org is not None and org.deleted_at is None else 0
+        oldest = [l.id for l in open_leases(db, seat.org_id, now)][:keep]
+        if mine.id not in oldest:
+            # The pool shrank below the seats in use: the newest leases end at
+            # their next refresh, the oldest keep theirs.
+            mine.released_at, mine.end_reason = now, "pool_reduced"
+            db.add(mine)
+            audit.record(
+                db, seat.org_id, "lease.released", actor=user.id, target_kind="device",
+                target_id=device.device_id, at=now, reason="pool_reduced",
+            )
+            db.commit()
+            raise _PoolFull(
+                ContractError(
+                    "no_seat_available",
+                    409,
+                    f"All {keep} floating seat{'' if keep == 1 else 's'} {'is' if keep == 1 else 'are'} in use. "
+                    "Try again when someone closes Truebex.",
+                    {"total": keep, "org_id": seat.org_id, "org_name": seat.org_name},
+                )
+            )
         mine.expires_at = expires
         db.add(mine)
         db.commit()

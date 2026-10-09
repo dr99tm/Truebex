@@ -295,3 +295,23 @@ def test_try_device_script(client, monkeypatch, capsys):
     assert "activate: plan team · seat floating" in out and "entitlement: plan team · seat floating" in out
     assert "release: 204" in out
     assert script.main(["--email", "b@example.com", "--password", "wrong-password"]) == 1
+
+
+def test_licence_floating_pool_reduced(client, monkeypatch):
+    clk = Clock(monkeypatch)
+    h, org = _team(client, seats=2, floating=2)
+    b = join(client, h, org["id"], "b@example.com", seat="floating")
+    c = join(client, h, org["id"], "c@example.com", seat="floating")
+    b_dev = activated(client, b, FP2)
+    clk.advance(seconds=5)
+    c_dev = activated(client, c, FP3)
+    assert client.get(f"/orgs/{org['id']}/seats", headers=h).json()["floating"]["in_use"] == 2
+    set_floating(client, h, org["id"], 1)
+    # The newest lease ends at its next refresh; the oldest keeps its seat.
+    error_of(refresh(client, c_dev["device_token"], FP3), 409, "no_seat_available")
+    assert _doc(refresh(client, b_dev["device_token"], FP2))["seat_kind"] == "floating"
+    assert client.get(f"/orgs/{org['id']}/seats", headers=h).json()["floating"]["in_use"] == 1
+    # No floating seats at all: the members fall back to their own plan.
+    set_floating(client, h, org["id"], 0)
+    assert _doc(refresh(client, b_dev["device_token"], FP2))["seat_kind"] == "free"
+    assert client.get(f"/orgs/{org['id']}/seats", headers=h).json()["floating"]["in_use"] == 0
