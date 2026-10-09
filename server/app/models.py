@@ -128,6 +128,10 @@ class Subscription(Base):
     )
     # Seats bought (PF2 writes it); None = 1.
     seats: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # PF3: set when an organisation owns this subscription (its tier and seats
+    # reach the organisation's members through seat_source, never users.plan);
+    # None = the user's own.
+    organisation_id: Mapped[str | None] = mapped_column(String(32), index=True, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=_utcnow, nullable=False
     )

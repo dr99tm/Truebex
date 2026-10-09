@@ -20,6 +20,9 @@ from .config import get_settings
 from .database import init_db
 from .licence import jobs as _licence_jobs  # noqa: F401  (registers the licence jobs)
 from .routers import admin, files, licence, releases
+from .orgs import jobs as _org_jobs  # noqa: F401  (PF3: registers the organisation jobs)
+from .routers import orgs, sso
+from .sso import jobs as _sso_jobs  # noqa: F401  (PF3: registers the SSO jobs)
 from .routers import auth, billing, keys, usage, v1
 
 settings = get_settings()
@@ -79,6 +82,10 @@ app.include_router(licence.router)
 app.include_router(releases.router)
 app.include_router(admin.router)
 app.include_router(files.router)
+
+# PF3: organisations, seats, audit log and SSO
+app.include_router(orgs.router)
+app.include_router(sso.router)
 
 app.include_router(auth.router)
 app.include_router(keys.router)

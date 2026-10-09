@@ -14,6 +14,8 @@ class UserCreate(BaseModel):
 class UserLogin(BaseModel):
     email: EmailStr
     password: str
+    # PF3: an owner's one-time code when their organisation requires SSO.
+    break_glass_code: str | None = Field(default=None, max_length=64)
 
 
 class GoogleLogin(BaseModel):

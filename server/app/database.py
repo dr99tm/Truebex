@@ -59,6 +59,10 @@ _ADDED_COLUMNS["users"] += [("author_id", "VARCHAR(32)"), ("trial_used_at", "DAT
 # Seats bought (PF2 writes it); NULL = 1.
 _ADDED_COLUMNS.setdefault("subscriptions", []).append(("seats", "INTEGER"))
 
+# PF3 (organisations): an organisation's paid tier; PF2 sets it from
+# custom_data.org_id. NULL = the user's own (personal) subscription.
+_ADDED_COLUMNS.setdefault("subscriptions", []).append(("organisation_id", "VARCHAR(32)"))
+
 
 def _migrate() -> None:
     insp = inspect(engine)
@@ -83,6 +87,13 @@ def _migrate() -> None:
                 "ON users (author_id)"
             )
         )
+        # PF3
+        conn.execute(
+            text(
+                "CREATE INDEX IF NOT EXISTS ix_subscriptions_organisation_id "
+                "ON subscriptions (organisation_id)"
+            )
+        )
 
 
 def init_db() -> None:
@@ -90,6 +101,8 @@ def init_db() -> None:
     from . import models  # noqa: F401  (ensures models are registered)
     from .licence import models as _licence_models  # noqa: F401  (PF1)
     from .releases import models as _release_models  # noqa: F401  (PF1)
+    from .orgs import models as _org_models  # noqa: F401  (PF3)
+    from .sso import models as _sso_models  # noqa: F401  (PF3)
 
     Base.metadata.create_all(bind=engine)
     _migrate()
