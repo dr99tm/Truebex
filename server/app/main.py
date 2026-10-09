@@ -1,6 +1,7 @@
 """Truebex API: accounts (email/password + Google), developer API keys,
-usage metering, billing (Stripe + Wayl), licences for the desktop app
-(devices, signed entitlements, trials), and the release feed and downloads.
+usage metering, billing (Paddle, Stripe; Wayl dormant), licences for the
+desktop app (devices, signed entitlements, trials), and the release feed and
+downloads.
 
 Run locally with:
     uvicorn app.main:app --host 127.0.0.1 --port 8000
@@ -16,11 +17,13 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from . import contract_http, tasks
+from .billing import jobs as _billing_jobs  # noqa: F401  (registers billing.* jobs)
 from .config import get_settings
 from .database import init_db
 from .licence import jobs as _licence_jobs  # noqa: F401  (registers the licence jobs)
 from .routers import admin, files, licence, releases
 from .routers import auth, billing, keys, usage, v1
+from .routers import growth as growth_router
 
 settings = get_settings()
 
@@ -28,12 +31,12 @@ settings = get_settings()
 @asynccontextmanager
 async def lifespan(app_: FastAPI):
     init_db()
-    task = tasks.start_inline(app_) if settings.background_tasks == "inline" else None
+    runner = tasks.start_inline(app_) if settings.background_tasks == "inline" else None
     yield
-    if task is not None:
-        task.cancel()
+    if runner is not None:
+        runner.cancel()
         with contextlib.suppress(BaseException):
-            await task
+            await runner
 
 
 app = FastAPI(
@@ -71,7 +74,12 @@ def health() -> dict[str, str]:
 @app.get("/config", tags=["meta"])
 def public_config() -> dict:
     """What the website needs to know about this server's features."""
-    return {"google_client_id": settings.google_client_id or None}
+    return {
+        "google_client_id": settings.google_client_id or None,
+        # Paddle.js on /checkout/ (the client token is public by design).
+        "paddle_client_token": settings.paddle_client_token or None,
+        "paddle_env": settings.paddle_env,
+    }
 
 
 # PF1: licence API, release feed, admin, signed file URLs
@@ -85,3 +93,4 @@ app.include_router(keys.router)
 app.include_router(usage.router)
 app.include_router(billing.router)
 app.include_router(v1.router)
+app.include_router(growth_router.router)

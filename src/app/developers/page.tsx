@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Footer } from "@/components/layout/Footer";
 import { Button } from "@/components/ui/Button";
-import { tier } from "@/lib/plans";
+import { loadCatalogue } from "@/lib/catalogue-data";
 
 const API = "https://api.truebex.com";
 
@@ -24,17 +24,13 @@ const ENDPOINTS = [
   { method: "GET", path: "/v1/account", desc: "The key's owner, plan and this month's usage." },
 ];
 
+// Allowances per plan, from the plan catalogue (the pricing page's source).
 const nf = new Intl.NumberFormat("en-US");
-
-// API limits come from the plan catalogue (server/app/catalogue.json).
-const LIMITS = [
-  ...[tier("free"), tier("pro")].map((t) => ({
-    plan: t.name,
-    requests: nf.format(t.api.monthly_requests),
-    keys: String(t.api.max_api_keys),
-  })),
-  { plan: tier("enterprise").name, requests: "Custom", keys: "Custom" },
-];
+const LIMITS = loadCatalogue().tiers.map((t) => ({
+  plan: t.name,
+  requests: nf.format(t.api.monthly_requests),
+  keys: nf.format(t.api.max_api_keys),
+}));
 
 const ERRORS = [
   { code: "401", meaning: "Missing, malformed, invalid or revoked API key." },

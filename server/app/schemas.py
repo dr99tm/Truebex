@@ -32,6 +32,7 @@ class UserOut(BaseModel):
     avatar_url: str | None = None
     has_password: bool = True
     google_linked: bool = False
+    is_admin: bool = False
 
 
 class Token(BaseModel):
@@ -85,40 +86,101 @@ class UsageSummary(BaseModel):
 
 # --- Billing ------------------------------------------------------------------
 
-Provider = Literal["stripe", "wayl"]
+Provider = Literal["paddle", "stripe"]
+Interval = Literal["month", "year"]
 
 
-class PlanOut(BaseModel):
+class PriceOut(BaseModel):
+    interval: Interval
+    currency: str
+    # Per seat, in minor units of `currency` (pence, cents).
+    amount_minor: int
+
+
+class TierOut(BaseModel):
     id: str
     name: str
-    price_usd_cents: int | None
-    price_iqd: int | None
-    monthly_requests: int
-    max_api_keys: int
     purchasable: bool
+    per_seat: bool
+    min_seats: int
+    prices: list[PriceOut]
+
+
+class FoundingOut(BaseModel):
+    # Open, seats left and a checkout provider set up.
+    enabled: bool
+    total: int
+    remaining: int
+    discount_percent: int
+    ends_at: datetime | None
+    # The tiers the founding price applies to.
+    tiers: list[str] = []
 
 
 class BillingCatalog(BaseModel):
-    plans: list[PlanOut]
-    providers: list[Provider]
+    tiers: list[TierOut]
+    founding: FoundingOut
+    # The provider offered at checkout, or null while none is set up.
+    provider: Provider | None
+    currencies: list[str]
+    # Every provider switched on (wayl only with WAYL_ENABLED; never offered
+    # on the website).
+    providers: list[str]
+
+
+class ConsentIn(BaseModel):
+    version: str = Field(min_length=1, max_length=32)
+    accepted: Literal[True]
 
 
 class CheckoutRequest(BaseModel):
-    plan: str = Field(max_length=32)
-    provider: Provider
+    tier: str = Field(max_length=32)
+    interval: Interval = "month"
+    currency: str = Field(default="GBP", pattern=r"^[A-Za-z]{3}$")
+    seats: int = Field(default=1, ge=1, le=1000)
+    coupon: str | None = Field(default=None, max_length=64)
+    consent: ConsentIn
+    # Only "wayl" (dormant, WAYL_ENABLED); otherwise BILLING_PROVIDER decides.
+    provider: Literal["wayl"] | None = None
 
 
 class CheckoutResponse(BaseModel):
     url: str
     reference: str
+    founding: bool
 
 
 class SubscriptionOut(BaseModel):
-    plan: str
+    tier: str
+    interval: str | None
+    seats: int
     status: str
     provider: str | None
     current_period_end: datetime | None
+    cancel_at_period_end: bool
+    founding: bool
     can_manage: bool
+    currency: str | None = None
+
+
+class SeatsRequest(BaseModel):
+    seats: int = Field(ge=1, le=1000)
+
+
+class ChangeRequest(BaseModel):
+    tier: str | None = Field(default=None, max_length=32)
+    interval: Interval | None = None
+
+
+class InvoiceOut(BaseModel):
+    id: str
+    number: str | None
+    issued_at: datetime | None
+    total_minor: int
+    tax_minor: int
+    currency: str
+    status: str
+    pdf_url: str | None
 
 
 class PaymentOut(BaseModel):
@@ -132,3 +194,38 @@ class PaymentOut(BaseModel):
     status: str
     created_at: datetime
     paid_at: datetime | None
+    interval: str | None = None
+    seats: int | None = None
+    tax_minor: int | None = None
+
+
+# --- Admin: growth ------------------------------------------------------------
+
+
+class GrowthDay(BaseModel):
+    day: date
+    signups: int
+    downloads: int
+    trials: int
+    checkouts: int
+    paid: int
+
+
+class GrowthTotals(BaseModel):
+    signups: int
+    downloads: int
+    trials: int
+    checkouts: int
+    paid: int
+
+
+class GrowthOut(BaseModel):
+    """Conversions per UTC day, counted from the platform's own records.
+    Counts only: no e-mail addresses, names or ids."""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    from_: date = Field(alias="from")
+    to: date
+    days: list[GrowthDay]
+    totals: GrowthTotals

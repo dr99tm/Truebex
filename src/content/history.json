@@ -1,0 +1,74 @@
+[
+  {
+    "id": "1.0.0",
+    "date": "2026-10-07",
+    "title": "Truebex 1.0.0",
+    "summary": "The first release build: a 445 MB install that starts in 4.6 s, with drawing sheets, finishes, references, dynamic objects and the asset library on board."
+  },
+  {
+    "id": "assets",
+    "date": "2026-10-04",
+    "title": "One library for every asset",
+    "summary": "Textures, meshes, objects, sections, faces and sheet templates live in one library with categories, tags, search and favourites. Save embedded, linked or both; missing links heal on relink."
+  },
+  {
+    "id": "curved-mouldings",
+    "date": "2026-10-03",
+    "title": "Mouldings at door jambs and along curved walls",
+    "summary": "Skirtings and mouldings stop flush at door jambs, follow the door, and run along curved walls; ceiling panels and slabs meet cleanly at the soffit."
+  },
+  {
+    "id": "objects",
+    "date": "2026-10-03",
+    "title": "Doors, windows, cabinets and stairs from numbers",
+    "summary": "Dynamic doors, windows, cabinets and custom objects regenerate with their host wall, stairs build from a run, and category prototypes stand in until you swap in the real thing."
+  },
+  {
+    "id": "ui-kit",
+    "date": "2026-09-29",
+    "title": "One look for every screen",
+    "summary": "Every panel, menu and dialog shares one kit and a live theme: accent colour, corner radius, density, light and dark."
+  },
+  {
+    "id": "curved-walls",
+    "date": "2026-09-29",
+    "title": "Walls from any curve",
+    "summary": "Draw walls from lines, arcs, splines and other curves, with smooth curved surfaces, and resize anything with the Scale command."
+  },
+  {
+    "id": "models",
+    "date": "2026-09-29",
+    "title": "Models with a feature list",
+    "summary": "Build models step by step with a feature list and an edit mode, sweeps that face the viewer, and control points that place handles and fixtures."
+  },
+  {
+    "id": "auto-dimensions",
+    "date": "2026-09-29",
+    "title": "Dimensions that keep up",
+    "summary": "Dimension styles for plan, 3D and sheets, auto dimensions that stay current as the model moves, relevance per view, and pins that keep chosen dimensions visible."
+  },
+  {
+    "id": "panels-any-face",
+    "date": "2026-09-29",
+    "title": "Panels and finishes on any face",
+    "summary": "Paint, wallpaper and three-dimensional patterns, and panels on floors, ceilings, slabs and models as well as walls."
+  },
+  {
+    "id": "drawing-sheets",
+    "date": "2026-09-26",
+    "title": "Drawing sheets that lay themselves out",
+    "summary": "One command creates the sheet set: cover, plans, sections, stair sheets, face sketches, renders and schedules, with forms you fill once. Truebex writes its own vector PDF, with selectable text and fillable fields, and DXF."
+  },
+  {
+    "id": "import",
+    "date": "2026-09-26",
+    "title": "Textures and meshes from your own files",
+    "summary": "Import textures with full compression and mip levels, and meshes in glTF, GLB, OBJ and FBX, then compose your own objects from them."
+  },
+  {
+    "id": "references",
+    "date": "2026-09-22",
+    "title": "Anything references anything",
+    "summary": "Lines, objects and faces can reference each other and follow what they reference when it moves."
+  }
+]

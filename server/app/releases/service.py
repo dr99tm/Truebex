@@ -20,9 +20,9 @@ from sqlalchemy.orm import Session
 
 from ..config import get_settings
 from ..contract_http import ContractError
+from ..growth.service import record_download
 from ..licence import clock, signing
 from ..licence.jcs import canonicalize
-from ..models import DownloadEvent
 from ..storage import Store
 from . import semver
 from .models import Release
@@ -252,8 +252,7 @@ def download_url(db: Session, store: Store, row: Release) -> dict:
     url = store.signed_get_url(row.storage_key, expires_in=DOWNLOAD_TTL_S, filename=inst["file"])
     now = clock.now()
     # Counted for the admin Growth panel (PF13's download_events): no personal data.
-    db.add(DownloadEvent(version=row.version[:32], platform=row.platform, channel=row.channel, at=now))
-    db.commit()
+    record_download(db, version=row.version, platform=row.platform, channel=row.channel, at=now)
     return {
         "url": url,
         "expires_at": clock.rfc3339(now + timedelta(seconds=DOWNLOAD_TTL_S)),

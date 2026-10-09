@@ -1,5 +1,6 @@
 """SQLAlchemy engine, session factory, and declarative base."""
 
+import logging
 from collections.abc import Generator
 
 from sqlalchemy import create_engine, event, inspect, text
@@ -52,12 +53,29 @@ _ADDED_COLUMNS: dict[str, list[tuple[str, str]]] = {
         ("avatar_url", "VARCHAR(1024)"),
         ("is_admin", "BOOLEAN"),
     ],
+    # PF1 (seats) and PF2 (billing through the UK company).
+    "subscriptions": [
+        ("seats", "INTEGER"),
+        ("interval", "VARCHAR(8)"),
+        ("currency", "VARCHAR(3)"),
+        ("cancel_at_period_end", "BOOLEAN"),
+        ("founding", "BOOLEAN"),
+        ("provider_price_id", "VARCHAR(128)"),
+        ("last_event_at", "DATETIME"),
+    ],
+    "payments": [
+        ("interval", "VARCHAR(8)"),
+        ("seats", "INTEGER"),
+        ("tax_minor", "INTEGER"),
+        ("consent_version", "VARCHAR(32)"),
+        ("consent_at", "DATETIME"),
+        ("invoice_id", "VARCHAR(128)"),
+    ],
 }
 
 # PF1 (licence API), in its own block so parallel features add theirs beside it.
 _ADDED_COLUMNS["users"] += [("author_id", "VARCHAR(32)"), ("trial_used_at", "DATETIME")]
-# Seats bought (PF2 writes it); NULL = 1.
-_ADDED_COLUMNS.setdefault("subscriptions", []).append(("seats", "INTEGER"))
+# subscriptions.seats (NULL = 1) is in the PF2 block above: PF2 writes it.
 
 
 def _migrate() -> None:
@@ -83,6 +101,18 @@ def _migrate() -> None:
                 "ON users (author_id)"
             )
         )
+    # PF2: one row per provider subscription. Files with duplicates from before
+    # keep working without the index (logged); billing.service retries on it.
+    try:
+        with engine.begin() as conn:
+            conn.execute(
+                text(
+                    "CREATE UNIQUE INDEX IF NOT EXISTS uq_subscriptions_provider_sub "
+                    "ON subscriptions (provider, provider_subscription_id)"
+                )
+            )
+    except Exception:  # pragma: no cover - only with duplicate legacy rows
+        logging.getLogger("truebex.db").exception("could not add uq_subscriptions_provider_sub")
 
 
 def init_db() -> None:

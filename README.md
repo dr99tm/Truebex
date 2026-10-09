@@ -9,7 +9,7 @@ around it on the web:
 
 - **Marketing site:** a static Next.js export on GitHub Pages.
 - **Dashboard:** sign in with Google or email, manage API keys, see usage, and handle billing.
-- **API server** (`server/`, FastAPI): accounts, API keys, usage metering, and billing through Stripe and Wayl, served at `api.truebex.com` through a Cloudflare tunnel.
+- **API server** (`server/`, FastAPI): accounts, API keys, usage metering, and billing through the UK company (Paddle as reseller by default, Stripe with Stripe Tax as the alternative), served at `api.truebex.com` through a Cloudflare tunnel.
 - **Demo-request form:** writes to a Google Sheet via Apps Script.
 
 > **Two repos, one GitHub project.** This folder (`X:\Truebex`, branch
@@ -31,7 +31,7 @@ around it on the web:
 - [Google sign-in](#google-sign-in)
 - [API keys and usage](#api-keys-and-usage)
 - [Licences, releases and downloads](#licences-releases-and-downloads)
-- [Billing: Stripe and Wayl](#billing-stripe-and-wayl)
+- [Billing: Paddle and Stripe](#billing-paddle-and-stripe)
 - [Brand, content and SEO](#brand-content-and-seo)
 - [Demo request form](#demo-request-form)
 - [Known issues](#known-issues)
@@ -56,18 +56,18 @@ flowchart LR
 
     Google["Google Identity Services"]
     Sheets["Google Apps Script<br/>→ Google Sheet"]
+    Paddle["Paddle.js overlay<br/>on /checkout/"]
     Stripe["Stripe Checkout"]
-    Wayl["Wayl links<br/>QiCard · FIB · ZainCash"]
 
     Browser -->|HTML/JS| Site
     Browser -->|"auth · keys · usage · billing<br/>api.truebex.com"| Tunnel
     Browser -->|"Sign in with Google"| Google
     Browser -->|demo request form| Sheets
+    Browser -->|checkout| Paddle
     Browser -->|hosted checkout| Stripe
-    Browser -->|hosted checkout| Wayl
+    Paddle -->|signed webhooks| Tunnel
     Stripe -->|signed webhooks| Tunnel
-    Wayl -->|webhooks| Tunnel
-    API -->|"verify link status"| Wayl
+    API -->|"transactions · prices · portal"| Paddle
     API -->|"verify ID token"| Google
 ```
 
@@ -85,11 +85,15 @@ restart, not a rebuild.
 src/
   app/
     page.tsx               Landing page (+ SoftwareApplication & FAQPage JSON-LD)
-    layout.tsx             Global metadata, fonts, Organization JSON-LD
+    layout.tsx             Global metadata, fonts, Organization JSON-LD, verification tags
+    pricing/               Plans from server/app/catalogue.json (+ comparison, FAQ)
+    features/[slug]/       One page per search cluster (FEATURE_PAGES)
+    roadmap/ changelog/    Roadmap (src/content/roadmap.json); changelog (milestones + releases, version anchors) + feed.xml
+    ar/                    Arabic landing page (RTL; lang/dir set by scripts/postbuild-lang.mjs)
     login/ signup/         Auth pages (Google + email)
     dashboard/             Signed-in area: overview (download, licence, devices), billing/,
-                           link/ (approve a sign-in from the app), keys/ + usage/ (Developer)
-    download/ changelog/   Public Download and Changelog pages (from src/content/releases.json)
+                           link/ (approve a sign-in from the app), keys/ + usage/ (Developer), admin/growth/
+    download/              Public Download page (from src/content/releases.json)
     developers/            Public API docs (indexable)
     account/               Redirect to /dashboard/ (old URL)
     sitemap.ts robots.ts manifest.ts icon.svg apple-icon.png favicon.ico
@@ -100,32 +104,40 @@ src/
     releases/              DownloadPanel, ReleaseNotes
     auth/                  AuthForm, GoogleButton, ProfileMenu
   lib/
-    constants.ts           ALL site copy: features, roadmap, pricing, FAQ, SITE
+    constants.ts           ALL site copy: features, pricing, feature pages, Arabic, FAQ, SITE
+    catalogue.ts           Plan catalogue types, price formatting, JSON-LD offers
     api.ts                 fetch wrapper, session token, date helpers
     auth.ts                accounts + Google sign-in
     developer.ts           keys, usage, billing calls
     licence.ts             licence API calls (devices, link approval, release feed)
-    catalogue.ts           plan names and limits from server/app/catalogue.json
+    plans.ts               plan names and limits from server/app/catalogue.json
     releaseNotes.ts        the release-notes Markdown subset, parsed to a React-rendered tree
-  content/releases.json    the release feed as of the last `npm run sync:releases`
+  content/                 roadmap.json, history.json; releases.json + releases-beta.json (the release
+                           feed as of the last `npm run sync:releases`)
 public/
   brand/                   SVG media kit (mark + wordmark, grey/white/dark)
   images/product/          In-app captures (generated)
   images/og-image.jpg      1200×630 social card (generated)
 scripts/make_web_assets.py Regenerates brand assets from the Unreal project
-scripts/sync-releases.mjs  `npm run sync:releases`: release feed → src/content/releases.json
+scripts/sync-releases.mjs  `npm run sync:releases`: release feed → src/content/releases.json (+ releases-beta.json)
+scripts/postbuild-lang.mjs <html lang="ar" dir="rtl"> for out/ar/ (part of npm run build)
+scripts/sync-roadmap.mjs   Roadmap statuses from the two trackers (owner, before a deploy)
+scripts/indexnow.mjs       Ping IndexNow with changed URLs (owner, after a deploy)
 server/
   app/
     main.py                App + routers
-    routers/               auth, keys, usage, billing, v1 (developer API), licence, releases, admin, files
-    billing/               service.py (plan state) · providers.py (Stripe, Wayl)
+    routers/               auth, keys, usage, billing, v1 (developer API), licence, releases, admin, files, growth
+    billing/               service.py (plan state) · base.py (BillingProvider) · paddle_, stripe_, wayl_provider.py · jobs.py
     licence/               devices, link codes, seats, signed entitlements (Ed25519 over RFC 8785 JSON)
     releases/              signed release manifests, feed, download links
-    contract_http.py       contract header + shared error envelope · ratelimit.py · tasks.py · storage/
+    contract_http.py       contract header + shared error envelope · ratelimit.py · storage/
     models.py database.py  SQLAlchemy models + additive SQLite migrations
-    catalogue.json plans.py Plan catalogue: tiers, entitlement matrix, request quotas, key limits
-  scripts/                 make_signing_key.py · publish_release.py · make_licence_fixtures.py
-  tests/                   pytest suite (+ mock_wayl.py; contracts/licence/ = contract fixtures)
+    catalogue.json         Tiers, entitlement matrix, prices per interval and currency, founding offer (read by the site at build time)
+    plans.py               Reads catalogue.json: prices, entitlement matrix, request quotas, key limits
+    tasks.py               Background jobs (@periodic)
+    growth/                Admin growth counts (sign-ups, downloads, trials, checkouts)
+  scripts/                 sync_prices.py (catalogue prices → Paddle or Stripe) · make_signing_key.py · publish_release.py · make_licence_fixtures.py
+  tests/                   pytest suite (+ mock_paddle.py, mock_wayl.py for click-through tests; contracts/licence/ = contract fixtures)
 .claude/skills/            truebex-brand-voice · truebex-seo · truebex-deploy
 google-apps-script/        Code.gs for the demo-request sheet
 deploy-to-server.bat       Build → copy into the deploy repo → commit → push
@@ -195,14 +207,18 @@ These end up in the public JavaScript, so never put secrets in them.
 | `CORS_ORIGINS` | Must include `https://truebex.com,https://www.truebex.com` |
 | `SITE_URL`, `API_URL` | Public URLs used in checkout redirects and webhook URLs |
 | `GOOGLE_CLIENT_ID` | OAuth Web client ID. Empty hides the Google button. |
-| `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_PRO` | All three enable Stripe |
-| `WAYL_API_KEY`, `WAYL_WEBHOOK_SECRET` | Both enable Wayl |
-| `WAYL_ENV`, `WAYL_PRICE_PRO_IQD` | `live`/`test`; IQD price per 30 days (default 130,000) |
+| `BILLING_PROVIDER` | `paddle` (default) or `stripe`: the provider checkout uses |
+| `PADDLE_ENV`, `PADDLE_API_KEY`, `PADDLE_WEBHOOK_SECRET`, `PADDLE_CLIENT_TOKEN` | `sandbox`/`production`; key and webhook secret enable Paddle; the client token (public) is served by `/config` for Paddle.js |
+| `PADDLE_API_BASE` | Optional override of Paddle's API host (the local mock) |
+| `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` | Both enable Stripe |
+| `STRIPE_PRICE_PRO` | The original monthly Pro price: existing subscribers keep Pro |
+| `STRIPE_TAX_ENABLED` | `true` turns on Stripe Tax (`automatic_tax`) |
+| `WAYL_ENABLED`, `WAYL_API_KEY`, `WAYL_WEBHOOK_SECRET`, `WAYL_ENV`, `WAYL_PRICE_PRO_IQD` | Dormant rail: off unless `WAYL_ENABLED=true`; never offered on the site |
 | `LICENCE_SIGNING_KEY`, `LICENCE_KEY_ID` | The `lic-*` Ed25519 seed that signs entitlements (`scripts/make_signing_key.py --kind lic`). Empty = licensing off (503). |
 | `RELEASE_PUBLIC_KEYS` | Public `rel-*` keys as `kid:key,…` (the seeds never live on the API host) |
 | `SIGNING_KEYS_EXTRA`, `TRIAL_DAYS` | Old `lic-*` public keys during a rotation; trial length (14) |
 | `STORAGE_BACKEND`, `STORAGE_DIR`, `STORAGE_URL_SECRET` | `local` files under `./storage`, served by signed `/files` URLs on `API_URL` |
-| `BACKGROUND_TASKS` | `inline` (jobs run in the API process: link purge, 90-day device lapse) or `off` |
+| `BACKGROUND_TASKS` | `inline` (default), `worker` or `off`: the jobs (link purge, 90-day device lapse, founding holds, billing reconcile) |
 
 ---
 
@@ -245,12 +261,14 @@ in `localStorage`. New columns are added on startup by
 | GET | `/auth/me` | session | Current user |
 | GET / POST / DELETE | `/keys`, `/keys/{id}` | session | List, create (key shown once), revoke |
 | GET | `/usage` | session | This month: total, limit, daily, by endpoint, by key |
-| GET | `/billing/plans` | — | Plans and enabled payment providers |
-| GET | `/billing/subscription` · `/billing/payments` | session | Current plan, history |
-| POST | `/billing/checkout` | session | `{plan, provider}` → hosted checkout URL |
+| GET | `/billing/plans` | — | Tiers, prices per interval and currency, founding offer, checkout provider |
+| GET | `/billing/subscription` · `/billing/payments` | session | Tier, interval, seats, renewal; payment history |
+| POST | `/billing/checkout` | session | `{tier, interval, currency, seats, coupon?, consent}` → checkout URL |
 | POST | `/billing/payments/{ref}/refresh` | session | Re-check a payment with its provider |
-| POST | `/billing/portal` | session | Stripe customer portal URL |
-| POST | `/billing/webhooks/stripe` · `/wayl` | provider | Payment events |
+| POST | `/billing/seats` · `/billing/change` | session | Seats, or tier / interval, prorated |
+| GET | `/billing/invoices` | session | Invoices with PDF links |
+| POST | `/billing/portal` | session | The provider's customer portal |
+| POST | `/billing/webhooks/paddle` · `/stripe` · `/wayl` | provider | Payment events (`/wayl` only with `WAYL_ENABLED`) |
 | GET | `/v1/ping` · `/v1/account` | **API key** | Developer API (metered) |
 | POST | `/licence/link` · `/licence/link/poll` | — / poll secret | The app starts a browser sign-in and polls for its session |
 | POST | `/licence/link/approve` · GET `/licence/link/{code}` | session | The website shows the device and approves or denies |
@@ -262,6 +280,7 @@ in `localStorage`. New columns are added on startup by
 | GET | `/releases/feed` · `/releases/{version}/download` | — | Signed release manifests · a 15-minute download link |
 | GET / POST / PATCH | `/admin/releases`, `/admin/releases/{version}` | admin | Upload (≤ 90 MB, signed off-host), withdraw, new notes |
 | GET / PUT | `/files/{key}` | signed URL | Local storage downloads and uploads (HMAC, expiring) |
+| GET | `/admin/growth?from=&to=` | session, admin | Sign-ups, downloads, trials, checkouts, paid per UTC day (counts only) |
 
 ### Running in production
 
@@ -356,41 +375,84 @@ retry_after_s, data}`.
 
 ---
 
-## Billing: Stripe and Wayl
+## Billing: Paddle and Stripe
 
-Both providers are built in. Each turns on as soon as its keys are in
-`server/.env`, and stays hidden until then.
+Truebex Ltd (the UK company) sells every plan. **Paddle** is the default: it
+is the reseller and Merchant of Record, so it charges VAT or sales tax for the
+buyer's country, files it, issues the invoice and handles chargebacks.
+**Stripe** stays behind the same interface with Stripe Tax for business
+invoices (Enterprise, marketplace fees) and as a one-setting switch
+(`BILLING_PROVIDER=stripe`). Each provider turns on when its keys are in
+`server/.env`; the site says "being set up" until `/billing/plans` names a
+`provider`.
 
-**The rule:** a plan only changes from an event the server verified itself. The
-browser can never grant a plan.
+**The rule:** a plan, a seat count or a founding price changes only from a
+provider event or provider state the server verified itself (signed webhooks,
+API fetches). The browser names a tier, an interval, a currency and seats; the
+server picks the price.
 
-**Stripe** (international cards, recurring):
-- Uses Checkout in `mode=subscription`.
-- Signed webhooks (`checkout.session.completed`,
-  `customer.subscription.created/updated/deleted`) keep a `subscriptions` row in sync.
-- The customer portal handles card changes and cancellation.
+**Catalogue.** `server/app/catalogue.json` holds the tiers (Free, Pro, Studio,
+Team per seat, Enterprise), monthly and annual prices in GBP, USD and EUR, and
+the founding offer (placeholders until the pricing guide GD7). The site imports
+it at build time (`src/lib/catalogue.ts`); the API serves it at `/billing/plans`.
+`server/scripts/sync_prices.py` mirrors every price, and each tier's founding
+price, to the provider and records the ids in `provider_prices`. Run it after
+any price change:
 
-To set it up:
-1. Create a recurring monthly Price.
-2. Add a webhook endpoint at `https://api.truebex.com/billing/webhooks/stripe` for those events.
-3. Set `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` and `STRIPE_PRICE_PRO`.
+```
+cd server
+.venv\Scripts\python.exe scripts\sync_prices.py --provider paddle --env sandbox
+```
 
-**Wayl** (Iraq: QiCard, FIB, ZainCash, IQD only):
-- Wayl has payment links, not subscriptions, so each paid link buys a **30-day
-  period**. Paying again stacks a further 30 days.
-- Wayl doesn't document a webhook signature. The server therefore treats a
-  webhook only as a hint, then fetches the link's real status from Wayl's API
-  using the merchant key. It also re-checks when the customer returns to
-  `/dashboard/billing/`, which covers webhooks missed while the PC was off.
+**Checkout.** The billing page asks for the cancellation consent (versioned in
+`src/lib/constants.ts` `BILLING.consent` and `server/app/billing/consent.py`;
+stored on the payment), then `POST /billing/checkout`. Paddle: the server opens
+a transaction with `custom_data` naming the user and returns
+`/checkout/?_ptxn=…`, where Paddle.js shows the overlay. Stripe: hosted
+Checkout with `automatic_tax`, tax-ID and address collection, and its own
+consent box. Coupons (`?code=` on billing links) are the provider's own codes.
 
-To set it up:
-1. Get a merchant key from the Wayl dashboard or `jisr@wayl.io`.
-2. Set `WAYL_API_KEY`.
-3. Set `WAYL_WEBHOOK_SECRET` to any random string of 10–255 characters.
-4. Optionally set `WAYL_PRICE_PRO_IQD`.
+**Founding seats.** A checkout holds founding seats for 30 minutes; a paid one
+keeps them for good and the subscription keeps the founding price. The count
+left is on `/billing/plans` and the billing page.
 
-`server/tests/mock_wayl.py` is a local stand-in for Wayl's API, for clicking
-through the whole checkout without real money.
+**Webhooks and jobs.** Paddle: `https://api.truebex.com/billing/webhooks/paddle`
+(subscription.* and transaction.* events; HMAC over `ts:body`, 300 s window).
+Stripe: `/billing/webhooks/stripe` (`checkout.session.completed`/`expired`,
+`customer.subscription.*`). Both are de-duplicated by event id
+(`billing_events`) and an older event never overwrites newer state. Jobs in
+`server/app/billing/jobs.py`: `billing.founding.expire` (5 min) and
+`billing.reconcile` (daily, and at start: re-fetches pending checkouts and live
+subscriptions, covering webhooks missed while the PC was off). The billing page
+also re-checks a payment when the buyer returns.
+
+To set up Paddle (sandbox first):
+1. Create the account at sandbox-vendors.paddle.com; set a default payment link
+   and approve the checkout domain (`truebex.com`; localhost works in sandbox).
+2. Developer tools → Authentication: an API key and a client-side token.
+3. Notifications: a destination at `<API_URL>/billing/webhooks/paddle` for
+   `subscription.*` and `transaction.*`; copy its secret key.
+4. `server/.env`: `BILLING_PROVIDER=paddle`, `PADDLE_ENV=sandbox`,
+   `PADDLE_API_KEY`, `PADDLE_WEBHOOK_SECRET`, `PADDLE_CLIENT_TOKEN`; then run
+   `sync_prices.py --provider paddle --env sandbox` and restart the API.
+5. Production needs Paddle's seller and domain approval, which checks the live
+   pricing, terms, refund and privacy pages.
+
+To set up Stripe: keys in `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`; a
+terms-of-service URL in the Stripe dashboard (Checkout's consent box needs it);
+Stripe Tax registrations if `STRIPE_TAX_ENABLED=true`; then
+`sync_prices.py --provider stripe --env sandbox`.
+
+`server/tests/mock_paddle.py` stands in for Paddle's API for a click-through
+without an account (see its docstring): run it on :8098, set
+`PADDLE_API_BASE=http://127.0.0.1:8098` and
+`PADDLE_WEBHOOK_SECRET=pdl_ntfset_mock_secret`, sync prices, and checkout opens
+the mock's pay page instead of Paddle.js.
+
+**Wayl (dormant).** The Iraqi payment rail is retired from the site and the
+catalogue. Its code stays behind `WAYL_ENABLED=false` and its tests run with
+the flag on; setting `WAYL_ENABLED=true` with its keys brings back
+`/billing/webhooks/wayl` and an IQD price on `/billing/plans` (API only).
 
 ---
 
@@ -403,9 +465,19 @@ through the whole checkout without real money.
 - **Regenerating assets:** `py -3.12 scripts/make_web_assets.py` rebuilds the
   icons, OG card, SVG media kit and product captures.
 - **Site copy:** all of it lives in `src/lib/constants.ts`. Only shipped features go in
-  `FEATURES`; planned ones go in `ROADMAP`. Public copy never names the
-  engine or other software, and leads with distinctive features only (see
-  `truebex-brand-voice`).
+  `FEATURES`; planned ones go in `src/content/roadmap.json` (words by hand,
+  statuses from `npm run sync:roadmap -- <app README> <platform README>`).
+  Public copy never names the engine or other software, and leads with
+  distinctive features only (see `truebex-brand-voice`).
+- **Prices:** `server/app/catalogue.json` is the one source; a tier without a
+  price shows "Price at launch". Try the pricing page with sample prices by
+  building with `TRUEBEX_CATALOGUE_FILE=scripts/fixtures/catalogue-sample.json`
+  (never for a release).
+- **Analytics and search engines:** `ANALYTICS.cloudflareToken` (Cloudflare Web
+  Analytics, cookieless, public pages only), `VERIFICATION` (Search Console and
+  Bing tags) and `SOCIAL` in `constants.ts`; empty values switch each off. The
+  IndexNow key is `public/<32 hex>.txt`; run `npm run indexnow -- --sitemap`
+  after a deploy.
 - **Product image:** the site shows a single clean capture (daylight through
   a doorway). Add more only if they have no HUD or labels.
 - **Project skills** (Claude Code picks these up automatically in this repo):

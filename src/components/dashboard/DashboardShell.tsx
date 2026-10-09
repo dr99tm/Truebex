@@ -3,7 +3,7 @@
 import { createContext, useContext, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { CreditCard, Gauge, KeyRound, LayoutGrid, BookOpen } from "lucide-react";
+import { CreditCard, Gauge, KeyRound, LayoutGrid, BookOpen, TrendingUp } from "lucide-react";
 import { useCurrentUser } from "@/lib/useAuth";
 import { getToken } from "@/lib/auth";
 import type { User } from "@/lib/auth";
@@ -34,7 +34,12 @@ const NAV_GROUPS: { label: string | null; items: NavItem[] }[] = [
     ],
   },
 ];
-const NAV = NAV_GROUPS.flatMap((g) => g.items);
+
+// Shown to admins only (users.is_admin); the API enforces it either way.
+const ADMIN_GROUP = {
+  label: "Admin",
+  items: [{ href: "/dashboard/admin/growth/", label: "Growth", icon: TrendingUp }],
+};
 
 const UserContext = createContext<User | null>(null);
 
@@ -84,6 +89,9 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
     );
   }
 
+  const groups = user.is_admin ? [...NAV_GROUPS, ADMIN_GROUP] : NAV_GROUPS;
+  const nav = groups.flatMap((g) => g.items);
+
   const isActive = (href: string) =>
     href === "/dashboard/"
       ? pathname === "/dashboard" || pathname === "/dashboard/"
@@ -94,7 +102,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
       <div className="mx-auto flex min-h-screen max-w-7xl gap-8 px-4 pb-24 pt-24 md:px-8">
         <aside className="hidden w-56 shrink-0 md:block">
           <nav aria-label="Dashboard" className="sticky top-24">
-            {NAV_GROUPS.map((group) => (
+            {groups.map((group) => (
               <div key={group.label ?? "main"} className={group.label ? "mt-6" : undefined}>
                 {group.label && (
                   <p className="mb-2 px-3 text-xs font-semibold uppercase tracking-wider text-text-muted">
@@ -131,7 +139,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
             aria-label="Dashboard"
             className="-mx-4 mb-6 flex gap-1 overflow-x-auto border-b border-border px-4 md:hidden"
           >
-            {NAV.map(({ href, label }) => (
+            {nav.map(({ href, label }) => (
               <Link
                 key={href}
                 href={href}

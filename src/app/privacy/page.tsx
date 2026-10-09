@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { LegalPage } from "@/components/layout/LegalPage";
-import { SITE } from "@/lib/constants";
+import { PAYMENT_PROCESSORS, SITE, WEBSITE_ANALYTICS_NOTICE } from "@/lib/constants";
 
 export const metadata: Metadata = {
   title: "Privacy Policy",
@@ -49,10 +49,11 @@ export default function PrivacyPage() {
           your dashboard, where you can remove any of them.
         </li>
         <li>
-          <strong>Billing records.</strong> Your plan, payment amounts,
-          dates, status and the payment provider&rsquo;s reference. Card and
-          wallet details are entered on the provider&rsquo;s own page and
-          never reach our servers.
+          <strong>Billing records.</strong> Your plan, billing interval and
+          seats, payment amounts and tax, invoices, dates, status, the payment
+          provider&rsquo;s reference, and the version and time of the
+          cancellation terms you accepted at checkout. Card details are entered
+          on the provider&rsquo;s own checkout and never reach our servers.
         </li>
         <li>
           <strong>Demo requests.</strong> The name, email, company and project
@@ -64,6 +65,11 @@ export default function PrivacyPage() {
           use advertising or tracking cookies.
         </li>
       </ul>
+
+      <h2>{WEBSITE_ANALYTICS_NOTICE.title}</h2>
+      {WEBSITE_ANALYTICS_NOTICE.paragraphs.map((p) => (
+        <p key={p}>{p}</p>
+      ))}
 
       <h2>How we use it</h2>
       <ul>
@@ -80,9 +86,12 @@ export default function PrivacyPage() {
       </p>
       <ul>
         <li><strong>Google</strong> — Sign in with Google, and the spreadsheet that stores demo requests.</li>
-        <li><strong>Stripe</strong> — card payments, when you pay by card.</li>
-        <li><strong>Wayl</strong> — QiCard, FIB and ZainCash payments in Iraq, when you pay with Wayl.</li>
-        <li><strong>Cloudflare</strong> — network security and delivery for truebex.com and the API.</li>
+        {PAYMENT_PROCESSORS.map((p) => (
+          <li key={p.name}>
+            <strong>{p.name}</strong> — {p.purpose}
+          </li>
+        ))}
+        <li><strong>Cloudflare</strong> — network security and delivery for truebex.com and the API, and cookieless page-view counts (Cloudflare Web Analytics).</li>
         <li><strong>GitHub</strong> — hosting of the public website.</li>
       </ul>
       <p>We share information with others only when the law requires it.</p>
