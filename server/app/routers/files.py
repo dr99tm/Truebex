@@ -1,80 +1,71 @@
-"""Signed file URLs of the `local` storage adapter (app/storage/local.py).
+"""Signed file URLs for the `local` storage adapter (PF14 Plumbing).
 
-GET /files/{key}?exp=&sig=[&fn=]           download
-PUT /files/{key}?exp=&ct=&max=&sig=        upload (Content-Type must equal ct)
-
-422 for a key that is not a valid storage key, 403 for a missing, wrong or
-expired signature, 404 for a missing file, 413 above `max`. With the `s3`
-adapter these routes answer 404: URLs point at the bucket instead.
+GET /files/{key}?exp=&sig=[&fn=] streams the blob (HTTP Range supported, so
+the app's updater can resume). PUT /files/{key}?exp=&sig=&ct=&max= stores a
+body up to `max` bytes. A missing, altered or expired signature answers 403.
+The `s3` adapter (PF14) presigns its own URLs and never comes here.
 """
 
-from fastapi import APIRouter, HTTPException, Request, status
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi import APIRouter, HTTPException, Request
+from fastapi.responses import FileResponse
 
-from ..storage import InvalidKey, get_store, validate_key
-from ..storage.local import LocalStore
+from ..contract_http import enveloped
+from ..storage import InvalidKey, check_key, get_store
 
-router = APIRouter(prefix="/files", tags=["files"], include_in_schema=False)
+router = APIRouter(prefix="/files", tags=["files"], dependencies=[enveloped()], include_in_schema=False)
 
 
-def _local() -> LocalStore:
+def _local():
     store = get_store()
-    if not isinstance(store, LocalStore):
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+    if not hasattr(store, "verify"):
+        raise HTTPException(status_code=404, detail="Not found.")
     return store
 
 
-def _checked_key(key: str) -> str:
+def _key(key: str) -> str:
     try:
-        return validate_key(key)
-    except InvalidKey as exc:
-        raise HTTPException(status_code=422, detail=str(exc)) from exc
-
-
-def _expiry(raw: str | None) -> int:
-    try:
-        return int(raw or "")
-    except ValueError:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Link is not valid.")
+        return check_key(key)
+    except InvalidKey:
+        raise HTTPException(status_code=422, detail="Invalid file key.")
 
 
 @router.get("/{key:path}")
-def download(key: str, exp: str | None = None, sig: str = "", fn: str | None = None):
+def download(key: str, request: Request, exp: str | None = None, sig: str | None = None, fn: str | None = None):
+    key = _key(key)
     store = _local()
-    key = _checked_key(key)
-    if not store.verify("GET", key, _expiry(exp), sig, fn or ""):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Link is not valid or has expired.")
+    if not store.verify("GET", key, exp, sig, fn or ""):
+        raise HTTPException(status_code=403, detail="This download link has expired or is not valid.")
     info = store.stat(key)
     if info is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
-    headers = {"Cache-Control": "private, no-store"}
+        raise HTTPException(status_code=404, detail="File not found.")
     return FileResponse(
-        store._path(key),
+        store.file_path(key),
         media_type=info.content_type,
-        filename=fn,
-        headers=headers,
+        filename=fn or None,
+        headers={"Cache-Control": "private, max-age=0, no-store"},
     )
 
 
-@router.put("/{key:path}", status_code=status.HTTP_201_CREATED)
+@router.put("/{key:path}", status_code=201)
 async def upload(
     key: str,
     request: Request,
     exp: str | None = None,
+    sig: str | None = None,
     ct: str = "",
-    max: str = "0",  # noqa: A002 - the signed query parameter's name
-    sig: str = "",
-):
+    max: str = "0",  # noqa: A002 - the query parameter's name
+) -> dict:
+    key = _key(key)
     store = _local()
-    key = _checked_key(key)
-    sent_type = request.headers.get("content-type", "")
-    if not store.verify("PUT", key, _expiry(exp), sig, ct, max) or sent_type != ct:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Link is not valid or has expired.")
+    if not max.isdigit() or not store.verify("PUT", key, exp, sig, f"{ct}\n{max}"):
+        raise HTTPException(status_code=403, detail="This upload link has expired or is not valid.")
+    if ct and request.headers.get("content-type", "").split(";")[0].strip() != ct:
+        raise HTTPException(status_code=415, detail=f"Expected Content-Type {ct}.")
     limit = int(max)
     body = bytearray()
     async for chunk in request.stream():
-        body += chunk
+        body.extend(chunk)
         if len(body) > limit:
-            raise HTTPException(status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, detail="File too large.")
-    info = store.put(key, bytes(body), content_type=ct)
-    return JSONResponse(status_code=201, content={"key": info.key, "size": info.size})
+            raise HTTPException(status_code=413, detail=f"Uploads to this link are limited to {limit} bytes.")
+    info = store.put(key, bytes(body), content_type=ct or "application/octet-stream")
+    return {"key": info.key, "bytes": info.bytes, "sha256": info.sha256}

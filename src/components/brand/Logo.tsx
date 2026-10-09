@@ -52,13 +52,15 @@ export function Wordmark({ className, title }: MarkProps) {
   );
 }
 
-/** Glyph + wordmark, the primary lockup. Height drives the size. */
+/** Glyph + wordmark, the primary lockup. Height drives the size. Always
+ *  left to right: the lockup never mirrors, on the Arabic page included. */
 export function Lockup({ className }: { className?: string }) {
   return (
     <span
       className={cn("inline-flex items-center gap-[0.45em] text-brand-fg", className)}
       role="img"
       aria-label="Truebex"
+      dir="ltr"
     >
       <LogoMark className="h-[0.9em]" />
       <Wordmark className="h-[1em]" />

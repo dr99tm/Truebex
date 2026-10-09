@@ -18,10 +18,10 @@ from sqlalchemy import inspect, select, text, update
 from app import mail, ratelimit, storage
 from app.database import SessionLocal, engine
 from app.main import app
+from app.licence.models import Device
 from app.models import (
     CrashGroup,
     CrashReport,
-    Device,
     Feedback,
     TelemetryBatch,
     TelemetryDaily,

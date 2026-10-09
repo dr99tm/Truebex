@@ -19,11 +19,11 @@ Pushing `main` runs `.github/workflows/static.yml` → GitHub Pages → truebex.
 
 1. Commit and push `master` (`git push`; upstream is set).
 2. `.env.local` must hold production URLs (`NEXT_PUBLIC_AUTH_URL=https://api.truebex.com`). A build made for local testing (`NEXT_PUBLIC_AUTH_URL=http://127.0.0.1:8000`) must never be deployed — rebuild first.
-3. `rm -rf out && npm run build`. Verify: `grep -rl api.truebex.com out/_next` finds a file.
+3. `npm run sync:releases` (writes `src/content/releases.json` from `https://api.truebex.com/releases/feed`; commit it if it changed), then `rm -rf out && npm run build`. Verify: `grep -rl api.truebex.com out/_next` finds a file, and `/download/` shows the feed's latest version (a fixture or local-test feed must never be deployed).
 4. In the deploy repo: delete everything except `.git` and `.github`, `cp -a /x/Truebex/out/. .`, `diff -rq . /x/Truebex/out -x .git -x .github` must be empty.
 5. `git add -A && git commit -m "Deploy: build master <sha> (<summary>)" && git push origin main`.
 6. Wait for the Pages run: `curl -s "https://api.github.com/repos/dr99tm/Truebex/actions/runs?branch=main&per_page=1"` → `head_sha` = the deploy commit, `conclusion: success`.
-7. Verify live: every route returns 200 (`/`, `/login/`, `/signup/`, `/dashboard/`, `/developers/`, `/sitemap.xml`, `/robots.txt`), and the homepage's chunk names match `out/` (cache-bust with `?nc=$RANDOM`).
+7. Verify live: every route returns 200 (`/`, `/login/`, `/signup/`, `/dashboard/`, `/download/`, `/changelog/`, `/developers/`, `/sitemap.xml`, `/robots.txt`), and the homepage's chunk names match `out/` (cache-bust with `?nc=$RANDOM`).
 
 `deploy-to-server.bat` automates 3–5 (plus a backup folder per run).
 
@@ -53,8 +53,16 @@ with WAL archived by wal-g to a backup bucket at a second provider. Everything i
 - **Alerts:** the hosted monitor (e-mail + phone push), `host-check.sh` every minute, the worker's
   `backup.check`; see `infra/README.md#alerts`.
 - **Secrets** live only in `infra/secrets/*.sops.env` (encrypted, age key on the owner's PC) and
-  `/opt/truebex/secrets/` on the VM (0600). Feature switches (`GOOGLE_CLIENT_ID`, `STRIPE_*`, `WAYL_*`,
-  `TELEMETRY_*`): edit with `sops`, redeploy; the site reads them at runtime, no site rebuild.
+  `/opt/truebex/secrets/` on the VM (0600); `server/.env` only for local runs. Feature switches
+  (`GOOGLE_CLIENT_ID`, `BILLING_PROVIDER`, `PADDLE_*`, `STRIPE_*`, `WAYL_*`, `TELEMETRY_*`): edit with
+  `sops`, redeploy; the site reads them at runtime via `/config` and `/billing/plans`, no site rebuild.
+- **Licence API:** `LICENCE_SIGNING_KEY` (the `lic-*` seed) lives only in the encrypted
+  `server.sops.env` (and `server/.env` locally); `RELEASE_PUBLIC_KEYS` holds only public `rel-*` halves.
+  The `rel-*` seed never goes in the repo, an env file or the VM: releases are published with
+  `server\scripts\publish_release.py --key-file <file kept elsewhere>` against the API host's settings
+  (or signed elsewhere and uploaded through `POST /admin/releases`, up to 90 MB), then
+  `npm run sync:releases` + a site deploy. Installers live in the data bucket (`STORAGE_BACKEND=s3`) on the
+  VM, under `server/storage/` (gitignored) locally.
 - **Admins:** `docker compose exec api python -m scripts.make_admin <email>` on the VM.
 - `start-server.bat` / `start-tunnel.bat` are for local use only. Never route `api.truebex.com` to the
   PC again: a second API with its own `auth.db` would take writes nobody sees (`infra/CUTOVER.md`).

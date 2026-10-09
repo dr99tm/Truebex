@@ -8,7 +8,7 @@ Rate-limited per address; `/health` stays the cheap liveness check.
 
 import logging
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 from sqlalchemy import text
 
@@ -57,7 +57,7 @@ def heartbeat() -> int | None:
         return None
 
 
-@router.get("/health/deep", dependencies=[Depends(limit(client_address, per_minute=30, scope="health"))])
+@router.get("/health/deep", dependencies=[limit(client_address, per_minute=30, name="health")])
 def health_deep() -> JSONResponse:
     db_ok = check_db()
     storage_ok = check_storage()

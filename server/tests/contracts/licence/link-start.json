@@ -1,0 +1,10 @@
+{
+  "http_status": 201,
+  "body": {
+    "link_code": "QX7D-K9MP",
+    "poll_secret": "fixture-poll-secret-AAAAAAAAAAAAAAAAAAAAAAA",
+    "verify_url": "https://truebex.com/dashboard/link/?code=QX7D-K9MP",
+    "expires_in_s": 600,
+    "interval_s": 5
+  }
+}

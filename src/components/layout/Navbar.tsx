@@ -2,19 +2,30 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { Menu, X } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
-import { NAV_LINKS } from "@/lib/constants";
+import { AR_HOME, NAV_LINKS, NAV_UI } from "@/lib/constants";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/utils";
 import { useCurrentUser } from "@/lib/useAuth";
 import { ProfileMenu } from "@/components/auth/ProfileMenu";
 import { Lockup } from "@/components/brand/Logo";
+import { LanguageSwitch } from "@/components/layout/LanguageSwitch";
+
+// English labels, and the Arabic ones on /ar/ (the Arabic landing page).
+const COPY = {
+  en: { links: NAV_LINKS, ...NAV_UI },
+  ar: { links: AR_HOME.nav, login: AR_HOME.login, demo: AR_HOME.demo, demoHref: "/ar/#contact", dashboard: AR_HOME.dashboard, home: AR_HOME.home, toggle: AR_HOME.toggleMenu },
+} as const;
 
 export function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const { user } = useCurrentUser();
+  const pathname = usePathname() ?? "/";
+  const locale = pathname === "/ar" || pathname.startsWith("/ar/") ? "ar" : "en";
+  const t = COPY[locale];
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 50);
@@ -49,14 +60,14 @@ export function Navbar() {
           <Link
             href="/"
             className="relative z-50 shrink-0 text-xl transition-opacity hover:opacity-80"
-            aria-label="Truebex home"
+            aria-label={t.home}
           >
             <Lockup />
           </Link>
 
           {/* Desktop nav — hidden below lg (1024px) since we have 7 links */}
           <ul className="hidden items-center gap-6 lg:flex">
-            {NAV_LINKS.map((link) => (
+            {t.links.map((link) => (
               <li key={link.href}>
                 <a
                   href={link.href}
@@ -70,20 +81,21 @@ export function Navbar() {
 
           {/* Desktop CTA */}
           <div className="hidden lg:flex items-center gap-3 shrink-0">
+            <LanguageSwitch current={locale} className="me-1" />
             {user ? (
               <>
                 <Button href="/dashboard/" variant="secondary" size="sm">
-                  Dashboard
+                  {t.dashboard}
                 </Button>
                 <ProfileMenu user={user} />
               </>
             ) : (
               <>
                 <Button href="/login" variant="secondary" size="sm">
-                  Log in
+                  {t.login}
                 </Button>
-                <Button href="/#contact" size="sm">
-                  Request Demo
+                <Button href={t.demoHref} size="sm">
+                  {t.demo}
                 </Button>
               </>
             )}
@@ -95,19 +107,19 @@ export function Navbar() {
             {user ? (
               <>
                 <Button href="/dashboard/" variant="secondary" size="sm">
-                  Dashboard
+                  {t.dashboard}
                 </Button>
                 <ProfileMenu user={user} />
               </>
             ) : (
               <Button href="/login" variant="secondary" size="sm">
-                Log in
+                {t.login}
               </Button>
             )}
             <button
               className="relative z-50 flex h-10 w-10 items-center justify-center rounded-lg text-text-primary transition-colors hover:bg-white/10"
               onClick={() => setMobileOpen(!mobileOpen)}
-              aria-label="Toggle menu"
+              aria-label={t.toggle}
             >
               {mobileOpen ? <X size={22} /> : <Menu size={22} />}
             </button>
@@ -127,7 +139,7 @@ export function Navbar() {
           >
             <div className="flex h-full flex-col items-center justify-center px-6">
               <ul className="flex flex-col items-center gap-5">
-                {NAV_LINKS.map((link, i) => (
+                {t.links.map((link, i) => (
                   <motion.li
                     key={link.href}
                     initial={{ opacity: 0, y: 20 }}
@@ -143,6 +155,17 @@ export function Navbar() {
                     </a>
                   </motion.li>
                 ))}
+                <motion.li
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.05 * t.links.length, duration: 0.3 }}
+                >
+                  <LanguageSwitch
+                    current={locale}
+                    className="text-lg"
+                    onClick={() => setMobileOpen(false)}
+                  />
+                </motion.li>
                 {/* Signed-in users see Dashboard + profile directly in the
                     navbar bar, so the overlay only carries page links. */}
                 {!user && (
@@ -151,7 +174,7 @@ export function Navbar() {
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{
-                        delay: 0.05 * NAV_LINKS.length,
+                        delay: 0.05 * (t.links.length + 1),
                         duration: 0.3,
                       }}
                     >
@@ -160,24 +183,24 @@ export function Navbar() {
                         className="text-xl font-medium text-text-secondary transition-colors hover:text-text-primary sm:text-2xl"
                         onClick={() => setMobileOpen(false)}
                       >
-                        Log in
+                        {t.login}
                       </a>
                     </motion.li>
                     <motion.li
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{
-                        delay: 0.05 * (NAV_LINKS.length + 1),
+                        delay: 0.05 * (t.links.length + 2),
                         duration: 0.3,
                       }}
                     >
                       <Button
-                        href="/#contact"
+                        href={t.demoHref}
                         size="lg"
                         className="mt-4"
                         onClick={() => setMobileOpen(false)}
                       >
-                        Request Demo
+                        {t.demo}
                       </Button>
                     </motion.li>
                   </>

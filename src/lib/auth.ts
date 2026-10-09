@@ -15,7 +15,7 @@ export interface User {
   avatar_url: string | null;
   has_password: boolean;
   google_linked: boolean;
-  /** Truebex staff: opens the admin pages (set by hand on the server). */
+  /** Admins see the Admin group in the dashboard (set by hand on the server). */
   is_admin?: boolean;
 }
 
@@ -62,11 +62,18 @@ export function logout(): void {
   clearToken();
 }
 
-let configPromise: Promise<{ google_client_id: string | null }> | null = null;
+export interface PublicConfig {
+  google_client_id: string | null;
+  /** Paddle.js client token for /checkout/ (public by design). */
+  paddle_client_token?: string | null;
+  paddle_env?: "sandbox" | "production";
+}
+
+let configPromise: Promise<PublicConfig> | null = null;
 
 /** Server feature flags (e.g. the Google client id). Cached per page load. */
-export function fetchPublicConfig(): Promise<{ google_client_id: string | null }> {
-  configPromise ??= api<{ google_client_id: string | null }>("/config", {
+export function fetchPublicConfig(): Promise<PublicConfig> {
+  configPromise ??= api<PublicConfig>("/config", {
     auth: false,
   }).catch((err) => {
     configPromise = null;

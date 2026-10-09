@@ -3,6 +3,7 @@ import { Open_Sans } from "next/font/google";
 import "./globals.css";
 import { Navbar } from "@/components/layout/Navbar";
 import { SITE } from "@/lib/constants";
+import { socialLinks, verification } from "@/lib/site-config";
 
 // Fallback for Segoe UI (see globals.css): same designer, open licence.
 const openSans = Open_Sans({
@@ -66,6 +67,11 @@ export const metadata: Metadata = {
     googleBot: { index: true, follow: true, "max-image-preview": "large" },
   },
   category: "technology",
+  // Search Console and Bing Webmaster Tools (public tokens; empty = no tag).
+  verification: {
+    ...(verification.google ? { google: verification.google } : {}),
+    ...(verification.bing ? { other: { "msvalidate.01": verification.bing } } : {}),
+  },
 };
 
 const organizationLd = {
@@ -79,6 +85,7 @@ const organizationLd = {
       logo: `${SITE.url}/icon-512.png`,
       email: SITE.email,
       slogan: SITE.tagline,
+      ...(socialLinks.length ? { sameAs: socialLinks.map((s) => s.url) } : {}),
     },
     {
       "@type": "WebSite",
@@ -96,7 +103,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={openSans.variable}>
+    // lang/dir are rewritten to ar/rtl in out/ar/index.html after the build
+    // (scripts/postbuild-lang.mjs), so the client must not fight them.
+    <html lang="en" className={openSans.variable} suppressHydrationWarning>
       <body className="antialiased overflow-x-hidden">
         <script
           type="application/ld+json"

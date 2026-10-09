@@ -72,7 +72,8 @@ def test_storage_local_put_get_and_signed_urls(client, tmp_path):
     assert client.put(put_url, content=b"12345678", headers={"Content-Type": "application/octet-stream"}).status_code == 201
     assert store.stat("uploads/u1.bin").size == 8
     assert client.put(put_url, content=b"123456789", headers={"Content-Type": "application/octet-stream"}).status_code == 413
-    assert client.put(put_url, content=b"1", headers={"Content-Type": "text/plain"}).status_code == 403
+    # A valid link with the wrong Content-Type: 415 (PF1's /files route).
+    assert client.put(put_url, content=b"1", headers={"Content-Type": "text/plain"}).status_code == 415
     assert client.put(put_url.replace("sig=", "sig=f"), content=b"1", headers={"Content-Type": "application/octet-stream"}).status_code == 403
 
     store.delete("telemetry/a/b.txt")

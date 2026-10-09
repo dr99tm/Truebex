@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { LegalPage } from "@/components/layout/LegalPage";
-import { APP_TELEMETRY_PRIVACY, PROCESSORS, SITE } from "@/lib/constants";
+import { APP_TELEMETRY_PRIVACY, PROCESSORS, SITE, WEBSITE_ANALYTICS_NOTICE } from "@/lib/constants";
 
 export const metadata: Metadata = {
   title: "Privacy Policy",
@@ -39,10 +39,21 @@ export default function PrivacyPage() {
           you your usage.
         </li>
         <li>
-          <strong>Billing records.</strong> Your plan, payment amounts,
-          dates, status and the payment provider&rsquo;s reference. Card and
-          wallet details are entered on the provider&rsquo;s own page and
-          never reach our servers.
+          <strong>Devices.</strong> When you sign in to the Truebex app on a
+          computer, we record the computer&rsquo;s name, its operating system,
+          the app version, when it was activated and last seen, and a
+          fingerprint: a one-way hash the app makes from the computer&rsquo;s
+          identifiers, never the identifiers themselves. We use them to keep
+          the computer signed in, to count your devices against your plan,
+          to offer the free trial once per computer, and to show the list in
+          your dashboard, where you can remove any of them.
+        </li>
+        <li>
+          <strong>Billing records.</strong> Your plan, billing interval and
+          seats, payment amounts and tax, invoices, dates, status, the payment
+          provider&rsquo;s reference, and the version and time of the
+          cancellation terms you accepted at checkout. Card details are entered
+          on the provider&rsquo;s own checkout and never reach our servers.
         </li>
         <li>
           <strong>Demo requests.</strong> The name, email, company and project
@@ -54,6 +65,11 @@ export default function PrivacyPage() {
           use advertising or tracking cookies.
         </li>
       </ul>
+
+      <h2>{WEBSITE_ANALYTICS_NOTICE.title}</h2>
+      {WEBSITE_ANALYTICS_NOTICE.paragraphs.map((p) => (
+        <p key={p}>{p}</p>
+      ))}
 
       <h2>How we use it</h2>
       <ul>
@@ -107,7 +123,7 @@ export default function PrivacyPage() {
 
       <h2>Your choices and rights</h2>
       <ul>
-        <li>Revoke any API key at any time from your dashboard.</li>
+        <li>Revoke any API key, or remove any signed-in computer, at any time from your dashboard.</li>
         <li>
           Turn the desktop app&rsquo;s usage events and crash reports on or off
           at any time in its privacy settings.
@@ -135,7 +151,7 @@ export default function PrivacyPage() {
 
       <h2>Security</h2>
       <p>
-        Passwords and API keys are stored only as one-way hashes, all traffic
+        Passwords, API keys and device sign-in tokens are stored only as one-way hashes, all traffic
         uses HTTPS, and plan changes are accepted only from payment events we
         verify with the provider.
       </p>

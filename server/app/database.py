@@ -5,6 +5,7 @@ Code that needs a dialect-specific construct goes through a helper here
 (`dialect_insert`), never `sqlalchemy.dialects.*` directly.
 """
 
+import logging
 from collections.abc import Generator
 
 from sqlalchemy import Engine, create_engine, event, inspect, text
@@ -62,6 +63,9 @@ def dialect_insert(db: Session, model):
     return insert(model)
 
 
+# DateTime(timezone=True): Postgres has no DATETIME; SQLite takes any name.
+_TIMESTAMP = "TIMESTAMP WITH TIME ZONE"
+
 # Columns added to existing tables after the first release. create_all only
 # creates missing *tables*, so these are added by hand on startup. SQLite can
 # only ADD nullable columns this way; that's all these are. Every DDL here is
@@ -74,7 +78,29 @@ _ADDED_COLUMNS: dict[str, list[tuple[str, str]]] = {
         # PF1 / PF14: set by hand for the owner; gates /admin/*.
         ("is_admin", "BOOLEAN"),
     ],
+    # PF1 (seats) and PF2 (billing through the UK company).
+    "subscriptions": [
+        ("seats", "INTEGER"),
+        ("interval", "VARCHAR(8)"),
+        ("currency", "VARCHAR(3)"),
+        ("cancel_at_period_end", "BOOLEAN"),
+        ("founding", "BOOLEAN"),
+        ("provider_price_id", "VARCHAR(128)"),
+        ("last_event_at", _TIMESTAMP),
+    ],
+    "payments": [
+        ("interval", "VARCHAR(8)"),
+        ("seats", "INTEGER"),
+        ("tax_minor", "INTEGER"),
+        ("consent_version", "VARCHAR(32)"),
+        ("consent_at", _TIMESTAMP),
+        ("invoice_id", "VARCHAR(128)"),
+    ],
 }
+
+# PF1 (licence API), in its own block so parallel features add theirs beside it.
+_ADDED_COLUMNS["users"] += [("author_id", "VARCHAR(32)"), ("trial_used_at", _TIMESTAMP)]
+# subscriptions.seats (NULL = 1) is in the PF2 block above: PF2 writes it.
 
 
 def _migrate(bind: Engine) -> None:
@@ -93,11 +119,32 @@ def _migrate(bind: Engine) -> None:
                 "ON users (google_sub)"
             )
         )
+        # PF1
+        conn.execute(
+            text(
+                "CREATE UNIQUE INDEX IF NOT EXISTS ix_users_author_id "
+                "ON users (author_id)"
+            )
+        )
+    # PF2: one row per provider subscription. Files with duplicates from before
+    # keep working without the index (logged); billing.service retries on it.
+    try:
+        with bind.begin() as conn:
+            conn.execute(
+                text(
+                    "CREATE UNIQUE INDEX IF NOT EXISTS uq_subscriptions_provider_sub "
+                    "ON subscriptions (provider, provider_subscription_id)"
+                )
+            )
+    except Exception:  # pragma: no cover - only with duplicate legacy rows
+        logging.getLogger("truebex.db").exception("could not add uq_subscriptions_provider_sub")
 
 
 def init_db(bind: Engine | None = None) -> None:
     """Create tables and apply additive migrations (safe to run repeatedly)."""
     from . import models  # noqa: F401  (ensures models are registered)
+    from .licence import models as _licence_models  # noqa: F401  (PF1)
+    from .releases import models as _release_models  # noqa: F401  (PF1)
 
     bind = bind or engine
     Base.metadata.create_all(bind=bind)

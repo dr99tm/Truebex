@@ -28,8 +28,8 @@ router = APIRouter(
     prefix="/telemetry",
     tags=["telemetry"],
     dependencies=[
-        Depends(contract("telemetry", 1, 0)),
-        Depends(limit(client_address, per_minute=service.PER_HOUR / 60, burst=service.PER_HOUR, scope="telemetry")),
+        contract("telemetry", 1, 0),
+        limit(client_address, per_minute=service.PER_HOUR / 60, burst=service.PER_HOUR, name="telemetry"),
     ],
 )
 

@@ -29,4 +29,7 @@ def test_site_pf14_privacy_mentions_telemetry():
     for period in ("13 months", "180 days", "2 years", "14 days", "30 days"):
         assert period in html, period
     assert "Delete my data" in html
-    assert "Wayl" in html  # stays while PF2 has not removed it
+    # The processors PF14 adds, beside PF2's reseller (PF2 removed Wayl:
+    # test_site_pf2_no_wayl_in_public_pages).
+    for processor in ("Server hosting", "Object storage", "Email delivery", "Uptime monitoring", "Paddle"):
+        assert processor in html, processor

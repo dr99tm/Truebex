@@ -10,15 +10,12 @@ from sqlalchemy.orm import Session
 
 from . import usage
 from .billing.service import effective_plan
+from .contract_http import ContractError
 from .database import get_db
-from .models import ApiKey, Device, User
+from .licence.models import Device
+from .models import ApiKey, User
 from .plans import get_plan
-from .security import (
-    API_KEY_PREFIX,
-    DEVICE_TOKEN_PREFIX,
-    decode_access_token,
-    hash_api_key,
-)
+from .security import API_KEY_PREFIX, decode_access_token, hash_api_key
 
 _bearer = HTTPBearer(auto_error=False)
 
@@ -52,21 +49,27 @@ def get_current_user(
 
 
 def require_admin(current: User = Depends(get_current_user)) -> User:
-    """Admins only (`users.is_admin`, set by hand): 401 signed out, 403 others."""
+    """Admins only (`users.is_admin`, set by hand like "enterprise"): 401
+    signed out, 403 others."""
     if not current.is_admin:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="This page is for admins only."
+            status_code=status.HTTP_403_FORBIDDEN, detail="Admins only."
         )
     return current
 
 
 def device_for_token(db: Session, raw: str | None) -> Device | None:
     """The active device behind a `tbx_dev_…` token, or None (unknown,
-    removed, signed out, or not a device token at all)."""
-    if not raw or not raw.startswith(DEVICE_TOKEN_PREFIX):
+    removed, signed out, lapsed, or not a device token at all). Read-only:
+    telemetry (5.4 replies) only looks the device up."""
+    from .licence import clock, devices
+
+    if not raw or not raw.startswith(devices.DEVICE_TOKEN_PREFIX):
         return None
-    device = db.scalar(select(Device).where(Device.token_hash == hash_api_key(raw)))
+    device = devices.find_by_token(db, raw)
     if device is None or device.deactivated_at is not None:
+        return None
+    if devices.is_lapsed(device, clock.now()):
         return None
     return device
 
@@ -133,3 +136,96 @@ def api_key_auth(
         max(plan.monthly_requests - used - 1, 0)
     )
     return ApiCaller(user=user, key=key)
+
+
+# --- Licence API credentials (PF1, contract §4) --------------------------------
+# The prefix tells them apart: tbx_dev_ device, tbx_live_ API key (never
+# accepted by /licence/*), anything else a session JWT.
+
+
+@dataclass
+class DeviceCaller:
+    user: User
+    device: Device
+
+
+@dataclass
+class LicenceCaller:
+    user: User
+    device: Device | None  # None when signed in with a session (the website)
+
+
+def _unauthenticated(detail: str) -> ContractError:
+    return ContractError("unauthenticated", 401, detail, headers={"WWW-Authenticate": "Bearer"})
+
+
+def _revoked() -> ContractError:
+    return ContractError(
+        "device_revoked",
+        401,
+        "This device was signed out. Sign in again.",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+
+
+def _resolve_device(raw: str, db: Session, *, allow_inactive: bool) -> DeviceCaller:
+    from .licence import clock, devices
+
+    device = devices.find_by_token(db, raw)
+    if device is None or (device.deactivated_at is not None and not allow_inactive):
+        raise _revoked()
+    now = clock.now()
+    if device.deactivated_at is None:
+        if devices.is_lapsed(device, now):
+            devices.deactivate(db, device, "lapsed", now)
+            db.commit()
+            raise _revoked()
+        device.last_seen_at = now
+        db.add(device)
+        db.commit()
+    user = db.get(User, device.user_id)
+    if user is None:
+        raise _revoked()
+    return DeviceCaller(user=user, device=device)
+
+
+def get_device(
+    creds: HTTPAuthorizationCredentials | None = Depends(_bearer),
+    db: Session = Depends(get_db),
+) -> DeviceCaller:
+    """The calling device, from `Authorization: Bearer tbx_dev_…`."""
+    from .licence.devices import DEVICE_TOKEN_PREFIX
+
+    raw = creds.credentials if creds else ""
+    if not raw.startswith(DEVICE_TOKEN_PREFIX):
+        raise _unauthenticated("This call needs a device token (Authorization: Bearer tbx_dev_…).")
+    return _resolve_device(raw, db, allow_inactive=False)
+
+
+def get_device_any(
+    creds: HTTPAuthorizationCredentials | None = Depends(_bearer),
+    db: Session = Depends(get_db),
+) -> DeviceCaller:
+    """Like get_device, but a signed-out device still resolves (5.10 is idempotent)."""
+    from .licence.devices import DEVICE_TOKEN_PREFIX
+
+    raw = creds.credentials if creds else ""
+    if not raw.startswith(DEVICE_TOKEN_PREFIX):
+        raise _unauthenticated("This call needs a device token (Authorization: Bearer tbx_dev_…).")
+    return _resolve_device(raw, db, allow_inactive=True)
+
+
+def get_session_or_device(
+    creds: HTTPAuthorizationCredentials | None = Depends(_bearer),
+    db: Session = Depends(get_db),
+) -> LicenceCaller:
+    from .licence.devices import DEVICE_TOKEN_PREFIX
+
+    raw = creds.credentials if creds else ""
+    if raw.startswith(DEVICE_TOKEN_PREFIX):
+        caller = _resolve_device(raw, db, allow_inactive=False)
+        return LicenceCaller(user=caller.user, device=caller.device)
+    if raw.startswith(API_KEY_PREFIX):
+        raise _unauthenticated("API keys are not accepted here. Sign in instead.")
+    return LicenceCaller(user=get_current_user(creds, db), device=None)
+

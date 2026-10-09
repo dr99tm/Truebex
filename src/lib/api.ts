@@ -39,9 +39,12 @@ export function clearToken(): void {
 
 export class ApiError extends Error {
   readonly status: number;
-  constructor(status: number, message: string) {
+  /** Contract routes send a `code` (e.g. "device_limit"); others read as http_<status>. */
+  readonly code: string;
+  constructor(status: number, message: string, code?: string) {
     super(message);
     this.status = status;
+    this.code = code ?? `http_${status}`;
     this.name = "ApiError";
   }
 }
@@ -49,6 +52,7 @@ export class ApiError extends Error {
 /** Throw an ApiError carrying the server's `detail` message when present. */
 async function toError(res: Response): Promise<ApiError> {
   let detail = `Request failed (${res.status})`;
+  let code: string | undefined;
   try {
     const data = await res.json();
     if (typeof data?.detail === "string") {
@@ -57,10 +61,11 @@ async function toError(res: Response): Promise<ApiError> {
       // FastAPI validation errors come back as a list of {msg, ...}.
       detail = data.detail[0].msg;
     }
+    if (typeof data?.code === "string") code = data.code;
   } catch {
     /* response had no JSON body */
   }
-  return new ApiError(res.status, detail);
+  return new ApiError(res.status, detail, code);
 }
 
 /**

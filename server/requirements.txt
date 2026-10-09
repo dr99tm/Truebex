@@ -6,6 +6,8 @@ pydantic-settings==2.7.0
 passlib[bcrypt]==1.7.4
 bcrypt==4.0.1
 python-jose[cryptography]==3.3.0
+# Ed25519 signatures for entitlements and release manifests (licence API)
+cryptography==50.0.2
 python-multipart==0.0.20
 # Google Sign-In ID token verification
 google-auth==2.38.0

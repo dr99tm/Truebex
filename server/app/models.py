@@ -39,6 +39,15 @@ class User(Base):
     # Cached plan id ("free", "pro", ...). Billing keeps it in sync with the
     # user's active subscription; see billing.service.effective_plan.
     plan: Mapped[str] = mapped_column(String(32), default="free", nullable=False)
+    # PF1 (licence API):
+    # 32-hex UUIDv7 carried by project-log operations; minted on first use.
+    author_id: Mapped[str | None] = mapped_column(
+        String(32), unique=True, index=True, nullable=True
+    )
+    # When the account's one trial started (contract 5.6).
+    trial_used_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     # Google account id (the ID token's `sub`), set once the user signs in
     # with Google.
     google_sub: Mapped[str | None] = mapped_column(
@@ -106,6 +115,15 @@ class Subscription(Base):
     """
 
     __tablename__ = "subscriptions"
+    # One row per provider subscription (database._migrate adds it to old files).
+    __table_args__ = (
+        Index(
+            "uq_subscriptions_provider_sub",
+            "provider",
+            "provider_subscription_id",
+            unique=True,
+        ),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     user_id: Mapped[int] = mapped_column(
@@ -128,6 +146,21 @@ class Subscription(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=_utcnow, onupdate=_utcnow, nullable=False
     )
+    # --- PF1 / PF2 columns (added by database._ADDED_COLUMNS, all nullable) ---
+    # Seats bought (Team); null = 1. Written only from verified events.
+    seats: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # month | year
+    interval: Mapped[str | None] = mapped_column(String(8), nullable=True)
+    currency: Mapped[str | None] = mapped_column(String(3), nullable=True)
+    # Cancelled by the customer; the plan stays until current_period_end.
+    cancel_at_period_end: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    # Bought at the founding price (a lasting discount).
+    founding: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    provider_price_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    # Time of the newest provider event applied; older events never overwrite.
+    last_event_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
 
 class Payment(Base):
@@ -146,7 +179,7 @@ class Payment(Base):
         String(64), unique=True, index=True, nullable=False
     )
     provider_ref: Mapped[str | None] = mapped_column(String(128), index=True)
-    # Minor units for USD (cents); whole dinars for IQD.
+    # Minor units of `currency` (cents, pence; whole dinars for IQD).
     amount: Mapped[int] = mapped_column(Integer, nullable=False)
     currency: Mapped[str] = mapped_column(String(3), nullable=False)
     # pending | paid | failed | canceled
@@ -155,37 +188,107 @@ class Payment(Base):
         DateTime(timezone=True), default=_utcnow, nullable=False
     )
     paid_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # --- PF2 columns (added by database._ADDED_COLUMNS, all nullable) ---------
+    interval: Mapped[str | None] = mapped_column(String(8), nullable=True)
+    seats: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # Tax in minor units, from the provider once paid.
+    tax_minor: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # The cancellation consent accepted before checkout (reg. 37).
+    consent_version: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    consent_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    invoice_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
 
 
-# --- Devices (PF1 owns this table; PF14 reads it for feedback replies) ---------
+class ProviderPrice(Base):
+    """A catalogue price mirrored to a payment provider (scripts/sync_prices.py).
 
-
-class Device(Base):
-    """A desktop app installation signed in to an account (licence-api.md §4).
-
-    The device token ("tbx_dev_...") is stored only as a SHA-256 hash.
+    The amount is part of a row's identity: a GD7 price change adds a row,
+    and old rows stay so webhooks for existing subscribers still map their
+    price id back to a tier and interval.
     """
 
-    __tablename__ = "devices"
+    __tablename__ = "provider_prices"
+    __table_args__ = (
+        UniqueConstraint("provider", "provider_price_id", name="uq_provider_price_id"),
+    )
 
-    device_id: Mapped[str] = mapped_column(String(32), primary_key=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    provider: Mapped[str] = mapped_column(String(16), nullable=False)
+    tier: Mapped[str] = mapped_column(String(32), nullable=False)
+    interval: Mapped[str] = mapped_column(String(8), nullable=False)
+    currency: Mapped[str] = mapped_column(String(3), nullable=False)
+    # Per seat, in minor units of `currency`.
+    amount_minor: Mapped[int] = mapped_column(Integer, nullable=False)
+    provider_price_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    # The founding price of its tier (a lasting discount). A subscription is a
+    # founding one exactly when it pays such a price.
+    founding: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_utcnow, nullable=False
+    )
+
+
+class BillingEvent(Base):
+    """Every provider event seen: replay and order protection."""
+
+    __tablename__ = "billing_events"
+    __table_args__ = (
+        UniqueConstraint("provider", "event_id", name="uq_billing_event"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    provider: Mapped[str] = mapped_column(String(16), nullable=False)
+    event_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    type: Mapped[str] = mapped_column(String(64), nullable=False)
+    occurred_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    received_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_utcnow, nullable=False
+    )
+    # applied | ignored | stale
+    status: Mapped[str] = mapped_column(String(16), nullable=False)
+
+
+class FoundingReservation(Base):
+    """One founding place: held for a checkout (30 minutes) or bought.
+
+    A place covers one subscription, whatever its seats: the founding price
+    stays on all of them. `reference` is the checkout's payment reference, or
+    `sub:<provider subscription id>` for a founding subscription that did not
+    come through our checkout."""
+
+    __tablename__ = "founding_reservations"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
     user_id: Mapped[int] = mapped_column(
         ForeignKey("users.id", ondelete="CASCADE"), index=True, nullable=False
     )
-    fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
-    name: Mapped[str] = mapped_column(String(200), nullable=False)
-    os: Mapped[str | None] = mapped_column(String(64))
-    app_version: Mapped[str | None] = mapped_column(String(32))
-    token_hash: Mapped[str] = mapped_column(
+    reference: Mapped[str] = mapped_column(
         String(64), unique=True, index=True, nullable=False
     )
-    seat_kind: Mapped[str] = mapped_column(String(16), default="personal", nullable=False)
-    org_id: Mapped[str | None] = mapped_column(String(32))
-    activated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=_utcnow, nullable=False
+    seats: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    consumed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class DownloadEvent(Base):
+    """One installer download, counted for the admin Growth panel.
+
+    No personal data: no user, no IP address, no user agent; only when,
+    which version, which platform and channel.
+    """
+
+    __tablename__ = "download_events"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_utcnow, index=True, nullable=False
     )
-    last_seen_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-    deactivated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    version: Mapped[str] = mapped_column(String(32), nullable=False)
+    platform: Mapped[str] = mapped_column(String(16), nullable=False)
+    channel: Mapped[str | None] = mapped_column(String(16), nullable=True)
 
 
 # --- Telemetry (PF14, contracts/telemetry.md) -----------------------------------

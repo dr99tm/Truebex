@@ -1,0 +1,59 @@
+{
+  "http_status": 200,
+  "body": {
+    "schema": "truebex-releases/1",
+    "channel": "stable",
+    "platform": "win64",
+    "latest": "1.1.0",
+    "releases": [
+      {
+        "manifest": {
+          "schema": "truebex-release/1",
+          "version": "1.1.0",
+          "channel": "stable",
+          "platform": "win64",
+          "published_at": "2026-11-02T09:00:00Z",
+          "mandatory": false,
+          "min_update_from": "1.0.0",
+          "notes_md": "### What's new\n* A fixture release for tests, not a real one.\n* **Bold**, a [link](https://truebex.com/changelog/#1.1.0), \"quotes\", a back\\slash and an em dash — for both canonicalisers.\n",
+          "notes_url": "https://truebex.com/changelog/#1.1.0",
+          "installer": {
+            "file": "Truebex-Setup-1.1.0.exe",
+            "bytes": 4096,
+            "sha256": "700fd032d7e2cc63776a9122702a55fcf6dd3a55a47e89606789f8c0ad8ae3e3"
+          }
+        },
+        "signature": {
+          "alg": "Ed25519",
+          "kid": "test-2026-10",
+          "value": "iRcyagHXd4FZUxiagCrUBAJrNvOttkcxo0Puz_MkQ0z0nAjEsooZhOA-6VKTyN4pQZoK3XLi7Dgb6vyPhnH3Aw"
+        },
+        "download": "/releases/1.1.0/download?platform=win64"
+      },
+      {
+        "manifest": {
+          "schema": "truebex-release/1",
+          "version": "1.0.0",
+          "channel": "stable",
+          "platform": "win64",
+          "published_at": "2026-10-07T09:00:00Z",
+          "mandatory": false,
+          "min_update_from": null,
+          "notes_md": "### First release\n* A fixture release for tests.\n",
+          "notes_url": "https://truebex.com/changelog/#1.0.0",
+          "installer": {
+            "file": "Truebex-Setup-1.0.0.exe",
+            "bytes": 4096,
+            "sha256": "700fd032d7e2cc63776a9122702a55fcf6dd3a55a47e89606789f8c0ad8ae3e3"
+          }
+        },
+        "signature": {
+          "alg": "Ed25519",
+          "kid": "test-2026-10",
+          "value": "wZ4YHcU_BoQZ3OQp-xTq2zysEHpF-sBNtREzkV0TDnvvbPN1RO4ZRWFOIsbTmpGYR6aCxx5zSbHbUYSr6uxgBA"
+        },
+        "download": "/releases/1.0.0/download?platform=win64"
+      }
+    ]
+  }
+}

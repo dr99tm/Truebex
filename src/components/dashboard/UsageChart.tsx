@@ -26,7 +26,7 @@ function niceMax(v: number): number {
 
 const nf = new Intl.NumberFormat("en-US");
 
-function label(day: string): string {
+function dayLabel(day: string): string {
   return new Date(`${day}T00:00:00Z`).toLocaleDateString(undefined, {
     month: "short",
     day: "numeric",
@@ -36,14 +36,14 @@ function label(day: string): string {
 
 export function UsageChart({
   data,
+  label = "Daily API requests this month",
   unit = "requests",
-  label: chartLabel = "Daily API requests this month",
 }: {
   data: Point[];
-  /** What a bar counts, plural ("requests", "installations"). */
-  unit?: string;
-  /** What the whole chart shows, for screen readers. */
+  /** What the chart shows, for screen readers. */
   label?: string;
+  /** The counted thing, plural ("requests", "sign-ups"). */
+  unit?: string;
 }) {
   const [active, setActive] = useState<number | null>(null);
   const [showTable, setShowTable] = useState(false);
@@ -64,7 +64,7 @@ export function UsageChart({
           preserveAspectRatio="none"
           className="h-[180px] w-full overflow-visible"
           role="img"
-          aria-label={`${chartLabel}: ${nf.format(total)} in total over ${data.length} days.`}
+          aria-label={`${label}: ${nf.format(total)} in total over ${data.length} days.`}
         >
           {/* recessive grid */}
           {ticks.map((t) => {
@@ -108,7 +108,7 @@ export function UsageChart({
                   fill="transparent"
                   tabIndex={0}
                   role="button"
-                  aria-label={`${label(d.day)}: ${nf.format(d.count)} ${unit}`}
+                  aria-label={`${dayLabel(d.day)}: ${nf.format(d.count)} ${unit}`}
                   onPointerEnter={() => setActive(i)}
                   onPointerLeave={() => setActive(null)}
                   onFocus={() => setActive(i)}
@@ -133,8 +133,8 @@ export function UsageChart({
           ))}
         </div>
         <div className="pointer-events-none absolute bottom-0 left-0 right-0 flex justify-between text-[10px] text-text-muted">
-          <span>{data[0] ? label(data[0].day) : ""}</span>
-          <span>{data.length > 1 ? label(data[data.length - 1].day) : ""}</span>
+          <span>{data[0] ? dayLabel(data[0].day) : ""}</span>
+          <span>{data.length > 1 ? dayLabel(data[data.length - 1].day) : ""}</span>
         </div>
 
         {active !== null && data[active] && (
@@ -146,7 +146,7 @@ export function UsageChart({
             <p className="font-semibold tabular-nums text-text-primary">
               {nf.format(data[active].count)} {unit}
             </p>
-            <p className="text-text-muted">{label(data[active].day)}</p>
+            <p className="text-text-muted">{dayLabel(data[active].day)}</p>
           </div>
         )}
       </div>
@@ -171,7 +171,7 @@ export function UsageChart({
             <tbody>
               {data.map((d) => (
                 <tr key={d.day} className="border-t border-border">
-                  <td className="px-3 py-1.5 text-text-secondary">{label(d.day)}</td>
+                  <td className="px-3 py-1.5 text-text-secondary">{dayLabel(d.day)}</td>
                   <td className="px-3 py-1.5 text-right tabular-nums text-text-primary">
                     {nf.format(d.count)}
                   </td>

@@ -30,13 +30,40 @@ class Settings(BaseSettings):
     # Empty disables POST /auth/google.
     google_client_id: str = ""
 
-    # Stripe (card subscriptions). Empty secret key disables Stripe.
+    # --- Billing (PF2) ---------------------------------------------------------
+    # The provider offered at checkout: "paddle" (merchant of record, the
+    # default) or "stripe". Prices come from catalogue.json, mirrored to the
+    # provider by scripts/sync_prices.py into the provider_prices table.
+    billing_provider: str = "paddle"
+
+    # Paddle Billing. Empty API key disables Paddle.
+    # "sandbox" or "production".
+    paddle_env: str = "sandbox"
+    paddle_api_key: str = ""
+    # The notification destination's secret key (pdl_ntfset_...).
+    paddle_webhook_secret: str = ""
+    # Client-side token for Paddle.js on /checkout/. Public by design.
+    paddle_client_token: str = ""
+    # Override the API host (tests, server/tests/mock_paddle.py). Empty means
+    # Paddle's host for paddle_env.
+    paddle_api_base: str = ""
+
+    # Stripe (card subscriptions, business invoices). Empty secret key
+    # disables Stripe.
     stripe_secret_key: str = ""
     stripe_webhook_secret: str = ""
-    # Stripe Price id (price_...) of the recurring monthly Pro price.
+    # Price id (price_...) of the original monthly Pro price. New checkouts
+    # use provider_prices; this stays so existing subscribers keep Pro.
     stripe_price_pro: str = ""
+    # Stripe Tax: automatic_tax on Checkout and invoices.
+    stripe_tax_enabled: bool = False
 
-    # Wayl (Iraq: QiCard, FIB, ZainCash). Empty key disables Wayl.
+    # Background jobs (server/app/tasks.py): inline | worker | off.
+    background_tasks: str = "inline"
+
+    # Wayl (Iraq: QiCard, FIB, ZainCash). Dormant: off unless WAYL_ENABLED
+    # is true AND its keys are set. Never offered on the website.
+    wayl_enabled: bool = False
     wayl_api_key: str = ""
     wayl_api_base: str = "https://api.thewayl.com"
     # "live" or "test".
@@ -46,13 +73,26 @@ class Settings(BaseSettings):
     # Price of one Pro month in IQD (Wayl's minimum is 1000).
     wayl_price_pro_iqd: int = 130_000
 
-    # --- Operations (PF14) ----------------------------------------------------
+    # --- Licence API (PF1, contract licence-api) -------------------------------
+    # base64url Ed25519 seed that signs entitlements (server/scripts/
+    # make_signing_key.py --kind lic). Lives only in server/.env. Empty
+    # switches activation, entitlements and trials off (503 unavailable).
+    licence_signing_key: str = ""
+    licence_key_id: str = "lic-2026-10"
+    # Public halves published by GET /licence/keys, as "kid:key,kid:key".
+    # The rel-* private seeds never live on this host.
+    release_public_keys: str = ""
+    # Older lic-* public keys kept valid during a rotation (contract §3).
+    signing_keys_extra: str = ""
+    trial_days: int = 14
+
+    # --- Operations and shared plumbing (PF14) --------------------------------
     # Blob storage: "local" (files under storage_dir, served by /files with
     # HMAC-signed URLs) or "s3" (any S3-compatible bucket, presigned URLs).
     storage_backend: str = "local"
     storage_dir: str = "./storage"
-    # Signs /files URLs of the local adapter. Empty = derived from secret_key.
-    storage_signing_key: str = ""
+    # HMAC key for local signed URLs; empty derives one from secret_key.
+    storage_url_secret: str = ""
     s3_endpoint: str = ""
     s3_region: str = "auto"
     s3_bucket: str = ""
@@ -71,9 +111,9 @@ class Settings(BaseSettings):
     smtp_user: str = ""
     smtp_password: str = ""
 
-    # Background jobs: "inline" (asyncio loop inside the API process),
-    # "worker" (the separate `python -m app.worker` process) or "off".
-    background_tasks: str = "inline"
+    # background_tasks (inline | worker | off) is under Billing above:
+    # "inline" runs the asyncio loop inside the API process, "worker" the
+    # separate `python -m app.worker` process.
     # "memory" (one API process) or "db" (shared buckets in the database).
     ratelimit_backend: str = "memory"
 
@@ -94,6 +134,14 @@ class Settings(BaseSettings):
     @property
     def cors_origin_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
+
+    @property
+    def paddle_api_url(self) -> str:
+        if self.paddle_api_base:
+            return self.paddle_api_base.rstrip("/")
+        if self.paddle_env == "production":
+            return "https://api.paddle.com"
+        return "https://sandbox-api.paddle.com"
 
 
 @lru_cache
