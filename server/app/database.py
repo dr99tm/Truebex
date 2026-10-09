@@ -51,6 +51,24 @@ _ADDED_COLUMNS: dict[str, list[tuple[str, str]]] = {
         ("name", "VARCHAR(200)"),
         ("avatar_url", "VARCHAR(1024)"),
     ],
+    # PF1 (seats) and PF2 (billing through the UK company).
+    "subscriptions": [
+        ("seats", "INTEGER"),
+        ("interval", "VARCHAR(8)"),
+        ("currency", "VARCHAR(3)"),
+        ("cancel_at_period_end", "BOOLEAN"),
+        ("founding", "BOOLEAN"),
+        ("provider_price_id", "VARCHAR(128)"),
+        ("last_event_at", "DATETIME"),
+    ],
+    "payments": [
+        ("interval", "VARCHAR(8)"),
+        ("seats", "INTEGER"),
+        ("tax_minor", "INTEGER"),
+        ("consent_version", "VARCHAR(32)"),
+        ("consent_at", "DATETIME"),
+        ("invoice_id", "VARCHAR(128)"),
+    ],
 }
 
 
