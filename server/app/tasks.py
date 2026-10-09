@@ -68,8 +68,11 @@ def _load_jobs() -> None:
     from .telemetry import jobs  # noqa: F401
 
 
-def run_due(now: datetime | None = None, *, only: list[str] | None = None) -> list[str]:
-    """Run every job that is due at `now`; returns the names that ran."""
+def run_due(
+    now: datetime | None = None, *, only: list[str] | None = None, force: bool = False
+) -> list[str]:
+    """Run every job that is due at `now` (every named one with `force`);
+    returns the names that ran."""
     _load_jobs()
     now = now or datetime.now(timezone.utc)
     names = only if only is not None else list(_REGISTRY)
@@ -78,7 +81,7 @@ def run_due(now: datetime | None = None, *, only: list[str] | None = None) -> li
         task = _REGISTRY.get(name)
         if task is None:
             continue
-        if task.last_run is not None and (now - task.last_run).total_seconds() < task.seconds:
+        if not force and task.last_run is not None and (now - task.last_run).total_seconds() < task.seconds:
             continue
         task.last_run = now
         ran.append(name)

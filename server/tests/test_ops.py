@@ -234,7 +234,7 @@ def test_tasks_run_due_respects_interval():
         assert job in names
 
 
-def test_worker_heartbeat_and_check(client):
+def test_worker_heartbeat_and_check(client, capsys):
     from app import worker
 
     assert worker.check() == 1  # no heartbeat yet
@@ -244,6 +244,10 @@ def test_worker_heartbeat_and_check(client):
         beat = db.get(OpsStatus, "worker.heartbeat")
         assert beat is not None
     assert worker.check() == 0
+    # Jobs on demand (operators, the human test): known names only.
+    assert worker.main(["--run", "telemetry.rollup", "worker.heartbeat"]) == 0
+    assert "ran: telemetry.rollup, worker.heartbeat" in capsys.readouterr().out
+    assert worker.main(["--run", "no.such.job"]) == 2
     res = client.get("/health/deep")
     assert res.status_code == 200
     assert 0 <= res.json()["worker_heartbeat_s"] < 60

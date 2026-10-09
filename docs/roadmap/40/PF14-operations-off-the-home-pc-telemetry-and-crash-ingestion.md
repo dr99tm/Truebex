@@ -247,7 +247,11 @@ The eight `telemetry.md` §10 platform tests come first. Postgres tests carry `@
   locked for linux, windows and darwin); cloud-init renders to valid YAML. `out/`: 18 routes (+
   `/dashboard/admin/telemetry/`). A live run (uvicorn, SQLite, inline jobs) took the fixtures through all five
   endpoints, symbolicated the fixture crash within a minute of `scripts.upload_symbols`, and served the signed
-  minidump download and the CSV export.
+  minidump download and the CSV export. Headless Edge on the served `out/` (built against the local API) rendered
+  `/dashboard/admin/telemetry/` for an admin: the Telemetry nav link, the Overview stats, chart and tables, the
+  symbolicated crash group with its frames and edit form, and the feedback card with its screenshot preview.
+  `infra/deploy.ps1` dry-run with stubbed ssh / scp / sops: LF release archive, `bash -n` clean install and host
+  scripts, decrypted files removed afterwards.
 * **Deviations from Design and why:**
   1. *Fixtures authored here.* The app repo had no `Docs/roadmap/fixtures/contracts/telemetry/` yet, so PF14
      wrote the §9 set to the letter of `telemetry.md` v1.0.0 into `server/tests/contracts/telemetry/` (with a
@@ -291,6 +295,9 @@ The eight `telemetry.md` §10 platform tests come first. Postgres tests carry `@
       the production Caddyfile only serves 443 with the origin certificate; it needs Docker Desktop.
   12. `/privacy/` names the new processors by role (server hosting, object storage, email delivery, uptime
       monitoring) until GD3 / GD5 name the companies; Wayl stays.
+  13. `telemetry.rollup` runs every 10 minutes instead of every hour (it only recomputes the days that received
+      events, so the dashboard is at most 10 minutes behind); `python -m app.worker --run <job> …` runs any job
+      at once (operators, the human test).
 * **GD3 numbers adopted (placeholders):** Hetzner Cloud `cpx31` (4 vCPU / 8 GB / 160 GB SSD) in `nbg1` (EU; no
   UK region); data bucket at the VM provider's S3-compatible storage, versioned, old versions 30 days; backups
   with wal-g (WAL every ≤ 60 s, nightly base 02:30 UTC, `retain FULL 30`, bucket expiry 37 days, libsodium

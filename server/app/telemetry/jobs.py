@@ -1,7 +1,7 @@
 """Telemetry jobs (PF14 Jobs table), registered with app.tasks:
 
 | Job                  | Every | Does |
-| telemetry.rollup     | 1 h   | recomputes telemetry_daily for every day that received events |
+| telemetry.rollup     | 10 min | recomputes telemetry_daily for every day that received events |
 | telemetry.retention  | 24 h  | applies contracts/telemetry.md §6.5 |
 | telemetry.deletions  | 1 h   | completes pending 5.5 requests (well inside 30 days) |
 | crash.symbolicate    | 60 s  | names raw frames with the private symbols; fixes signature and group |
@@ -100,7 +100,7 @@ def recompute_day(db, day: date) -> None:
         )
 
 
-@periodic("telemetry.rollup", seconds=3600)
+@periodic("telemetry.rollup", seconds=600)
 def rollup(now: datetime) -> int:
     """Recompute the daily rows of every day that received events since the
     last run (with a 5-minute overlap for transactions still in flight)."""

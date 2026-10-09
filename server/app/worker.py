@@ -3,6 +3,7 @@
 Runs every periodic job (app.tasks) in one process, so the API processes run
 none (BACKGROUND_TASKS=worker). `python -m app.worker --check` is the
 container's healthcheck: exit 0 when the heartbeat is under 120 s old.
+`python -m app.worker --run telemetry.rollup crash.symbolicate` runs jobs now.
 """
 
 import argparse
@@ -27,9 +28,18 @@ def check(max_age_s: int = 120) -> int:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="python -m app.worker")
     parser.add_argument("--check", action="store_true", help="exit 0 when the heartbeat is fresh")
+    parser.add_argument("--run", nargs="+", metavar="JOB", help="run these jobs once, now, and exit")
     args = parser.parse_args(argv)
     if args.check:
         return check()
+    if args.run:
+        init_db()
+        unknown = [name for name in args.run if name not in tasks.registered()]
+        if unknown:
+            print(f"unknown jobs: {', '.join(unknown)} (known: {', '.join(tasks.registered())})")
+            return 2
+        print("ran: " + ", ".join(tasks.run_due(only=args.run, force=True)))
+        return 0
 
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
     init_db()
