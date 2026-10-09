@@ -15,12 +15,19 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ..models import Payment, Subscription, User
+from ..plans import plan_rank
 
 # One Wayl payment buys this much Pro time.
 WAYL_PERIOD = timedelta(days=30)
 
-# Higher wins when a user has several live subscriptions.
-_RANK = {"free": 0, "pro": 1, "enterprise": 2}
+# Trials are subscriptions rows too (licence contract 5.6).
+TRIAL_PROVIDER = "trial"
+
+
+def _rank(sub: Subscription) -> tuple[int, int]:
+    # Higher tier wins (ranks come from catalogue.json); on a tie a paid row
+    # beats a trial, so a user who buys Pro mid-trial reads as a paid seat.
+    return plan_rank(sub.plan), 0 if sub.provider == TRIAL_PROVIDER else 1
 
 
 def _now() -> datetime:
@@ -45,9 +52,7 @@ def live_subscription(db: Session, user: User) -> Subscription | None:
     subs = db.scalars(select(Subscription).where(Subscription.user_id == user.id))
     best: Subscription | None = None
     for sub in subs:
-        if is_live(sub) and (
-            best is None or _RANK.get(sub.plan, 0) > _RANK.get(best.plan, 0)
-        ):
+        if is_live(sub) and (best is None or _rank(sub) > _rank(best)):
             best = sub
     return best
 

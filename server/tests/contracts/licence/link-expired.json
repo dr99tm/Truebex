@@ -1,0 +1,11 @@
+{
+  "http_status": 410,
+  "body": {
+    "detail": "This sign-in code has expired or was already used. Start again.",
+    "code": "link_expired",
+    "status": 410,
+    "request_id": "00000000000000000000000000000001",
+    "retry_after_s": null,
+    "data": null
+  }
+}

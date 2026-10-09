@@ -1,0 +1,55 @@
+{
+  "cases": [
+    {
+      "name": "keys sorted by UTF-16 code units, nested, no whitespace",
+      "document": {
+        "b": 1,
+        "a": {
+          "z": [],
+          "B": {}
+        },
+        "A": [
+          3,
+          1,
+          2
+        ]
+      },
+      "canonical": "{\"A\":[3,1,2],\"a\":{\"B\":{},\"z\":[]},\"b\":1}"
+    },
+    {
+      "name": "short escapes, quote and backslash",
+      "document": {
+        "s": "tab\there \"quoted\" back\\slash\nnew\rline\bbell\fform"
+      },
+      "canonical": "{\"s\":\"tab\\there \\\"quoted\\\" back\\\\slash\\nnew\\rline\\bbell\\fform\"}"
+    },
+    {
+      "name": "other control characters as lowercase \\u00xx; DEL and / left alone",
+      "document": {
+        "c": "\u0000\u0001\u001f/"
+      },
+      "canonical": "{\"c\":\"\\u0000\\u0001\\u001f/\"}"
+    },
+    {
+      "name": "non-ASCII stays UTF-8, never \\u-escaped",
+      "document": {
+        "t": "café — € 😀"
+      },
+      "canonical": "{\"t\":\"café — € 😀\"}"
+    },
+    {
+      "name": "integers, booleans, null",
+      "document": {
+        "n": [
+          0,
+          -1,
+          9007199254740991
+        ],
+        "t": true,
+        "f": false,
+        "z": null
+      },
+      "canonical": "{\"f\":false,\"n\":[0,-1,9007199254740991],\"t\":true,\"z\":null}"
+    }
+  ]
+}

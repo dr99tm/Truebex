@@ -50,6 +50,14 @@ _ADDED_COLUMNS: dict[str, list[tuple[str, str]]] = {
         ("google_sub", "VARCHAR(64)"),
         ("name", "VARCHAR(200)"),
         ("avatar_url", "VARCHAR(1024)"),
+        # PF1 (licence API)
+        ("author_id", "VARCHAR(32)"),
+        ("is_admin", "BOOLEAN"),
+        ("trial_used_at", "DATETIME"),
+    ],
+    "subscriptions": [
+        # PF1: seats bought (PF2 writes it); NULL = 1.
+        ("seats", "INTEGER"),
     ],
 }
 
@@ -68,6 +76,13 @@ def _migrate() -> None:
             text(
                 "CREATE UNIQUE INDEX IF NOT EXISTS ix_users_google_sub "
                 "ON users (google_sub)"
+            )
+        )
+        # PF1
+        conn.execute(
+            text(
+                "CREATE UNIQUE INDEX IF NOT EXISTS ix_users_author_id "
+                "ON users (author_id)"
             )
         )
 
