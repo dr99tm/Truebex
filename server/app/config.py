@@ -84,6 +84,16 @@ class Settings(BaseSettings):
     embedding_model: str = ""
     embedding_dir: str = "./models"
 
+    # --- Mail (PF14 Plumbing; first user PF8) -----------------------------------
+    # "console" (kept in app.mail.OUTBOX and logged) or "smtp" (PF14).
+    mail_backend: str = "console"
+    mail_from: str = "Truebex <hello@truebex.com>"
+    support_email: str = "hello@truebex.com"
+
+    # --- Supplier portal (PF8) --------------------------------------------------
+    # The daily pull of registered feed URLs (contract 5.12), hour in UTC.
+    feed_pull_hour_utc: int = 2
+
     @property
     def cors_origin_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]

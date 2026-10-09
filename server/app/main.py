@@ -20,8 +20,10 @@ from .config import get_settings
 from .database import init_db
 from .licence import jobs as _licence_jobs  # noqa: F401  (registers the licence jobs)
 from .market import jobs as _market_jobs  # noqa: F401  (PF7: registers the marketplace jobs)
+from .supplier import jobs as _supplier_jobs  # noqa: F401  (PF8: supplier jobs, e-mails, analytics)
 from .routers import admin, files, licence, releases
 from .routers import market, market_admin
+from .routers import supplier
 from .routers import auth, billing, keys, usage, v1
 
 settings = get_settings()
@@ -88,6 +90,11 @@ app.include_router(files.router)
 app.include_router(market.router)
 app.include_router(market.internal)
 app.include_router(market_admin.router)
+
+# PF8: the supplier portal, the feed endpoints 5.11-5.13, the admin's view of applications
+app.include_router(supplier.router)
+app.include_router(supplier.feeds_router)
+app.include_router(supplier.admin)
 
 app.include_router(auth.router)
 app.include_router(keys.router)

@@ -1,0 +1,8 @@
+Hello,
+
+The buyer cancelled $kind $order_ref with $supplier_name. Nothing more is
+needed from you for it.
+
+$inbox_url
+
+Truebex

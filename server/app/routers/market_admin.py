@@ -14,7 +14,7 @@ from ..config import get_settings
 from ..contract_http import ContractError, enveloped
 from ..database import get_db
 from ..deps import require_admin
-from ..market import catalogue, checkout, commissions, importer, listing, orders, reviews, search
+from ..market import catalogue, checkout, commissions, hooks, importer, listing, orders, reviews, search
 from ..market.common import invalid, is_hex32, not_found, now
 from ..market.models import (
     Commission,
@@ -140,8 +140,11 @@ def create_supplier(body: SupplierIn, db: Session = Depends(get_db)) -> dict:
 
 
 @router.patch("/suppliers/{supplier_id}")
-def edit_supplier(supplier_id: str, body: SupplierPatch, db: Session = Depends(get_db)) -> dict:
+def edit_supplier(
+    supplier_id: str, body: SupplierPatch, admin: User = Depends(require_admin), db: Session = Depends(get_db)
+) -> dict:
     supplier = _supplier(db, supplier_id)
+    old_status = supplier.status
     if body.status is not None and body.status != supplier.status:
         supplier.status = body.status
         supplier.status_reason = body.reason
@@ -165,6 +168,8 @@ def edit_supplier(supplier_id: str, body: SupplierPatch, db: Session = Depends(g
         catalogue.set_supplier_regions(db, supplier, _regions(db, body.regions))
     db.add(supplier)
     db.commit()
+    if supplier.status != old_status:  # PF8: the application's decision and its e-mail
+        hooks.emit("supplier.status_changed", db, supplier=supplier, old=old_status, new=supplier.status, reason=body.reason, admin=admin)
     return catalogue.supplier_admin_json(db, supplier)
 
 
@@ -214,6 +219,7 @@ def approve_product(product_id: str, db: Session = Depends(get_db)) -> dict:
     catalogue.set_product_status(db, product, "approved")
     search.reindex(db, product, supplier)
     db.commit()
+    hooks.emit("product.reviewed", db, product=product, decision="approved")
     return catalogue.product_admin_json(db, product)
 
 
@@ -222,6 +228,7 @@ def reject_product(product_id: str, body: ReasonIn, db: Session = Depends(get_db
     product = _product(db, product_id)
     catalogue.set_product_status(db, product, "rejected", body.reason)
     db.commit()
+    hooks.emit("product.reviewed", db, product=product, decision="rejected", note=body.reason)
     return catalogue.product_admin_json(db, product)
 
 

@@ -29,6 +29,7 @@ from sqlalchemy.orm import Session
 from ..config import get_settings
 from ..contract_http import ContractError
 from ..models import User
+from . import hooks
 from .catalogue import payments_ready
 from .common import aware, invalid, money, new_id, not_found, now, rfc3339, tax_on
 from .models import (
@@ -274,6 +275,7 @@ def place(
     db.flush()
     retotal(db, order, region)
     db.commit()
+    hooks.emit("order.placed", db, order=order)
     return order, False
 
 
@@ -359,6 +361,7 @@ def order_json(db: Session, order: MarketOrder, *, include_contact: bool = True)
                     else None
                 ),
                 "reason": g.reason,
+                **({"shipment": {"carrier": g.carrier, "reference": g.tracking_ref}} if g.carrier else {}),
             }
         )
 
@@ -509,6 +512,7 @@ def cancel(db: Session, order: MarketOrder) -> MarketOrder:
 
         checkout.refund_order(db, order)
     at = now()
+    previous = order.state
     for g in groups:
         g.state = "cancelled"
         db.add(g)
@@ -516,6 +520,7 @@ def cancel(db: Session, order: MarketOrder) -> MarketOrder:
     order.cancelled_at = order.updated_at = at
     db.add(order)
     db.commit()
+    hooks.emit("order.cancelled", db, order=order, previous=previous)
     return order
 
 
@@ -528,6 +533,7 @@ def mark_paid(db: Session, order: MarketOrder, payment_intent: str | None) -> bo
     order.payment_intent = payment_intent or order.payment_intent
     db.add(order)
     db.commit()
+    hooks.emit("order.confirmed", db, order=order)
     return True
 
 
@@ -613,6 +619,8 @@ def accept_quote(db: Session, quote: MarketOrder) -> MarketOrder:
     quote.updated_at = at
     db.add(quote)
     db.commit()
+    if order.state == "accepted":  # paid off the platform: the suppliers act now
+        hooks.emit("order.confirmed", db, order=order)
     return order
 
 

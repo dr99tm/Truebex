@@ -365,6 +365,9 @@ class MarketOrderSupplier(Base):
     shipped_at: Mapped[datetime | None] = _ts(nullable=True)
     delivered_at: Mapped[datetime | None] = _ts(nullable=True)
     reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    # PF8: the shipment the supplier entered (carrier and its reference).
+    carrier: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    tracking_ref: Mapped[str | None] = mapped_column(String(120), nullable=True)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=_utcnow, onupdate=_utcnow, nullable=False
     )

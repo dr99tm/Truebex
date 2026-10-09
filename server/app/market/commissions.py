@@ -136,6 +136,14 @@ def _pf2_invoice(db: Session, supplier: Supplier, lines: list[tuple[str, int, st
     )
 
 
+def _listing_fee(db: Session, supplier: Supplier, currency: str) -> int:
+    """The month's listing fee on the statement; none when the supplier pays
+    its plan by a subscription through PF2 (PF8's listing checkout)."""
+    from ..supplier.listing import billed_by_subscription
+
+    return 0 if billed_by_subscription(db, supplier) else monthly_fee(supplier, currency)
+
+
 def run_statements(db: Session, now: datetime) -> list[CommissionStatement]:
     """One statement per supplier and currency for last month's accrued
     commissions and listing fee (idempotent: a month is stated once)."""
@@ -158,7 +166,7 @@ def run_statements(db: Session, now: datetime) -> list[CommissionStatement]:
             db.scalars(select(SupplierRegion.currency).where(SupplierRegion.supplier_id == supplier.supplier_id))
         )
         for currency in currencies:
-            if monthly_fee(supplier, currency):
+            if _listing_fee(db, supplier, currency):
                 groups.setdefault((supplier.supplier_id, currency), [])
                 exponents.setdefault(currency, 2)
 
@@ -176,7 +184,7 @@ def run_statements(db: Session, now: datetime) -> list[CommissionStatement]:
         supplier = db.get(Supplier, supplier_id)
         if supplier is None:
             continue
-        fee = monthly_fee(supplier, currency)
+        fee = _listing_fee(db, supplier, currency)
         total_commission = sum(c.amount for c in commissions)
         statement = CommissionStatement(
             statement_id=new_id(),

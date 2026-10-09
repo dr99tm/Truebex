@@ -58,6 +58,12 @@ _ADDED_COLUMNS: dict[str, list[tuple[str, str]]] = {
 _ADDED_COLUMNS["users"] += [("author_id", "VARCHAR(32)"), ("trial_used_at", "DATETIME")]
 # Seats bought (PF2 writes it); NULL = 1.
 _ADDED_COLUMNS.setdefault("subscriptions", []).append(("seats", "INTEGER"))
+# PF8 (supplier portal): keys bound to a supplier; the carrier and reference
+# a supplier gives when it ships its part of an order.
+_ADDED_COLUMNS.setdefault("api_keys", []).append(("supplier_id", "VARCHAR(32)"))
+_ADDED_COLUMNS.setdefault("market_order_suppliers", []).extend(
+    [("carrier", "VARCHAR(80)"), ("tracking_ref", "VARCHAR(120)")]
+)
 
 
 def _migrate() -> None:
@@ -83,6 +89,10 @@ def _migrate() -> None:
                 "ON users (author_id)"
             )
         )
+        # PF8
+        conn.execute(
+            text("CREATE INDEX IF NOT EXISTS ix_api_keys_supplier_id ON api_keys (supplier_id)")
+        )
 
 
 def init_db() -> None:
@@ -91,6 +101,7 @@ def init_db() -> None:
     from .licence import models as _licence_models  # noqa: F401  (PF1)
     from .releases import models as _release_models  # noqa: F401  (PF1)
     from .market import models as _market_models  # noqa: F401  (PF7)
+    from .supplier import models as _supplier_models  # noqa: F401  (PF8)
 
     Base.metadata.create_all(bind=engine)
     _migrate()
