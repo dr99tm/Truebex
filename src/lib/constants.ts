@@ -480,7 +480,7 @@ export const TERMS_PAID_PLANS = [
   },
   {
     title: "Founding seats",
-    text: "A seat bought at the founding price keeps that price for as long as its subscription stays active without a break.",
+    text: "A limited number of subscriptions are sold at the founding price. A founding subscription keeps that price for all its seats, including seats added later, for as long as it stays active without a break.",
   },
   {
     title: "Prices",

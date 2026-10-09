@@ -1,5 +1,6 @@
 """SQLAlchemy engine, session factory, and declarative base."""
 
+import logging
 from collections.abc import Generator
 
 from sqlalchemy import create_engine, event, inspect, text
@@ -88,6 +89,18 @@ def _migrate() -> None:
                 "ON users (google_sub)"
             )
         )
+    # PF2: one row per provider subscription. Files with duplicates from before
+    # keep working without the index (logged); billing.service retries on it.
+    try:
+        with engine.begin() as conn:
+            conn.execute(
+                text(
+                    "CREATE UNIQUE INDEX IF NOT EXISTS uq_subscriptions_provider_sub "
+                    "ON subscriptions (provider, provider_subscription_id)"
+                )
+            )
+    except Exception:  # pragma: no cover - only with duplicate legacy rows
+        logging.getLogger("truebex.db").exception("could not add uq_subscriptions_provider_sub")
 
 
 def init_db() -> None:

@@ -58,7 +58,11 @@ export function CheckoutClient() {
         if (cfg.paddle_env !== "production") paddle.Environment.set("sandbox");
         paddle.Initialize({
           token: cfg.paddle_client_token,
-          checkout: { settings: { displayMode: "overlay", theme: "dark", locale: "en" } },
+          // Codes go through the billing page (one discount per checkout,
+          // never on top of the founding price).
+          checkout: {
+            settings: { displayMode: "overlay", theme: "dark", locale: "en", showAddDiscounts: false },
+          },
           eventCallback: (event) => {
             if (event.name === "checkout.completed") {
               completed.current = true;

@@ -64,6 +64,24 @@ def checkout_body(tier="pro", interval="month", currency="GBP", seats=1, **extra
     }
 
 
+# Stripe's current state of each subscription, as stripe.Subscription.retrieve
+# answers it in tests (webhook handlers re-fetch before applying).
+STRIPE_SUBS: dict[str, dict] = {}
+
+
+@pytest.fixture(autouse=True)
+def fake_stripe_subscriptions(monkeypatch):
+    import stripe
+
+    STRIPE_SUBS.clear()
+
+    def retrieve(sub_id, **_kw):
+        return STRIPE_SUBS[sub_id]
+
+    monkeypatch.setattr(stripe.Subscription, "retrieve", retrieve)
+    return STRIPE_SUBS
+
+
 @pytest.fixture()
 def paddle(client, monkeypatch):
     """Paddle's API served in-process by tests/mock_paddle.py, with the

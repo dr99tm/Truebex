@@ -19,8 +19,27 @@ RECONCILE_WINDOW = timedelta(hours=48)
 
 @periodic("billing.founding.expire", 300)
 def expire_founding(now: datetime) -> int:
-    """Release founding seats held by checkouts abandoned for 30 minutes."""
+    """Release founding places held by checkouts abandoned for 30 minutes, and
+    cancel those checkouts so the founding price cannot be paid afterwards."""
     with SessionLocal() as db:
+        for hold in service.expired_holds(db, now):
+            payment = db.scalar(
+                select(Payment).where(
+                    Payment.reference == hold.reference, Payment.status == "pending"
+                )
+            )
+            if payment is None:
+                continue
+            try:
+                adapter = providers.get_provider(payment.provider)
+                if adapter.enabled():
+                    adapter.cancel_checkout(db, payment)
+            except Exception:  # paid meanwhile, or the provider is down
+                log.exception("could not cancel checkout %s", payment.reference)
+                continue
+            payment.status = "canceled"
+            db.add(payment)
+            db.commit()
         return service.expire_founding_holds(db, now)
 
 

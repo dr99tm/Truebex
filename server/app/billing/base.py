@@ -84,6 +84,9 @@ class BillingProvider(ABC):
     def verify_payment(self, db: Session, payment: Payment) -> None:
         """Fetch the provider's own state of a checkout and apply it."""
 
+    def cancel_checkout(self, db: Session, payment: Payment) -> None:
+        """Make an unpaid checkout unpayable (its founding hold lapsed)."""
+
     @abstractmethod
     def handle_webhook(self, db: Session, body: bytes, headers: Mapping[str, str]) -> str:
         """Verify, de-duplicate by event id and apply. Returns the event type.

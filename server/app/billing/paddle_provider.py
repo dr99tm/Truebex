@@ -8,6 +8,12 @@ provider_prices, a quantity, the customer, `custom_data` naming the user and
 our reference) and returns `/checkout/?_ptxn=txn_…&ref=…`; that page opens
 Paddle.js's overlay; `refresh` fetches the transaction from Paddle's API and
 signed webhooks do the rest. API: https://developer.paddle.com/api-reference
+
+Trust: Paddle.js can open a checkout with any of our price ids and any
+`custom_data` using the public client token, so `custom_data` only says which
+account to credit. The tier, interval and founding price always come from
+the price paid (provider_prices); a price we did not sync grants nothing, and
+a payment row is matched only by its own transaction id.
 """
 
 import hashlib
@@ -208,21 +214,25 @@ class PaddleProvider(BillingProvider):
 
     # --- Applying Paddle state ------------------------------------------------------
 
+    def _price_rows(self, db: Session, items: list[dict]) -> list:
+        rows = []
+        for item in items:
+            price = item.get("price") or {}
+            row = service.price_by_provider_id(db, "paddle", price.get("id") or item.get("price_id"))
+            if row is not None:
+                rows.append(row)
+        return rows
+
     def _apply_transaction(self, db: Session, txn: dict) -> None:
-        custom = txn.get("custom_data") or {}
-        payment = None
-        if custom.get("reference"):
-            payment = db.scalar(
-                select(Payment).where(
-                    Payment.reference == str(custom["reference"]), Payment.provider == "paddle"
-                )
-            )
-        if payment is None and txn.get("id"):
-            payment = db.scalar(
-                select(Payment).where(Payment.provider_ref == txn["id"], Payment.provider == "paddle")
-            )
+        if not txn.get("id"):
+            return
+        # Renewals and prorations carry the subscription's custom_data (our
+        # reference included): only the checkout's own transaction is ours.
+        payment = db.scalar(
+            select(Payment).where(Payment.provider_ref == txn["id"], Payment.provider == "paddle")
+        )
         if payment is None:
-            return  # a renewal, or not created by our checkout
+            return
         status = str(txn.get("status", ""))
         if status in _PAID:
             totals = (txn.get("details") or {}).get("totals") or {}
@@ -232,7 +242,8 @@ class PaddleProvider(BillingProvider):
             payment.invoice_id = str_or_none(txn.get("invoice_id")) or payment.invoice_id
             service.mark_payment_paid(db, payment)
             db.commit()
-            service.consume_founding(db, payment, founding_hint=custom.get("founding") == "1")
+            if any(row.founding for row in self._price_rows(db, txn.get("items") or [])):
+                service.count_founding(db, payment.reference, payment.user_id)
         elif status == "canceled" and payment.status == "pending":
             payment.status = "canceled"
             db.add(payment)
@@ -242,41 +253,45 @@ class PaddleProvider(BillingProvider):
         self, db: Session, sub: dict, event_at: datetime | None
     ) -> Subscription | None:
         custom = sub.get("custom_data") or {}
-        existing = db.scalar(
-            select(Subscription).where(
-                Subscription.provider == "paddle",
-                Subscription.provider_subscription_id == sub["id"],
-            )
-        )
+        existing = service.find_subscription(db, "paddle", sub["id"])
         try:
-            user_id = existing.user_id if existing else int(custom.get("user_id", ""))
-        except ValueError:
+            user_id = existing.user_id if existing else int(custom.get("user_id"))
+        except (TypeError, ValueError):
             return None  # not created by our checkout
         items = [i for i in sub.get("items") or [] if i.get("status") != "inactive"]
-        item = items[0] if items else {}
-        price = item.get("price") or {}
-        price_id = price.get("id") or item.get("price_id")
-        row = service.price_by_provider_id(db, "paddle", price_id)
-        cycle = price.get("billing_cycle") or sub.get("billing_cycle") or {}
+        rows = self._price_rows(db, items)
+        if not rows:
+            log.warning("paddle subscription %s pays no synced price; ignored", sub["id"])
+            return None
+        row = rows[0]
+        item = next(
+            i for i in items if ((i.get("price") or {}).get("id") or i.get("price_id")) == row.provider_price_id
+        )
         period = sub.get("current_billing_period") or {}
         scheduled = sub.get("scheduled_change") or {}
-        return service.upsert_subscription(
+        applied = service.upsert_subscription(
             db,
             provider="paddle",
             provider_subscription_id=sub["id"],
             user_id=user_id,
-            tier=row.tier if row else str(custom.get("tier") or "pro"),
-            interval=row.interval if row else cycle.get("interval"),
+            tier=row.tier,
+            interval=row.interval,
             seats=int(item.get("quantity") or 1),
             status=_STATUS.get(str(sub.get("status", "")), "canceled"),
             current_period_end=parse_time(period.get("ends_at")),
             cancel_at_period_end=scheduled.get("action") == "cancel",
             customer_id=str_or_none(sub.get("customer_id")),
             currency=str_or_none(sub.get("currency_code")),
-            provider_price_id=str_or_none(price_id),
-            founding=custom.get("founding") == "1",
+            provider_price_id=row.provider_price_id,
+            founding=row.founding,
             event_at=event_at,
         )
+        if applied is not None and row.founding:
+            reference = service.founding_reference(
+                db, "paddle", applied.user_id, str_or_none(custom.get("reference")), sub["id"]
+            )
+            service.count_founding(db, reference, applied.user_id)
+        return applied
 
     def _fetch_subscription(self, db: Session, sub_id: str) -> Subscription | None:
         data = self._api("GET", f"/subscriptions/{sub_id}")["data"]
@@ -309,7 +324,7 @@ class PaddleProvider(BillingProvider):
         status = "ignored"
         if kind.startswith("subscription."):
             applied = self._apply_subscription(db, data, occurred)
-            status = "applied" if applied is not None else "stale"
+            status = "applied" if applied is not None else "skipped"
         elif kind.startswith("transaction."):
             self._apply_transaction(db, data)
             status = "applied"
@@ -317,6 +332,10 @@ class PaddleProvider(BillingProvider):
         return kind
 
     # --- Managing a subscription ----------------------------------------------------------
+
+    def cancel_checkout(self, db: Session, payment: Payment) -> None:
+        if payment.provider_ref:
+            self._api("PATCH", f"/transactions/{payment.provider_ref}", json_body={"status": "canceled"})
 
     def portal_url(self, db: Session, user: User, sub: Subscription) -> str:
         customer = sub.provider_customer_id or service.customer_id(db, user, "paddle")

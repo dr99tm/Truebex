@@ -17,6 +17,7 @@ from urllib.parse import parse_qs, urlparse
 import pytest
 import stripe
 from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 
 from app import tasks
 from app.billing import consent, jobs, providers, service
@@ -330,10 +331,13 @@ def test_billing_stripe_tax_and_annual_checkout(client, stripe_prices, monkeypat
     assert captured["consent_collection"] == {"terms_of_service": "required"}
     item = captured["line_items"][0]
     amount = PLANS["team"].price("year", "EUR").amount_minor
-    if co["founding"]:
-        amount = service.FOUNDING.discounted(amount)
-    assert item == {"price": stripe_prices[f"truebex_team_year_eur_{amount}"], "quantity": 3}
+    assert co["founding"] is True
+    key = f"truebex_team_year_eur_{service.FOUNDING.discounted(amount)}_founding"
+    assert item == {"price": stripe_prices[key], "quantity": 3}
     assert captured["metadata"]["reference"] == co["reference"]
+    # One discount per checkout, and the session ends with its founding hold.
+    assert "allow_promotion_codes" not in captured
+    assert captured["expires_at"] - time.time() <= 31 * 60 + 5
 
 
 def test_billing_stripe_legacy_pro_still_applies(client, stripe_prices):
@@ -441,13 +445,16 @@ def test_billing_founding_counts_and_holds(client, paddle, monkeypatch):
     assert client.get("/billing/plans").json()["founding"]["remaining"] == total - 1
     assert client.get("/billing/subscription", headers=h).json()["founding"] is True
 
+    # A Team checkout holds one place, whatever its seats.
     h2 = signup(client, email="two@example.com")
-    co2 = start_checkout(client, h2, tier="team", seats=2)
+    co2 = start_checkout(client, h2, tier="team", seats=4)
     assert co2["founding"] is True
-    assert client.get("/billing/plans").json()["founding"]["remaining"] == total - 3
-    # Abandoned for 30 minutes: the hold is released.
+    assert client.get("/billing/plans").json()["founding"]["remaining"] == total - 2
+    # Abandoned for 30 minutes: the hold is released and its checkout cancelled.
     assert jobs.expire_founding(datetime.now(timezone.utc) + timedelta(minutes=31)) == 1
     assert client.get("/billing/plans").json()["founding"]["remaining"] == total - 1
+    assert paddle.STATE["transactions"][txn_of(co2["url"])]["status"] == "canceled"
+    assert client.get("/billing/payments", headers=h2).json()[0]["status"] == "canceled"
 
     # Sold out: the next checkout pays the list price.
     monkeypatch.setattr(service, "FOUNDING", dataclasses.replace(service.FOUNDING, total=1))
@@ -459,15 +466,125 @@ def test_billing_founding_counts_and_holds(client, paddle, monkeypatch):
     assert int(txn["items"][0]["price"]["unit_price"]["amount"]) == PLANS["pro"].price("month", "GBP").amount_minor
 
 
+def test_billing_founding_seat_changes_keep_one_place(client, paddle):
+    total = service.FOUNDING.total
+    h = signup(client)
+    buy(client, h, paddle, tier="team", seats=2)
+    assert client.get("/billing/plans").json()["founding"]["remaining"] == total - 1
+    res = client.post("/billing/seats", json={"seats": 40}, headers=h)
+    assert res.status_code == 200 and res.json()["seats"] == 40 and res.json()["founding"] is True
+    assert client.get("/billing/plans").json()["founding"]["remaining"] == total - 1
+
+
 def test_billing_founding_paid_after_hold_expired(client, paddle):
     h = signup(client)
     co = start_checkout(client, h)
     jobs.expire_founding(datetime.now(timezone.utc) + timedelta(minutes=31))
+    # Paddle completed it anyway (a race with the cancel): the place is counted.
     for ev in paddle.pay(txn_of(co["url"])):
         paddle_post(client, ev)
     with SessionLocal() as db:
         hold = db.scalar(select(FoundingReservation).where(FoundingReservation.reference == co["reference"]))
         assert hold is not None and hold.consumed_at is not None
+    assert client.get("/billing/plans").json()["founding"]["remaining"] == service.FOUNDING.total - 1
+
+
+def test_billing_founding_counted_without_our_checkout(client, paddle):
+    """Paddle.js can buy a founding price straight from its id: still counted."""
+    h = signup(client)
+    uid = me(client, h)["id"]
+    founding_price = next(
+        p for p in paddle.STATE["prices"].values()
+        if p["custom_data"]["tier"] == "pro" and p["custom_data"]["founding"] == "1"
+        and p["billing_cycle"]["interval"] == "month" and p["unit_price"]["currency_code"] == "GBP"
+    )
+    cust = next(iter(paddle.STATE["customers"]), None) or "ctm_x"
+    sub = {
+        "id": "sub_direct", "status": "active", "customer_id": cust, "currency_code": "GBP",
+        "custom_data": {"user_id": str(uid)},
+        "items": [{"price": founding_price, "quantity": 1, "status": "active"}],
+        "current_billing_period": {"starts_at": "2026-10-09T00:00:00Z", "ends_at": "2099-01-01T00:00:00Z"},
+        "scheduled_change": None, "updated_at": "2026-10-09T00:00:00Z",
+    }
+    assert paddle_post(client, paddle.event("subscription.created", sub)).status_code == 200
+    assert me(client, h)["plan"] == "pro"
+    assert client.get("/billing/plans").json()["founding"]["remaining"] == service.FOUNDING.total - 1
+    paddle_post(client, paddle.event("subscription.updated", sub))  # counted once
+    assert client.get("/billing/plans").json()["founding"]["remaining"] == service.FOUNDING.total - 1
+
+
+def test_billing_custom_data_cannot_choose_tier_or_founding(client, paddle):
+    h = signup(client)
+    uid = me(client, h)["id"]
+    base = {
+        "status": "active", "customer_id": "ctm_x", "currency_code": "GBP",
+        "current_billing_period": {"starts_at": "2026-10-09T00:00:00Z", "ends_at": "2099-01-01T00:00:00Z"},
+        "scheduled_change": None,
+    }
+    # A price we never synced grants nothing, whatever custom_data claims.
+    forged = {**base, "id": "sub_forged", "custom_data": {"user_id": str(uid), "tier": "enterprise", "founding": "1"},
+              "items": [{"price": {"id": "pri_not_ours", "billing_cycle": {"interval": "month"}}, "quantity": 1}]}
+    assert paddle_post(client, paddle.event("subscription.created", forged)).status_code == 200
+    assert me(client, h)["plan"] == "free"
+    # The list price with founding claimed in custom_data: not a founding subscription.
+    _, events = buy(client, h, paddle, coupon="LAUNCH10")
+    created = next(e for e in events if e["event_type"] == "subscription.created")["data"]
+    claimed = copy.deepcopy(created)
+    claimed["custom_data"]["founding"] = "1"
+    paddle_post(client, paddle.event("subscription.updated", claimed))
+    assert client.get("/billing/subscription", headers=h).json()["founding"] is False
+    client.post("/billing/change", json={"interval": "year"}, headers=h)
+    price = paddle.STATE["subscriptions"][created["id"]]["items"][0]["price"]
+    assert price["custom_data"]["founding"] == "0"
+    # A null user id is not ours: acknowledged, nothing applied.
+    nobody = {**base, "id": "sub_nobody", "custom_data": {"user_id": None}, "items": created["items"]}
+    assert paddle_post(client, paddle.event("subscription.created", nobody)).status_code == 200
+
+
+def test_billing_renewal_does_not_overwrite_checkout_payment(client, paddle):
+    h = signup(client)
+    co, events = buy(client, h, paddle)
+    before = client.get("/billing/payments", headers=h).json()[0]
+    txn = copy.deepcopy(next(e for e in events if e["event_type"] == "transaction.completed")["data"])
+    txn.update(id="txn_renewal", origin="subscription_recurring", invoice_id="inv_renewal")
+    txn["details"]["totals"].update(grand_total="123", tax="7")
+    assert paddle_post(client, paddle.event("transaction.completed", txn)).status_code == 200
+    after = client.get("/billing/payments", headers=h).json()[0]
+    assert after["amount"] == before["amount"] and after["tax_minor"] == before["tax_minor"]
+
+
+def test_billing_stripe_same_second_events_use_current_state(client, stripe_prices):
+    h = signup(client)
+    uid = me(client, h)["id"]
+    end = int(time.time()) + 30 * 86400
+    now = int(time.time())
+    active = stripe_sub_event("customer.subscription.updated", uid, "active", end, created=now, sub_id="sub_ss")
+    late = stripe_sub_event("customer.subscription.created", uid, "incomplete", end, created=now, sub_id="sub_ss")
+    stripe_post(client, active)
+    stripe_post(client, late, current=False)  # delivered late; Stripe now says active
+    assert me(client, h)["plan"] == "pro"
+
+
+def test_billing_reconcile_without_changes_keeps_updated_at(client, paddle):
+    h = signup(client)
+    buy(client, h, paddle)
+    with SessionLocal() as db:
+        first = db.scalar(select(Subscription.updated_at).where(Subscription.provider == "paddle"))
+    time.sleep(0.05)
+    jobs.reconcile(datetime.now(timezone.utc))
+    with SessionLocal() as db:
+        assert db.scalar(select(Subscription.updated_at).where(Subscription.provider == "paddle")) == first
+
+
+def test_billing_one_row_per_provider_subscription(client):
+    h = signup(client)
+    uid = me(client, h)["id"]
+    with SessionLocal() as db:
+        for _ in range(2):
+            db.add(Subscription(user_id=uid, plan="pro", provider="paddle", status="active",
+                                provider_subscription_id="sub_dup"))
+        with pytest.raises(IntegrityError):
+            db.commit()
 
 
 # --- invoices and portal ----------------------------------------------------------------------------
@@ -507,9 +624,15 @@ def test_billing_invoices_stripe(client, monkeypatch):
     )
     rows = client.get("/billing/invoices", headers=h).json()
     assert rows == [
-        {**rows[0], "id": "in_1", "number": "TBX-0001", "total_minor": 11880, "tax_minor": 1980,
-         "currency": "GBP", "pdf_url": "https://pay.stripe.test/in_1.pdf"}
+        {**rows[0], "id": "in_1", "number": "TBX-0001", "total_minor": 11880, "tax_minor": 1980, "currency": "GBP"}
     ]
+    assert rows[0]["pdf_url"].startswith("/billing/invoices/in_1/pdf?")
+    owner = {"customer": "cus_123", "invoice_pdf": "https://pay.stripe.test/in_1.pdf"}
+    monkeypatch.setattr(stripe.Invoice, "retrieve", lambda *a, **k: owner)
+    res = client.get(rows[0]["pdf_url"], follow_redirects=False)
+    assert res.status_code == 302 and res.headers["location"] == "https://pay.stripe.test/in_1.pdf"
+    owner["customer"] = "cus_someone_else"
+    assert client.get(rows[0]["pdf_url"], follow_redirects=False).status_code == 404
 
 
 def test_billing_portal_paddle_and_stripe(client, paddle, monkeypatch):

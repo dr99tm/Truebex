@@ -6,7 +6,7 @@
 
 For every purchasable tier, interval and currency (and the founding price of
 each, `founding.discount_percent` off) it finds or creates the provider's
-product and price, keyed by a lookup key `truebex_<tier>_<interval>_<cur>_<amount>`
+product and price, keyed by a lookup key `truebex_<tier>_<interval>_<cur>_<amount>[_founding]`
 (Paddle: the price's custom_data; Stripe: lookup_key), so a second run creates
 nothing. A changed amount is a new price; the old row stays in provider_prices
 (inactive) so webhooks for existing subscribers still map to their tier.
@@ -48,7 +48,8 @@ class Target:
 
     @property
     def lookup_key(self) -> str:
-        return f"truebex_{self.tier}_{self.interval}_{self.currency.lower()}_{self.amount_minor}"
+        key = f"truebex_{self.tier}_{self.interval}_{self.currency.lower()}_{self.amount_minor}"
+        return f"{key}_founding" if self.founding else key
 
     @property
     def label(self) -> str:
@@ -220,7 +221,7 @@ def store(db: Session, provider: str, synced: list[tuple[Target, str, bool]]) ->
         if row is None:
             row = ProviderPrice(provider=provider, provider_price_id=price_id)
         row.tier, row.interval, row.currency = t.tier, t.interval, t.currency
-        row.amount_minor, row.active = t.amount_minor, True
+        row.amount_minor, row.founding, row.active = t.amount_minor, t.founding, True
         db.add(row)
         live_ids.add(price_id)
     for row in db.scalars(select(ProviderPrice).where(ProviderPrice.provider == provider)):

@@ -15,7 +15,7 @@ Rules:
 
 from datetime import datetime, timedelta, timezone
 
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -172,6 +172,21 @@ def grant_wayl_period(db: Session, payment: Payment) -> None:
 # --- Subscriptions -------------------------------------------------------------
 
 
+def find_subscription(db: Session, provider: str, provider_subscription_id: str) -> Subscription | None:
+    return db.scalar(
+        select(Subscription).where(
+            Subscription.provider == provider,
+            Subscription.provider_subscription_id == provider_subscription_id,
+        )
+    )
+
+
+def _same(old: object, new: object) -> bool:
+    if isinstance(old, datetime) or isinstance(new, datetime):
+        return _aware(old) == _aware(new)  # type: ignore[arg-type]
+    return old == new
+
+
 def upsert_subscription(
     db: Session,
     *,
@@ -189,15 +204,14 @@ def upsert_subscription(
     provider_price_id: str | None = None,
     founding: bool | None = None,
     event_at: datetime | None = None,
+    _retry: bool = True,
 ) -> Subscription | None:
     """Mirror a provider subscription. Returns None (and changes nothing) when
-    `event_at` is older than the newest state already applied."""
-    sub = db.scalar(
-        select(Subscription).where(
-            Subscription.provider == provider,
-            Subscription.provider_subscription_id == provider_subscription_id,
-        )
-    )
+    `event_at` is older than the newest state already applied.
+
+    `updated_at` moves only when the subscription really changed, so a daily
+    re-fetch of unchanged state leaves it alone."""
+    sub = find_subscription(db, provider, provider_subscription_id)
     event_at = _aware(event_at) or _now()
     if sub is not None:
         newest = _aware(sub.last_event_at)
@@ -211,25 +225,67 @@ def upsert_subscription(
             provider=provider,
             provider_subscription_id=provider_subscription_id,
         )
-    sub.plan = tier if tier in PLANS else "pro"
-    sub.interval = interval
-    sub.seats = max(1, int(seats or 1))
-    sub.status = status
-    sub.current_period_end = current_period_end
-    sub.cancel_at_period_end = bool(cancel_at_period_end)
-    sub.last_event_at = event_at
+    wanted: dict[str, object] = {
+        "plan": tier if tier in PLANS else "pro",
+        "interval": interval,
+        "seats": max(1, int(seats or 1)),
+        "status": status,
+        "current_period_end": current_period_end,
+        "cancel_at_period_end": bool(cancel_at_period_end),
+    }
     if customer_id:
-        sub.provider_customer_id = customer_id
+        wanted["provider_customer_id"] = customer_id
     if currency:
-        sub.currency = currency.upper()
+        wanted["currency"] = currency.upper()
     if provider_price_id:
-        sub.provider_price_id = provider_price_id
+        wanted["provider_price_id"] = provider_price_id
     if founding is not None:
-        sub.founding = founding
-    db.add(sub)
-    if is_live(sub):
-        _end_trials(db, user_id)
-    db.commit()
+        wanted["founding"] = founding
+    changed = sub.id is None
+    for attr, value in wanted.items():
+        if not _same(getattr(sub, attr), value):
+            setattr(sub, attr, value)
+            changed = True
+    if changed:
+        sub.last_event_at = event_at
+        db.add(sub)
+        if is_live(sub):
+            _end_trials(db, user_id)
+        try:
+            db.commit()
+        except IntegrityError:
+            # Another request (the return-page refresh or the webhook) created
+            # the same provider subscription first: apply onto its row.
+            db.rollback()
+            if not _retry:
+                raise
+            return upsert_subscription(
+                db,
+                provider=provider,
+                provider_subscription_id=provider_subscription_id,
+                user_id=user_id,
+                tier=tier,
+                interval=interval,
+                seats=seats,
+                status=status,
+                current_period_end=current_period_end,
+                cancel_at_period_end=cancel_at_period_end,
+                customer_id=customer_id,
+                currency=currency,
+                provider_price_id=provider_price_id,
+                founding=founding,
+                event_at=event_at,
+                _retry=False,
+            )
+    elif _aware(sub.last_event_at) is None or event_at > _aware(sub.last_event_at):
+        # Same state, newer evidence: advance the ordering mark only.
+        db.execute(
+            update(Subscription)
+            .where(Subscription.id == sub.id)
+            .values(last_event_at=event_at, updated_at=Subscription.updated_at)
+        )
+        db.commit()
+        db.refresh(sub)
     _refresh_cache(db, user_id)
     return sub
 
@@ -259,7 +315,13 @@ def _refresh_cache(db: Session, user_id: int) -> None:
 
 
 def provider_price(
-    db: Session, provider: str, tier: str, interval: str, currency: str, amount_minor: int
+    db: Session,
+    provider: str,
+    tier: str,
+    interval: str,
+    currency: str,
+    amount_minor: int,
+    founding: bool = False,
 ) -> ProviderPrice | None:
     """The active provider price for exactly this catalogue amount."""
     return db.scalar(
@@ -270,6 +332,7 @@ def provider_price(
             ProviderPrice.interval == interval,
             ProviderPrice.currency == currency.upper(),
             ProviderPrice.amount_minor == amount_minor,
+            ProviderPrice.founding.is_(founding),
             ProviderPrice.active.is_(True),
         )
         .order_by(ProviderPrice.id.desc())
@@ -329,6 +392,10 @@ def record_event(
 
 
 # --- The founding offer --------------------------------------------------------------
+# A fixed number of founding places (catalogue `founding.total`), one per
+# subscription bought at a founding price, whatever its seats. A checkout holds
+# a place for 30 minutes; billing.founding.expire releases abandoned holds and
+# cancels their checkout so the founding price cannot be paid after the hold.
 
 
 def _founding_open(now: datetime) -> bool:
@@ -337,20 +404,19 @@ def _founding_open(now: datetime) -> bool:
 
 
 def founding_taken(db: Session, now: datetime | None = None) -> int:
-    """Seats bought at the founding price plus seats held by open checkouts."""
+    """Places bought plus places held by open checkouts."""
     now = now or _now()
-    bought = db.scalar(
-        select(func.coalesce(func.sum(FoundingReservation.seats), 0)).where(
-            FoundingReservation.consumed_at.is_not(None)
+    return int(
+        db.scalar(
+            select(func.count())
+            .select_from(FoundingReservation)
+            .where(
+                (FoundingReservation.consumed_at.is_not(None))
+                | (FoundingReservation.expires_at > now)
+            )
         )
+        or 0
     )
-    held = db.scalar(
-        select(func.coalesce(func.sum(FoundingReservation.seats), 0)).where(
-            FoundingReservation.consumed_at.is_(None),
-            FoundingReservation.expires_at > now,
-        )
-    )
-    return int(bought or 0) + int(held or 0)
 
 
 def founding_status(db: Session, now: datetime | None = None) -> dict:
@@ -367,14 +433,14 @@ def founding_status(db: Session, now: datetime | None = None) -> dict:
 
 
 def hold_founding(
-    db: Session, user: User, reference: str, tier: str, seats: int, now: datetime | None = None
+    db: Session, user: User, reference: str, tier: str, now: datetime | None = None
 ) -> bool:
-    """Hold founding seats for one checkout. False when the offer is closed,
-    does not cover the tier, or has fewer seats left than asked for."""
+    """Hold a founding place for one checkout. False when the offer is
+    closed, does not cover the tier, or has no place left."""
     now = now or _now()
     if tier not in FOUNDING.tiers or not _founding_open(now):
         return False
-    # A new checkout replaces the user's earlier open holds.
+    # A new checkout replaces the user's earlier open hold.
     for old in db.scalars(
         select(FoundingReservation).where(
             FoundingReservation.user_id == user.id,
@@ -383,15 +449,12 @@ def hold_founding(
     ):
         db.delete(old)
     db.flush()
-    if FOUNDING.total - founding_taken(db, now) < seats:
+    if FOUNDING.total - founding_taken(db, now) < 1:
         db.commit()
         return False
     db.add(
         FoundingReservation(
-            user_id=user.id,
-            reference=reference,
-            seats=seats,
-            expires_at=now + FOUNDING_HOLD,
+            user_id=user.id, reference=reference, seats=1, expires_at=now + FOUNDING_HOLD
         )
     )
     db.commit()
@@ -408,27 +471,41 @@ def release_founding(db: Session, reference: str) -> None:
         db.commit()
 
 
-def consume_founding(db: Session, payment: Payment, founding_hint: bool = False) -> bool:
-    """A founding checkout was paid: its seats are sold for good. A hold that
-    expired (or was released) is counted anyway when the provider's own record
-    of the checkout, which our server wrote, says it was a founding one."""
+def count_founding(db: Session, reference: str, user_id: int) -> None:
+    """A founding price was paid: its place is taken for good (idempotent).
+    Counted even when the hold had lapsed, so the count stays true."""
     hold = db.scalar(
-        select(FoundingReservation).where(FoundingReservation.reference == payment.reference)
+        select(FoundingReservation).where(FoundingReservation.reference == reference)
     )
     if hold is None:
-        if not founding_hint:
-            return False
         hold = FoundingReservation(
-            user_id=payment.user_id,
-            reference=payment.reference,
-            seats=payment.seats or 1,
-            expires_at=_now(),
+            user_id=user_id, reference=reference, seats=1, expires_at=_now()
         )
     if hold.consumed_at is None:
         hold.consumed_at = _now()
         db.add(hold)
-        db.commit()
-    return True
+        try:
+            db.commit()
+        except IntegrityError:
+            db.rollback()  # counted by a concurrent delivery
+
+
+def founding_reference(
+    db: Session, provider: str, user_id: int, reference: str | None, provider_subscription_id: str
+) -> str:
+    """The place a founding subscription takes: its checkout's reference when
+    the subscription came from our checkout for this user, else its own id."""
+    if reference:
+        payment = db.scalar(
+            select(Payment).where(
+                Payment.reference == reference,
+                Payment.provider == provider,
+                Payment.user_id == user_id,
+            )
+        )
+        if payment is not None:
+            return payment.reference
+    return f"sub:{provider_subscription_id}"
 
 
 def is_founding_reference(db: Session, reference: str) -> bool:
@@ -440,10 +517,9 @@ def is_founding_reference(db: Session, reference: str) -> bool:
     )
 
 
-def expire_founding_holds(db: Session, now: datetime | None = None) -> int:
-    """Delete holds of checkouts abandoned for 30 minutes. Returns how many."""
+def expired_holds(db: Session, now: datetime | None = None) -> list[FoundingReservation]:
     now = now or _now()
-    expired = list(
+    return list(
         db.scalars(
             select(FoundingReservation).where(
                 FoundingReservation.consumed_at.is_(None),
@@ -451,6 +527,11 @@ def expire_founding_holds(db: Session, now: datetime | None = None) -> int:
             )
         )
     )
+
+
+def expire_founding_holds(db: Session, now: datetime | None = None) -> int:
+    """Delete holds of checkouts abandoned for 30 minutes. Returns how many."""
+    expired = expired_holds(db, now)
     for hold in expired:
         db.delete(hold)
     db.commit()

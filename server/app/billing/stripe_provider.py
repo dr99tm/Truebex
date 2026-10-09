@@ -8,6 +8,7 @@ to Pro for existing subscribers.
 """
 
 import logging
+import time
 from collections.abc import Mapping
 from datetime import datetime
 from typing import Any
@@ -17,6 +18,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ..models import Payment, ProviderPrice, Subscription, User
+from ..plans import PLANS
 from . import consent, service
 from .base import (
     BillingProvider,
@@ -29,6 +31,10 @@ from .base import (
 )
 
 log = logging.getLogger("truebex.billing.stripe")
+
+# A founding checkout stays payable a little past its 30-minute hold (Stripe's
+# shortest session life is 30 minutes).
+FOUNDING_SESSION_S = 31 * 60
 
 # Stripe subscription status -> ours.
 _STATUS = {
@@ -98,12 +104,13 @@ class StripeProvider(BillingProvider):
         if price is None:
             raise ProviderError("Stripe checkout needs a provider price")
         s = self.settings
+        founding = service.is_founding_reference(db, payment.reference)
         meta = {
             "user_id": str(user.id),
             "plan": payment.plan,
             "interval": payment.interval or "",
             "reference": payment.reference,
-            "founding": "1" if service.is_founding_reference(db, payment.reference) else "0",
+            "founding": "1" if founding else "0",
         }
         params: dict[str, Any] = {
             "mode": "subscription",
@@ -124,6 +131,10 @@ class StripeProvider(BillingProvider):
         }
         if discount:
             params["discounts"] = [{"promotion_code": discount}]
+        elif founding:
+            # One discount per checkout: no codes on top of the founding price,
+            # and the session ends with its hold.
+            params["expires_at"] = int(time.time()) + FOUNDING_SESSION_S
         else:
             params["allow_promotion_codes"] = True
         customer = service.customer_id(db, user, "stripe")
@@ -163,7 +174,9 @@ class StripeProvider(BillingProvider):
                 payment.invoice_id = str_or_none(session.get("invoice")) or payment.invoice_id
                 service.mark_payment_paid(db, payment)
                 db.commit()
-                service.consume_founding(db, payment, founding_hint=meta.get("founding") == "1")
+                # Sessions are created only by this server, so its metadata holds.
+                if meta.get("founding") == "1":
+                    service.count_founding(db, payment.reference, payment.user_id)
             elif session.get("status") == "expired" and payment.status == "pending":
                 payment.status = "canceled"
                 db.add(payment)
@@ -180,29 +193,30 @@ class StripeProvider(BillingProvider):
         self, db: Session, sub: Any, event_at: datetime | None
     ) -> Subscription | None:
         meta = sub.get("metadata") or {}
-        existing = db.scalar(
-            select(Subscription).where(
-                Subscription.provider == "stripe",
-                Subscription.provider_subscription_id == sub["id"],
-            )
-        )
+        existing = service.find_subscription(db, "stripe", sub["id"])
         try:
-            user_id = existing.user_id if existing else int(meta.get("user_id", ""))
-        except ValueError:
+            user_id = existing.user_id if existing else int(meta.get("user_id"))
+        except (TypeError, ValueError):
             return None  # not created by our checkout
         items = (sub.get("items") or {}).get("data") or []
         item = items[0] if items else {}
         price = item.get("price") or {}
         price_id = price.get("id")
         row = service.price_by_provider_id(db, "stripe", price_id)
+        founding = False
         if row is not None:
-            tier, interval = row.tier, row.interval
+            tier, interval, founding = row.tier, row.interval, row.founding
         elif price_id and price_id == self.settings.stripe_price_pro:
             tier, interval = "pro", "month"  # the original monthly Pro price
         else:
-            tier = meta.get("plan") or "pro"
+            # A price made by hand in the Stripe dashboard: the metadata our
+            # server wrote names the tier, never one sold only by hand.
+            tier = str(meta.get("plan") or "")
             interval = (price.get("recurring") or {}).get("interval")
-        return service.upsert_subscription(
+            if tier not in PLANS or not PLANS[tier].purchasable:
+                log.warning("stripe subscription %s has no known price; ignored", sub["id"])
+                return None
+        applied = service.upsert_subscription(
             db,
             provider="stripe",
             provider_subscription_id=sub["id"],
@@ -216,9 +230,15 @@ class StripeProvider(BillingProvider):
             customer_id=str_or_none(sub.get("customer")),
             currency=str_or_none(sub.get("currency")),
             provider_price_id=str_or_none(price_id),
-            founding=meta.get("founding") == "1",
+            founding=founding,
             event_at=event_at,
         )
+        if applied is not None and founding:
+            reference = service.founding_reference(
+                db, "stripe", applied.user_id, str_or_none(meta.get("reference")), sub["id"]
+            )
+            service.count_founding(db, reference, applied.user_id)
+        return applied
 
     def verify_payment(self, db: Session, payment: Payment) -> None:
         if not payment.provider_ref:
@@ -250,13 +270,20 @@ class StripeProvider(BillingProvider):
             self._apply_session(db, obj, occurred)
             status = "applied"
         elif kind in _SUBSCRIPTION_EVENTS:
-            applied = self._apply_subscription(db, obj, occurred)
-            status = "applied" if applied is not None else "stale"
+            # Stripe stamps events to the second, so two can share a time and
+            # arrive in either order: apply the subscription as it is now.
+            fresh = stripe.Subscription.retrieve(obj["id"], api_key=self._key)
+            applied = self._apply_subscription(db, fresh, None)
+            status = "applied" if applied is not None else "skipped"
         if event_id:
             service.record_event(db, "stripe", event_id, kind, occurred, status)
         return kind
 
     # --- Managing a subscription -------------------------------------------------------------
+
+    def cancel_checkout(self, db: Session, payment: Payment) -> None:
+        if payment.provider_ref:
+            stripe.checkout.Session.expire(payment.provider_ref, api_key=self._key)
 
     def portal_url(self, db: Session, user: User, sub: Subscription) -> str:
         customer = sub.provider_customer_id or service.customer_id(db, user, "stripe")
@@ -306,10 +333,21 @@ class StripeProvider(BillingProvider):
                     tax_minor=_tax(inv),
                     currency=str(inv.get("currency") or "").upper(),
                     status=str(inv.get("status") or ""),
-                    pdf_url=inv.get("invoice_pdf"),
+                    # Served through the API's signed, one-hour link.
+                    pdf_url=None,
                 )
             )
         return out
+
+    def invoice_pdf_url(self, db: Session, user: User, invoice_id: str) -> str:
+        customer = service.customer_id(db, user, "stripe")
+        try:
+            inv = stripe.Invoice.retrieve(invoice_id, api_key=self._key)
+        except stripe.StripeError as exc:
+            raise ProviderError(str(exc)) from exc
+        if not customer or inv.get("customer") != customer or not inv.get("invoice_pdf"):
+            raise ProviderError("not this customer's invoice")
+        return inv["invoice_pdf"]
 
     def charge_usage(
         self,

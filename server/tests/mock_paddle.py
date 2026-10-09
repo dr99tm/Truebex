@@ -406,6 +406,22 @@ def get_transaction(txn_id: str, request: Request):
     return _ok(txn) if txn else _error(404, "entity_not_found", "transaction not found")
 
 
+@app.patch("/transactions/{txn_id}")
+async def update_transaction(txn_id: str, request: Request):
+    if (denied := _auth(request)) is not None:
+        return denied
+    txn = STATE["transactions"].get(txn_id)
+    if txn is None:
+        return _error(404, "entity_not_found", "transaction not found")
+    body = await request.json()
+    if body.get("status") == "canceled":
+        if txn["status"] not in ("draft", "ready"):
+            return _error(400, "transaction_immutable", "transaction can no longer be changed")
+        txn["status"] = "canceled"
+        txn["updated_at"] = _ts(_now())
+    return _ok(txn)
+
+
 @app.get("/transactions/{txn_id}/invoice")
 def get_invoice(txn_id: str, request: Request):
     if (denied := _auth(request)) is not None:

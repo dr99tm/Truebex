@@ -15,7 +15,7 @@ from app.config import get_settings
 from app.database import SessionLocal
 from app.models import Subscription
 
-from .conftest import checkout_body, signup
+from .conftest import STRIPE_SUBS, checkout_body, signup
 
 # --- Wayl (dormant) ---------------------------------------------------------------
 
@@ -149,7 +149,12 @@ def test_expired_period_falls_back_to_free(client):
 # --- Stripe -------------------------------------------------------------------
 
 
-def stripe_post(client, event: dict, secret="whsec_test_dummy"):
+def stripe_post(client, event: dict, secret="whsec_test_dummy", current=True):
+    """Post a signed Stripe event. With `current`, its subscription is also
+    what Stripe's API now answers for that id."""
+    obj = (event.get("data") or {}).get("object") or {}
+    if current and obj.get("object") == "subscription":
+        STRIPE_SUBS[obj["id"]] = obj
     payload = json.dumps(event)
     ts = int(time.time())
     sig = hmac.new(secret.encode(), f"{ts}.{payload}".encode(), hashlib.sha256).hexdigest()

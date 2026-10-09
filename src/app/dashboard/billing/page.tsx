@@ -238,7 +238,9 @@ function BillingInner() {
     () => params.get("currency")?.toUpperCase() ?? localeCurrency()
   );
   const [tierId, setTierId] = useState<string>(params.get("tier") ?? params.get("plan") ?? "pro");
-  const [seatChoice, setSeatChoice] = useState<number>(Number(params.get("seats")) || 0);
+  const [seatChoice, setSeatChoice] = useState<number>(
+    Math.min(1000, Math.max(0, Math.floor(Number(params.get("seats")) || 0)))
+  );
   const [coupon, setCoupon] = useState(params.get("code") ?? "");
   const [consent, setConsent] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
@@ -691,7 +693,12 @@ function ChangePanel({
       </div>
       {list && (
         <p className="mt-3 text-sm text-text-secondary">
-          {formatMoney(sub.founding ? foundingPrice(list.amount_minor, cat.founding.discount_percent) : list.amount_minor, currency)}{" "}
+          {formatMoney(
+            sub.founding && cat.founding.tiers.includes(tierId)
+              ? foundingPrice(list.amount_minor, cat.founding.discount_percent)
+              : list.amount_minor,
+            currency
+          )}{" "}
           / {per(interval)}
           {target?.per_seat && ` ${BILLING.choose.perSeat}`}
         </p>

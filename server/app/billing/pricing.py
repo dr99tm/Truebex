@@ -49,7 +49,7 @@ def resolve(
     """The active provider price for this catalogue amount. Raises
     PriceUnavailable("not_synced") when sync_prices.py has not mirrored it."""
     row = service.provider_price(
-        db, provider, tier, interval, currency, amount(tier, interval, currency, founding)
+        db, provider, tier, interval, currency, amount(tier, interval, currency, founding), founding
     )
     if row is None:
         raise PriceUnavailable(

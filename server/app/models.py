@@ -7,6 +7,7 @@ from sqlalchemy import (
     Date,
     DateTime,
     ForeignKey,
+    Index,
     Integer,
     String,
     UniqueConstraint,
@@ -99,6 +100,15 @@ class Subscription(Base):
     """
 
     __tablename__ = "subscriptions"
+    # One row per provider subscription (database._migrate adds it to old files).
+    __table_args__ = (
+        Index(
+            "uq_subscriptions_provider_sub",
+            "provider",
+            "provider_subscription_id",
+            unique=True,
+        ),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     user_id: Mapped[int] = mapped_column(
@@ -197,6 +207,9 @@ class ProviderPrice(Base):
     # Per seat, in minor units of `currency`.
     amount_minor: Mapped[int] = mapped_column(Integer, nullable=False)
     provider_price_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    # The founding price of its tier (a lasting discount). A subscription is a
+    # founding one exactly when it pays such a price.
+    founding: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=_utcnow, nullable=False
@@ -224,7 +237,12 @@ class BillingEvent(Base):
 
 
 class FoundingReservation(Base):
-    """Founding seats held for one checkout (30 minutes) or bought."""
+    """One founding place: held for a checkout (30 minutes) or bought.
+
+    A place covers one subscription, whatever its seats: the founding price
+    stays on all of them. `reference` is the checkout's payment reference, or
+    `sub:<provider subscription id>` for a founding subscription that did not
+    come through our checkout."""
 
     __tablename__ = "founding_reservations"
 
