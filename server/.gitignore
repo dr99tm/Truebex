@@ -6,4 +6,5 @@ __pycache__/
 *.pyc
 .venv/
 venv/
+# The local storage adapter's data folder (STORAGE_DIR), not app/storage/.
 /storage/

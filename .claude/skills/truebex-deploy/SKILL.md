@@ -140,6 +140,9 @@ with WAL archived by wal-g to a backup bucket at a second provider. Everything i
 - **Alerts:** the hosted monitor (e-mail + phone push), `host-check.sh` every minute, the worker's
   `backup.check`; see `infra/README.md#alerts`.
 - **Admins:** `docker compose exec api python -m scripts.make_admin <email>` on the VM.
+- **Organisation seats by hand** (Enterprise contracts; PF2's checkout does not sell organisation seats yet):
+  `docker compose exec api python -m scripts.grant_org_seats --org <slug> --tier enterprise --seats <n> [--until YYYY-MM-DD]`
+  (`--revoke` ends it). The tier and seats reach the members through the organisation, never their personal plan.
 - `start-server.bat` / `start-tunnel.bat` are for local use only. Never route `api.truebex.com` to the
   PC again: a second API with its own `auth.db` would take writes nobody sees (`infra/CUTOVER.md`).
 
@@ -166,6 +169,7 @@ reads the switches at runtime through `/config` and `/billing/plans`, with no si
 | Storage (PF14) | `STORAGE_BACKEND=s3`, `S3_ENDPOINT`, `S3_REGION`, `S3_BUCKET`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY` (the data bucket only), `CDN_BASE_URL`; `STORAGE_URL_SECRET` (local backend only) | no CDN = presigned URLs |
 | Mail (PF14) | `MAIL_BACKEND=smtp`, `MAIL_FROM`, `SUPPORT_EMAIL`, `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD` | — |
 | Alerts, telemetry (PF14) | `ALERT_EMAIL`, `ALERT_PUSH_URL`; `TELEMETRY_EVENTS_ENABLED` (the events kill switch), `TELEMETRY_INGESTION_ENABLED` | ingestion off = 503 |
+| Organisations, SSO (PF3) | `SSO_SECRET_KEY` (a Fernet key sealing each organisation's SSO client secret: set it once and keep it), `SAML_SP_ENTITY_ID`, `AUDIT_RETENTION_DAYS` (730) | no `SSO_SECRET_KEY` = derived from `SECRET_KEY`, so a new `SECRET_KEY` makes every organisation re-enter its SSO secret; no entity id = each organisation's metadata URL |
 
 `infra/host/compose.yaml` sets `BACKGROUND_TASKS=worker`, `RATELIMIT_BACKEND=db` and (worker) `BACKUP_EXPECTED=true`;
 they are not in the file.

@@ -67,7 +67,13 @@ def is_live(sub: Subscription, now: datetime | None = None) -> bool:
 
 
 def live_subscription(db: Session, user: User) -> Subscription | None:
-    subs = db.scalars(select(Subscription).where(Subscription.user_id == user.id))
+    """The user's own best live subscription. An organisation's subscription
+    (PF3, `organisation_id` set) is never its buyer's personal plan."""
+    subs = db.scalars(
+        select(Subscription).where(
+            Subscription.user_id == user.id, Subscription.organisation_id.is_(None)
+        )
+    )
     best: Subscription | None = None
     for sub in subs:
         if is_live(sub) and (best is None or _rank(sub) > _rank(best)):

@@ -161,6 +161,10 @@ class Subscription(Base):
     last_event_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    # PF3: set when an organisation owns this subscription (its tier and seats
+    # reach the organisation's members through seat_source, never users.plan);
+    # None = the user's own.
+    organisation_id: Mapped[str | None] = mapped_column(String(32), index=True, nullable=True)
 
 
 class Payment(Base):

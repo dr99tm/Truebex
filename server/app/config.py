@@ -131,6 +131,17 @@ class Settings(BaseSettings):
     # rust-minidump's stackwalker; absent = symbolicate the sent callstack only.
     minidump_stackwalk: str = "minidump-stackwalk"
 
+    # --- Organisations, seats and SSO (PF3) -------------------------------------
+    # Fernet key sealing SSO client secrets (python -c "from cryptography.fernet
+    # import Fernet; print(Fernet.generate_key().decode())"). Empty derives one
+    # from SECRET_KEY.
+    sso_secret_key: str = ""
+    # The SAML entity id of this service provider. Empty: each organisation's
+    # own SP metadata URL ({API_URL}/auth/sso/saml/<slug>/metadata).
+    saml_sp_entity_id: str = ""
+    # Audit events are kept this long (24 months until GD5 says otherwise).
+    audit_retention_days: int = 730
+
     @property
     def cors_origin_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
