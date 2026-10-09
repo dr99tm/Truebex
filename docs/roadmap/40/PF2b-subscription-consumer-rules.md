@@ -4,7 +4,9 @@
 
 ## Status
 
-**Built (2026-10-10, branch `ap/t19-pf2b-subscription-consumer-rules`) and switched off.** Every rule sits behind a setting that defaults to off, except the easy exit. Nothing GD5 §7.4 drafts reaches a page or a mail until the owner's solicitor approves the wording. The API is in `server/app/billing/consumer.py` (rules, windows, notices, exits, the confirmation) and `server/app/billing/notices.py` (the wording). The site mirrors the wording in `BILLING.rules`, `BILLING.exit` and `BILLING.mails` (`src/lib/constants.ts`); the 7.4 drafts are compiled in only with `NEXT_PUBLIC_LEGAL_WORDING_APPROVED=true`. See As-built.
+**Built (2026-10-10, branch `ap/t19-pf2b-subscription-consumer-rules`) and switched off.** Every rule sits behind a setting that defaults to off, except the easy exit. Nothing GD5 §7.4 drafts reaches a page or a mail until the owner's solicitor approves the wording. The API is in `server/app/billing/consumer.py` (rules, windows, notices, exits, the confirmation) and `server/app/billing/notices.py` (the wording). The site mirrors the wording in `BILLING.rules`, `BILLING.exit` and `BILLING.mails` (`src/lib/constants.ts`); the 7.4 drafts are compiled in only with `NEXT_PUBLIC_LEGAL_WORDING_APPROVED=true`.
+
+Mail goes through PF14's `send_mail` by one guarded import in `notices.py`. PF14 is on master but not yet merged into this branch, so on the branch no mail is sent: each one is logged as "not sent", and the 6 tests that read mail skip. They pass on the merged tree. See As-built.
 
 Before PF2b, verified at `d0129c5` on 2026-10-10:
 
@@ -108,7 +110,13 @@ People who subscribe get what UK and EU consumer law asks for. Before paying the
 
 ### Mail
 
-The templates under `server/app/mail/templates/` are `renewal_reminder`, `trial_end`, `cancel_confirmation`, `withdrawal_acknowledgement` and `order_confirmation`. Each has `.subject.txt`, `.txt` and `.html` and holds layout only: every sentence comes from `notices.py` as data. With `MAIL_BACKEND=console`, `consumer._send` also logs the whole text; run uvicorn with `--log-config scripts/log-info.json` to see it.
+* **Sending.** PF2b sends through PF14's plumbing, `send_mail(to, template, data, *, reply_to=None)`, and has no mail code of its own. Its only import is in `server/app/billing/notices.py`: `try: from app.mail import send_mail` / `except ImportError: send_mail = None`.
+* **Without PF14's mail** (this branch until the merge):
+  * `billing.subscription_notices` logs and does nothing.
+  * The order confirmation is logged as not sent.
+  * Cancellations, refunds and withdrawals are still recorded and sent to the provider. Their confirmations stay unsent (`mail_sent_at` null), and `billing.exits.retry` sends them once mail exists, for 7 days.
+* **Templates** are under `server/app/mail/templates/`, named as PF14 names them: `renewal_reminder`, `trial_end`, `cancel_confirmation`, `withdrawal_acknowledgement` and `order_confirmation`. Each has `.subject.txt`, `.txt` and `.html` and holds layout only: every sentence comes from `notices.py` as data.
+* **Reading mails locally:** with PF14's `MAIL_BACKEND=console`, `consumer._send` also logs the whole text. Run uvicorn with `--log-config scripts/log-info.json` to see it.
 
 ### Security and privacy
 
@@ -120,7 +128,7 @@ The templates under `server/app/mail/templates/` are `renewal_reminder`, `trial_
 
 - [x] Settings (`server/app/config.py`, `server/.env.example`), all off by default
 - [x] `server/app/billing/notices.py` (wording), `server/app/billing/consumer.py` (rules, notices, exits, confirmation), `base.py` (`Refund`, `cancel_subscription`, `refund`), Paddle and Stripe adapters, `service.record_renewal`
-- [x] `server/app/mail/` (PF14's `send_mail`, byte-identical) and five templates
+- [x] Five mail templates in `server/app/mail/templates/` (PF14's naming); PF14's `send_mail` through one guarded import in `notices.py` (no mail plumbing of PF2b's own)
 - [x] Endpoints `POST /billing/cancel`, `POST /billing/withdraw`, `GET /billing/payments/{reference}`; extra fields on `/billing/plans`, `/billing/subscription`, `/billing/checkout`, `/billing/payments`
 - [x] Jobs `billing.subscription_notices`, `billing.exits.retry`
 - [x] Tables `subscription_notices`, `subscription_exits`; additive columns on `subscriptions` and `payments`
@@ -135,23 +143,38 @@ The templates under `server/app/mail/templates/` are `renewal_reminder`, `trial_
 |---|---|---|
 | `test_pf2b_settings_off_by_default` | pytest | every switch off, rules from 2027-01-01, lead times 14 / 3 / 3; `/billing/plans` `rules` says so |
 | `test_pf2b_wording_matches_site` | pytest | every 7.4 draft and notice text and version in `notices.py` equals `constants.ts` |
-| `test_notices_off_by_default` | pytest | switch off, or on but before `subscription_rules_from`: no mail, no notice row; the job is registered |
-| `test_renewal_reminder_sent_once_per_period` | pytest | 3-day lead for monthly (not at 4 days), sent once; the next period gets its own after a mock renewal; annual: 14-day lead and the cooling-off line; nothing for a plan set to end |
-| `test_trial_end_notice` | pytest | the 7.4 trial text 3 days before the end, once; nothing while the wording is unapproved, nothing for an ended trial |
-| `test_cancel_easy_exit` | pytest | 401 anonymous; 404 without a subscription; 422 without `confirm: true` or with a bad `refund`; happy path asks Paddle for `next_billing_period`, mails the confirmation, changes nothing until the webhook, 409 while on its way and after; the portal still works |
-| `test_exit_retry_job` | pytest | provider down: `processing`, mail sent, 409 on repeat; `billing.exits.retry` finishes it once |
-| `test_renewal_cooling_off_refund_via_provider_mock` | pytest | renewal recorded from the webhook; refused and not offered while off; on: cancel `immediately` plus a refund adjustment on the renewal transaction; the plan stays until the verified webhook (a forged one is refused); refund mail; outside 14 days and monthly: not offered |
+| `test_notices_off_by_default` | pytest | switch off, or on but before `subscription_rules_from`: the job sends nothing and stores no notice row; the job is registered |
+| `test_pf2b_without_mail_logs_and_does_nothing` | pytest | with `send_mail` missing: the job logs "not merged" and does nothing; a cancellation is still recorded and sent to the provider, its mail left for the retry |
+| `test_renewal_reminder_sent_once_per_period` ✉ | pytest | 3-day lead for monthly (not at 4 days), sent once; the next period gets its own after a mock renewal; annual: 14-day lead and the cooling-off line; nothing for a plan set to end |
+| `test_trial_end_notice` ✉ | pytest | the 7.4 trial text 3 days before the end, once; nothing while the wording is unapproved, nothing for an ended trial |
+| `test_cancel_easy_exit` | pytest | 401 anonymous; 404 without a subscription; 422 without `confirm: true` or with a bad `refund`; happy path asks Paddle for `next_billing_period` and changes nothing until the webhook, 409 while on its way and after; the portal still works |
+| `test_exit_retry_job` | pytest | provider down: `processing`, 409 on repeat; `billing.exits.retry` finishes it once |
+| `test_renewal_cooling_off_refund_via_provider_mock` | pytest | renewal recorded from the webhook; refused and not offered while off; on: cancel `immediately` plus a refund adjustment on the renewal transaction; the plan stays until the verified webhook (a forged one is refused); outside 14 days and monthly: not offered |
 | `test_renewal_cooling_off_refund_stripe` | pytest | `invoice.paid` records the renewal; `Subscription.cancel` and `Refund.create` on the payment intent; Free only after `customer.subscription.deleted` |
-| `test_eu_withdrawal_flow` | pytest | 401; 404 with the switch off; DE consumer: window 14 days, 422 without confirm, cancel `immediately` plus a full refund of the checkout transaction, acknowledgement with date and time, 409 on repeat, Free after the webhook; GB consumer, FR business purchase and an expired window: 409 |
-| `test_eu_withdrawal_after_complete_waiver_is_not_offered` | pytest | digital-content consent plus the confirmation mail: not offered; the service variant keeps the right with a proportionate refund |
+| `test_eu_withdrawal_flow` ✉ | pytest | 401; 404 with the switch off; DE consumer: window 14 days, 422 without confirm, cancel `immediately` plus a full refund of the checkout transaction, acknowledgement with date and time, 409 on repeat, Free after the webhook; GB consumer, FR business purchase and an expired window: 409 |
+| `test_eu_withdrawal_rules_without_mail` | pytest | the same rules without reading mail: 404 off, 422, DE consumer cancelled now and refunded with the plan changing only on the webhook, GB, business and late: 409 |
+| `test_eu_withdrawal_after_complete_waiver_is_not_offered` ✉ | pytest | digital-content consent plus the confirmation mail: not offered; the service variant keeps the right with a proportionate refund |
 | `test_key_information_acknowledged_with_payment` | pytest | off: placeholder consent, nothing stored; on: placeholder refused, key info required (missing, wrong version, not acknowledged: 422); the stored text matches the summary for Team × 3, annual; `GET /billing/payments/{ref}` 200 / 401 / 404; the QS-17 variant picks the consent version |
-| `test_confirmation_mail_contents` | pytest | none while unapproved; once approved, one mail even with replayed events: order, price, "every year", renewal terms, seller and licensor, exact consent text, version and time, key information, version and time, how to cancel, terms and EULA links, HTML part; nothing for an old order |
+| `test_confirmation_mail_contents` ✉ | pytest | none while unapproved; once approved, one mail even with replayed events: order, price, "every year", renewal terms, seller and licensor, exact consent text, version and time, key information, version and time, how to cancel, terms and EULA links, HTML part; nothing for an old order |
+| `test_exit_confirmation_mails` ✉ | pytest | the cancellation confirmation ("stays active until …"), sent once even after a provider retry; the cooling-off refund mail with the amount |
 | `test_site_pf2b_no_draft_wording_in_out` | build check | no fixed run of any 7.4 draft (≥ 16 characters) in `out/**/*.html`, `*.txt` or `_next/**/*.js` while the wording is unapproved |
 | `npm run lint`, `npm run build`, `scripts/autopilot-verify.ps1` | build check | green |
+
+✉ reads mail: it starts with `pytest.importorskip("app.mail")` and skips until PF14 is merged into the branch. Until then only PF2b's templates are in `app/mail/`, which imports as an empty namespace package, so the helper also skips when `send_mail` is absent.
 
 ## Human test
 
 Setup, about 4 minutes, PowerShell in the worktree. Three terminals: A for the site, B for mock Paddle, C for the API.
+
+**Mail differs with the branch's state.** While PF14 is not merged into this branch (`server\app\mail\__init__.py` absent), terminal C prints a warning for each mail instead of sending it:
+
+`WARNING truebex.billing.consumer: PF14's app.mail is not merged: <template> to <address> not sent`
+
+Once Autopilot has merged master here, the same step prints the mail itself:
+
+`INFO truebex.billing.consumer: console mail <template> to <address>: <subject>`, followed by its text.
+
+The steps below give the template name to look for.
 
 1. **A:** build the site against a local API with the approved wording compiled in, then serve it.
    ```
@@ -177,8 +200,8 @@ Setup, about 4 minutes, PowerShell in the worktree. Three terminals: A for the s
    * The buttons are **Manage card and cancellation** and **Cancel subscription**. There is no "Cancel and get a refund" and no "Withdraw from contract".
 3. Press **Cancel subscription**. It reads "Your plan stays active until … and won't renew…". Press **Confirm cancellation**.
    * The notice reads "Cancellation sent…", and within a few seconds the card reads "Ends on …".
-   * Terminal C logs `console mail cancel_confirmation … Your Truebex Pro plan is cancelled` with the text.
-   * Terminal C logs no "Your Truebex order" mail.
+   * Terminal C logs `cancel_confirmation` (subject "Your Truebex Pro plan is cancelled"), as described above.
+   * Terminal C logs no `order_confirmation` line.
 
 **B. Switched on (as after the solicitor's sign-off).**
 
@@ -193,15 +216,15 @@ Setup, about 4 minutes, PowerShell in the worktree. Three terminals: A for the s
    * **Continue to payment** stays disabled ("Tick both boxes above to continue.") until both of the first two boxes are ticked.
 6. Tick both and press **Continue to payment**. On the mock page choose **Germany** and pay.
    * Billing shows Pro with **Cancel subscription** and **Withdraw from contract**.
-   * C logs `order_confirmation … Your Truebex order: Pro`. It contains the order, "Renews automatically every month…", the seller, the consent text with "Version gd5-2026-10-09-service, accepted <date, time> UTC", the key information with its version and time, how to cancel, and the Terms / EULA links.
+   * C logs `order_confirmation` (subject "Your Truebex order: Pro"). Once mail is merged, its text holds the order, "Renews automatically every month…", the seller, the consent text with "Version gd5-2026-10-09-service, accepted <date, time> UTC", the key information with its version and time, how to cancel, and the Terms / EULA links.
 7. Press **Withdraw from contract**. It reads "Open until <date>…". Press **Confirm withdrawal**.
    * The notice reads "Withdrawal received…", and the card returns to Free within seconds.
-   * C logs `withdrawal_acknowledgement` with "on <date> at <hh:mm> UTC" and the refund amount.
+   * C logs `withdrawal_acknowledgement`. Once mail is merged, its text reads "We received your withdrawal … on <date> at <hh:mm> UTC" and gives the refund amount.
 8. Optional, the renewal cooling-off:
    1. A third account picks **Annual**, pays from United Kingdom, and gets "Payment received".
    2. In a fourth terminal run `Invoke-RestMethod -Method Post http://127.0.0.1:8098/mock/renew/latest`, then reload Billing.
    3. **Cancel and get a refund** appears. Press it, then **Cancel now and refund**.
-   * The plan returns to Free, and C logs `Your Truebex Pro plan is cancelled and refunded` with the amount.
+   * The plan returns to Free, and C logs `cancel_confirmation` (subject "Your Truebex Pro plan is cancelled and refunded", with the amount once mail is merged).
 9. Clean up: stop A, B and C and delete `server\pf2b-test.db`.
 
 The default build (no `NEXT_PUBLIC_LEGAL_WORDING_APPROVED`) carries none of the 7.4 drafts. The verify gate proves it on every run (`test_site_pf2b_no_draft_wording_in_out`).
@@ -212,6 +235,10 @@ The default build (no `NEXT_PUBLIC_LEGAL_WORDING_APPROVED`) carries none of the 
 * **"incl. VAT".** The key information states the catalogue price incl. VAT. Flip the wording only once the catalogue prices are tax-inclusive (Paddle `tax_mode` internal; GD5 §7.6, QS-19, PF2a / GD7). Coupon discounts show only in Paddle's checkout.
 * **Paddle.js inline mode** on `/checkout/` (used only when key information exists) needs a sandbox check before production. The overlay stays the path while unapproved.
 * **Stripe renewals** need `invoice.paid` added to the Stripe webhook endpoint. Paddle needs no new events.
+* **No mail until PF14 is merged into this branch.**
+  * `notices.send_mail` is None until then: confirmations are only logged, and 6 tests skip.
+  * After the merge, `billing.exits.retry` sends the confirmations of exits from the last 7 days.
+  * Order confirmations go out only for checkouts paid in the last 2 days.
 * **Dates in mails are UTC.** The billing page shows local dates, so the two can differ by a day around midnight.
 * **SQLite naive datetimes:** compared through `service._aware` everywhere.
 * **The monthly reminder cadence** follows the task (before every renewal). The DMCC's own cadence for short periods is for QS-18.
@@ -222,14 +249,30 @@ The default build (no `NEXT_PUBLIC_LEGAL_WORDING_APPROVED`) carries none of the 
 * **Date, branch, commits:** 2026-10-10, `ap/t19-pf2b-subscription-consumer-rules` (base `master` d0129c5).
   * `f16d040`: API, mock, site, tests.
   * `7c83612`: shaped to merge cleanly with PF14, plus polish of the confirmation and mails.
-  * A later commit adds `/mock/renew/latest`, this doc, the README and the tracker row.
+  * `25810de`: `/mock/renew/latest`, this doc, the README and the tracker row.
+  * `a701236`: the manager's branch note. PF2b codes against PF14's `send_mail` through one guarded import, has no mail plumbing of its own, and its mail tests skip until PF14 is merged (below).
+  * The docs commit that records it.
 * **Counts:**
-  * pytest with `out/` built (verify gate): 140 → 154 passed. That is 13 tests in `server/tests/test_billing_pf2b.py` and 1 build check in `server/tests/test_site_pf2.py`.
+  * pytest with `out/` built (verify gate), on this branch: 140 → 151 passed, 6 skipped.
+    * 16 tests in `server/tests/test_billing_pf2b.py`: 10 run, 6 skip (mail).
+    * 1 build check in `server/tests/test_site_pf2.py`.
   * Verify gate green.
-  * `git merge-tree` of this branch with today's `master` (PF14 merged as 4758ae1): no conflicts. The merged tree's suite, in a fresh venv with PF14's requirements, gives 164 passed and 30 skipped (site checks without `out/`, Postgres-only tests).
-* **Self-tests:**
-  * An end-to-end run over real HTTP in headless Edge, using the API, `tests/mock_paddle.py` sending signed webhooks, and the built site with the approved wording.
-  * It covered key information, both ticks, a German purchase, the order confirmation, withdrawal (acknowledgement, plan back to Free from the webhook), a UK purchase with the easy exit ("Ends on …" after the webhook), and an annual purchase, renewal and "Cancel and get a refund".
+* **Tests skipped on this branch, and why.** They read mail. They start with `pytest.importorskip("app.mail")` and skip because PF14's `app.mail` (`send_mail`, `OUTBOX`) is not merged into this branch. The skip reason reads "PF14's app.mail (send_mail, OUTBOX) is not merged into this branch yet". They run for real once Autopilot merges master (PF14 is on it as 4758ae1):
+  * `test_renewal_reminder_sent_once_per_period`
+  * `test_trial_end_notice`
+  * `test_eu_withdrawal_flow`
+  * `test_eu_withdrawal_after_complete_waiver_is_not_offered`
+  * `test_confirmation_mail_contents`
+  * `test_exit_confirmation_mails`
+
+  The mail-free parts of those flows also run on the branch: `test_notices_off_by_default`, `test_pf2b_without_mail_logs_and_does_nothing`, `test_cancel_easy_exit`, `test_exit_retry_job`, the two cooling-off tests and `test_eu_withdrawal_rules_without_mail`.
+* **The merged result, checked read-only.** `git merge-tree` of this branch with today's `master` reports no conflicts. That tree was exported to a scratch folder and tested in a fresh venv with PF14's requirements:
+  * All 16 PF2b tests pass against the real `send_mail`.
+  * The full suite gives 167 passed, 30 skipped (site checks without `out/`, Postgres-only tests).
+  * One full run had a single failure in PF14's own `test_ops.py::test_sqlite_to_postgres_lists_every_feature_table`, which starts a fresh Python process. It passed alone, with its file, and in a second full run.
+* **Self-tests:** an end-to-end run over real HTTP in headless Edge, using the API, `tests/mock_paddle.py` sending signed webhooks, and the built site with the approved wording. It ran twice:
+  * **With this branch's API:** every flow works. That is key information and both ticks; a German purchase and withdrawal (plan back to Free from the webhook); a UK purchase and the easy exit ("Ends on …" after the webhook); an annual purchase, renewal and "Cancel and get a refund". Each mail is logged "PF14's app.mail is not merged: <template> to <address> not sent".
+  * **With the merged tree's API:** the same flows, with all six mails sent through PF14's `send_mail`: three order confirmations, the withdrawal acknowledgement, and the two cancellation confirmations.
   * The default build has no 7.4 text in `out/`; the approved build has it.
 
 **The switches: what the owner flips, and when**
@@ -274,7 +317,12 @@ The easy exit has no switch. The task listed none, it is not GD5 7.4 wording, an
   7. **Extra endpoint `GET /billing/payments/{reference}`**, so `/checkout/` can show the stored key information beside the pay button. `/checkout/` then uses Paddle's inline checkout instead of the overlay.
   8. **The order confirmation goes out only for checkouts paid in the last 2 days.** Approving the wording later does not mail old orders when a late event arrives. Its seller block reads "Paddle.com, our reseller and Merchant of Record" and "The software is licensed to you by Truebex Ltd[, COMPANY_ADDRESS]". Paddle's own address is on Paddle's receipt.
   9. **Stripe's consent box text** now mirrors the consent the buyer accepted (the 7.4 text once approved).
-  10. **Mail on this branch:** `server/app/mail/__init__.py` and `smtp.py` are byte-identical to PF14's (merged into master as 4758ae1). `config.py` carries PF14's plumbing block verbatim, so the merge is clean. Console mails print their whole text with `uvicorn … --log-config scripts/log-info.json`.
+  10. **Mail, per the manager's branch note.** The note said to merge master into the branch when PF14's mail is on master, and otherwise to keep no mail plumbing and code against PF14's interface.
+      * PF14's mail is on master (4758ae1), but the merge was refused in the task run: "Autopilot guard: `git merge` is not allowed in a task run -- the human merges after testing". So the note's second path applies.
+      * The copy of PF14's `server/app/mail/__init__.py` and `smtp.py` that this branch had carried is removed, and `config.py`'s plumbing block is back to the base (PF14's arrives with the merge).
+      * `notices.py` holds the one guarded import of `send_mail`. Without it, the notices job logs and does nothing.
+      * The templates stay in `server/app/mail/templates/` with PF14's naming, and the mail tests importorskip.
+      * Console mails print their whole text with `uvicorn … --log-config scripts/log-info.json` once mail is merged.
   11. **The reminder goes before every renewal, monthly included,** as the task says. The DMCC sets its own cadence for short renewal periods, so the cadence may change after QS-18; only the lead-time settings and the job's query would change.
 * **GD5 wording adopted:** the 7.4 drafts, verbatim, as `DRAFT_VERSION gd5-2026-10-09`. The consent versions are `gd5-2026-10-09-digital` and `gd5-2026-10-09-service`. The renewal reminder, cooling-off, cancellation, refund and acknowledgement texts are Truebex's own, as `NOTICE_VERSION pf2b-2026-10-09`, for the solicitor to read too. Today's placeholder consent (`2026-10-09`) stays in force until the wording is approved.
 * **Carry-over → which feature:**
