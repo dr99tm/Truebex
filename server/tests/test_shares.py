@@ -475,5 +475,11 @@ def test_demo_share_script(client, monkeypatch, capsys):
     assert demo.main(argv) == 0
     second = capsys.readouterr().out
     assert "0 parts sent" in second
+    # Signing in instead of passing a token reaches the same share.
+    client.post("/auth/register", json={"email": "demo@example.com", "password": "password123"})
+    login = ["--email", "demo@example.com", "--password", "password123", "--fixture", fixture, "--api", "http://testserver"]
+    assert demo.main(login) == 0
+    third = capsys.readouterr().out
+    assert "device token tbx_dev_" in third and "5 parts sent" in third
     url = [line for line in first.splitlines() if line.startswith("url ")]
     assert url and url == [line for line in second.splitlines() if line.startswith("url ")]

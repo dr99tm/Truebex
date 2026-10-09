@@ -3,7 +3,7 @@
 import { createContext, useContext, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { CreditCard, Gauge, KeyRound, LayoutGrid, BookOpen } from "lucide-react";
+import { CreditCard, Gauge, KeyRound, LayoutGrid, BookOpen, Link2 } from "lucide-react";
 import { useCurrentUser } from "@/lib/useAuth";
 import { getToken } from "@/lib/auth";
 import type { User } from "@/lib/auth";
@@ -22,6 +22,7 @@ const NAV_GROUPS: { label: string | null; items: NavItem[] }[] = [
     label: null,
     items: [
       { href: "/dashboard/", label: "Overview", icon: LayoutGrid },
+      { href: "/dashboard/shares/", label: "Shares", icon: Link2 },
       { href: "/dashboard/billing/", label: "Billing", icon: CreditCard },
     ],
   },

@@ -17,4 +17,5 @@ if ($env:AUTOPILOT_TASK_ID -match '^T(\d+)$') { $n = [int]$Matches[1] }
 $port = 3100 + $n
 if (-not (Test-Path (Join-Path $Worktree 'out\index.html'))) { & npm run build }
 Write-Host "serving $Worktree\out on http://127.0.0.1:$port/"
-& py -3.12 -m http.server $port --directory (Join-Path $Worktree 'out')
+# Like GitHub Pages: Access-Control-Allow-Origin: * (share pages load /viewer/ from here, PF5).
+& py -3.12 (Join-Path $Worktree 'scripts\serve-out.py') $port --directory (Join-Path $Worktree 'out')

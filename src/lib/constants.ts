@@ -390,3 +390,72 @@ export const CHANGELOG_PAGE = {
   beta: "Beta",
   downloadCta: "Download the latest release",
 } as const;
+
+// Share pages (PF5): the page a client opens from a share link, served by the
+// API at /view/{slug} around the viewer bundle (src/viewer/). The server's
+// copies of designedIn, getTruebex, ogTitleSuffix, the ended and not-found
+// texts and downloadPdf (server/app/shares/page.py) must match these; a
+// server test fails when they drift.
+export const SHARE_PAGE = {
+  designedIn: "Designed in Truebex",
+  getTruebex: "Get Truebex for Windows",
+  ogTitleSuffix: " — designed in Truebex",
+  endedTitle: "This link has ended",
+  endedText: "The designer ended this share, or it reached its expiry date. Ask them for a new link.",
+  notFoundTitle: "We can't find this share",
+  notFoundText: "Check the link you were sent, or ask the designer for a new one.",
+  updateTitle: "Update needed",
+  updateText:
+    "This share was made with a newer version of Truebex than this page can show yet. Try again soon, or ask the designer for the PDF.",
+  loading: "Opening the share…",
+  offline: "We can't load this share right now. Check your connection and try again.",
+  retry: "Try again",
+  tabs: { panoramas: "Panoramas", renders: "Renders", drawings: "Drawings" },
+  openUntil: "Open until",
+  dragHint: "Drag to look around",
+  motionOn: "Look by moving your phone",
+  motionOff: "Stop moving with the phone",
+  motionDenied: "Motion access was not allowed. Drag to look around instead.",
+  fullscreen: "Full screen",
+  exitFullscreen: "Exit full screen",
+  goTo: "Go to",
+  rooms: "Views",
+  noWebgl: "This browser can't show panoramas in 3D, so here is the flat image.",
+  previous: "Previous",
+  next: "Next",
+  downloadPdf: "Download PDF",
+  pages: "pages",
+  pdfLoading: "Loading the drawings…",
+  pdfFailed: "The drawings can't be shown here. Download the PDF to open them.",
+} as const;
+
+// The dashboard's Shares page (/dashboard/shares/).
+export const DASHBOARD_SHARES = {
+  title: "Shares",
+  description:
+    "Links you shared from Truebex and who opened them. A link ends on its expiry date or when you end it; its files are deleted 7 days later.",
+  emptyTitle: "No shares yet",
+  emptyText: "In Truebex, save your views and press Share. The link and its visits appear here.",
+  live: "Live",
+  ended: "Ended",
+  states: { uploading: "Uploading", live: "Live", expired: "Expired", revoked: "Ended" },
+  visits: "Visits",
+  unique: "Unique visitors",
+  lastVisit: "Last visit",
+  expires: "Open until",
+  endedOn: "Ended",
+  byDay: "Visits in the last 30 days",
+  showVisits: "Visits by day",
+  hideVisits: "Hide visits by day",
+  uploadingNote: "Still uploading from Truebex. The link appears once every file has arrived.",
+  copy: "Copy link",
+  copied: "Copied",
+  open: "Open",
+  extend: "Extend",
+  extendNote: "Extends the link to the longest your plan allows",
+  revoke: "End link",
+  confirmRevoke: "End this link now",
+  cancel: "Cancel",
+  limit: "live on your plan",
+  noVisits: "No visits yet",
+} as const;

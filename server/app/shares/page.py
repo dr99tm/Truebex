@@ -109,7 +109,7 @@ def render_view(
         description=_e(description(m)),
         url=_e(url),
         image=_e(card_url),
-        image_alt=_e(f"{title}, {DESIGNED_IN.lower()}"),
+        image_alt=_e(og_title(title)),
         preload=preload,
         site=_e(site),
         slug=_e(slug),
