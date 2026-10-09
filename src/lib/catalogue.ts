@@ -34,13 +34,17 @@ export interface Founding {
   total: number | null;
   discount_percent: number | null;
   ends_at: string | null;
+  /** The tiers with a founding price. */
+  tiers?: string[];
+  /** The billing intervals with a founding price; absent = both. */
+  intervals?: Interval[];
 }
 
 export interface Catalogue {
   tiers: Tier[];
   founding: Founding | null;
-  /** PF2: false while prices and the founding offer are placeholders
-   *  (until the pricing guide); absent counts as final. */
+  /** PF2: false while prices and the founding offer are placeholders;
+   *  absent counts as final. PF2a set the owner's prices (true). */
   prices_final?: boolean;
 }
 
@@ -67,6 +71,28 @@ export function isPriced(tier: Tier): boolean {
   return tier.prices.length > 0;
 }
 
+/**
+ * The interval a tier is shown and sold at: the one asked for when the tier
+ * has a price there, else the one it has. Team is annual only, so its
+ * Monthly view shows (and its checkout link buys) the annual price.
+ */
+export function intervalFor(
+  tier: { prices: readonly { interval: Interval; currency: string }[] },
+  interval: Interval,
+  currency: string
+): Interval {
+  const has = (iv: Interval) => tier.prices.some((p) => p.interval === iv && p.currency === currency);
+  if (has(interval)) return interval;
+  const other: Interval = interval === "month" ? "year" : "month";
+  return has(other) ? other : interval;
+}
+
+/** What an annual charge comes to per month, billed annually: the charge
+ *  divided by 12, to the nearest minor unit (£1,190 a year → £99.17). */
+export function perMonthOfYear(amountMinor: number): number {
+  return Math.round(amountMinor / 12);
+}
+
 export function anyPriced(catalogue: Catalogue): boolean {
   return catalogue.tiers.some(isPriced);
 }
@@ -77,7 +103,7 @@ export function foundingLive(catalogue: Catalogue): boolean {
   return !!f && !!f.total && f.discount_percent !== null && f.discount_percent !== undefined;
 }
 
-// One locale per currency so the symbol reads naturally: £24, $29, €28.
+// One locale per currency so the symbol reads naturally: £24, $29, €27.
 const LOCALE: Record<Currency, string> = { GBP: "en-GB", USD: "en-US", EUR: "en-IE" };
 
 /** Minor units to a display price; pence/cents only when there are any. */
@@ -108,6 +134,17 @@ export function annualSavingPercent(catalogue: Catalogue): number | null {
 /** The founding price of a seat listed at `amountMinor` (as the API rounds). */
 export function foundingPrice(amountMinor: number, discountPercent: number): number {
   return Math.floor((amountMinor * (100 - discountPercent) + 50) / 100);
+}
+
+/** Whether the founding offer prices `tierId` billed every `interval`
+ *  (server/app/plans.py FoundingOffer.covers). */
+export function foundingCovers(
+  founding: { tiers?: readonly string[]; intervals?: readonly string[] } | null | undefined,
+  tierId: string,
+  interval: Interval
+): boolean {
+  if (!founding) return false;
+  return (founding.tiers ?? []).includes(tierId) && (founding.intervals ?? INTERVALS).includes(interval);
 }
 
 /** Replace {token}s in a copy string. */

@@ -2,15 +2,20 @@
 
 import { useState, useSyncExternalStore } from "react";
 import { Check } from "lucide-react";
+import { FoundingBanner, type FoundingCopy } from "@/components/pricing/FoundingBanner";
 import {
   CURRENCIES,
   DEFAULT_CURRENCY,
   fill,
   formatMinor,
+  intervalFor,
   isPriced,
+  perMonthOfYear,
   priceOf,
   type Currency,
+  type Founding,
   type Interval,
+  type Price,
   type Tier,
 } from "@/lib/catalogue";
 import type { PricingHighlight, TierCopy } from "@/lib/constants";
@@ -18,7 +23,7 @@ import { cn } from "@/lib/utils";
 
 export type PricingLabels = Record<
   | "interval" | "month" | "year" | "saveUpTo" | "currency" | "perMonth" | "perMonthAnnual"
-  | "perYear" | "perYearMonthly" | "perSeat" | "fromSeats" | "priceAtLaunch" | "startFree"
+  | "perYear" | "orYear" | "perSeat" | "fromSeats" | "priceAtLaunch" | "startFree"
   | "free" | "freeNote" | "custom" | "customNote" | "mostPopular" | "onTheRoadmap",
   string
 >;
@@ -85,7 +90,16 @@ function Segmented<T extends string>({
   );
 }
 
-function PriceBlock({
+/**
+ * A tier's price for the chosen interval and currency. Every figure is a
+ * charge or follows from one: a monthly price (with the annual price beside
+ * it), or an annual price with what it comes to per month, billed annually.
+ * A tier without the chosen interval shows the one it has (Team is annual
+ * only, so its Monthly view is the annual charge / 12, billed annually).
+ * Listed amounts carry `data-amount-minor`; figures worked out from one
+ * carry `data-derived` (the build checks read both).
+ */
+export function PriceBlock({
   tier,
   interval,
   currency,
@@ -107,7 +121,7 @@ function PriceBlock({
       </div>
     );
   }
-  const price = priceOf(tier, interval, currency);
+  const price = priceOf(tier, intervalFor(tier, interval, currency), currency);
   if (!isPriced(tier) || !price) {
     if (!tier.purchasable) {
       return (
@@ -127,54 +141,56 @@ function PriceBlock({
     );
   }
 
-  const amount = (minor: number, derived: boolean) => (
+  const listed = (p: Price) => (
     <span
-      {...(derived
-        ? { "data-derived": "" }
-        : {
-            "data-amount-minor": String(minor),
-            "data-tier": tier.id,
-            "data-interval": price.interval,
-            "data-currency": price.currency,
-          })}
+      data-amount-minor={String(p.amount_minor)}
+      data-tier={tier.id}
+      data-interval={p.interval}
+      data-currency={p.currency}
     >
-      {formatMinor(minor, currency)}
+      {formatMinor(p.amount_minor, currency)}
     </span>
   );
-  const [before, after] = (interval === "month" ? labels.perYearMonthly : labels.perYear).split("{amount}");
+  const derived = (minor: number) => <span data-derived="">{formatMinor(minor, currency)}</span>;
+  const withAmount = (template: string, amount: React.ReactNode) => {
+    const [before, after] = template.split("{amount}");
+    return (
+      <>
+        {before}
+        {amount}
+        {after}
+      </>
+    );
+  };
   const seat = tier.per_seat
     ? ` · ${labels.perSeat}${tier.min_seats > 1 ? ` · ${fill(labels.fromSeats, { n: tier.min_seats })}` : ""}`
     : "";
 
-  return interval === "month" ? (
+  if (price.interval === "month") {
+    const year = priceOf(tier, "year", currency);
+    return (
+      <div>
+        <p className="flex items-baseline gap-2">
+          <span className={big}>{listed(price)}</span>
+          <span className="text-sm text-text-muted">
+            {labels.perMonth}
+            {seat}
+          </span>
+        </p>
+        {year && <p className={small}>{withAmount(labels.orYear, listed(year))}</p>}
+      </div>
+    );
+  }
+  return (
     <div>
       <p className="flex items-baseline gap-2">
-        <span className={big}>{amount(price.amount_minor, false)}</span>
-        <span className="text-sm text-text-muted">
-          {labels.perMonth}
-          {seat}
-        </span>
-      </p>
-      <p className={small}>
-        {before}
-        {amount(price.amount_minor * 12, true)}
-        {after}
-      </p>
-    </div>
-  ) : (
-    <div>
-      <p className="flex items-baseline gap-2">
-        <span className={big}>{amount(Math.round(price.amount_minor / 12), true)}</span>
+        <span className={big}>{derived(perMonthOfYear(price.amount_minor))}</span>
         <span className="text-sm text-text-muted">
           {labels.perMonthAnnual}
           {seat}
         </span>
       </p>
-      <p className={small}>
-        {before}
-        {amount(price.amount_minor, false)}
-        {after}
-      </p>
+      <p className={small}>{withAmount(labels.perYear, listed(price))}</p>
     </div>
   );
 }
@@ -205,6 +221,7 @@ export function TierCards({
   labels,
   saving,
   showControls,
+  founding,
   headingLevel = "h2",
   className,
 }: {
@@ -213,6 +230,8 @@ export function TierCards({
   labels: PricingLabels;
   saving: number | null;
   showControls: boolean;
+  /** The founding offer's banner, in the chosen currency (/pricing/). */
+  founding?: { offer: Founding; copy: FoundingCopy } | null;
   headingLevel?: "h2" | "h3";
   className?: string;
 }) {
@@ -239,6 +258,15 @@ export function TierCards({
 
   return (
     <div className={className}>
+      {founding && (
+        <FoundingBanner
+          founding={founding.offer}
+          copy={founding.copy}
+          tiers={tiers}
+          currency={currency}
+          perSeat={labels.perSeat}
+        />
+      )}
       {showControls && (
         <div className="mb-10 flex flex-col items-center justify-center gap-3 sm:flex-row sm:gap-6">
           <Segmented<Interval>
@@ -281,11 +309,13 @@ export function TierCards({
           const c = copy[tier.id];
           if (!c) return null;
           const name = c.name ?? tier.name;
-          const priced = isPriced(tier) && !!priceOf(tier, interval, currency);
+          // Team is annual only: its link buys the annual price.
+          const sold = intervalFor(tier, interval, currency);
+          const priced = isPriced(tier) && !!priceOf(tier, sold, currency);
           const cta = priced && tier.purchasable
             ? {
                 label: c.cta,
-                href: `/dashboard/billing/?tier=${tier.id}&interval=${interval}&currency=${currency}`,
+                href: `/dashboard/billing/?tier=${tier.id}&interval=${sold}&currency=${currency}`,
               }
             : c.href
               ? { label: c.cta, href: c.href }

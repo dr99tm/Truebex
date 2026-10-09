@@ -1,14 +1,13 @@
 {
   "schema": "truebex-catalogue/1",
-  "source": "Tiers, features and limits: contracts/licence-api.md v1.0.0 section 6.3 placeholder matrix (2026-10-09; PF1 copies the GD7 matrix here). Prices, the founding offer and per-seat rules: the owner's pricing plan (PF2a, 2026-10-09). Team is per seat and annual only; founding prices are the annual prices at discount_percent off.",
-  "prices_final": true,
+  "source": "PLACEHOLDER prices (PF2's, before the owner's plan) marked prices_final false: the public pages must say Price at launch and hide the founding offer. For the build checks; never deployed.",
+  "prices_final": false,
   "currencies": ["GBP", "USD", "EUR"],
   "founding": {
-    "total": 300,
+    "total": 100,
     "discount_percent": 30,
-    "ends_at": "2027-01-31T23:59:59Z",
-    "tiers": ["pro", "studio", "team"],
-    "intervals": ["year"]
+    "ends_at": "2027-03-31T23:59:59Z",
+    "tiers": ["pro", "studio", "team"]
   },
   "tiers": [
     {
@@ -31,12 +30,12 @@
       "per_seat": false,
       "min_seats": 1,
       "prices": [
-        {"interval": "month", "currency": "GBP", "amount_minor": 2400},
-        {"interval": "month", "currency": "USD", "amount_minor": 2900},
-        {"interval": "month", "currency": "EUR", "amount_minor": 2700},
-        {"interval": "year", "currency": "GBP", "amount_minor": 24000},
-        {"interval": "year", "currency": "USD", "amount_minor": 29000},
-        {"interval": "year", "currency": "EUR", "amount_minor": 27000}
+        {"interval": "month", "currency": "GBP", "amount_minor": 7900},
+        {"interval": "month", "currency": "USD", "amount_minor": 9900},
+        {"interval": "month", "currency": "EUR", "amount_minor": 9500},
+        {"interval": "year", "currency": "GBP", "amount_minor": 79000},
+        {"interval": "year", "currency": "USD", "amount_minor": 99000},
+        {"interval": "year", "currency": "EUR", "amount_minor": 95000}
       ],
       "features": [
         "ai.byok", "ai.metered", "analysis.reports", "assets.library", "cloud.panoramas", "cloud.sync",
@@ -54,12 +53,12 @@
       "per_seat": false,
       "min_seats": 1,
       "prices": [
-        {"interval": "month", "currency": "GBP", "amount_minor": 7900},
-        {"interval": "month", "currency": "USD", "amount_minor": 9900},
-        {"interval": "month", "currency": "EUR", "amount_minor": 8900},
-        {"interval": "year", "currency": "GBP", "amount_minor": 79000},
-        {"interval": "year", "currency": "USD", "amount_minor": 99000},
-        {"interval": "year", "currency": "EUR", "amount_minor": 89000}
+        {"interval": "month", "currency": "GBP", "amount_minor": 15900},
+        {"interval": "month", "currency": "USD", "amount_minor": 19900},
+        {"interval": "month", "currency": "EUR", "amount_minor": 18900},
+        {"interval": "year", "currency": "GBP", "amount_minor": 159000},
+        {"interval": "year", "currency": "USD", "amount_minor": 199000},
+        {"interval": "year", "currency": "EUR", "amount_minor": 189000}
       ],
       "features": [
         "ai.byok", "ai.metered", "analysis.reports", "assets.library", "cloud.panoramas", "cloud.sync",
@@ -77,9 +76,12 @@
       "per_seat": true,
       "min_seats": 2,
       "prices": [
-        {"interval": "year", "currency": "GBP", "amount_minor": 119000},
-        {"interval": "year", "currency": "USD", "amount_minor": 178800},
-        {"interval": "year", "currency": "EUR", "amount_minor": 139000}
+        {"interval": "month", "currency": "GBP", "amount_minor": 8900},
+        {"interval": "month", "currency": "USD", "amount_minor": 10900},
+        {"interval": "month", "currency": "EUR", "amount_minor": 10500},
+        {"interval": "year", "currency": "GBP", "amount_minor": 89000},
+        {"interval": "year", "currency": "USD", "amount_minor": 109000},
+        {"interval": "year", "currency": "EUR", "amount_minor": 105000}
       ],
       "features": [
         "ai.byok", "ai.metered", "analysis.reports", "assets.library", "cloud.panoramas", "cloud.sync",

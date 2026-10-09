@@ -438,16 +438,22 @@ def founding_status(db: Session, now: datetime | None = None) -> dict:
         "discount_percent": FOUNDING.discount_percent,
         "ends_at": FOUNDING.ends_at,
         "tiers": list(FOUNDING.tiers),
+        "intervals": list(FOUNDING.intervals),
     }
 
 
 def hold_founding(
-    db: Session, user: User, reference: str, tier: str, now: datetime | None = None
+    db: Session,
+    user: User,
+    reference: str,
+    tier: str,
+    interval: str,
+    now: datetime | None = None,
 ) -> bool:
     """Hold a founding place for one checkout. False when the offer is
-    closed, does not cover the tier, or has no place left."""
+    closed, does not cover the tier and interval, or has no place left."""
     now = now or _now()
-    if tier not in FOUNDING.tiers or not _founding_open(now):
+    if not FOUNDING.covers(tier, interval) or not _founding_open(now):
         return False
     # A new checkout replaces the user's earlier open hold.
     for old in db.scalars(

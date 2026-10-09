@@ -110,8 +110,9 @@ class BillingProvider(ABC):
         the subscription was bought at it). Raises PriceUnavailable."""
         tier = tier or sub.plan
         interval = interval or sub.interval or "month"
-        # The founding price follows the subscription to tiers the offer covers.
-        founding = bool(sub.founding) and tier in FOUNDING.tiers
+        # The founding price follows the subscription to the tiers and
+        # intervals the offer covers; a move outside them ends it.
+        founding = bool(sub.founding) and FOUNDING.covers(tier, interval)
         price = pricing.resolve(db, self.name, tier, interval, sub.currency or "USD", founding)
         plan = pricing.plan(tier)
         seats = seats if seats is not None else (sub.seats or 1)

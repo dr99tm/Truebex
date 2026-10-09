@@ -14,7 +14,7 @@ import { useApiData } from "@/components/dashboard/useApiData";
 import { Button } from "@/components/ui/Button";
 import { API_URL, formatDate } from "@/lib/api";
 import { STATIC_CATALOG } from "@/lib/billing-catalog";
-import { foundingPrice } from "@/lib/catalogue";
+import { fill, foundingCovers, foundingPrice, intervalFor, perMonthOfYear } from "@/lib/catalogue";
 import { BILLING } from "@/lib/constants";
 import {
   changePlan,
@@ -241,7 +241,9 @@ function BillingInner() {
   const cat: Catalog = catalog.data ?? STATIC_CATALOG;
 
   // A link like /dashboard/billing/?tier=team&interval=year&seats=5&code=X
-  // preselects the plan (the pricing page's checkout links).
+  // preselects the plan (the pricing page's checkout links). A tier without
+  // the chosen interval is sold at the one it has (Team is annual only, so
+  // ?tier=team&interval=month buys the annual price).
   const [interval, setBillingInterval] = useState<Interval>(
     params.get("interval") === "year" ? "year" : "month"
   );
@@ -303,13 +305,15 @@ function BillingInner() {
   const tier = buyable.find((t) => t.id === tierId) ?? buyable[0];
   const seats = tier?.per_seat ? Math.max(seatChoice || tier.min_seats, tier.min_seats) : 1;
   const founding = cat.founding;
-  const foundingOn = (t: PlanInfo | undefined) => !!t && founding.enabled && founding.tiers.includes(t.id);
+  const foundingOn = (t: PlanInfo, iv: Interval) => founding.enabled && foundingCovers(founding, t.id, iv);
   const unitPrice = (t: PlanInfo, iv: Interval) => {
     const p = priceOf(t, iv, activeCurrency);
     if (!p) return null;
-    return foundingOn(t) ? foundingPrice(p.amount_minor, founding.discount_percent) : p.amount_minor;
+    return foundingOn(t, iv) ? foundingPrice(p.amount_minor, founding.discount_percent) : p.amount_minor;
   };
-  const selectedUnit = tier ? unitPrice(tier, interval) : null;
+  // The interval the selected tier is bought at.
+  const selectedInterval = tier ? intervalFor(tier, interval, activeCurrency) : interval;
+  const selectedUnit = tier ? unitPrice(tier, selectedInterval) : null;
 
   const current = sub.data;
   const managed = !!current?.provider && MANAGED.has(current.provider);
@@ -324,7 +328,7 @@ function BillingInner() {
     try {
       const { url } = await startCheckout({
         tier: tier.id,
-        interval,
+        interval: selectedInterval,
         currency: activeCurrency,
         seats,
         coupon: coupon.trim() || undefined,
@@ -434,8 +438,9 @@ function BillingInner() {
 
           <div role="radiogroup" aria-label={BILLING.choose.heading} className="mt-5 grid gap-4 md:grid-cols-3">
             {buyable.map((t) => {
-              const list = priceOf(t, interval, activeCurrency);
-              const unit = unitPrice(t, interval);
+              const iv = intervalFor(t, interval, activeCurrency);
+              const list = priceOf(t, iv, activeCurrency);
+              const unit = unitPrice(t, iv);
               const selected = tier?.id === t.id;
               return (
                 <button
@@ -455,10 +460,25 @@ function BillingInner() {
                   </span>
                   {unit === null || !list ? (
                     <span className="mt-3 block text-sm text-text-muted">{BILLING.choose.noPrice}</span>
+                  ) : iv !== interval && iv === "year" ? (
+                    // Annual only (Team) in the Monthly view: what the annual
+                    // charge comes to per month, then the charge itself.
+                    <span className="mt-3 block">
+                      <span className="text-2xl font-semibold text-text-primary">
+                        {formatMoney(perMonthOfYear(unit), activeCurrency)}
+                      </span>
+                      <span className="text-sm text-text-muted"> / month, {BILLING.choose.billedAnnually}</span>
+                      <span className="mt-0.5 block text-xs text-text-muted">
+                        {formatMoney(unit, activeCurrency)} / year
+                        {unit !== list.amount_minor && (
+                          <span className="ml-2 line-through">{formatMoney(list.amount_minor, activeCurrency)}</span>
+                        )}
+                      </span>
+                    </span>
                   ) : (
                     <span className="mt-3 block">
                       <span className="text-2xl font-semibold text-text-primary">{formatMoney(unit, activeCurrency)}</span>
-                      <span className="text-sm text-text-muted"> / {per(interval)}</span>
+                      <span className="text-sm text-text-muted"> / {per(iv)}</span>
                       {unit !== list.amount_minor && (
                         <span className="ml-2 text-sm text-text-muted line-through">
                           {formatMoney(list.amount_minor, activeCurrency)}
@@ -510,7 +530,12 @@ function BillingInner() {
                   <span className="font-semibold tabular-nums text-text-primary">
                     {formatMoney(selectedUnit * seats, activeCurrency)}
                   </span>{" "}
-                  / {per(interval)}
+                  / {per(selectedInterval)}
+                  {tier && selectedInterval !== interval && (
+                    <span className="mt-1 block text-xs text-text-muted">
+                      {fill(BILLING.choose.annualOnly, { tier: tier.name })}
+                    </span>
+                  )}
                   <span className="mt-1 block text-xs text-text-muted">{BILLING.choose.tax}</span>
                 </p>
               )}
@@ -679,8 +704,13 @@ function ChangePanel({
   const currency = sub.currency ?? "GBP";
   const target = buyable.find((t) => t.id === tierId);
   const currentTier = cat.tiers.find((t) => t.id === sub.tier);
-  const changed = tierId !== sub.tier || interval !== (sub.interval ?? "month");
-  const list = target ? priceOf(target, interval, currency) : null;
+  // Team is annual only: a move to it is a move to annual billing.
+  const iv = target ? intervalFor(target, interval, currency) : interval;
+  const changed = tierId !== sub.tier || iv !== (sub.interval ?? "month");
+  const list = target ? priceOf(target, iv, currency) : null;
+  // The founding price follows the subscription only where the offer covers
+  // the new tier and interval (server: BillingProvider.change_subscription).
+  const keepsFounding = !!sub.founding && foundingCovers(cat.founding, tierId, iv);
 
   return (
     <Panel>
@@ -705,20 +735,26 @@ function ChangePanel({
       {list && (
         <p className="mt-3 text-sm text-text-secondary">
           {formatMoney(
-            sub.founding && cat.founding.tiers.includes(tierId)
-              ? foundingPrice(list.amount_minor, cat.founding.discount_percent)
-              : list.amount_minor,
+            keepsFounding ? foundingPrice(list.amount_minor, cat.founding.discount_percent) : list.amount_minor,
             currency
           )}{" "}
-          / {per(interval)}
+          / {per(iv)}
           {target?.per_seat && ` ${BILLING.choose.perSeat}`}
+          {target && iv !== interval && (
+            <span className="mt-1 block text-xs text-text-muted">
+              {fill(BILLING.choose.annualOnly, { tier: target.name })}
+            </span>
+          )}
         </p>
+      )}
+      {changed && sub.founding && !keepsFounding && (
+        <p className="mt-2 text-xs text-warn">{BILLING.change.foundingEnds}</p>
       )}
       <Button
         size="sm"
         className="mt-4 disabled:cursor-not-allowed disabled:opacity-50"
         disabled={!changed || busy !== null}
-        onClick={() => run("change", () => changePlan({ tier: tierId, interval }))}
+        onClick={() => run("change", () => changePlan({ tier: tierId, interval: iv }))}
       >
         {busy === "change" ? BILLING.change.applying : BILLING.change.apply}
       </Button>

@@ -54,6 +54,8 @@ export interface FoundingOffer {
   discount_percent: number;
   ends_at: string | null;
   tiers: string[];
+  /** The billing intervals with a founding price (absent from older APIs: both). */
+  intervals?: Interval[];
 }
 
 export interface Catalog {
