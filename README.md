@@ -84,9 +84,13 @@ restart, not a rebuild.
 src/
   app/
     page.tsx               Landing page (+ SoftwareApplication & FAQPage JSON-LD)
-    layout.tsx             Global metadata, fonts, Organization JSON-LD
+    layout.tsx             Global metadata, fonts, Organization JSON-LD, verification tags
+    pricing/               Plans from server/app/catalogue.json (+ comparison, FAQ)
+    features/[slug]/       One page per search cluster (FEATURE_PAGES)
+    roadmap/ changelog/    Roadmap (src/content/roadmap.json); changelog + feed.xml
+    ar/                    Arabic landing page (RTL; lang/dir set by scripts/postbuild-lang.mjs)
     login/ signup/         Auth pages (Google + email)
-    dashboard/             Signed-in area: overview, keys/, usage/, billing/
+    dashboard/             Signed-in area: overview, keys/, usage/, billing/, admin/growth/
     developers/            Public API docs (indexable)
     account/               Redirect to /dashboard/ (old URL)
     sitemap.ts robots.ts manifest.ts icon.svg apple-icon.png favicon.ico
@@ -96,7 +100,9 @@ src/
     dashboard/             Shell (auth guard, nav), UsageChart, UsageMeter
     auth/                  AuthForm, GoogleButton, ProfileMenu
   lib/
-    constants.ts           ALL site copy: features, roadmap, pricing, FAQ, SITE
+    constants.ts           ALL site copy: features, pricing, feature pages, Arabic, FAQ, SITE
+    catalogue.ts           Plan catalogue types, price formatting, JSON-LD offers
+  content/                 roadmap.json, history.json, releases.json (changelog)
     api.ts                 fetch wrapper, session token, date helpers
     auth.ts                accounts + Google sign-in
     developer.ts           keys, usage, billing calls
@@ -105,6 +111,9 @@ public/
   images/product/          In-app captures (generated)
   images/og-image.jpg      1200×630 social card (generated)
 scripts/make_web_assets.py Regenerates brand assets from the Unreal project
+scripts/postbuild-lang.mjs <html lang="ar" dir="rtl"> for out/ar/ (part of npm run build)
+scripts/sync-roadmap.mjs   Roadmap statuses from the two trackers (owner, before a deploy)
+scripts/indexnow.mjs       Ping IndexNow with changed URLs (owner, after a deploy)
 server/
   app/
     main.py                App + routers
@@ -112,6 +121,8 @@ server/
     billing/               service.py (plan state) · providers.py (Stripe, Wayl)
     models.py database.py  SQLAlchemy models + additive SQLite migrations
     plans.py               Plan catalog: prices, request quotas, key limits
+    catalogue.json         Tiers, entitlement matrix, prices (read by the site at build time)
+    growth/                Admin growth counts (sign-ups, downloads, trials, checkouts)
   tests/                   pytest suite (+ mock_wayl.py for click-through tests)
 .claude/skills/            truebex-brand-voice · truebex-seo · truebex-deploy
 google-apps-script/        Code.gs for the demo-request sheet
@@ -234,6 +245,7 @@ in `localStorage`. New columns are added on startup by
 | POST | `/billing/portal` | session | Stripe customer portal URL |
 | POST | `/billing/webhooks/stripe` · `/wayl` | provider | Payment events |
 | GET | `/v1/ping` · `/v1/account` | **API key** | Developer API (metered) |
+| GET | `/admin/growth?from=&to=` | session, admin | Sign-ups, downloads, trials, checkouts, paid per UTC day (counts only) |
 
 ### Running in production
 
@@ -337,9 +349,19 @@ through the whole checkout without real money.
 - **Regenerating assets:** `py -3.12 scripts/make_web_assets.py` rebuilds the
   icons, OG card, SVG media kit and product captures.
 - **Site copy:** all of it lives in `src/lib/constants.ts`. Only shipped features go in
-  `FEATURES`; planned ones go in `ROADMAP`. Public copy never names the
-  engine or other software, and leads with distinctive features only (see
-  `truebex-brand-voice`).
+  `FEATURES`; planned ones go in `src/content/roadmap.json` (words by hand,
+  statuses from `npm run sync:roadmap -- <app README> <platform README>`).
+  Public copy never names the engine or other software, and leads with
+  distinctive features only (see `truebex-brand-voice`).
+- **Prices:** `server/app/catalogue.json` is the one source; a tier without a
+  price shows "Price at launch". Try the pricing page with sample prices by
+  building with `TRUEBEX_CATALOGUE_FILE=scripts/fixtures/catalogue-sample.json`
+  (never for a release).
+- **Analytics and search engines:** `ANALYTICS.cloudflareToken` (Cloudflare Web
+  Analytics, cookieless, public pages only), `VERIFICATION` (Search Console and
+  Bing tags) and `SOCIAL` in `constants.ts`; empty values switch each off. The
+  IndexNow key is `public/<32 hex>.txt`; run `npm run indexnow -- --sitemap`
+  after a deploy.
 - **Product image:** the site shows a single clean capture (daylight through
   a doorway). Add more only if they have no HUD or labels.
 - **Project skills** (Claude Code picks these up automatically in this repo):
