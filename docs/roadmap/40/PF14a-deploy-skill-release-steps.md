@@ -115,7 +115,7 @@ Window 1, in the worktree: `powershell -NoProfile -ExecutionPolicy Bypass -File 
 ## As-built
 
 * **Date, branch, commits:** 2026-10-10, `ap/t20-pf14a-deploy-skill-roadmap-40-re` from `master` 4758ae1 (after T16 and T17). `e4b8937` (skill, gate, `--symbols`, README), then the commit with this doc and the tracker row.
-* **Counts:** pytest 180 → 191 collected (`test_deploy_skill.py` 9, `test_releases.py` +2). The skill's *Website* went from 7 steps to 11, plus five new sections (*Order of a release*, *Site config*, *App releases*, *Billing*, *Secrets and switches*). No site or API behaviour changed, so `out/` is unchanged.
+* **Counts:** pytest 180 → 192 collected (`test_deploy_skill.py` 9, `test_releases.py` +2, `test_ops.py` +1 for the fix below). The skill's *Website* went from 7 steps to 11, plus five new sections (*Order of a release*, *Site config*, *App releases*, *Billing*, *Secrets and switches*). No site or API behaviour changed, so `out/` is unchanged.
 * **Self-tests beyond pytest:**
   * Mutations of the skill or its sources, each of which turned the gate red: `PADDLE_API_BASE` removed; `--symbols` removed from the release command; a new `paddle_retain_key` setting in `config.py`; `indexnow` moved before the build; a `MONITOR_API_TOKEN=` line added to `host.env.example`; the two trackers swapped.
   * `publish_release.py --symbols` for real (no mock) on a scratch SQLite database and local storage, with a key from `make_signing_key.py`: release row, `symbol_files` row, the installer and `.sym` blobs in the Breakpad layout. A missing folder was refused with exit 2 before anything was published.
@@ -128,6 +128,15 @@ Window 1, in the worktree: `powershell -NoProfile -ExecutionPolicy Bypass -File 
   3. The *Secrets* and *Licence API* bullets moved out of *API* into *Secrets and switches* and *App releases*, so each setting is described in one place.
   4. Running the release script against the VM: the skill sets the production settings in the shell for that run (the Postgres SSH tunnel of `infra/CUTOVER.md`, the data bucket's `S3_*`), because the `rel-*` seed must never reach the VM. `POST /admin/releases` plus `POST /admin/symbols` is the alternative without a tunnel.
   5. `PADDLE_API_BASE` is named as "empty on the VM": it is a test and mock override, not a secret.
+* **Verify-gate fix (Autopilot attempt 1): fresh Python processes crashing with `0xC000070A`.** Autopilot's run of the gate failed `test_sqlite_to_postgres_lists_every_feature_table`: its child interpreter exited with `STATUS_THREADPOOL_HANDLE_EXCEPTION` and printed nothing. This was not caused by this branch's changes; it reproduced at will under load (68 of 120 fresh `from scripts import sqlite_to_postgres` processes run 12 at a time). The cause:
+  * SQLAlchemy calls `platform.machine()` at import, and Python 3.12 answers it with a WMI query (`_wmi`) that gives up after a short timeout on a busy machine and leaves its query thread running.
+  * `platform` then falls back to spawning `cmd /c ver`, and the process dies while the abandoned thread finishes.
+  * Measured: crashes only in processes whose query timed out (258) and then spawned a subprocess. None where the query succeeded, none with a timeout but no subprocess, none with `platform.machine()` stubbed.
+
+  The fix: `server/app/__init__.py` replaces `platform`'s `_wmi_query` on Windows, before anything has asked for `uname`, so `platform` uses `ver` and `PROCESSOR_ARCHITECTURE` as Python 3.11 did. `scripts/__init__.py` and `scripts/sync_prices.py` (both of which import SQLAlchemy before `app`) import `app` first.
+  * Result: 0 crashes in 600 concurrent runs of the three entry points (`sqlite_to_postgres`, the worker's `app.tasks`, `app.main`), at up to 20 at a time.
+  * New `test_ops.py::test_fresh_process_never_queries_wmi`: no server entry point reaches `_wmi`, whatever imported `platform` first (as uvicorn does); `platform.machine()` still reads the CPU architecture.
+  * Production (Linux) is unaffected.
 * **Contract:** none; nothing to record in the Unreal repo's `contracts/`.
 * **Carry-over → which feature:**
   * PF14's "PF1: `publish_release.py --symbols`" is done here.
