@@ -23,7 +23,7 @@ A task ticks ONLY its own row, on its own branch.
 | Done | Feature | Needs | Prio | Code today | Notes |
 |---|---|---|---|---|---|
 | [ ] | [PF1](PF1-licence-api-releases-and-downloads.md) licence API, releases and downloads | — | 1 | — | |
-| [ ] | [PF2](PF2-billing-through-the-uk-company.md) billing through the UK company | PF1 | 1 | — | |
+| [x] | [PF2](PF2-billing-through-the-uk-company.md) billing through the UK company | PF1 | 1 | `server/app/billing/`, `src/app/checkout/`, `src/app/dashboard/billing/` | built before PF1 merged: one catalogue, one `tasks.py`, one `seats` column at merge (As-built 13) |
 | [ ] | [PF3](PF3-organisations-seats-and-sso.md) organisations, seats and SSO | PF1 | 2 | — | |
 | [ ] | [PF4](PF4-project-service-log-storage-sync-versions-and-sharing.md) project service: log storage, sync, versions and sharing | PF1 | 2 | — | |
 | [ ] | [PF5](PF5-share-pages.md) share pages | PF1 | 1 | — | |

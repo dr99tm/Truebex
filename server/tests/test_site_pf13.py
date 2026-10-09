@@ -211,8 +211,16 @@ def catalogue_path() -> Path:
     return (ROOT / override) if override else CATALOGUE
 
 
+def public_view(cat: dict) -> dict:
+    """What the public pages show (src/lib/catalogue.ts publicCatalogue):
+    prices and the founding offer only once `prices_final` is not false."""
+    if cat.get("prices_final") is not False:
+        return cat
+    return {**cat, "tiers": [{**t, "prices": []} for t in cat["tiers"]], "founding": None}
+
+
 def catalogue() -> dict:
-    return json.loads(catalogue_path().read_text(encoding="utf-8"))
+    return public_view(json.loads(catalogue_path().read_text(encoding="utf-8")))
 
 
 SYMBOL = {"GBP": "£", "USD": "$", "EUR": "€"}
@@ -290,7 +298,8 @@ def html_files() -> list[Path]:
 
 def test_site_pf13_catalogue_placeholder_shape():
     """`server/app/catalogue.json` is the licence contract's §6.3 placeholder
-    with null prices until GD7, in PF1's schema plus PF2's price fields."""
+    in PF1's schema plus PF2's price fields; PF2's prices and founding offer
+    are placeholders marked `prices_final: false` until GD7."""
     cat = json.loads(CATALOGUE.read_text(encoding="utf-8"))
     tiers = cat["tiers"]
     assert [t["id"] for t in tiers] == TIER_IDS
@@ -307,10 +316,11 @@ def test_site_pf13_catalogue_placeholder_shape():
         assert t["features"] == sorted(set(free["features"]) | gates), t["id"]
         assert t["limits"] == {**free["limits"], "storeys": None}, t["id"]
         assert t["features"] == sorted(set(t["features"]))
+    assert cat["prices_final"] is False, "prices wait for GD7"
     for t in tiers:
-        assert t["prices"] == [], "prices wait for GD7"
+        assert isinstance(t["prices"], list)
         assert isinstance(t["per_seat"], bool) and t["min_seats"] >= 1
-    assert cat["founding"] is None
+    assert cat["founding"] is None or {"total", "discount_percent", "ends_at"} <= set(cat["founding"])
     assert [t["purchasable"] for t in tiers] == [False, True, True, True, False]
 
 
@@ -424,6 +434,26 @@ def test_site_pf13_pricing_matches_catalogue(built):
     }
     assert got == want
     assert any(o["price"] == "0" for o in app["offers"]), "the Free offer"
+
+
+def test_site_pf13_placeholder_prices_stay_private(built):
+    """PF2's placeholder prices (`prices_final: false`) stay off the public
+    pages: no amounts, no priced JSON-LD offers, no founding block, and every
+    paid tier says "Price at launch". The billing page lists them from the API."""
+    raw = json.loads(catalogue_path().read_text(encoding="utf-8"))
+    if raw.get("prices_final") is not False:
+        pytest.skip("this catalogue's prices are final")
+    assert priced(raw), "PF2's placeholder prices are in the catalogue"
+    for rel in ("pricing/index.html", "index.html", "ar/index.html"):
+        doc = page(rel)
+        assert not doc.all(data_amount_minor=True), rel
+        assert not doc.all(data_founding=True), rel
+        for app in (n for n in doc.json_ld() if n.get("@type") == "SoftwareApplication"):
+            assert all(o["price"] == "0" for o in app["offers"]), rel
+    doc = page("pricing/index.html")
+    for tier in raw["tiers"]:
+        if tier["purchasable"]:
+            assert "Price at launch" in doc.text(doc.all("article", data_tier=tier["id"])[0]), tier["id"]
 
 
 def test_site_pf13_roadmap_rows_labelled(built):

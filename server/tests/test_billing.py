@@ -1,3 +1,6 @@
+"""Billing that predates PF2: the dormant Wayl rail (run under WAYL_ENABLED so
+it does not rot) and the Stripe webhook rules."""
+
 import hashlib
 import hmac
 import json
@@ -5,14 +8,16 @@ import time
 from datetime import datetime, timedelta, timezone
 
 import httpx
+import pytest
 
 from app.billing import providers
+from app.config import get_settings
 from app.database import SessionLocal
 from app.models import Subscription
 
-from .conftest import signup
+from .conftest import STRIPE_SUBS, checkout_body, signup
 
-# --- Wayl ---------------------------------------------------------------------
+# --- Wayl (dormant) ---------------------------------------------------------------
 
 
 class FakeWayl:
@@ -34,6 +39,11 @@ class FakeWayl:
         return httpx.Response(404)
 
 
+@pytest.fixture()
+def wayl_on(monkeypatch):
+    monkeypatch.setattr(get_settings(), "wayl_enabled", True)
+
+
 def _patch_wayl(monkeypatch):
     fake = FakeWayl()
 
@@ -48,11 +58,8 @@ def _patch_wayl(monkeypatch):
     return fake
 
 
-def test_catalog_lists_enabled_providers(client):
-    cat = client.get("/billing/plans").json()
-    assert set(cat["providers"]) == {"stripe", "wayl"}
-    pro = next(p for p in cat["plans"] if p["id"] == "pro")
-    assert pro["price_usd_cents"] == 9900 and pro["price_iqd"] == 130000
+def _wayl_body(tier="pro"):
+    return checkout_body(tier=tier, currency="IQD", provider="wayl")
 
 
 def test_no_client_side_plan_grant(client):
@@ -61,10 +68,10 @@ def test_no_client_side_plan_grant(client):
     assert res.status_code in (404, 405)
 
 
-def test_wayl_checkout_and_verified_webhook(client, monkeypatch):
+def test_wayl_checkout_and_verified_webhook(client, monkeypatch, wayl_on):
     fake = _patch_wayl(monkeypatch)
     h = signup(client)
-    co = client.post("/billing/checkout", json={"plan": "pro", "provider": "wayl"}, headers=h).json()
+    co = client.post("/billing/checkout", json=_wayl_body(), headers=h).json()
     ref = co["reference"]
     assert co["url"].endswith(ref)
     link = fake.links[ref]
@@ -93,26 +100,33 @@ def test_wayl_checkout_and_verified_webhook(client, monkeypatch):
     assert pays[0]["status"] == "paid" and pays[0]["currency"] == "IQD"
 
 
-def test_wayl_unknown_reference_ignored(client, monkeypatch):
+def test_wayl_unknown_reference_ignored(client, monkeypatch, wayl_on):
     _patch_wayl(monkeypatch)
     res = client.post("/billing/webhooks/wayl", json={"referenceId": "tbx_forged"})
     assert res.json() == {"received": False}
 
 
-def test_wayl_refresh_after_redirect(client, monkeypatch):
+def test_wayl_refresh_after_redirect(client, monkeypatch, wayl_on):
     fake = _patch_wayl(monkeypatch)
     h = signup(client)
-    ref = client.post("/billing/checkout", json={"plan": "pro", "provider": "wayl"}, headers=h).json()["reference"]
+    ref = client.post("/billing/checkout", json=_wayl_body(), headers=h).json()["reference"]
     fake.links[ref]["status"] = "Delivered"
     paid = client.post(f"/billing/payments/{ref}/refresh", headers=h).json()
     assert paid["status"] == "paid"
     assert client.get("/auth/me", headers=h).json()["plan"] == "pro"
 
 
-def test_cannot_buy_unpurchasable_plan(client):
+def test_cannot_buy_unpurchasable_plan(client, wayl_on):
     h = signup(client)
-    res = client.post("/billing/checkout", json={"plan": "enterprise", "provider": "wayl"}, headers=h)
+    res = client.post("/billing/checkout", json=_wayl_body("enterprise"), headers=h)
     assert res.status_code == 400
+
+
+def test_wayl_off_without_flag(client, monkeypatch):
+    _patch_wayl(monkeypatch)
+    h = signup(client)
+    assert client.post("/billing/webhooks/wayl", json={"referenceId": "x"}).status_code == 404
+    assert client.post("/billing/checkout", json=_wayl_body(), headers=h).status_code == 503
 
 
 def test_expired_period_falls_back_to_free(client):
@@ -135,7 +149,12 @@ def test_expired_period_falls_back_to_free(client):
 # --- Stripe -------------------------------------------------------------------
 
 
-def _stripe_post(client, event: dict, secret="whsec_test_dummy"):
+def stripe_post(client, event: dict, secret="whsec_test_dummy", current=True):
+    """Post a signed Stripe event. With `current`, its subscription is also
+    what Stripe's API now answers for that id."""
+    obj = (event.get("data") or {}).get("object") or {}
+    if current and obj.get("object") == "subscription":
+        STRIPE_SUBS[obj["id"]] = obj
     payload = json.dumps(event)
     ts = int(time.time())
     sig = hmac.new(secret.encode(), f"{ts}.{payload}".encode(), hashlib.sha256).hexdigest()
@@ -146,26 +165,54 @@ def _stripe_post(client, event: dict, secret="whsec_test_dummy"):
     )
 
 
-def _sub_event(kind, uid, status, end):
+_seq = iter(range(1, 1_000_000))
+
+
+def stripe_sub_event(
+    kind,
+    uid,
+    status,
+    end,
+    *,
+    price="price_test_pro",
+    quantity=1,
+    created=None,
+    meta=None,
+    sub_id="sub_123",
+    cancel_at_period_end=False,
+    interval="month",
+):
     return {
-        "id": "evt_1",
+        "id": f"evt_{next(_seq)}",
         "object": "event",
         "type": kind,
+        "created": created or int(time.time()),
         "data": {
             "object": {
-                "id": "sub_123",
+                "id": sub_id,
                 "object": "subscription",
                 "customer": "cus_123",
+                "currency": "gbp",
                 "status": status,
-                "metadata": {"user_id": str(uid), "plan": "pro"},
-                "items": {"data": [{"current_period_end": end}]},
+                "cancel_at_period_end": cancel_at_period_end,
+                "metadata": {"user_id": str(uid), "plan": "pro"} if meta is None else meta,
+                "items": {
+                    "data": [
+                        {
+                            "id": "si_1",
+                            "quantity": quantity,
+                            "current_period_end": end,
+                            "price": {"id": price, "recurring": {"interval": interval}},
+                        }
+                    ]
+                },
             }
         },
     }
 
 
 def test_stripe_rejects_bad_signature(client):
-    res = _stripe_post(client, {"type": "x", "data": {"object": {}}}, secret="whsec_wrong")
+    res = stripe_post(client, {"type": "x", "data": {"object": {}}}, secret="whsec_wrong")
     assert res.status_code == 400
 
 
@@ -174,10 +221,10 @@ def test_stripe_subscription_lifecycle(client):
     uid = client.get("/auth/me", headers=h).json()["id"]
     end = int(time.time()) + 30 * 86400
 
-    assert _stripe_post(client, _sub_event("customer.subscription.created", uid, "active", end)).status_code == 200
+    assert stripe_post(client, stripe_sub_event("customer.subscription.created", uid, "active", end)).status_code == 200
     assert client.get("/auth/me", headers=h).json()["plan"] == "pro"
     sub = client.get("/billing/subscription", headers=h).json()
     assert sub["provider"] == "stripe" and sub["can_manage"]
 
-    _stripe_post(client, _sub_event("customer.subscription.deleted", uid, "canceled", end))
+    stripe_post(client, stripe_sub_event("customer.subscription.deleted", uid, "canceled", end))
     assert client.get("/auth/me", headers=h).json()["plan"] == "free"

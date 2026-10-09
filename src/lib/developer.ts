@@ -28,35 +28,89 @@ export interface UsageSummary {
   by_key: Record<string, number>;
 }
 
-export type Provider = "stripe" | "wayl";
+export type Provider = "paddle" | "stripe";
+export type Interval = "month" | "year";
+
+export interface TierPrice {
+  interval: Interval;
+  currency: string;
+  /** Per seat, in minor units of `currency`. */
+  amount_minor: number;
+}
 
 export interface PlanInfo {
   id: string;
   name: string;
-  price_usd_cents: number | null;
-  price_iqd: number | null;
-  monthly_requests: number;
-  max_api_keys: number;
   purchasable: boolean;
+  per_seat: boolean;
+  min_seats: number;
+  prices: TierPrice[];
+}
+
+export interface FoundingOffer {
+  enabled: boolean;
+  total: number;
+  remaining: number;
+  discount_percent: number;
+  ends_at: string | null;
+  tiers: string[];
+}
+
+export interface Catalog {
+  tiers: PlanInfo[];
+  founding: FoundingOffer;
+  /** The provider checkout uses, or null while online payment is not set up. */
+  provider: Provider | null;
+  currencies: string[];
 }
 
 export interface Subscription {
-  plan: string;
+  tier: string;
+  interval: Interval | null;
+  seats: number;
   status: string;
-  provider: Provider | null;
+  provider: string | null;
   current_period_end: string | null;
+  cancel_at_period_end: boolean;
+  founding: boolean;
   can_manage: boolean;
+  currency: string | null;
 }
 
 export interface Payment {
   reference: string;
-  provider: Provider;
+  /** Past rows keep the provider they were paid through. */
+  provider: string;
   plan: string;
   amount: number;
   currency: string;
   status: "pending" | "paid" | "failed" | "canceled";
   created_at: string;
   paid_at: string | null;
+  interval: Interval | null;
+  seats: number | null;
+  tax_minor: number | null;
+}
+
+export interface Invoice {
+  id: string;
+  number: string | null;
+  issued_at: string | null;
+  total_minor: number;
+  tax_minor: number;
+  currency: string;
+  status: string;
+  /** Absolute (provider) or relative to the API ("/billing/invoices/…"). */
+  pdf_url: string | null;
+}
+
+export interface CheckoutRequest {
+  tier: string;
+  interval: Interval;
+  currency: string;
+  seats: number;
+  coupon?: string;
+  consent: { version: string; accepted: true };
 }
 
 export const listKeys = () => api<ApiKey[]>("/keys");
@@ -67,17 +121,19 @@ export const revokeKey = (id: number) =>
 
 export const getUsage = () => api<UsageSummary>("/usage");
 
-export const getCatalog = () =>
-  api<{ plans: PlanInfo[]; providers: Provider[] }>("/billing/plans", {
-    auth: false,
-  });
+export const getCatalog = () => api<Catalog>("/billing/plans", { auth: false });
 export const getSubscription = () => api<Subscription>("/billing/subscription");
 export const listPayments = () => api<Payment[]>("/billing/payments");
-export const startCheckout = (plan: string, provider: Provider) =>
-  api<{ url: string; reference: string }>("/billing/checkout", {
+export const listInvoices = () => api<Invoice[]>("/billing/invoices");
+export const startCheckout = (body: CheckoutRequest) =>
+  api<{ url: string; reference: string; founding: boolean }>("/billing/checkout", {
     method: "POST",
-    json: { plan, provider },
+    json: body,
   });
+export const changeSeats = (seats: number) =>
+  api<Subscription>("/billing/seats", { method: "POST", json: { seats } });
+export const changePlan = (change: { tier?: string; interval?: Interval }) =>
+  api<Subscription>("/billing/change", { method: "POST", json: change });
 export const refreshPayment = (reference: string) =>
   api<Payment>(`/billing/payments/${encodeURIComponent(reference)}/refresh`, {
     method: "POST",
@@ -85,12 +141,15 @@ export const refreshPayment = (reference: string) =>
 export const openBillingPortal = () =>
   api<{ url: string }>("/billing/portal", { method: "POST" });
 
-export function formatMoney(amount: number, currency: string): string {
-  if (currency === "USD") {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
-    }).format(amount / 100);
+/** An amount in minor units, with the currency's own decimals (pence, cents;
+ *  none for currencies without them). */
+export function formatMoney(amountMinor: number, currency: string): string {
+  let fmt: Intl.NumberFormat;
+  try {
+    fmt = new Intl.NumberFormat("en-GB", { style: "currency", currency });
+  } catch {
+    return `${amountMinor} ${currency}`;
   }
-  return `${new Intl.NumberFormat("en-US").format(amount)} ${currency}`;
+  const digits = fmt.resolvedOptions().maximumFractionDigits ?? 2;
+  return fmt.format(amountMinor / 10 ** digits);
 }

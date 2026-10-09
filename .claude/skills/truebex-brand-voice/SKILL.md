@@ -74,8 +74,14 @@ pricing page's comparison rows for unshipped work carry "On the roadmap"
 (`roadmap: true` in `PRICING.comparison`), and `/features/marketplace/` is
 written in the future tense.
 
-Payments: say "rolling out" for Stripe and Wayl until `/billing/plans` on the
-API lists them as enabled.
+Payments: say "rolling out" until `/billing/plans` on the live API names a
+`provider` (Paddle, the reseller and Merchant of Record, by default; Stripe as
+the alternative). Name a payment provider only where the law or the provider
+needs it (terms, privacy, the billing page's provider note); the Iraqi payment
+rail is retired from all public copy. Prices come from
+`server/app/catalogue.json`, never typed into copy; the public pages show them
+(and the founding offer) only once its `prices_final` is true, until then every
+paid tier says "Price at launch" while the billing page lists the API's prices.
 
 ## Voice
 

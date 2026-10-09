@@ -1,5 +1,5 @@
 """Truebex API: accounts (email/password + Google), developer API keys,
-usage metering, and billing (Stripe + Wayl).
+usage metering, and billing (Paddle, Stripe; Wayl dormant).
 
 Run locally with:
     uvicorn app.main:app --host 127.0.0.1 --port 8000
@@ -13,6 +13,8 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from . import tasks
+from .billing import jobs as _billing_jobs  # noqa: F401  (registers billing.* jobs)
 from .config import get_settings
 from .database import init_db
 from .routers import auth, billing, keys, usage, v1
@@ -24,7 +26,10 @@ settings = get_settings()
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
     init_db()
+    runner = tasks.start_inline(_app) if settings.background_tasks == "inline" else None
     yield
+    if runner is not None:
+        runner.cancel()
 
 
 app = FastAPI(
@@ -55,7 +60,12 @@ def health() -> dict[str, str]:
 @app.get("/config", tags=["meta"])
 def public_config() -> dict:
     """What the website needs to know about this server's features."""
-    return {"google_client_id": settings.google_client_id or None}
+    return {
+        "google_client_id": settings.google_client_id or None,
+        # Paddle.js on /checkout/ (the client token is public by design).
+        "paddle_client_token": settings.paddle_client_token or None,
+        "paddle_env": settings.paddle_env,
+    }
 
 
 app.include_router(auth.router)

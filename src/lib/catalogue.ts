@@ -1,7 +1,8 @@
 // The plan catalogue's shape and the helpers the pricing UI shares between
 // server and client. The data is server/app/catalogue.json (PF1's file;
 // prices and the founding offer are PF2's fields), loaded at build time by
-// src/lib/catalogue-data.ts. Safe to import from client components.
+// src/lib/catalogue-data.ts (public pages) and src/lib/billing-catalog.ts
+// (the billing page's fallback). Safe to import from client components.
 
 export type Interval = "month" | "year";
 export type Currency = "GBP" | "USD" | "EUR";
@@ -38,6 +39,24 @@ export interface Founding {
 export interface Catalogue {
   tiers: Tier[];
   founding: Founding | null;
+  /** PF2: false while prices and the founding offer are placeholders
+   *  (until the pricing guide); absent counts as final. */
+  prices_final?: boolean;
+}
+
+/**
+ * What the public pages show: the catalogue's prices and founding offer only
+ * once they are final. Placeholder prices stay off /pricing/, the home teaser
+ * and the JSON-LD offers (every paid tier reads "Price at launch"); the
+ * billing page still lists them from GET /billing/plans.
+ */
+export function publicCatalogue(catalogue: Catalogue): Catalogue {
+  if (catalogue.prices_final !== false) return catalogue;
+  return {
+    ...catalogue,
+    tiers: catalogue.tiers.map((t) => ({ ...t, prices: [] })),
+    founding: null,
+  };
 }
 
 export function priceOf(tier: Tier, interval: Interval, currency: Currency): Price | undefined {
@@ -84,6 +103,11 @@ export function annualSavingPercent(catalogue: Catalogue): number | null {
     }
   }
   return best;
+}
+
+/** The founding price of a seat listed at `amountMinor` (as the API rounds). */
+export function foundingPrice(amountMinor: number, discountPercent: number): number {
+  return Math.floor((amountMinor * (100 - discountPercent) + 50) / 100);
 }
 
 /** Replace {token}s in a copy string. */
