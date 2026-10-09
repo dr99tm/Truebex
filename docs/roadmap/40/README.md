@@ -24,6 +24,7 @@ A task ticks ONLY its own row, on its own branch.
 |---|---|---|---|---|---|
 | [x] | [PF1](PF1-licence-api-releases-and-downloads.md) licence API, releases and downloads | — | 1 | `server/app/licence/`, `server/app/releases/`, `/download/`, `/dashboard/link/` | 2026-10-09, Autopilot T1; PF13 merge notes in its As-built |
 | [x] | [PF2](PF2-billing-through-the-uk-company.md) billing through the UK company | PF1 | 1 | `server/app/billing/`, `src/app/checkout/`, `src/app/dashboard/billing/` | built before PF1 merged: one catalogue, one `tasks.py`, one `seats` column at merge (As-built 13) |
+| [x] | [PF2b](PF2b-subscription-consumer-rules.md) subscription consumer rules: DMCC reminders, cooling-off, easy exit, EU withdrawal | PF2, PF14 | 1 | `server/app/billing/consumer.py`, `notices.py`; `BILLING.rules` | 2026-10-10, Autopilot T19: built switched off; the owner flips each switch after QS-17 / QS-18 (switch table in its As-built) |
 | [ ] | [PF3](PF3-organisations-seats-and-sso.md) organisations, seats and SSO | PF1 | 2 | — | |
 | [ ] | [PF4](PF4-project-service-log-storage-sync-versions-and-sharing.md) project service: log storage, sync, versions and sharing | PF1 | 2 | — | |
 | [ ] | [PF5](PF5-share-pages.md) share pages | PF1 | 1 | — | |

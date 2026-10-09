@@ -748,7 +748,13 @@ async def create_adjustment(request: Request):
 
 @app.post("/mock/renew/{sub_id}")
 def renew_now(sub_id: str):
-    """Click-through helper: bill the next period now (sends the webhooks)."""
+    """Click-through helper: bill the next period now (sends the webhooks).
+    `latest` renews the newest active subscription."""
+    if sub_id == "latest":
+        active = [s for s in STATE["subscriptions"].values() if s["status"] == "active"]
+        if not active:
+            return _error(404, "entity_not_found", "no active subscription")
+        sub_id = max(active, key=lambda s: s["created_at"])["id"]
     if sub_id not in STATE["subscriptions"]:
         return _error(404, "entity_not_found", "subscription not found")
     renew(sub_id)
