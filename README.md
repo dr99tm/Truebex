@@ -392,12 +392,17 @@ API fetches). The browser names a tier, an interval, a currency and seats; the
 server picks the price.
 
 **Catalogue.** `server/app/catalogue.json` holds the tiers (Free, Pro, Studio,
-Team per seat, Enterprise), monthly and annual prices in GBP, USD and EUR, and
-the founding offer (placeholders until the pricing guide GD7). The site imports
-it at build time (`src/lib/catalogue.ts`); the API serves it at `/billing/plans`.
-`server/scripts/sync_prices.py` mirrors every price, and each tier's founding
-price, to the provider and records the ids in `provider_prices`. Run it after
-any price change:
+Team per seat, Enterprise), their prices in GBP, USD and EUR and the founding
+offer: the owner's pricing plan (PF2a). Pro and Studio are monthly or annual;
+Team is annual only (from 2 seats), so a monthly Team checkout answers 400 and
+the site shows Team per month as the annual charge / 12, billed annually; the
+founding prices are the annual prices at `founding.discount_percent` off
+(`founding.intervals`). The public pages show prices only while
+`prices_final` is true. The site imports the file at build time
+(`src/lib/catalogue.ts`); the API serves it at `/billing/plans`.
+`server/scripts/sync_prices.py` mirrors every price, and each founding price,
+to the provider and records the ids in `provider_prices`. Run it after any
+price change (`--dry-run` lists what it would create):
 
 ```
 cd server
@@ -412,9 +417,10 @@ a transaction with `custom_data` naming the user and returns
 Checkout with `automatic_tax`, tax-ID and address collection, and its own
 consent box. Coupons (`?code=` on billing links) are the provider's own codes.
 
-**Founding seats.** A checkout holds founding seats for 30 minutes; a paid one
-keeps them for good and the subscription keeps the founding price. The count
-left is on `/billing/plans` and the billing page.
+**Founding seats.** An annual checkout of a founding tier holds a founding
+place for 30 minutes; a paid one keeps it for good and the subscription keeps
+the founding price while it stays on annual billing (a move to monthly ends
+it). The count left is on `/billing/plans`, `/pricing/` and the billing page.
 
 **Webhooks and jobs.** Paddle: `https://api.truebex.com/billing/webhooks/paddle`
 (subscription.* and transaction.* events; HMAC over `ts:body`, 300 s window).

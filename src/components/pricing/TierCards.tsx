@@ -162,6 +162,8 @@ export function PriceBlock({
       </>
     );
   };
+  // The label sits beside the price, or under it when the column is too
+  // narrow for both (flex-wrap with the label's min-width).
   const seat = tier.per_seat
     ? ` · ${labels.perSeat}${tier.min_seats > 1 ? ` · ${fill(labels.fromSeats, { n: tier.min_seats })}` : ""}`
     : "";
@@ -170,9 +172,9 @@ export function PriceBlock({
     const year = priceOf(tier, "year", currency);
     return (
       <div>
-        <p className="flex items-baseline gap-2">
+        <p className="flex flex-wrap items-baseline gap-x-2">
           <span className={big}>{listed(price)}</span>
-          <span className="text-sm text-text-muted">
+          <span className="min-w-[8rem] text-sm text-text-muted">
             {labels.perMonth}
             {seat}
           </span>
@@ -183,9 +185,9 @@ export function PriceBlock({
   }
   return (
     <div>
-      <p className="flex items-baseline gap-2">
+      <p className="flex flex-wrap items-baseline gap-x-2">
         <span className={big}>{derived(perMonthOfYear(price.amount_minor))}</span>
-        <span className="text-sm text-text-muted">
+        <span className="min-w-[8rem] text-sm text-text-muted">
           {labels.perMonthAnnual}
           {seat}
         </span>
