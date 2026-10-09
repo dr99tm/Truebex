@@ -13,7 +13,8 @@ from sqlalchemy import func, select
 from app import tasks
 from app.database import SessionLocal
 from app.licence import jcs, seats
-from app.models import Device, LicenceEvent, LinkCode, Subscription, TrialFingerprint, User
+from app.licence.models import Device, LicenceEvent, LinkCode, TrialFingerprint
+from app.models import Subscription, User
 from app.plans import get_plan
 
 from .conftest import LICENCE_FIXTURES, TEST_KEY, signup

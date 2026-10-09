@@ -19,8 +19,9 @@ from ..database import get_db
 from ..deps import require_admin
 from ..licence import clock
 from ..licence.jcs import canonicalize
-from ..models import Release, User
+from ..models import User
 from ..releases import service
+from ..releases.models import Release
 from ..storage import get_store
 
 router = APIRouter(prefix="/admin", tags=["admin"], dependencies=[enveloped()])

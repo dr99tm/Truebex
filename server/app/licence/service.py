@@ -15,10 +15,11 @@ from sqlalchemy.orm import Session
 from ..billing.service import TRIAL_PROVIDER, is_live
 from ..config import get_settings
 from ..contract_http import ContractError
-from ..models import Device, Subscription, TrialFingerprint, User
+from ..models import Subscription, User
 from ..plans import get_plan
 from . import clock, devices, events, seats, signing
 from .ids import uuid7_hex
+from .models import Device, TrialFingerprint
 
 SCHEMA = "truebex-entitlement/1"
 TRIAL_PLANS = ("pro",)

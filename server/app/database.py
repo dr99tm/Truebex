@@ -51,15 +51,13 @@ _ADDED_COLUMNS: dict[str, list[tuple[str, str]]] = {
         ("name", "VARCHAR(200)"),
         ("avatar_url", "VARCHAR(1024)"),
         ("is_admin", "BOOLEAN"),
-        # PF1 (licence API)
-        ("author_id", "VARCHAR(32)"),
-        ("trial_used_at", "DATETIME"),
-    ],
-    "subscriptions": [
-        # PF1: seats bought (PF2 writes it); NULL = 1.
-        ("seats", "INTEGER"),
     ],
 }
+
+# PF1 (licence API), in its own block so parallel features add theirs beside it.
+_ADDED_COLUMNS["users"] += [("author_id", "VARCHAR(32)"), ("trial_used_at", "DATETIME")]
+# Seats bought (PF2 writes it); NULL = 1.
+_ADDED_COLUMNS.setdefault("subscriptions", []).append(("seats", "INTEGER"))
 
 
 def _migrate() -> None:
@@ -90,6 +88,8 @@ def _migrate() -> None:
 def init_db() -> None:
     """Create tables and apply additive migrations."""
     from . import models  # noqa: F401  (ensures models are registered)
+    from .licence import models as _licence_models  # noqa: F401  (PF1)
+    from .releases import models as _release_models  # noqa: F401  (PF1)
 
     Base.metadata.create_all(bind=engine)
     _migrate()

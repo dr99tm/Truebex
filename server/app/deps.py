@@ -12,7 +12,8 @@ from . import usage
 from .billing.service import effective_plan
 from .contract_http import ContractError
 from .database import get_db
-from .models import ApiKey, Device, User
+from .licence.models import Device
+from .models import ApiKey, User
 from .plans import get_plan
 from .security import API_KEY_PREFIX, decode_access_token, hash_api_key
 

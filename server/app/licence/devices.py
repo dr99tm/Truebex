@@ -14,7 +14,8 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from ..contract_http import ContractError
-from ..models import Device, User
+from ..models import User
+from .models import Device
 from . import clock, events
 from .ids import uuid7_hex
 

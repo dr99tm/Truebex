@@ -22,9 +22,10 @@ from ..config import get_settings
 from ..contract_http import ContractError
 from ..licence import clock, signing
 from ..licence.jcs import canonicalize
-from ..models import DownloadEvent, Release
+from ..models import DownloadEvent
 from ..storage import Store
 from . import semver
+from .models import Release
 
 SCHEMA = "truebex-release/1"
 FEED_SCHEMA = "truebex-releases/1"

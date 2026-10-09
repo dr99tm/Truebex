@@ -13,8 +13,9 @@ from ..contract_http import ContractError, contract
 from ..database import get_db
 from ..deps import DeviceCaller, LicenceCaller, get_current_user, get_device, get_device_any, get_session_or_device
 from ..licence import clock, devices, links, seats, service, signing
+from ..licence.models import Device
 from ..licence.schemas import Activate, EntitlementRequest, LinkApprove, LinkPoll, LinkStart, TrialRequest
-from ..models import Device, User
+from ..models import User
 from ..ratelimit import client_ip, limit
 
 router = APIRouter(prefix="/licence", tags=["licence"], dependencies=[contract("licence-api", 1, 0)])

@@ -11,8 +11,8 @@ from datetime import datetime
 
 from sqlalchemy.orm import Session
 
-from ..models import LicenceEvent
 from . import clock
+from .models import LicenceEvent
 
 
 def record(

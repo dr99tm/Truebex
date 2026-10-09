@@ -12,7 +12,8 @@ from sqlalchemy import select
 
 from app.database import SessionLocal
 from app.licence import signing
-from app.models import DownloadEvent, Release, User
+from app.models import DownloadEvent, User
+from app.releases.models import Release
 from app.releases import service
 from app.storage import get_store, local
 

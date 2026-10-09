@@ -19,8 +19,8 @@ from . import contract_http, tasks
 from .config import get_settings
 from .database import init_db
 from .licence import jobs as _licence_jobs  # noqa: F401  (registers the licence jobs)
-from .routers import auth, billing, keys, usage, v1
 from .routers import admin, files, licence, releases
+from .routers import auth, billing, keys, usage, v1
 
 settings = get_settings()
 
@@ -74,13 +74,14 @@ def public_config() -> dict:
     return {"google_client_id": settings.google_client_id or None}
 
 
-app.include_router(auth.router)
-app.include_router(keys.router)
-app.include_router(usage.router)
-app.include_router(billing.router)
-app.include_router(v1.router)
 # PF1: licence API, release feed, admin, signed file URLs
 app.include_router(licence.router)
 app.include_router(releases.router)
 app.include_router(admin.router)
 app.include_router(files.router)
+
+app.include_router(auth.router)
+app.include_router(keys.router)
+app.include_router(usage.router)
+app.include_router(billing.router)
+app.include_router(v1.router)

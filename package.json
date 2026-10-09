@@ -3,12 +3,12 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "sync:releases": "node scripts/sync-releases.mjs",
     "dev": "next dev",
     "build": "next build",
     "build:custom": "next build && xcopy /E /I /Y /H out\\* X:\\Truebex_site_files\\Truebex\\",
     "start": "next start",
-    "lint": "eslint",
-    "sync:releases": "node scripts/sync-releases.mjs"
+    "lint": "eslint"
   },
   "dependencies": {
     "clsx": "^2.1.1",

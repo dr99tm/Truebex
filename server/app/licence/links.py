@@ -18,11 +18,12 @@ from sqlalchemy.orm import Session
 
 from ..config import get_settings
 from ..contract_http import ContractError
-from ..models import LinkCode, User
+from ..models import User
 from ..schemas import Token
 from ..security import create_access_token
 from ..users import user_out
 from . import clock, events
+from .models import LinkCode
 
 ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"
 LIFETIME = timedelta(seconds=600)
