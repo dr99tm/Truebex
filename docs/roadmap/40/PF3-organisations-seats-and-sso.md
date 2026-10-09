@@ -225,3 +225,24 @@ As built: use `@example.com` addresses (the existing sign-up validator refuses t
 * **GD7 seat rules and GD5 retention adopted:** neither guide exists yet. Any tier may be granted to an organisation; the owner decides how many seats float (no minimums, no price difference between named and floating); audit retention 24 months as the placeholder `AUDIT_RETENTION_DAYS=730`.
 * **Contract *implemented by* rows for the owner to apply in `contracts/licence-api.md` at merge:** `POST /licence/release` → "PF3: done". 5.5 now leases floating seats (§6.1 durations) and answers 409 `no_seat_available` with `data {total, org_id, org_name}` (additive); 5.7 reports `seat {kind: named|floating, org_id, org_name}` and the organisation's `seats {total, assigned}` (assigned = named seats given + floating seats in use). Suggested *Changes* line: "2026-10-09 · 1.0.0 · PF3: 5.11 implemented; `no_seat_available` carries `data.total`, `data.org_id`, `data.org_name`."
 * **Carry-over → which feature:** SCIM provisioning → not planned (a row if an Enterprise deal asks). Encrypted SAML assertions and signed AuthnRequests → carry-over (only if an IdP insists). Providers that omit `email_verified` (some Entra ID set-ups) → carry-over: a per-connection "trust the IdP's e-mail" switch. Setting `subscriptions.organisation_id` from `custom_data.org_id`, the seat stepper and `change_subscription` from the Billing link → PF2. The `smtp` mail adapter and the race test on Postgres → PF14. Storage, panoramas and AI-credit columns → PF4, PF6, PF11 via `metering`. The app's seat display, 409 handling and `POST /licence/release` at exit → LC1.
+* **Merged with PF1, PF2, PF13 and PF14 (2026-10-10, Autopilot T22, `ap/t22-merge-t9-pf3-organisations-seats`):**
+  one copy of each shared file. `storage/` is master's (PF1's package plus PF14's `s3.py`), as deviation 1 asked; this
+  branch's rewrite is gone. `mail/` is PF14's module (`smtp` adapter, `MAIL_FROM` default `hello@truebex.com`) with
+  PF3's additions: `Message.template`, `try_send`, a strict `render` (a missing `$name` raises `KeyError`; it returns
+  PF14's `Message`) and the console backend printing each message in the API console (the human test's invite links).
+  Organisation and SSO jobs take PF14's `fn(now)` and open their own session (PF1's `fn(db, now)` form is gone: every
+  round would have raised `TypeError`), and `app.tasks` loads `orgs.jobs` and `sso.jobs`, so `python -m app.worker`
+  runs them. `plans.plan_rank` became PF2's `plans.rank`. `subscriptions.organisation_id` sits beside PF2's columns.
+  `scripts/sqlite_to_postgres.py` copies PF3's ten tables; `infra/secrets/server.env.example` and the README carry
+  `SSO_SECRET_KEY`, `SAML_SP_ENTITY_ID` and `AUDIT_RETENTION_DAYS`. The SSO test keys had never been committed (the
+  root `.gitignore` drops `*.pem`; the suite passed only in T9's own worktree): the mock providers now write a
+  test-only set on import when one is missing (`make_test_keys.ensure()`). `test_sso` compares callback URLs with
+  `API_URL` (conftest now sets `http://testserver`). Site: the dashboard nav is Overview and Billing, the Organisation
+  group (by role), Developer, then PF14's Admin group for `is_admin` accounts; `/privacy/` keeps the Organisations item
+  beside PF2's billing-records text. Counts: pytest 208 passed + 3 Postgres-only skipped on SQLite; on a local
+  Postgres 17 (`TEST_APP_DATABASE_URL` and `TEST_DATABASE_URL`) every PF3 test passes, the last-seat race test included
+  (that PF14 carry-over is done, as is the `smtp` adapter). The one Postgres failure is PF2's
+  `test_wayl_checkout_and_verified_webhook`, which assumes a UTC database session (`.replace(tzinfo=utc)` on a `+03:00`
+  value): a PF2 test fix, not this merge's. Still open → PF2: checkout does not send `custom_data.org_id` or set
+  `organisation_id`, and `billing.service.seats_assigned` still answers 1, so organisation seats are granted by hand
+  (`grant_org_seats.py`) and the console's Billing link (`?org=`) opens the personal billing page.

@@ -24,7 +24,7 @@ A task ticks ONLY its own row, on its own branch.
 |---|---|---|---|---|---|
 | [x] | [PF1](PF1-licence-api-releases-and-downloads.md) licence API, releases and downloads | — | 1 | `server/app/licence/`, `server/app/releases/`, `/download/`, `/dashboard/link/` | 2026-10-09, Autopilot T1; PF13 merge notes in its As-built |
 | [x] | [PF2](PF2-billing-through-the-uk-company.md) billing through the UK company | PF1 | 1 | `server/app/billing/`, `src/app/checkout/`, `src/app/dashboard/billing/` | built before PF1 merged: one catalogue, one `tasks.py`, one `seats` column at merge (As-built 13) |
-| [x] | [PF3](PF3-organisations-seats-and-sso.md) organisations, seats and SSO | PF1 | 2 | `server/app/orgs/`, `server/app/sso/`, `/dashboard/organisation/`, `/invite/`, `/login/sso/` | 2026-10-09, Autopilot T9; restores PF1's `app/storage` (see As-built) |
+| [x] | [PF3](PF3-organisations-seats-and-sso.md) organisations, seats and SSO | PF1 | 2 | `server/app/orgs/`, `server/app/sso/`, `/dashboard/organisation/`, `/invite/`, `/login/sso/` | 2026-10-09, Autopilot T9; merged with PF1/PF2/PF13/PF14 2026-10-10 (T22, As-built) |
 | [ ] | [PF4](PF4-project-service-log-storage-sync-versions-and-sharing.md) project service: log storage, sync, versions and sharing | PF1 | 2 | — | |
 | [ ] | [PF5](PF5-share-pages.md) share pages | PF1 | 1 | — | |
 | [ ] | [PF6](PF6-cloud-render-orchestration.md) cloud render orchestration | PF4 | 2 | — | |
