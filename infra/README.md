@@ -129,11 +129,15 @@ The verify gate runs the server tests on SQLite. Before a deploy, run them again
 
 ```powershell
 # any disposable Postgres, e.g. the local trial's (add a "5432:5432" port to its postgres service)
+cd server
 $env:TEST_DATABASE_URL = 'postgresql+psycopg://truebex:local-trial-only@127.0.0.1:5432/truebex_test'
-cd server; .venv\Scripts\python.exe -m pytest -q -m postgres
+.venv\Scripts\python.exe -m pytest -q -m postgres            # init/migrate twice, upserts, the copy script
+$env:TEST_APP_DATABASE_URL = 'postgresql+psycopg://truebex:local-trial-only@127.0.0.1:5432/truebex_app'
+.venv\Scripts\python.exe -m pytest -q                        # the whole suite with the app on Postgres
 ```
 
-The `postgres`-marked tests drop and recreate the `public` schema of that database.
+Both databases are disposable: the `postgres`-marked tests drop and recreate the `public` schema of
+`TEST_DATABASE_URL`, and every test recreates the tables of `TEST_APP_DATABASE_URL`.
 
 ## Shared plumbing (server/app)
 

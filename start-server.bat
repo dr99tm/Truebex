@@ -1,6 +1,8 @@
 @echo off
-REM Start the Truebex API on :8001 (the port the cloudflared tunnel forwards
-REM api.truebex.com to). Creates the venv + .env on first run.
+REM LOCAL USE ONLY since PF14: production runs on the VM (infra/, CUTOVER.md).
+REM Starts the API on :8001 against server\auth.db. Never point the tunnel's
+REM api.truebex.com at it again: a second API with its own database would take
+REM writes nobody sees. Creates the venv + .env on first run.
 cd /d "%~dp0\server"
 
 if not exist ".venv\Scripts\python.exe" (

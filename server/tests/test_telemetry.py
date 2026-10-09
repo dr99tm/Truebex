@@ -736,3 +736,29 @@ def test_stackwalk_json_parsing():
         "Truebex-CadCore.dll+0x1a0f10",
         "unknown+0x7ff6",
     ]
+
+
+def test_upload_symbols_and_make_admin_scripts(client, tmp_path, capsys):
+    from scripts import make_admin, upload_symbols
+
+    folder = tmp_path / "Shipping"
+    folder.mkdir()
+    (folder / "Truebex-CadCore.sym").write_bytes((SYMBOLS / "Truebex-CadCore.sym").read_bytes())
+    (folder / "readme.txt").write_text("not a symbol file")
+    assert upload_symbols.main(["--version", "1.1.0", str(folder)]) == 0
+    assert "symbols/Truebex-CadCore.pdb/4C1D9A0E5B7F4A3C9E2D1F0A8B7C6D5E1/Truebex-CadCore.sym" in capsys.readouterr().out
+    with SessionLocal() as db:
+        from app.models import SymbolFile
+
+        row = db.scalars(select(SymbolFile)).one()
+        assert row.version == "1.1.0" and row.code_file == "Truebex-CadCore.dll"
+    # A .pdb needs dump_syms; without it the script says so instead of skipping silently.
+    (folder / "Truebex.pdb").write_bytes(b"MSF")
+    assert upload_symbols.main(["--version", "1.1.0", "--dump-syms", str(tmp_path / "missing.exe"), str(folder)]) == 1
+
+    signup(client, "boss@example.com")
+    assert make_admin.main(["boss@example.com"]) == 0
+    with SessionLocal() as db:
+        assert db.scalar(select(User).where(User.email == "boss@example.com")).is_admin is True
+    assert make_admin.main(["boss@example.com", "--revoke"]) == 0
+    assert make_admin.main(["nobody@example.com"]) == 1

@@ -49,8 +49,8 @@ $tmp = Join-Path ([IO.Path]::GetTempPath()) "truebex-deploy-$sha"
 if (Test-Path $tmp) { Remove-Item -Recurse -Force $tmp }
 New-Item -ItemType Directory -Force (Join-Path $tmp 'secrets') | Out-Null
 try {
-    # 1. The release, exactly as committed.
-    git -C $Repo archive --format=tar -o (Join-Path $tmp 'release.tar') HEAD server infra/host
+    # 1. The release, exactly as committed (LF line endings, whatever this checkout uses).
+    git -C $Repo -c core.autocrlf=false archive --format=tar -o (Join-Path $tmp 'release.tar') HEAD server infra/host
     if ($LASTEXITCODE -ne 0) { throw 'git archive failed' }
 
     # 2. Secrets.
@@ -81,11 +81,7 @@ try {
         if ($Registry) { docker push $image; if ($LASTEXITCODE -ne 0) { throw 'docker push failed' } }
     }
 
-    # 4. Copy and install.
-    ssh $VmHost 'rm -rf /tmp/truebex-deploy && mkdir -p /tmp/truebex-deploy && chmod 0700 /tmp/truebex-deploy'
-    scp -q -r "$tmp\*" "${VmHost}:/tmp/truebex-deploy/"
-    if ($LASTEXITCODE -ne 0) { throw 'scp failed' }
-
+    # 4. Copy and install (the install script travels as a file with LF endings).
     $build = if ($BuildLocally) { 'true' } else { 'false' }
     $remote = @"
 set -eu
@@ -112,14 +108,21 @@ docker compose build postgres
 docker compose up -d --remove-orphans
 docker image prune -f >/dev/null
 rm -rf /tmp/truebex-deploy
+
 "@
-    $remote = $remote -replace "`r", ''
-    $remote | ssh $VmHost 'bash -s'
+    [IO.File]::WriteAllText((Join-Path $tmp 'install.sh'), ($remote -replace "`r", ''))
+
+    ssh $VmHost 'rm -rf /tmp/truebex-deploy && mkdir -p /tmp/truebex-deploy && chmod 0700 /tmp/truebex-deploy'
+    if ($LASTEXITCODE -ne 0) { throw "ssh to $VmHost failed" }
+    scp -q -r "$tmp\*" "${VmHost}:/tmp/truebex-deploy/"
+    if ($LASTEXITCODE -ne 0) { throw 'scp failed' }
+    ssh $VmHost 'bash /tmp/truebex-deploy/install.sh'
     if ($LASTEXITCODE -ne 0) { throw 'remote install failed (the previous containers keep running unless Compose replaced them)' }
 }
 finally {
+    # The decrypted secrets never outlive the deploy, here or on the VM.
     Remove-Item -Recurse -Force $tmp -ErrorAction SilentlyContinue
-    ssh $VmHost 'rm -rf /tmp/truebex-deploy' 2>$null
+    ssh $VmHost 'rm -rf /tmp/truebex-deploy'
 }
 
 # 6. Health.

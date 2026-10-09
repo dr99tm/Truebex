@@ -37,13 +37,14 @@ def check_db() -> bool:
 
 
 def check_storage() -> bool:
+    """Read a probe object back (written once, so a versioned bucket does
+    not collect a new version every minute)."""
     try:
         store = get_store()
-        store.put(_PROBE, b"ok", content_type="text/plain")
+        if store.stat(_PROBE) is None:
+            store.put(_PROBE, b"ok", content_type="text/plain")
         with store.open(_PROBE) as fh:
-            ok = fh.read() == b"ok"
-        store.delete(_PROBE)
-        return ok
+            return fh.read() == b"ok"
     except Exception:  # noqa: BLE001
         log.exception("health: storage")
         return False

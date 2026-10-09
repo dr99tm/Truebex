@@ -1,6 +1,6 @@
 ---
 name: truebex-deploy
-description: Ship truebex.com and keep the Truebex API online. Use when asked to deploy, publish, sync, "put it online", restart the API/tunnel, or verify the live site — covers the dev repo (master) → deploy repo (main) → GitHub Pages flow and the api.truebex.com server + cloudflared tunnel.
+description: Ship truebex.com and keep the Truebex API online. Use when asked to deploy, publish, sync, "put it online", restart or check the API, run the restore test, or verify the live site — covers the dev repo (master) → deploy repo (main) → GitHub Pages flow and the api.truebex.com VM (infra/deploy.ps1, health checks, backups).
 ---
 
 # Deploying Truebex
@@ -29,12 +29,35 @@ Pushing `main` runs `.github/workflows/static.yml` → GitHub Pages → truebex.
 
 ## API (api.truebex.com)
 
-Runs on this PC: `start-server.bat` (uvicorn on 127.0.0.1:8001, Python 3.12 venv in `server/.venv`) + `start-tunnel.bat` (cloudflared, `%USERPROFILE%\.cloudflared\config.yml`, routes `api.truebex.com → localhost:8001`).
+Runs on one Linux VM with Docker Compose (PF14): Caddy :443 with the Cloudflare origin certificate
+(only Cloudflare's ranges reach it) → `api` (uvicorn ×2) and `worker` (background jobs) → Postgres 18
+with WAL archived by wal-g to a backup bucket at a second provider. Everything is in `infra/`
+(`infra/README.md`); `/opt/truebex` on the VM holds the Compose files, scripts and decrypted secrets.
 
-- Health: `curl https://api.truebex.com/health` → `{"status":"ok"}`. HTTP 530 / Cloudflare error 1033 = tunnel down; connection refused locally = server down.
-- Start both detached so they outlive the session: `Start-Process X:\Truebex\start-server.bat -WindowStyle Minimized` and the same for `start-tunnel.bat`.
-- After changing `server/`: run `server\.venv\Scripts\python.exe -m pytest -q` (all green), then restart the server window. Schema changes must be additive (`database._ADDED_COLUMNS`); back up `server/auth.db` first.
-- Secrets live only in `server/.env` (never commit). Feature switches there: `GOOGLE_CLIENT_ID`, `STRIPE_*`, `WAYL_*` — the site picks them up at runtime via `/config` and `/billing/plans`, no rebuild needed.
+- **Deploy** (owner only, from `X:\Truebex` after merging and running the tests):
+  `powershell -NoProfile -ExecutionPolicy Bypass -File infra\deploy.ps1 -VmHost truebex@<vm>`.
+  It deploys the committed HEAD of `server/` and `infra/host/`, decrypts `infra/secrets/*.sops.env`
+  with sops only for the copy, builds the image on the VM, `docker compose up -d`, and waits until
+  `/health/deep` is 200 with a worker heartbeat under 60 s. Staging first:
+  `-HealthUrl https://api-staging.truebex.com/health/deep`.
+- **Before a deploy:** `server\.venv\Scripts\python.exe -m pytest -q` (SQLite), and the Postgres run
+  with `TEST_DATABASE_URL` / `TEST_APP_DATABASE_URL` set (`infra/README.md`, Postgres tests): tables
+  added on SQLite can drift on Postgres. Schema changes stay additive (`database._ADDED_COLUMNS`).
+- **Health:** `curl https://api.truebex.com/health` → `{"status":"ok"}`;
+  `curl https://api.truebex.com/health/deep` → `{"db":"ok","storage":"ok","worker_heartbeat_s":<60}`.
+  Cloudflare 521/522 = the VM or Caddy is down; 502 = Caddy is up, the API is not; 503 from
+  `/health/deep` names what failed. On the VM: `cd /opt/truebex; docker compose ps;
+  docker compose logs --tail 200 api worker`.
+- **Backups:** `infra\restore-test.ps1 -VmHost truebex@<vm>` → `restore OK` (also weekly by itself);
+  nightly base backups at 02:30 UTC (`journalctl -u truebex-backup`).
+- **Alerts:** the hosted monitor (e-mail + phone push), `host-check.sh` every minute, the worker's
+  `backup.check`; see `infra/README.md#alerts`.
+- **Secrets** live only in `infra/secrets/*.sops.env` (encrypted, age key on the owner's PC) and
+  `/opt/truebex/secrets/` on the VM (0600). Feature switches (`GOOGLE_CLIENT_ID`, `STRIPE_*`, `WAYL_*`,
+  `TELEMETRY_*`): edit with `sops`, redeploy; the site reads them at runtime, no site rebuild.
+- **Admins:** `docker compose exec api python -m scripts.make_admin <email>` on the VM.
+- `start-server.bat` / `start-tunnel.bat` are for local use only. Never route `api.truebex.com` to the
+  PC again: a second API with its own `auth.db` would take writes nobody sees (`infra/CUTOVER.md`).
 
 ## Gotchas
 
