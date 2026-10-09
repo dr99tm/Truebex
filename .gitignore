@@ -66,3 +66,15 @@ __pycache__/
 
 # Claude Autopilot settings are local to this PC
 .vscode/
+
+# infra (PF14): tofu state and plugins, decrypted secrets, local values
+infra/tofu/.terraform/
+infra/tofu/*.tfstate
+infra/tofu/*.tfstate.*
+infra/tofu/*.tfplan
+infra/tofu/terraform.tfvars
+infra/secrets/*.env
+infra/secrets/*.pem
+infra/secrets/*.key
+!infra/secrets/*.sops.env
+!infra/secrets/*.env.example

@@ -1,0 +1,8 @@
+[Unit]
+Description=Truebex: nightly Postgres base backup (wal-g)
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/opt/truebex/bin/backup-base.sh

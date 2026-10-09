@@ -1,0 +1,7 @@
+[2026.10.09-12.34.50:120][  0]LogInit: Base directory: %USERPROFILE%\AppData\Local\Truebex\
+[2026.10.09-12.34.51:002][  0]LogCad: Opening project <project>
+[2026.10.09-12.34.51:870][  4]LogCad: Loaded 1,204 entities in 212 ms
+[2026.10.09-12.34.52:417][ 12]LogCad: Autosave to <project>
+[2026.10.09-12.34.53:900][ 30]LogLicence: Signed in as <email>
+[2026.10.09-12.34.55:031][ 64]LogCadCore: Warning: Wall rebuild took 41 ms
+[2026.10.09-12.34.56:250][ 70]LogCrash: Unhandled exception 0xC0000005 in Truebex-CadCore.dll

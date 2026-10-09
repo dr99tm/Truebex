@@ -1,0 +1,6 @@
+# SOPS (MPL-2.0) + age: the owner holds the age private key
+# (%APPDATA%\sops\age\keys.txt); this file only names the public recipient.
+# Replace the placeholder with the output of `age-keygen -y keys.txt`.
+creation_rules:
+  - path_regex: secrets/.*\.sops\.env$
+    age: age1replace0with0the0owners0public0age0key0000000000000000000000000

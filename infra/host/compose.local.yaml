@@ -1,0 +1,29 @@
+# Local trial of the production stack (PF14 human test, step 1), no
+# Cloudflare, no backups, plain HTTP on 127.0.0.1:80:
+#
+#   docker compose --env-file infra/host/local/compose.trial \
+#     -f infra/host/compose.yaml -f infra/host/compose.local.yaml up --build
+#   curl http://127.0.0.1/health/deep
+#
+# The values in infra/host/local/ are for this laptop trial only.
+services:
+  postgres:
+    env_file: !override [./local/postgres.trial]
+    command: ["postgres"]
+  api:
+    build: ../../server
+    image: truebex-api:local
+    env_file: !override [./local/server.trial]
+  worker:
+    image: truebex-api:local
+    env_file: !override [./local/server.trial]
+    environment:
+      BACKUP_EXPECTED: "false"
+  caddy:
+    ports: !override
+      - "127.0.0.1:80:80"
+    env_file: !reset []
+    volumes: !override
+      - ./Caddyfile.local:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config

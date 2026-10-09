@@ -1,0 +1,4 @@
+# Local trial only: never used on the VM (its values come from infra/secrets).
+POSTGRES_USER=truebex
+POSTGRES_PASSWORD=local-trial-only
+POSTGRES_DB=truebex

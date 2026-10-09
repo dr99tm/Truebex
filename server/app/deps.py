@@ -49,12 +49,29 @@ def get_current_user(
 
 
 def require_admin(current: User = Depends(get_current_user)) -> User:
-    """Admin-only routes (`users.is_admin`, set by hand like "enterprise")."""
+    """Admins only (`users.is_admin`, set by hand like "enterprise"): 401
+    signed out, 403 others."""
     if not current.is_admin:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN, detail="Admins only."
         )
     return current
+
+
+def device_for_token(db: Session, raw: str | None) -> Device | None:
+    """The active device behind a `tbx_dev_…` token, or None (unknown,
+    removed, signed out, lapsed, or not a device token at all). Read-only:
+    telemetry (5.4 replies) only looks the device up."""
+    from .licence import clock, devices
+
+    if not raw or not raw.startswith(devices.DEVICE_TOKEN_PREFIX):
+        return None
+    device = devices.find_by_token(db, raw)
+    if device is None or device.deactivated_at is not None:
+        return None
+    if devices.is_lapsed(device, clock.now()):
+        return None
+    return device
 
 
 @dataclass

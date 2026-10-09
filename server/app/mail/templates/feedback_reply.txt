@@ -1,0 +1,12 @@
+Hello,
+
+$reply
+
+You wrote ($kind):
+
+> $original
+
+Reply to this email if there is anything else.
+
+Truebex
+https://truebex.com/

@@ -1,0 +1,27 @@
+{
+  "about": "Payloads the server's scanner must reject with 422 privacy_violation naming data.field. Each case takes the valid body in `base`, sets the RFC 6901 JSON Pointer `pointer` to `value`, and sends it to `endpoint` (events = 5.2 body; crashes = 5.3's report part; feedback = 5.4's feedback part).",
+  "cases": [
+    {"name": "windows path in a prop value", "endpoint": "events", "base": "events-batch.json",
+     "pointer": "/events/2/props/command", "value": "C:\\Users\\sara\\Documents\\Villa.tbxp", "field": "events[2].props.command"},
+    {"name": "forward-slash path in a prop value", "endpoint": "events", "base": "events-batch.json",
+     "pointer": "/events/1/props/tool", "value": "projects/villa", "field": "events[1].props.tool"},
+    {"name": "email in a prop value", "endpoint": "events", "base": "events-batch.json",
+     "pointer": "/events/6/props/feature", "value": "sara@example.com", "field": "events[6].props.feature"},
+    {"name": "email in an unknown prop", "endpoint": "events", "base": "events-batch.json",
+     "pointer": "/events/2/props/note", "value": "ask sara@example.com", "field": "events[2].props.note"},
+    {"name": "free text instead of an enum", "endpoint": "events", "base": "events-batch.json",
+     "pointer": "/events/4/props/kind", "value": "Ground floor plan", "field": "events[4].props.kind"},
+    {"name": "a number with a fraction", "endpoint": "events", "base": "events-batch.json",
+     "pointer": "/events/3/props/ms", "value": 9.5, "field": "events[3].props.ms"},
+    {"name": "an object as a prop value", "endpoint": "events", "base": "events-batch.json",
+     "pointer": "/events/2/props/command", "value": {"room": "Kitchen"}, "field": "events[2].props.command"},
+    {"name": "email in a common block", "endpoint": "events", "base": "events-batch.json",
+     "pointer": "/hw/gpu", "value": "sara@example.com", "field": "hw.gpu"},
+    {"name": "path in a callstack frame", "endpoint": "crashes", "base": "crash-report.json",
+     "pointer": "/callstack/0", "value": "C:\\Users\\sara\\Truebex\\Truebex-CadCore.dll+0x1a2b3c", "field": "callstack[0]"},
+    {"name": "email in the exception module", "endpoint": "crashes", "base": "crash-report.json",
+     "pointer": "/exception/module", "value": "sara@example.com", "field": "exception.module"},
+    {"name": "email in the os block of feedback", "endpoint": "feedback", "base": "feedback.json",
+     "pointer": "/os", "value": "windows 10.0.26200 sara@example.com", "field": "os"}
+  ]
+}

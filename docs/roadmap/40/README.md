@@ -35,4 +35,4 @@ A task ticks ONLY its own row, on its own branch.
 | [ ] | [PF11](PF11-analysis-and-ai-services.md) analysis and AI services | PF6 | 3 | — | |
 | [ ] | [PF12](PF12-public-api-sdks-webhooks-and-the-mcp-package.md) public API, SDKs, webhooks and the MCP package | PF4 | 2 | — | |
 | [x] | [PF13](PF13-website-pricing-features-roadmap-arabic-changelog-analytics.md) website: pricing, features, roadmap, Arabic, changelog, analytics | — | 1 | `ap/t2-pf13-website-pricing-features-ro` | 2026-10-09, Autopilot T2: pytest 24 → 51; 23 pages, sitemap 14 URLs. Prices, handles and tokens wait for GD7 / GD6 / the owner. Carry-over: PF1 `record_download`, one catalogue / changelog at merge |
-| [ ] | [PF14](PF14-operations-off-the-home-pc-telemetry-and-crash-ingestion.md) operations: off the home PC, telemetry and crash ingestion | — | 1 | — | |
+| [x] | [PF14](PF14-operations-off-the-home-pc-telemetry-and-crash-ingestion.md) operations: off the home PC, telemetry and crash ingestion | — | 1 | `server/app/telemetry/`, `infra/` | branch `ap/t3-pf14-operations-off-the-home-pc`; cutover is the owner's (`infra/CUTOVER.md`) |

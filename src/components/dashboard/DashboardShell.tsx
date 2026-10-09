@@ -3,7 +3,7 @@
 import { createContext, useContext, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { CreditCard, Gauge, KeyRound, LayoutGrid, BookOpen, TrendingUp } from "lucide-react";
+import { Activity, CreditCard, Gauge, KeyRound, LayoutGrid, BookOpen, TrendingUp } from "lucide-react";
 import { useCurrentUser } from "@/lib/useAuth";
 import { getToken } from "@/lib/auth";
 import type { User } from "@/lib/auth";
@@ -38,7 +38,10 @@ const NAV_GROUPS: { label: string | null; items: NavItem[] }[] = [
 // Shown to admins only (users.is_admin); the API enforces it either way.
 const ADMIN_GROUP = {
   label: "Admin",
-  items: [{ href: "/dashboard/admin/growth/", label: "Growth", icon: TrendingUp }],
+  items: [
+    { href: "/dashboard/admin/growth/", label: "Growth", icon: TrendingUp },
+    { href: "/dashboard/admin/telemetry/", label: "Telemetry", icon: Activity },
+  ],
 };
 
 const UserContext = createContext<User | null>(null);

@@ -9,7 +9,7 @@ around it on the web:
 
 - **Marketing site:** a static Next.js export on GitHub Pages.
 - **Dashboard:** sign in with Google or email, manage API keys, see usage, and handle billing.
-- **API server** (`server/`, FastAPI): accounts, API keys, usage metering, and billing through the UK company (Paddle as reseller by default, Stripe with Stripe Tax as the alternative), served at `api.truebex.com` through a Cloudflare tunnel.
+- **API server** (`server/`, FastAPI): accounts, API keys, usage metering, billing through the UK company (Paddle as reseller by default, Stripe with Stripe Tax as the alternative), licences, devices and the release feed for the desktop app, and its opt-in telemetry, crash reports and feedback, served at `api.truebex.com` from a Linux VM (Docker Compose behind Cloudflare, built from [`infra/`](infra/README.md)).
 - **Demo-request form:** writes to a Google Sheet via Apps Script.
 
 > **Two repos, one GitHub project.** This folder (`X:\Truebex`, branch
@@ -48,11 +48,18 @@ flowchart LR
         Site["truebex.com<br/>static Next.js export"]
     end
 
-    subgraph PC["Host PC (must be running)"]
-        Tunnel["cloudflared tunnel<br/>start-tunnel.bat"]
-        API["Truebex API (FastAPI)<br/>:8001 · SQLite auth.db"]
-        Tunnel --> API
+    subgraph VM["API VM (infra/, Docker Compose)"]
+        Caddy["Caddy :443<br/>Cloudflare origin certificate"]
+        API["Truebex API (FastAPI)<br/>api + worker"]
+        DB["Postgres 18<br/>WAL archived by wal-g"]
+        Caddy --> API
+        API --> DB
     end
+
+    Bucket["Object storage<br/>files, crash dumps, symbols"]
+    Backups["Backup bucket<br/>(second provider)"]
+    Monitor["Uptime monitor<br/>/health, /health/deep"]
+    App["Truebex desktop app<br/>licence, updates, opt-in telemetry"]
 
     Google["Google Identity Services"]
     Sheets["Google Apps Script<br/>→ Google Sheet"]
@@ -60,14 +67,18 @@ flowchart LR
     Stripe["Stripe Checkout"]
 
     Browser -->|HTML/JS| Site
-    Browser -->|"auth · keys · usage · billing<br/>api.truebex.com"| Tunnel
+    Browser -->|"auth · keys · usage · billing<br/>api.truebex.com via Cloudflare"| Caddy
+    App -->|"licence-api/1.0 · telemetry/1.0"| Caddy
     Browser -->|"Sign in with Google"| Google
     Browser -->|demo request form| Sheets
     Browser -->|checkout| Paddle
     Browser -->|hosted checkout| Stripe
-    Paddle -->|signed webhooks| Tunnel
-    Stripe -->|signed webhooks| Tunnel
+    Paddle -->|signed webhooks| Caddy
+    Stripe -->|signed webhooks| Caddy
     API -->|"transactions · prices · portal"| Paddle
+    API --> Bucket
+    DB -->|"WAL + nightly base"| Backups
+    Monitor -->|every 60 s| Caddy
     API -->|"verify ID token"| Google
 ```
 
@@ -92,7 +103,8 @@ src/
     ar/                    Arabic landing page (RTL; lang/dir set by scripts/postbuild-lang.mjs)
     login/ signup/         Auth pages (Google + email)
     dashboard/             Signed-in area: overview (download, licence, devices), billing/,
-                           link/ (approve a sign-in from the app), keys/ + usage/ (Developer), admin/growth/
+                           link/ (approve a sign-in from the app), keys/ + usage/ (Developer),
+                           admin/growth/ + admin/telemetry/
     download/              Public Download page (from src/content/releases.json)
     developers/            Public API docs (indexable)
     account/               Redirect to /dashboard/ (old URL)
@@ -112,6 +124,7 @@ src/
     licence.ts             licence API calls (devices, link approval, release feed)
     plans.ts               plan names and limits from server/app/catalogue.json
     releaseNotes.ts        the release-notes Markdown subset, parsed to a React-rendered tree
+    telemetryAdmin.ts      admin telemetry dashboard calls
   content/                 roadmap.json, history.json; releases.json + releases-beta.json (the release
                            feed as of the last `npm run sync:releases`)
 public/
@@ -126,23 +139,32 @@ scripts/indexnow.mjs       Ping IndexNow with changed URLs (owner, after a deplo
 server/
   app/
     main.py                App + routers
-    routers/               auth, keys, usage, billing, v1 (developer API), licence, releases, admin, files, growth
+    routers/               auth, keys, usage, billing, v1 (developer API), licence, releases, admin, files,
+                           growth, telemetry, admin_telemetry
     billing/               service.py (plan state) · base.py (BillingProvider) · paddle_, stripe_, wayl_provider.py · jobs.py
     licence/               devices, link codes, seats, signed entitlements (Ed25519 over RFC 8785 JSON)
     releases/              signed release manifests, feed, download links
-    contract_http.py       contract header + shared error envelope · ratelimit.py · storage/
-    models.py database.py  SQLAlchemy models + additive SQLite migrations
+    telemetry/             contracts/telemetry.md: service, privacy scanner, symbolication, jobs
+    storage/ mail/         blob storage (local, s3) · mail (console, smtp) with templates
+    tasks.py worker.py     periodic jobs (@periodic), inline or in the worker process
+    ratelimit.py contract_http.py health.py ops.py   shared plumbing (PF14): limits, contract header and
+                           error envelope, /health/deep, backup checks and alerts
+    models.py database.py  SQLAlchemy models + additive migrations (SQLite and Postgres)
     catalogue.json         Tiers, entitlement matrix, prices per interval and currency, founding offer (read by the site at build time)
     plans.py               Reads catalogue.json: prices, entitlement matrix, request quotas, key limits
-    tasks.py               Background jobs (@periodic)
     growth/                Admin growth counts (sign-ups, downloads, trials, checkouts)
-  scripts/                 sync_prices.py (catalogue prices → Paddle or Stripe) · make_signing_key.py · publish_release.py · make_licence_fixtures.py
-  tests/                   pytest suite (+ mock_paddle.py, mock_wayl.py for click-through tests; contracts/licence/ = contract fixtures)
+  scripts/                 sync_prices.py (catalogue prices → Paddle or Stripe) · make_signing_key.py · publish_release.py ·
+                           make_licence_fixtures.py · sqlite_to_postgres.py · upload_symbols.py · make_admin.py
+  tests/                   pytest suite (+ mock_paddle.py, mock_wayl.py for click-through tests; contracts/licence/ and
+                           contracts/telemetry/ = contract fixtures)
+  Dockerfile               the API image (api and worker services)
+infra/                     the API host: OpenTofu, cloud-init, Compose, Caddy, backups,
+                           monitoring, deploy.ps1, restore-test.ps1, CUTOVER.md
 .claude/skills/            truebex-brand-voice · truebex-seo · truebex-deploy
 google-apps-script/        Code.gs for the demo-request sheet
 deploy-to-server.bat       Build → copy into the deploy repo → commit → push
-start-server.bat           API on 127.0.0.1:8001 (creates the venv on first run)
-start-tunnel.bat           cloudflared: api.truebex.com → :8001
+start-server.bat           Local use only: API on 127.0.0.1:8001 (production is the VM)
+start-tunnel.bat           Local use only: cloudflared (no longer serves api.truebex.com)
 ```
 
 ---
@@ -203,7 +225,7 @@ These end up in the public JavaScript, so never put secrets in them.
 |---|---|
 | `SECRET_KEY` | Signs session JWTs. Long random string. |
 | `ACCESS_TOKEN_EXPIRE_MINUTES` | Session lifetime (default 1440 = 24 h) |
-| `DATABASE_URL` | SQLite file (default `sqlite:///./auth.db`) |
+| `DATABASE_URL` | SQLite locally (default `sqlite:///./auth.db`); `postgresql+psycopg://…` on the VM |
 | `CORS_ORIGINS` | Must include `https://truebex.com,https://www.truebex.com` |
 | `SITE_URL`, `API_URL` | Public URLs used in checkout redirects and webhook URLs |
 | `GOOGLE_CLIENT_ID` | OAuth Web client ID. Empty hides the Google button. |
@@ -217,8 +239,15 @@ These end up in the public JavaScript, so never put secrets in them.
 | `LICENCE_SIGNING_KEY`, `LICENCE_KEY_ID` | The `lic-*` Ed25519 seed that signs entitlements (`scripts/make_signing_key.py --kind lic`). Empty = licensing off (503). |
 | `RELEASE_PUBLIC_KEYS` | Public `rel-*` keys as `kid:key,…` (the seeds never live on the API host) |
 | `SIGNING_KEYS_EXTRA`, `TRIAL_DAYS` | Old `lic-*` public keys during a rotation; trial length (14) |
-| `STORAGE_BACKEND`, `STORAGE_DIR`, `STORAGE_URL_SECRET` | `local` files under `./storage`, served by signed `/files` URLs on `API_URL` |
-| `BACKGROUND_TASKS` | `inline` (default), `worker` or `off`: the jobs (link purge, 90-day device lapse, founding holds, billing reconcile) |
+| `STORAGE_BACKEND`, `STORAGE_DIR`, `STORAGE_URL_SECRET` | `local` files under `./storage`, served by signed `/files` URLs on `API_URL`, or `s3` |
+| `S3_*`, `CDN_BASE_URL` | The S3-compatible bucket (`STORAGE_BACKEND=s3`) and the CDN for its public prefixes |
+| `MAIL_BACKEND`, `MAIL_FROM`, `SUPPORT_EMAIL`, `SMTP_*` | Mail: `console` locally, `smtp` on the VM |
+| `BACKGROUND_TASKS` | `inline` (default), `worker` (the VM's worker process) or `off` (tests): telemetry rollup and retention, symbolication, link purge, 90-day device lapse, founding holds, billing reconcile, backup checks |
+| `RATELIMIT_BACKEND` | `memory` (one process) or `db` (the VM's two API processes) |
+| `ALERT_EMAIL`, `ALERT_PUSH_URL`, `BACKUP_EXPECTED` | Alerts from the server's own backup check |
+| `TELEMETRY_EVENTS_ENABLED`, `TELEMETRY_INGESTION_ENABLED` | The usage-events kill switch; telemetry as a whole (off → 503) |
+
+On the VM these come from `infra/secrets/*.sops.env` (template: `infra/secrets/server.env.example`).
 
 ---
 
@@ -247,14 +276,18 @@ The full checklist, including how to verify the live site, is in
 
 ## API server (`server/`)
 
-FastAPI + SQLAlchemy + SQLite. Passwords use bcrypt, and sessions are JWTs kept
-in `localStorage`. New columns are added on startup by
-`database._ADDED_COLUMNS`. These migrations are additive only, so back up
-`auth.db` first. Interactive API docs are served at `https://api.truebex.com/docs`.
+FastAPI + SQLAlchemy on Postgres in production and SQLite locally; every model
+and query runs on both (`database.dialect_insert` is the one place a dialect is
+named). Passwords use bcrypt, and sessions are JWTs kept in `localStorage`. New
+columns are added on startup by `database._ADDED_COLUMNS`; these migrations are
+additive only. Interactive API docs are served at `https://api.truebex.com/docs`.
+Contract endpoints (`/telemetry/*`) answer errors in the shared envelope
+`{detail, code, status, request_id, retry_after_s, data}`.
 
 | Method | Path | Auth | Purpose |
 |---|---|---|---|
 | GET | `/health` | — | Liveness → `{"status":"ok"}` |
+| GET | `/health/deep` | — (rate-limited) | Database, storage round trip, worker heartbeat → 200 or 503 |
 | GET | `/config` | — | Public feature flags (Google client ID) |
 | POST | `/auth/register` · `/auth/login` | — | Email/password → session token |
 | POST | `/auth/google` | — | Google ID token → session token (signs up, signs in, or links) |
@@ -279,21 +312,38 @@ in `localStorage`. New columns are added on startup by
 | GET | `/licence/keys` | — | Published public keys (`lic-*`, `rel-*`) |
 | GET | `/releases/feed` · `/releases/{version}/download` | — | Signed release manifests · a 15-minute download link |
 | GET / POST / PATCH | `/admin/releases`, `/admin/releases/{version}` | admin | Upload (≤ 90 MB, signed off-host), withdraw, new notes |
-| GET / PUT | `/files/{key}` | signed URL | Local storage downloads and uploads (HMAC, expiring) |
 | GET | `/admin/growth?from=&to=` | session, admin | Sign-ups, downloads, trials, checkouts, paid per UTC day (counts only) |
+| GET | `/telemetry/config` | — | Event allow-list, sampling, kill switch (`X-Truebex-Contract: telemetry/1.0`) |
+| POST | `/telemetry/events` · `/crashes` · `/feedback` · `/delete` | — (device token for a feedback reply; install secret for delete) | Opt-in usage events, crash reports, feedback, deletion |
+| GET / PATCH / POST | `/admin/telemetry/*` · `/admin/feedback/*` · `/admin/symbols` | **admin** | Telemetry dashboard, crash groups, feedback inbox and replies, symbols |
+| GET / PUT | `/files/{key}?exp=&sig=` | signed URL | Local storage downloads and uploads (HMAC, expiring) |
 
 ### Running in production
 
-The API runs **on the host PC**:
+The API runs on **one Linux VM** with Docker Compose: Caddy (443, Cloudflare
+origin certificate, only Cloudflare's ranges allowed in), two uvicorn processes,
+a worker for background jobs, and Postgres 18 whose WAL is archived continuously
+(nightly base backups, 30 days, at a second provider; a weekly restore test).
+Everything is rebuilt from [`infra/`](infra/README.md); the one-time move off the
+home PC is [`infra/CUTOVER.md`](infra/CUTOVER.md) (RPO 5 minutes, RTO 2 hours).
 
-1. `start-server.bat` serves the API on `127.0.0.1:8001`.
-2. `start-tunnel.bat` runs the cloudflared tunnel `win-tunnel`
-   (`%USERPROFILE%\.cloudflared\config.yml`), which routes `api.truebex.com → localhost:8001`.
+- **Deploy:** `powershell -NoProfile -ExecutionPolicy Bypass -File infra\deploy.ps1 -VmHost truebex@<vm>`
+  (committed HEAD, secrets decrypted with sops only for the copy, waits for `/health/deep`).
+- **Health:** `https://api.truebex.com/health` (liveness) and `/health/deep`
+  (`{"db":"ok","storage":"ok","worker_heartbeat_s":…}`, 503 when anything is down).
+- **Alerts:** a hosted monitor checks both every 60 s from several regions and
+  alerts by e-mail and phone push; the host checks disk, memory, load,
+  containers, the 5xx rate and the certificate every minute; the worker alerts
+  on stale backups. Details: [`infra/README.md`](infra/README.md#alerts).
+- **Backups:** `infra\restore-test.ps1 -VmHost truebex@<vm>` → `restore OK`.
+- **Admins:** `cd server; .venv\Scripts\python.exe -m scripts.make_admin <email>`
+  (on the VM: `docker compose exec api python -m scripts.make_admin <email>`).
 
-If either one stops, `https://api.truebex.com/health` returns **HTTP 530 /
-Cloudflare error 1033**. Login and the dashboard then stop working, but the rest
-of the site is unaffected. The dashboard shows a "can't reach the server"
-message rather than logging people out.
+`start-server.bat` and `start-tunnel.bat` are for local use only. An API left
+running on the PC with its own `auth.db` would accept writes nobody sees, so the
+tunnel no longer routes `api.truebex.com`. While the site cannot reach the API
+(Cloudflare 52x), the dashboard shows a "can't reach the server" message rather
+than logging people out.
 
 ---
 
@@ -498,7 +548,8 @@ a Google Sheet. See [`google-apps-script/README.md`](google-apps-script/README.m
 
 | Issue | Impact | Where |
 |---|---|---|
-| API depends on the host PC + tunnel being up | Sign-in, dashboard and billing stop when the PC is off | `start-server.bat`, `start-tunnel.bat` |
+| One API VM is a single point of failure | RPO 5 minutes, RTO 2 hours (rebuilt from `infra/`) | `infra/CUTOVER.md` |
+| Provider names are placeholders | VM, buckets, mail relay and uptime monitor wait for GD3 | `infra/README.md` |
 | Payment providers need merchant keys | Billing shows "being set up" until keys are added | `server/.env` |
 | Desktop app doesn't read the plan yet | The licence API is live, but the app's sign-in and gates (LC1, LC3) are not shipped | Unreal project |
 | Installers are served from this PC | Downloads go through the home tunnel until PF14 adds object storage and a CDN | `server/storage/` |
