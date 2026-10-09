@@ -198,6 +198,23 @@ export interface FeedReport {
   created_at: string;
 }
 
+/** PF8: what a supplier sent when it applied; documents by a 15-minute link. */
+export interface SupplierApplication {
+  state: "applied" | "verified" | "declined" | null;
+  fields: {
+    legal_name?: string;
+    company_number?: string;
+    vat_id?: string | null;
+    website?: string | null;
+    address?: { line1: string; line2?: string | null; city: string; postcode?: string | null; country: string };
+    regions?: string[];
+    contact?: { name: string; email: string; phone?: string | null };
+  };
+  documents: { sha256: string; bytes: number; name: string; uploaded_at: string; url: string }[];
+  reason?: string | null;
+  created_at?: string;
+}
+
 export interface MarketSummary {
   suppliers: Record<string, number>;
   products: Record<string, number>;
@@ -216,6 +233,7 @@ export const adminMarket = {
   editSupplier: (id: string, json: Record<string, unknown>) =>
     api<AdminSupplier>(`/admin/market/suppliers/${id}`, { method: "PATCH", json }),
   connectLink: (id: string) => post<{ url: string }>(`/admin/market/suppliers/${id}/connect`),
+  application: (id: string) => api<SupplierApplication>(`/admin/market/suppliers/${id}/application`),
   products: (status: string) =>
     api<{ products: AdminProduct[] }>(`/admin/market/products?status=${encodeURIComponent(status)}`),
   approve: (id: string) => post<AdminProduct>(`/admin/market/products/${id}/approve`),
