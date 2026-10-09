@@ -383,6 +383,7 @@ marketplace-api/1.1` and answer errors in the shared envelope. Code: `server/app
   cd server
   .venv\Scripts\python.exe -m pip install -r requirements.txt   # Pillow, numpy, onnxruntime, tokenizers
   .venv\Scripts\python.exe scripts\seed_market.py --fixture tests\contracts\marketplace [--payments-ready]
+  .venv\Scripts\python.exe scripts\market_try.py --email you@example.com --password ... --kind quote   # or order
   ```
 
   The fixtures in `server/tests/contracts/marketplace/` are made by `scripts\make_market_fixtures.py`
