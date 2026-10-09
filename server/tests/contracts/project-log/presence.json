@@ -1,0 +1,44 @@
+{
+  "note": "The editor in the kitchen, editing one wall: `heartbeat` is the 5.17 body, `presence` what 5.18 lists.",
+  "heartbeat": {
+    "replica_id": "5e1d0c0ffee000000000000000000b07",
+    "client": "desktop",
+    "view": {
+      "storey": "0199c6a2e00070048000000000000001",
+      "eye_mm": [
+        4200,
+        1800,
+        1600
+      ],
+      "yaw_deg": 90
+    },
+    "selection": [
+      "0199c6a2e00070018000000000000004"
+    ],
+    "editing": [
+      "0199c6a2e00070018000000000000004"
+    ]
+  },
+  "presence": {
+    "user_id": 7,
+    "name": "Sam",
+    "replica_id": "5e1d0c0ffee000000000000000000b07",
+    "client": "desktop",
+    "seen_at": "2026-10-09T10:12:30Z",
+    "view": {
+      "storey": "0199c6a2e00070048000000000000001",
+      "eye_mm": [
+        4200,
+        1800,
+        1600
+      ],
+      "yaw_deg": 90
+    },
+    "selection": [
+      "0199c6a2e00070018000000000000004"
+    ],
+    "editing": [
+      "0199c6a2e00070018000000000000004"
+    ]
+  }
+}

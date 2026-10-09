@@ -1,0 +1,37 @@
+{
+  "note": "One action operation as PF9 writes it: move a wall 600 mm north (agent-interface §6.4).",
+  "replica_id": "3eb0000000000000000000000000c1e7",
+  "op": {
+    "op_id": "7ecc17515e706cea3b415fab9dad52cf",
+    "author": "0199c6a2f0007000a000000000000042",
+    "author_kind": "person",
+    "at": "2026-10-09T10:30:00.000Z",
+    "touched": [
+      "0199c6a2e00070018000000000000001"
+    ],
+    "delta": null,
+    "server_seq": 0,
+    "replica_id": "3eb0000000000000000000000000c1e7",
+    "base_seq": 12,
+    "kind": "action",
+    "name": "Move wall",
+    "delta_format": null,
+    "action": {
+      "tool": "move",
+      "args": {
+        "refs": [
+          "0199c6a2e00070018000000000000001"
+        ],
+        "by_mm": [
+          0,
+          600,
+          0
+        ]
+      },
+      "permission": "edit",
+      "session": "5e55000000000000000000000000000a",
+      "request_id": "4e90000000000000000000000000000b"
+    },
+    "restore": null
+  }
+}

@@ -4,13 +4,14 @@
 
 Templates live in app/mail/templates/<name>.subject.txt, <name>.txt and
 <name>.html, rendered with `string.Template` (`$name`); values are HTML-escaped
-in the .html part. MAIL_BACKEND picks the adapter: `console` (kept in OUTBOX
-and logged; development and tests) or `smtp` (the provider's relay; SPF, DKIM
+in the .html part. MAIL_BACKEND picks the adapter: `console` (kept in OUTBOX,
+logged and printed to stderr; development and tests) or `smtp` (the provider's relay; SPF, DKIM
 and DMARC records live in infra/tofu).
 """
 
 import html
 import logging
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 from string import Template
@@ -68,4 +69,7 @@ def send_mail(to: str, template: str, data: dict, *, reply_to: str | None = None
     else:
         OUTBOX.append(msg)
         log.info("mail to %s: %s", to, msg.subject)
+        # The console backend prints the whole text part, so links in mail
+        # (project invitations) can be followed in local testing.
+        print(f"--- mail to {to}: {msg.subject}\n{msg.text}\n--- end of mail", file=sys.stderr, flush=True)
     return msg

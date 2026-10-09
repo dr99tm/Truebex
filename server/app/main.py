@@ -1,7 +1,8 @@
 """Truebex API: accounts (email/password + Google), developer API keys,
 usage metering, billing (Paddle, Stripe; Wayl dormant), licences for the
 desktop app (devices, signed entitlements, trials), the release feed and
-downloads, and telemetry ingestion.
+downloads, telemetry ingestion, and cloud projects (the operation log,
+snapshots, versions, members, presence).
 
 Run locally with:
     uvicorn app.main:app --host 127.0.0.1 --port 8000
@@ -25,6 +26,9 @@ from .licence import jobs as _licence_jobs  # noqa: F401  (registers the licence
 from .routers import admin, admin_telemetry, files, licence, releases, telemetry
 from .routers import auth, billing, keys, usage, v1
 from .routers import growth as growth_router
+from .projects import jobs as _project_jobs  # noqa: F401  (PF4: projects.*)
+from .uploads import jobs as _upload_jobs  # noqa: F401  (uploads.expire)
+from .routers import projects, uploads  # PF4 (uploads: share-bundle §5, PF5's)
 from .telemetry.service import record_server_exception
 
 settings = get_settings()
@@ -114,6 +118,9 @@ app.include_router(usage.router)
 app.include_router(billing.router)
 app.include_router(v1.router)
 app.include_router(growth_router.router)
+# PF4: the project service, and the upload protocol its snapshots use
+app.include_router(uploads.router)
+app.include_router(projects.router)
 # PF14: deep health, telemetry ingestion and its admin
 app.include_router(health.router)
 app.include_router(telemetry.router)
