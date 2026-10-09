@@ -516,6 +516,7 @@ export default function AdminMarketPage() {
   }
   const Current = PANELS[tab];
   const pending = summary.data?.products?.pending_review ?? 0;
+  const applied = summary.data?.suppliers?.applied ?? 0;
   return (
     <>
       <PageHeader title={A.title} description={A.description} />
@@ -538,6 +539,8 @@ export default function AdminMarketPage() {
           >
             {A.tabs[t]}
             {t === "products" && pending > 0 && <span className="ml-1 text-xs text-warn">({pending})</span>}
+            {/* PF8: supplier applications waiting for a decision. */}
+            {t === "suppliers" && applied > 0 && <span className="ml-1 text-xs text-warn">({applied})</span>}
           </button>
         ))}
       </nav>

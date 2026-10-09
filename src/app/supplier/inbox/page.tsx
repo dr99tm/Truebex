@@ -230,6 +230,15 @@ function Item({ item, expanded, onToggle, onChange }: { item: InboxItem; expande
                 {item.kind === "order" && <span className="ml-2 text-xs text-text-muted">{item.payment === "platform" ? X.paidOnTruebex : X.paidOffline}</span>}
               </dd>
             </div>
+            {item.quote?.quoted_at && (
+              <div>
+                <dt className="text-text-muted">{X.quotedAt}</dt>
+                <dd>
+                  {formatDate(item.quote.quoted_at)}
+                  {item.quote.valid_until && ` · ${X.validUntil} ${formatDate(item.quote.valid_until)}`}
+                </dd>
+              </div>
+            )}
             {item.expires_at && (
               <div>
                 <dt className="text-text-muted">{X.expires}</dt>

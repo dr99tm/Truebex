@@ -503,7 +503,7 @@ def import_rows(
         raise FeedInvalid("mode is upsert or replace")
     at = now()
     store = store or get_store()
-    fetcher = fetcher or media.HttpFetcher()
+    fetcher = fetcher or media.default_fetcher()
     report = Report(rows=len(rows), warnings=list(warnings or []))
     categories = active_categories(db)
     regions = active_regions(db)

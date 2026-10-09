@@ -7,7 +7,7 @@ import { ErrorNote, PageHeader, Panel } from "@/components/dashboard/DashboardSh
 import { Button } from "@/components/ui/Button";
 import { Badge, can, Field, inputClass, OkNote, productTone, useMember } from "@/components/supplier/SupplierShell";
 import { SUPPLIER } from "@/lib/constants";
-import { marketReads, supplierApi, type Category, type ProductFull, type Variant } from "@/lib/supplier";
+import { formatBytes, marketReads, supplierApi, type Category, type ProductFull, type Variant } from "@/lib/supplier";
 
 const P = SUPPLIER.product;
 const C = SUPPLIER.catalogue;
@@ -124,7 +124,7 @@ function VariantCard({
         <p className="text-xs text-text-muted">{P.geometryHelp}</p>
         {g ? (
           <p className="mt-2 text-sm text-text-secondary">
-            {g.format.toUpperCase()} · {(g.bytes / 1024).toFixed(0)} KB · rev {g.rev ?? 1}
+            {g.format.toUpperCase()} · {formatBytes(g.bytes)} · rev {g.rev ?? 1}
             {g.check?.triangles != null && ` · ${g.check.triangles.toLocaleString("en-US")} ${P.triangles}`}
             {g.check?.measured_mm && ` · ${P.measured} ${g.check.measured_mm.join(" × ")} mm`}
           </p>

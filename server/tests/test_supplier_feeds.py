@@ -351,3 +351,32 @@ def test_feed_gd1_template(client, monkeypatch):
     report = client.get(f"/market/feeds/{feed_id}", headers=key_headers(key)).json()
     assert {(e["row"], e["code"]) for e in report["errors"]} == {(3, "inconsistent_product"), (4, "bad_gtin")}
     assert report["rejected"] == 2 and report["created"] == 1
+
+
+def test_feed_media_fixtures_for_local_trials(client, monkeypatch):
+    """MARKET_MEDIA_FIXTURES (local trials only): the contract feed's picture
+    and 3D URLs come from the fixture folder; any other URL still goes to the
+    internet fetcher with its request-forgery guard. Off by default."""
+    from app.config import get_settings
+
+    calls = []
+
+    class Net:
+        def get(self, url, max_bytes):
+            calls.append(url)
+            raise media.MediaError("fetch_failed", "offline")
+
+    monkeypatch.setattr(media, "HttpFetcher", lambda: Net())
+    assert isinstance(media.default_fetcher(), Net)
+    monkeypatch.setattr(get_settings(), "market_media_fixtures", str(FIXTURES))
+    fetcher = media.default_fetcher()
+    assert fetcher.get("https://cdn.example.com/catalogue/chair-bergen/olive-boucle.glb", 10**6).startswith(b"glTF")
+    with pytest.raises(media.MediaError):
+        fetcher.get("https://elsewhere.example.com/x.png", 10**6)
+    assert calls == ["https://elsewhere.example.com/x.png"]
+    h, _sid = verified(client)
+    key = supplier_key(client, h)
+    feed_id = post_feed(client, key, FEED_CSV).json()["feed_id"]
+    run_feeds()
+    report = client.get(f"/market/feeds/{feed_id}", headers=key_headers(key)).json()
+    assert (report["rejected"], report["created"]) == (0, 6)

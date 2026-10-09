@@ -10,7 +10,6 @@ from sqlalchemy.orm import Session
 
 from ..contract_http import ContractError
 from ..models import User
-from ..storage import get_store
 from . import media
 from .common import new_id, not_found, now, rfc3339
 from .models import (
@@ -264,7 +263,7 @@ def geometry_link(product: Product, v: ProductVariant, region: str | None) -> st
     return f"{base}/market/geometry/{product.product_id}/{quote(v.variant_id, safe='')}{query}"
 
 
-def variant_json(product: Product, v: ProductVariant, offer: Offer | None, *, store=None, region: str | None = None) -> dict:
+def variant_json(product: Product, v: ProductVariant, offer: Offer | None, *, region: str | None = None) -> dict:
     geometry = None
     if v.geometry:
         g = v.geometry

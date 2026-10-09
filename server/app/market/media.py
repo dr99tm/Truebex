@@ -141,6 +141,34 @@ class MapFetcher:
         return data
 
 
+class ChainFetcher:
+    """The first fetcher that has the URL (a MapFetcher before the internet)."""
+
+    def __init__(self, *fetchers: Fetcher) -> None:
+        self.fetchers = fetchers
+
+    def get(self, url: str, max_bytes: int) -> bytes:
+        for f in self.fetchers[:-1]:
+            try:
+                return f.get(url, max_bytes)
+            except MediaError as exc:
+                if exc.code != "fetch_failed":
+                    raise
+        return self.fetchers[-1].get(url, max_bytes)
+
+
+def default_fetcher() -> Fetcher:
+    """The importer's fetcher: the internet, behind the request-forgery guard;
+    with MARKET_MEDIA_FIXTURES set (local trials), the fixture's files first."""
+    http = HttpFetcher()
+    folder = get_settings().market_media_fixtures
+    if not folder:
+        return http
+    from .seed import media_fetcher
+
+    return ChainFetcher(media_fetcher(Path(folder)), http)
+
+
 # --- Images ----------------------------------------------------------------------------
 
 

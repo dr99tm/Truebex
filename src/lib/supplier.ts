@@ -562,3 +562,10 @@ export function countsLine(
 ): string {
   return fill(template, { rows: r.rows, created: r.created, updated: r.updated, unchanged: r.unchanged, rejected: r.rejected });
 }
+
+/** 482113 → "471 KB"; 900 → "900 bytes". */
+export function formatBytes(n: number): string {
+  if (n < 1024) return `${n} bytes`;
+  if (n < 1024 * 1024) return `${Math.round(n / 1024)} KB`;
+  return `${(n / (1024 * 1024)).toFixed(1)} MB`;
+}

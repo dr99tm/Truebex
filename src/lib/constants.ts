@@ -867,6 +867,7 @@ export const SUPPLIER = {
     paidOnTruebex: "Paid on Truebex",
     paidOffline: "You invoice the buyer",
     quotedAt: "Quoted",
+    validUntil: "valid until",
     expires: "Expires",
     open: "Open",
     close: "Close",
