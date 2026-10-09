@@ -77,6 +77,18 @@ _ADDED_COLUMNS: dict[str, list[tuple[str, str]]] = {
 _ADDED_COLUMNS["users"] += [("author_id", "VARCHAR(32)"), ("trial_used_at", "DATETIME")]
 # subscriptions.seats (NULL = 1) is in the PF2 block above: PF2 writes it.
 
+# PF2b (subscription consumer rules), its own block.
+_ADDED_COLUMNS["subscriptions"] += [("renewed_at", "DATETIME"), ("renewal_charge_id", "VARCHAR(128)")]
+_ADDED_COLUMNS["payments"] += [
+    ("key_info", "VARCHAR(1000)"),
+    ("key_info_version", "VARCHAR(32)"),
+    ("key_info_at", "DATETIME"),
+    ("business", "BOOLEAN"),
+    ("country", "VARCHAR(2)"),
+    ("provider_subscription_id", "VARCHAR(128)"),
+    ("confirmation_sent_at", "DATETIME"),
+]
+
 
 def _migrate() -> None:
     insp = inspect(engine)

@@ -299,6 +299,31 @@ def upsert_subscription(
     return sub
 
 
+def record_renewal(
+    db: Session,
+    provider: str,
+    provider_subscription_id: str | None,
+    at: datetime | None,
+    charge_id: str,
+) -> bool:
+    """A renewal charge the provider billed (from its verified event or API):
+    remember the newest one, which opens the renewal cooling-off (PF2b).
+    Returns True when it was new."""
+    if not provider_subscription_id or at is None:
+        return False
+    sub = find_subscription(db, provider, provider_subscription_id)
+    if sub is None:
+        return False
+    newest = _aware(sub.renewed_at)
+    if newest is not None and _aware(at) <= newest:
+        return False
+    sub.renewed_at = at
+    sub.renewal_charge_id = charge_id
+    db.add(sub)
+    db.commit()
+    return True
+
+
 def _end_trials(db: Session, user_id: int) -> None:
     """A purchase ends a running trial (licence contract 5.6: a paid plan
     answers 409 plan_active to a trial request)."""

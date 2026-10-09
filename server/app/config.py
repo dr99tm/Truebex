@@ -1,6 +1,8 @@
 """Application settings, loaded from environment / .env file."""
 
+from datetime import date
 from functools import lru_cache
+from typing import Literal
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -95,6 +97,44 @@ class Settings(BaseSettings):
     # background_tasks (inline | worker | off) is under Billing above.
     # memory (in-process token buckets).
     ratelimit_backend: str = "memory"
+
+    # Mail (PF14 Plumbing; the same settings as PF14's): "console" (kept in
+    # app.mail.OUTBOX and logged) or "smtp" (the provider's relay).
+    mail_backend: str = "console"
+    mail_from: str = "Truebex <hello@truebex.com>"
+    support_email: str = "hello@truebex.com"
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_user: str = ""
+    smtp_password: str = ""
+
+    # --- Subscription consumer rules (PF2b; guides/GD5 §7.1-7.4) -------------
+    # Built now, switched OFF until the owner's solicitor approves the wording.
+    # UK DMCC Act 2024 subscription rules: renewal reminders, the trial-end
+    # notice and the renewal cooling-off refund (GD5 §7.3; QS-18).
+    subscription_notices_enabled: bool = False
+    # Nothing is sent or offered before this day (GD5: "January 2027",
+    # confirm at writing time).
+    subscription_rules_from: date = date(2027, 1, 1)
+    # Reminder lead times in days. GD5 names none: 14 before an annual
+    # renewal, 3 before a monthly one, 3 before a trial ends.
+    renewal_reminder_days_year: int = 14
+    renewal_reminder_days_month: int = 3
+    trial_end_notice_days: int = 3
+    # The EU withdrawal function, Directive 2011/83/EU Art. 11a (GD5 §7.2; QS-18).
+    eu_withdrawal_enabled: bool = False
+    # GD5 §7.4 is a DRAFT. While false no 7.4 sentence renders on a page or in
+    # a mail, and today's placeholder consent (billing/consent.py) stays. The
+    # site needs NEXT_PUBLIC_LEGAL_WORDING_APPROVED=true at build time as well.
+    legal_wording_approved: bool = False
+    # QS-17: is the plan digital content (consent ends the right to cancel) or
+    # a service (a customer who cancels pays for the days used)?
+    consent_variant: Literal["digital_content", "service"] = "digital_content"
+    # Trading disclosures in the confirmation e-mail (GD5 §1.3, QS-2): the
+    # company's registered office; links to the documents in force. An empty
+    # EULA_URL uses the terms page.
+    company_address: str = ""
+    eula_url: str = ""
 
     @property
     def cors_origin_list(self) -> list[str]:

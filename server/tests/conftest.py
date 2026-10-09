@@ -44,13 +44,15 @@ os.environ.update(
         "RELEASE_PUBLIC_KEYS": f"{REL_KID}:{REL_PUBLIC}",
         "SIGNING_KEYS_EXTRA": "",
         "BACKGROUND_TASKS": "off",
+        # PF14 plumbing: console mail (app.mail.OUTBOX)
+        "MAIL_BACKEND": "console",
         "STORAGE_DIR": f"{_tmp}/storage",
     }
 )
 
 from fastapi.testclient import TestClient  # noqa: E402
 
-from app import ratelimit, tasks  # noqa: E402
+from app import mail, ratelimit, tasks  # noqa: E402
 from app.database import Base, engine  # noqa: E402
 from app.main import app  # noqa: E402
 
@@ -59,6 +61,7 @@ from app.main import app  # noqa: E402
 def client():
     Base.metadata.drop_all(bind=engine)
     ratelimit.reset()
+    mail.OUTBOX.clear()
     for job in tasks.jobs().values():
         job.next_run = None
     with TestClient(app) as c:  # runs lifespan -> init_db

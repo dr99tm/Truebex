@@ -19,14 +19,16 @@ from sqlalchemy.orm import Session
 
 from ..models import Payment, ProviderPrice, Subscription, User
 from ..plans import PLANS
-from . import consent, service
+from . import consent, consumer, service
 from .base import (
     BillingProvider,
     Invoice,
     InvoiceLine,
     ProviderError,
+    Refund,
     WebhookError,
     parse_time,
+    refund_amount,
     str_or_none,
 )
 
@@ -55,6 +57,25 @@ _SUBSCRIPTION_EVENTS = {
     "customer.subscription.paused",
     "customer.subscription.resumed",
 }
+
+# A paid renewal invoice opens the renewal cooling-off (PF2b).
+_INVOICE_EVENTS = {"invoice.paid", "invoice.payment_succeeded"}
+
+
+def _id_of(value: Any) -> str | None:
+    if isinstance(value, str):
+        return value or None
+    if isinstance(value, Mapping):
+        return str_or_none(value.get("id"))
+    return None
+
+
+def _invoice_subscription(inv: Any) -> str | None:
+    # Newer API versions moved it under parent.subscription_details.
+    sub = inv.get("subscription")
+    if not sub:
+        sub = ((inv.get("parent") or {}).get("subscription_details") or {}).get("subscription")
+    return _id_of(sub)
 
 
 def _period_end(sub: Any) -> datetime | None:
@@ -126,7 +147,10 @@ class StripeProvider(BillingProvider):
             # Stripe's own box mirrors the consent given on our billing page.
             "consent_collection": {"terms_of_service": "required"},
             "custom_text": {
-                "terms_of_service_acceptance": {"message": consent.STRIPE_MESSAGE}
+                # The text the buyer accepted on our page (GD5 7.4's box once approved).
+                "terms_of_service_acceptance": {
+                    "message": consumer.consent_text(payment.consent_version) or consent.STRIPE_MESSAGE
+                }
             },
         }
         if discount:
@@ -171,12 +195,23 @@ class StripeProvider(BillingProvider):
                 details = session.get("total_details") or {}
                 if details.get("amount_tax") is not None:
                     payment.tax_minor = int(details["amount_tax"])
-                payment.invoice_id = str_or_none(session.get("invoice")) or payment.invoice_id
+                payment.invoice_id = _id_of(session.get("invoice")) or payment.invoice_id
+                # PF2b: who bought it and where (cancellation rights depend on both).
+                details = session.get("customer_details") or {}
+                country = (details.get("address") or {}).get("country")
+                if country:
+                    payment.country = str(country).upper()[:2]
+                if details.get("tax_ids"):
+                    payment.business = True
+                payment.provider_subscription_id = (
+                    _id_of(session.get("subscription")) or payment.provider_subscription_id
+                )
                 service.mark_payment_paid(db, payment)
                 db.commit()
                 # Sessions are created only by this server, so its metadata holds.
                 if meta.get("founding") == "1":
                     service.count_founding(db, payment.reference, payment.user_id)
+                consumer.payment_paid(db, payment)
             elif session.get("status") == "expired" and payment.status == "pending":
                 payment.status = "canceled"
                 db.add(payment)
@@ -240,6 +275,16 @@ class StripeProvider(BillingProvider):
             service.count_founding(db, reference, applied.user_id)
         return applied
 
+    def _apply_invoice(self, db: Session, inv: Any) -> bool:
+        """A paid renewal invoice (billing_reason subscription_cycle) records
+        the renewal; nothing else changes."""
+        if inv.get("billing_reason") != "subscription_cycle" or not inv.get("id"):
+            return False
+        paid_at = (inv.get("status_transitions") or {}).get("paid_at") or inv.get("created")
+        return service.record_renewal(
+            db, "stripe", _invoice_subscription(inv), parse_time(paid_at), str(inv["id"])
+        )
+
     def verify_payment(self, db: Session, payment: Payment) -> None:
         if not payment.provider_ref:
             return
@@ -275,6 +320,8 @@ class StripeProvider(BillingProvider):
             fresh = stripe.Subscription.retrieve(obj["id"], api_key=self._key)
             applied = self._apply_subscription(db, fresh, None)
             status = "applied" if applied is not None else "skipped"
+        elif kind in _INVOICE_EVENTS:
+            status = "applied" if self._apply_invoice(db, obj) else "ignored"
         if event_id:
             service.record_event(db, "stripe", event_id, kind, occurred, status)
         return kind
@@ -284,6 +331,61 @@ class StripeProvider(BillingProvider):
     def cancel_checkout(self, db: Session, payment: Payment) -> None:
         if payment.provider_ref:
             stripe.checkout.Session.expire(payment.provider_ref, api_key=self._key)
+
+    def cancel_subscription(self, db: Session, sub: Subscription, *, immediately: bool) -> None:
+        # Not applied here: customer.subscription.updated / .deleted does (PF2b).
+        try:
+            if immediately:
+                stripe.Subscription.cancel(sub.provider_subscription_id, api_key=self._key)
+            else:
+                stripe.Subscription.modify(
+                    sub.provider_subscription_id, api_key=self._key, cancel_at_period_end=True
+                )
+        except stripe.StripeError as exc:
+            raise ProviderError(str(exc)) from exc
+
+    def refund(
+        self,
+        db: Session,
+        sub: Subscription,
+        *,
+        charge_id: str | None,
+        share_ppm: int | None,
+        reason: str,
+    ) -> Refund:
+        """Refund part or all of one paid invoice (the renewal's by default)
+        through its payment intent."""
+        try:
+            invoice_id = charge_id or sub.renewal_charge_id
+            if not invoice_id:
+                current = stripe.Subscription.retrieve(sub.provider_subscription_id, api_key=self._key)
+                invoice_id = _id_of(current.get("latest_invoice"))
+            if not invoice_id:
+                raise ProviderError("no invoice to refund")
+            inv = stripe.Invoice.retrieve(invoice_id, api_key=self._key)
+            if not inv or _invoice_subscription(inv) not in (None, sub.provider_subscription_id):
+                raise ProviderError("that invoice belongs to another subscription")
+            paid = int(inv.get("amount_paid") or 0)
+            if paid <= 0:
+                raise ProviderError("nothing was paid on that invoice")
+            amount = refund_amount(paid, share_ppm)
+            params: dict[str, Any] = {
+                "amount": amount,
+                "reason": "requested_by_customer",
+                "metadata": {"subscription": sub.provider_subscription_id or "", "note": reason[:450]},
+            }
+            intent, charge = _id_of(inv.get("payment_intent")), _id_of(inv.get("charge"))
+            if intent:
+                params["payment_intent"] = intent
+            elif charge:
+                params["charge"] = charge
+            else:
+                raise ProviderError("no payment on that invoice")
+            refund = stripe.Refund.create(api_key=self._key, **params)
+        except stripe.StripeError as exc:
+            raise ProviderError(str(exc)) from exc
+        currency = str(inv.get("currency") or sub.currency or "").upper()
+        return Refund(id=str(refund.get("id") or ""), amount_minor=amount, currency=currency)
 
     def portal_url(self, db: Session, user: User, sub: Subscription) -> str:
         customer = sub.provider_customer_id or service.customer_id(db, user, "stripe")

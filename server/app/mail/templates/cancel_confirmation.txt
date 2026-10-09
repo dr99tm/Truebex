@@ -1,0 +1,7 @@
+$statement
+
+$refund
+
+Billing: $billing_url
+
+$footer

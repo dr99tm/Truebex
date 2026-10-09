@@ -1,0 +1,5 @@
+$notice
+
+Plans: $billing_url
+
+$footer
