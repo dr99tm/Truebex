@@ -29,7 +29,7 @@ A task ticks ONLY its own row, on its own branch.
 | [ ] | [PF5](PF5-share-pages.md) share pages | PF1 | 1 | — | |
 | [ ] | [PF6](PF6-cloud-render-orchestration.md) cloud render orchestration | PF4 | 2 | — | |
 | [x] | [PF7](PF7-marketplace-backend.md) marketplace backend | PF1 | 1 | `server/app/market/`, `/market/checkout/`, `/dashboard/orders/`, `/dashboard/admin/market/` | 2026-10-09, Autopilot T6; fixtures, contract §11 rows and MINOR proposals in its As-built |
-| [ ] | [PF8](PF8-supplier-portal-and-app.md) supplier portal and app | PF7 | 1 | — | |
+| [x] | [PF8](PF8-supplier-portal-and-app.md) supplier portal and app | PF7 | 1 | `server/app/supplier/`, `server/app/mail/`, `/supplier/` | 2026-10-10, Autopilot T7; PF2 guard and merge notes, contract §11 rows in its As-built |
 | [ ] | [PF9](PF9-mobile-web-client-and-webxr.md) mobile web client and WebXR | PF4, PF6 | 2 | — | |
 | [ ] | [PF10](PF10-android-native-app.md) Android native app | PF9 | 3 | — | |
 | [ ] | [PF11](PF11-analysis-and-ai-services.md) analysis and AI services | PF6 | 3 | — | |
