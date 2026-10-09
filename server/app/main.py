@@ -19,8 +19,11 @@ from . import contract_http, tasks
 from .config import get_settings
 from .database import init_db
 from .licence import jobs as _licence_jobs  # noqa: F401  (registers the licence jobs)
+from .shares import jobs as _share_jobs  # noqa: F401  (PF5: shares.expire, shares.purge)
+from .uploads import jobs as _upload_jobs  # noqa: F401  (PF5: uploads.expire)
 from .routers import admin, files, licence, releases
 from .routers import auth, billing, keys, usage, v1
+from .routers import shares, uploads  # PF5
 
 settings = get_settings()
 
@@ -79,6 +82,11 @@ app.include_router(licence.router)
 app.include_router(releases.router)
 app.include_router(admin.router)
 app.include_router(files.router)
+
+# PF5: uploads, shares, the share page and the API host's robots.txt
+app.include_router(uploads.router)
+app.include_router(shares.router)
+app.include_router(shares.public)
 
 app.include_router(auth.router)
 app.include_router(keys.router)

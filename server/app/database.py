@@ -90,6 +90,8 @@ def init_db() -> None:
     from . import models  # noqa: F401  (ensures models are registered)
     from .licence import models as _licence_models  # noqa: F401  (PF1)
     from .releases import models as _release_models  # noqa: F401  (PF1)
+    from .shares import models as _share_models  # noqa: F401  (PF5)
+    from .uploads import models as _upload_models  # noqa: F401  (PF5)
 
     Base.metadata.create_all(bind=engine)
     _migrate()

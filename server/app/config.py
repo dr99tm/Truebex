@@ -70,6 +70,19 @@ class Settings(BaseSettings):
     # memory (in-process token buckets).
     ratelimit_backend: str = "memory"
 
+    # --- Share pages (PF5, contract share-bundle) ------------------------------
+    # Share links are ${SHARE_BASE_URL}/view/{slug}; empty = API_URL (PF14 later
+    # points share.truebex.com at the API and sets this).
+    share_base_url: str = ""
+    # Longest expiry and bytes per bundle until GD7 sets them per tier
+    # (licence-api §6.3 MINOR proposal: limits.share_days, limits.share_bytes).
+    share_max_days: int = 30
+    share_max_bytes: int = 1024 * 1024 * 1024
+
+    @property
+    def share_base(self) -> str:
+        return (self.share_base_url or self.api_url).rstrip("/")
+
     @property
     def cors_origin_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]

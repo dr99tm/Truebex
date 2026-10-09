@@ -15,3 +15,5 @@ requests==2.32.3
 # Payment providers
 stripe==11.4.1
 httpx==0.28.1
+# Share pages (PF5): panorama derivatives and the link-preview card
+Pillow==12.3.0
