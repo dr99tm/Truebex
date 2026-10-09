@@ -15,6 +15,8 @@ export interface User {
   avatar_url: string | null;
   has_password: boolean;
   google_linked: boolean;
+  /** Admins see the Admin group in the dashboard (set by hand on the server). */
+  is_admin?: boolean;
 }
 
 export interface AuthResult {

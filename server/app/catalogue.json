@@ -1,5 +1,6 @@
 {
-  "source": "Tiers, features and limits: contracts/licence-api.md v1.0.0 section 6.3 placeholder matrix (PF1 copies the GD7 matrix here). Prices, founding seats and per-seat rules: placeholders until guides/GD7 (PF2).",
+  "schema": "truebex-catalogue/1",
+  "source": "Tiers, features and limits: contracts/licence-api.md v1.0.0 section 6.3 placeholder matrix (2026-10-09; PF1 copies the GD7 matrix here). Prices, founding seats and per-seat rules: placeholders until guides/GD7 (PF2); the public pages show them once prices_final is true.",
   "prices_final": false,
   "currencies": ["GBP", "USD", "EUR"],
   "founding": {

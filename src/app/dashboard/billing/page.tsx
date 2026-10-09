@@ -13,7 +13,8 @@ import {
 import { useApiData } from "@/components/dashboard/useApiData";
 import { Button } from "@/components/ui/Button";
 import { API_URL, formatDate } from "@/lib/api";
-import { STATIC_CATALOG, foundingPrice } from "@/lib/catalogue";
+import { STATIC_CATALOG } from "@/lib/billing-catalog";
+import { foundingPrice } from "@/lib/catalogue";
 import { BILLING } from "@/lib/constants";
 import {
   changePlan,
@@ -486,7 +487,7 @@ function BillingInner() {
                 />
               </label>
               <p className="text-sm">
-                <Link href="/#pricing" className="text-accent hover:underline">
+                <Link href="/pricing/" className="text-accent hover:underline">
                   {BILLING.choose.compare}
                 </Link>
               </p>

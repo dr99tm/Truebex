@@ -43,6 +43,8 @@ class User(Base):
     )
     name: Mapped[str | None] = mapped_column(String(200), nullable=True)
     avatar_url: Mapped[str | None] = mapped_column(String(1024), nullable=True)
+    # Set by hand (like "enterprise"); unlocks the /admin routes.
+    is_admin: Mapped[bool | None] = mapped_column(Boolean, default=False, nullable=True)
 
 
 class ApiKey(Base):
@@ -256,3 +258,21 @@ class FoundingReservation(Base):
     seats: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     consumed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class DownloadEvent(Base):
+    """One installer download, counted for the admin Growth panel.
+
+    No personal data: no user, no IP address, no user agent; only when,
+    which version, which platform and channel.
+    """
+
+    __tablename__ = "download_events"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_utcnow, index=True, nullable=False
+    )
+    version: Mapped[str] = mapped_column(String(32), nullable=False)
+    platform: Mapped[str] = mapped_column(String(16), nullable=False)
+    channel: Mapped[str | None] = mapped_column(String(16), nullable=True)

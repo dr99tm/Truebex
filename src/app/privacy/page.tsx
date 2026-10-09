@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { LegalPage } from "@/components/layout/LegalPage";
-import { PAYMENT_PROCESSORS, SITE } from "@/lib/constants";
+import { PAYMENT_PROCESSORS, SITE, WEBSITE_ANALYTICS_NOTICE } from "@/lib/constants";
 
 export const metadata: Metadata = {
   title: "Privacy Policy",
@@ -56,6 +56,11 @@ export default function PrivacyPage() {
         </li>
       </ul>
 
+      <h2>{WEBSITE_ANALYTICS_NOTICE.title}</h2>
+      {WEBSITE_ANALYTICS_NOTICE.paragraphs.map((p) => (
+        <p key={p}>{p}</p>
+      ))}
+
       <h2>How we use it</h2>
       <ul>
         <li>To provide your account, dashboard, API keys and the API itself.</li>
@@ -76,7 +81,7 @@ export default function PrivacyPage() {
             <strong>{p.name}</strong> — {p.purpose}
           </li>
         ))}
-        <li><strong>Cloudflare</strong> — network security and delivery for truebex.com and the API.</li>
+        <li><strong>Cloudflare</strong> — network security and delivery for truebex.com and the API, and cookieless page-view counts (Cloudflare Web Analytics).</li>
         <li><strong>GitHub</strong> — hosting of the public website.</li>
       </ul>
       <p>We share information with others only when the law requires it.</p>

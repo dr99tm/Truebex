@@ -51,6 +51,7 @@ _ADDED_COLUMNS: dict[str, list[tuple[str, str]]] = {
         ("google_sub", "VARCHAR(64)"),
         ("name", "VARCHAR(200)"),
         ("avatar_url", "VARCHAR(1024)"),
+        ("is_admin", "BOOLEAN"),
     ],
     # PF1 (seats) and PF2 (billing through the UK company).
     "subscriptions": [

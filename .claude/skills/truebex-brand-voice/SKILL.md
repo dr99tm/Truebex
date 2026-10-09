@@ -67,15 +67,21 @@ IFC and DWG exchange, several people on one model (cloud projects, history),
 the marketplace with live regional prices and the live cost model, cloud
 panoramas on phones and headsets, daylight / energy / sound / wind reports,
 building services (MEP), the assistant that edits the model, Arabic UI.
-Content lives in `ROADMAP` in `src/lib/constants.ts`; never move an item into
-`FEATURES` until the roadmap 40 tracker shows its row merged.
+Content lives in `src/content/roadmap.json` (words by hand; `status` from
+`scripts/sync-roadmap.mjs`, which reads both roadmap trackers); never move an
+item into `FEATURES` until the roadmap 40 tracker shows its row merged. The
+pricing page's comparison rows for unshipped work carry "On the roadmap"
+(`roadmap: true` in `PRICING.comparison`), and `/features/marketplace/` is
+written in the future tense.
 
 Payments: say "rolling out" until `/billing/plans` on the live API names a
 `provider` (Paddle, the reseller and Merchant of Record, by default; Stripe as
 the alternative). Name a payment provider only where the law or the provider
 needs it (terms, privacy, the billing page's provider note); the Iraqi payment
 rail is retired from all public copy. Prices come from
-`server/app/catalogue.json`, never typed into copy.
+`server/app/catalogue.json`, never typed into copy; the public pages show them
+(and the founding offer) only once its `prices_final` is true, until then every
+paid tier says "Price at launch" while the billing page lists the API's prices.
 
 ## Voice
 
@@ -136,5 +142,6 @@ components; use the Tailwind token (`text-accent`, `bg-surface`, `fill-chart`).
 2. Numbers have units; no orphan superlatives.
 3. Headline ≤ 8 words, includes a concrete noun.
 4. Alt text describes what the image shows *and* the feature it proves.
-5. Update the matching JSON-LD (`app/page.tsx` FAQ/SoftwareApplication) when FAQ or features change.
-6. Then run the `truebex-seo` checklist.
+5. Update the matching JSON-LD (`app/page.tsx` FAQ/SoftwareApplication) when FAQ or features change. Prices never go in copy: they come from `server/app/catalogue.json`, and a tier without one says "Price at launch".
+6. Arabic copy (`AR_HOME`) follows the same rules and is reviewed by a native speaker before launch.
+7. Then run the `truebex-seo` checklist.

@@ -18,6 +18,7 @@ from .billing import jobs as _billing_jobs  # noqa: F401  (registers billing.* j
 from .config import get_settings
 from .database import init_db
 from .routers import auth, billing, keys, usage, v1
+from .routers import growth as growth_router
 
 settings = get_settings()
 
@@ -72,3 +73,4 @@ app.include_router(keys.router)
 app.include_router(usage.router)
 app.include_router(billing.router)
 app.include_router(v1.router)
+app.include_router(growth_router.router)

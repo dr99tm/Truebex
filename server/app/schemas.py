@@ -32,6 +32,7 @@ class UserOut(BaseModel):
     avatar_url: str | None = None
     has_password: bool = True
     google_linked: bool = False
+    is_admin: bool = False
 
 
 class Token(BaseModel):
@@ -196,3 +197,35 @@ class PaymentOut(BaseModel):
     interval: str | None = None
     seats: int | None = None
     tax_minor: int | None = None
+
+
+# --- Admin: growth ------------------------------------------------------------
+
+
+class GrowthDay(BaseModel):
+    day: date
+    signups: int
+    downloads: int
+    trials: int
+    checkouts: int
+    paid: int
+
+
+class GrowthTotals(BaseModel):
+    signups: int
+    downloads: int
+    trials: int
+    checkouts: int
+    paid: int
+
+
+class GrowthOut(BaseModel):
+    """Conversions per UTC day, counted from the platform's own records.
+    Counts only: no e-mail addresses, names or ids."""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    from_: date = Field(alias="from")
+    to: date
+    days: list[GrowthDay]
+    totals: GrowthTotals
