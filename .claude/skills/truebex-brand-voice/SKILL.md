@@ -34,7 +34,8 @@ Copy describes the desktop app as it exists today. Before writing a capability,
 confirm it in the product docs:
 
 - `T:\unreal5_7_4_projects\truebex_compact\Docs\cad\implemented\README.md` — every shipped plan (01–38)
-- `T:\unreal5_7_4_projects\truebex_compact\Docs\roadmap\README.md` — what's in progress
+- `T:\unreal5_7_4_projects\truebex_compact\Docs\roadmap\AS-BUILT\release-notes.md` — roadmap 39 (release 1.0.0, 2026-10-07): what it added
+- `T:\unreal5_7_4_projects\truebex_compact\Docs\roadmap\40\README.md` — roadmap 40, what's in progress (a row is shipped only when ticked AND merged to `main`)
 
 Shipped — the internal fact list. These are engineering names; translate them
 into Truebex's own words before they reach public copy (rule 1), and only
@@ -47,13 +48,27 @@ illumination, sun/sky, measured opening light (interior doors pass light on),
 ray tracing, path tracing; lighting profiles and the view saved in the
 project, lighting on the undo stack; section cuts, storey navigator;
 `.tbxp` projects / `.tbxa` assets; edits in milliseconds (drag 240 ms →
-4.3 ms benchmark). Also shipped but *not* marketed (table stakes): live room
-areas, first-person walk mode.
+4.3 ms benchmark). Since roadmap 39 (2026-10-07): sheets auto-created with
+our own vector PDF (selectable text, fillable forms) and DXF writers;
+dimension styles, auto dimensions, relevance and pins; paint, wallpaper and
+3D pattern finishes; panels on any face (floors, ceilings, slabs, models);
+mouldings at door jambs and along curved walls; the Scale command; walls from
+curves with smooth curved meshes; models with a feature list; sweeps that face
+the viewer; control points; references to anything; dynamic doors, windows,
+cabinets and custom objects; stairs from a run; category prototypes; the asset
+registry with embedded / linked saves and placeholders; the asset browser;
+texture import (BC1–BC7, mips) and mesh import (glTF, GLB, OBJ, FBX) with the
+Object Composer; one UI kit with a live theme; 445 MB install, 4.6 s cold
+start. Also shipped but *not* marketed (table stakes): live room areas,
+first-person walk mode, the self-driving test harness (FastEye).
 
 **Not shipped — roadmap only** (label "On the roadmap", never present tense):
-drawing sheets & PDF, dynamic objects (cabinets, doors, stairs from
-parameters), paint/wallpaper/3D patterns, real-product marketplace. Content lives in `ROADMAP` in `src/lib/constants.ts`;
-never move an item into `FEATURES` until the product docs show it shipped.
+IFC and DWG exchange, several people on one model (cloud projects, history),
+the marketplace with live regional prices and the live cost model, cloud
+panoramas on phones and headsets, daylight / energy / sound / wind reports,
+building services (MEP), the assistant that edits the model, Arabic UI.
+Content lives in `ROADMAP` in `src/lib/constants.ts`; never move an item into
+`FEATURES` until the roadmap 40 tracker shows its row merged.
 
 Payments: say "rolling out" for Stripe and Wayl until `/billing/plans` on the
 API lists them as enabled.

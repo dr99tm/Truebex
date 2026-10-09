@@ -17,7 +17,7 @@ export function CoreFeatures() {
       <FadeInWhenVisible>
         <SectionHeading
           title="What only Truebex does"
-          subtitle="Six capabilities at the heart of the platform."
+          subtitle="Nine capabilities at the heart of the platform, all shipping today."
         />
       </FadeInWhenVisible>
 

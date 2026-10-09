@@ -14,6 +14,13 @@ import {
   HardHat,
   Wrench,
   Users,
+  FileInput,
+  Calculator,
+  Smartphone,
+  Bot,
+  Wind,
+  Cable,
+  Languages,
 } from "lucide-react";
 
 // Content follows .claude/skills/truebex-brand-voice:
@@ -89,29 +96,70 @@ export const FEATURES = [
     description:
       "Lighting setups and the exact view — camera, section, storey — are saved inside the project, and every lighting change can be undone like any other edit.",
   },
+  {
+    id: "sheets",
+    icon: FileText,
+    title: "Drawings that draw themselves",
+    description:
+      "One command lays out plans, sections, stair sheets and schedules, with forms you fill once. Export a vector PDF with selectable text and fillable fields, or DXF.",
+  },
+  {
+    id: "objects",
+    icon: Armchair,
+    title: "Doors, cabinets and stairs from numbers",
+    description:
+      "Describe a door, a window, a cabinet or a stair by its parameters and it builds itself, regenerates with its host, and keeps its handles and hardware in place.",
+  },
+  {
+    id: "finishes",
+    icon: Paintbrush,
+    title: "Finishes on any face",
+    description:
+      "Paint, wallpaper and three-dimensional patterns on walls, floors, ceilings and models, driven by the same panel system — with mouldings that stop at door jambs and follow curved walls.",
+  },
 ] as const;
 
 // Where the platform is going. Shown as "on the roadmap", never as shipped.
 export const ROADMAP = [
   {
-    icon: FileText,
-    title: "Drawing sheets & PDF",
-    description: "Plans, sections and dimensions laid out into sheets automatically.",
+    icon: FileInput,
+    title: "Works with IFC and DWG",
+    description: "Exchange models and drawings with every other tool on the project.",
   },
   {
-    icon: Armchair,
-    title: "Dynamic objects",
-    description: "Cabinets, doors, windows and stairs generated from a few parameters.",
+    icon: Users,
+    title: "Your team on one model",
+    description: "Several people in one project, with every change in a history you can rewind.",
   },
   {
-    icon: Paintbrush,
-    title: "Paint, wallpaper, 3D patterns",
-    description: "Finishes on any face, driven by the same panel system.",
+    icon: Calculator,
+    title: "The model prices itself",
+    description: "Real products with live prices and stock, by region, so the bill of quantities updates as you draw.",
   },
   {
-    icon: ShoppingBag,
-    title: "Real-product marketplace",
-    description: "Place sourceable materials and products straight into the design.",
+    icon: Smartphone,
+    title: "On your phone and in a headset",
+    description: "Panoramas rendered in the cloud, refreshed the moment anything changes, and edits from wherever you are.",
+  },
+  {
+    icon: Wind,
+    title: "Daylight, energy, sound and wind reports",
+    description: "Measured results from the one true model, on demand or as you work.",
+  },
+  {
+    icon: Cable,
+    title: "Building services",
+    description: "Ducts, pipes and circuits that route and size themselves.",
+  },
+  {
+    icon: Bot,
+    title: "An assistant that edits the model",
+    description: "Ask for a window on the north wall and it appears, with the light measured and the change undoable.",
+  },
+  {
+    icon: Languages,
+    title: "Arabic, right to left",
+    description: "The whole app in Arabic, with metric and imperial units.",
   },
 ] as const;
 
@@ -285,7 +333,11 @@ export const FAQS = [
     a: "Yes. Create API keys in your dashboard and call the Truebex API with a bearer token. Every plan includes a monthly request allowance; see the developer docs.",
   },
   {
+    q: "Does Truebex work with IFC and DWG files?",
+    a: "Today Truebex exports vector PDF and DXF. IFC and DWG import and export are on the roadmap, together with sharing a project with your team.",
+  },
+  {
     q: "How can I pay?",
-    a: "Professional plans are billed monthly. We are rolling out card payments through Stripe and local payment in Iraq through Wayl (QiCard, FIB and ZainCash).",
+    a: "Professional plans are billed monthly by card. Payments are rolling out; the pricing section shows the plans.",
   },
 ] as const;

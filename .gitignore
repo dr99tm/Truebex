@@ -63,3 +63,6 @@ next-env.d.ts
 server/.venv/
 server/demo_requests.csv
 __pycache__/
+
+# Claude Autopilot settings are local to this PC
+.vscode/
