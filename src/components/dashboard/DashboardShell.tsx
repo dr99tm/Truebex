@@ -3,7 +3,7 @@
 import { createContext, useContext, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { CreditCard, Gauge, KeyRound, LayoutGrid, BookOpen } from "lucide-react";
+import { CreditCard, Gauge, KeyRound, LayoutGrid, BookOpen, Package, Store } from "lucide-react";
 import { useCurrentUser } from "@/lib/useAuth";
 import { getToken } from "@/lib/auth";
 import type { User } from "@/lib/auth";
@@ -23,6 +23,8 @@ const NAV_GROUPS: { label: string | null; items: NavItem[] }[] = [
     items: [
       { href: "/dashboard/", label: "Overview", icon: LayoutGrid },
       { href: "/dashboard/billing/", label: "Billing", icon: CreditCard },
+      // PF7: orders and requests for quote sent from the app.
+      { href: "/dashboard/orders/", label: "Orders", icon: Package },
     ],
   },
   {
@@ -34,7 +36,8 @@ const NAV_GROUPS: { label: string | null; items: NavItem[] }[] = [
     ],
   },
 ];
-const NAV = NAV_GROUPS.flatMap((g) => g.items);
+// PF7: shown to admins only (users.is_admin); the API enforces it either way.
+const ADMIN_GROUP = { label: "Admin", items: [{ href: "/dashboard/admin/market/", label: "Market", icon: Store }] };
 
 const UserContext = createContext<User | null>(null);
 
@@ -84,6 +87,9 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
     );
   }
 
+  const groups = user.is_admin ? [...NAV_GROUPS, ADMIN_GROUP] : NAV_GROUPS;
+  const NAV = groups.flatMap((g) => g.items);
+
   const isActive = (href: string) =>
     href === "/dashboard/"
       ? pathname === "/dashboard" || pathname === "/dashboard/"
@@ -94,7 +100,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
       <div className="mx-auto flex min-h-screen max-w-7xl gap-8 px-4 pb-24 pt-24 md:px-8">
         <aside className="hidden w-56 shrink-0 md:block">
           <nav aria-label="Dashboard" className="sticky top-24">
-            {NAV_GROUPS.map((group) => (
+            {groups.map((group) => (
               <div key={group.label ?? "main"} className={group.label ? "mt-6" : undefined}>
                 {group.label && (
                   <p className="mb-2 px-3 text-xs font-semibold uppercase tracking-wider text-text-muted">
