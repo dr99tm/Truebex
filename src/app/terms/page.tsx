@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { LegalPage } from "@/components/layout/LegalPage";
-import { SITE } from "@/lib/constants";
+import { SITE, TERMS_PAID_PLANS } from "@/lib/constants";
 
 export const metadata: Metadata = {
   title: "Terms of Service",
@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 
 export default function TermsPage() {
   return (
-    <LegalPage title="Terms of Service" updated="October 7, 2026">
+    <LegalPage title="Terms of Service" updated="October 9, 2026">
       <p>
         These terms apply when you use truebex.com, a Truebex account, the
         dashboard, API keys or the Truebex API (together, &ldquo;the
@@ -35,18 +35,11 @@ export default function TermsPage() {
 
       <h2>Paid plans</h2>
       <ul>
-        <li>
-          <strong>Card (Stripe):</strong> billed monthly in advance and renewed
-          automatically until you cancel. You can cancel from the billing page;
-          the plan stays active until the end of the period you paid for.
-        </li>
-        <li>
-          <strong>Wayl (QiCard, FIB, ZainCash):</strong> each payment buys 30
-          days of the plan. It does not renew automatically; paying again adds
-          another 30 days.
-        </li>
-        <li>Prices are shown before you pay. We will give notice before changing the price of an active subscription.</li>
-        <li>Payments are handled by the provider on its own page; their terms also apply to the payment.</li>
+        {TERMS_PAID_PLANS.map((item) => (
+          <li key={item.title}>
+            <strong>{item.title}:</strong> {item.text}
+          </li>
+        ))}
         <li>If something goes wrong with a payment, contact us at {SITE.email} and we will make it right.</li>
       </ul>
 

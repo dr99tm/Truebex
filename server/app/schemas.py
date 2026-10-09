@@ -106,11 +106,14 @@ class TierOut(BaseModel):
 
 
 class FoundingOut(BaseModel):
+    # Open, seats left and a checkout provider set up.
     enabled: bool
     total: int
     remaining: int
     discount_percent: int
     ends_at: datetime | None
+    # The tiers the founding price applies to.
+    tiers: list[str] = []
 
 
 class BillingCatalog(BaseModel):

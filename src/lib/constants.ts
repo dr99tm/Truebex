@@ -236,7 +236,7 @@ export const AUDIENCES = [
 export const PRICING_PLANS = [
   {
     id: "free",
-    name: "Starter",
+    name: "Free",
     price: "Free",
     period: "",
     description: "Explore Truebex and build against the developer API.",
@@ -253,12 +253,12 @@ export const PRICING_PLANS = [
   },
   {
     id: "pro",
-    name: "Professional",
+    name: "Pro",
     price: "$99",
     period: "/month",
     description: "For professionals who design and present every day.",
     features: [
-      "Everything in Starter",
+      "Everything in Free",
       "Full lighting suite: ray tracing and path tracing",
       "Asset library that updates everywhere",
       "Developer API: 100,000 requests / month",
@@ -266,7 +266,7 @@ export const PRICING_PLANS = [
       "Priority support",
     ],
     cta: "Upgrade to Pro",
-    href: "/dashboard/billing/?plan=pro",
+    href: "/dashboard/billing/?tier=pro&interval=month",
     highlighted: true,
   },
   {
@@ -276,7 +276,7 @@ export const PRICING_PLANS = [
     period: "",
     description: "For teams and organisations designing at scale.",
     features: [
-      "Everything in Professional",
+      "Everything in Pro",
       "Team onboarding",
       "Custom asset libraries",
       "High-volume API limits",
@@ -338,6 +338,165 @@ export const FAQS = [
   },
   {
     q: "How can I pay?",
-    a: "Professional plans are billed monthly by card. Payments are rolling out; the pricing section shows the plans.",
+    a: "Pro and Studio are billed monthly or annually by card, and Team per seat. VAT or sales tax for your country is shown before you pay and on your invoice, and you can cancel renewal at any time. Online payment is rolling out; the pricing section shows the plans.",
+  },
+] as const;
+
+// --- Billing (PF2) -------------------------------------------------------------
+// The dashboard billing page, /checkout/ and the payment parts of the terms
+// and privacy pages. Prices are never typed here: they come from the API
+// (/billing/plans, mirrored from server/app/catalogue.json). Legal wording is
+// a placeholder until the legal guide (GD5); the owner signs it off before
+// production.
+
+export const BILLING = {
+  title: "Billing",
+  description: "Your plan, seats, invoices and payment history.",
+  // Shown above Checkout; the API stores the version with the payment.
+  // Bump the version here and in server/app/billing/consent.py together.
+  consent: {
+    version: "2026-10-09",
+    label:
+      "I want my plan to start now. I understand that I lose my 14-day right to cancel once it starts, and that I can cancel future renewals at any time.",
+    reason: "Tick the box above to continue.",
+  },
+  plan: {
+    heading: "Current plan",
+    free: "Free plan · no card needed",
+    renews: "Renews on",
+    ends: "Ends on",
+    oneSeat: "1 seat",
+    seats: "seats",
+    founding: "Founding price",
+    pastDue: "The last payment failed. Update your card under Manage to keep your plan.",
+    paused: "Paused. Resume it under Manage.",
+    manage: "Manage card and cancellation",
+    opening: "Opening…",
+  },
+  choose: {
+    heading: "Choose a plan",
+    monthly: "Monthly",
+    annual: "Annual",
+    save: "Save",
+    currency: "Currency",
+    perSeat: "per seat",
+    oneSeat: "1 seat",
+    seats: "Seats",
+    minSeats: "Minimum",
+    total: "Total before tax",
+    tax: "Tax for your country is added at checkout and shown on the invoice.",
+    coupon: "Discount code",
+    couponHint: "Optional",
+    checkout: "Continue to payment",
+    redirecting: "Opening checkout…",
+    setupPending: "Online payment is being set up. To upgrade now,",
+    contact: "contact us",
+    noPrice: "Price at launch",
+    compare: "Compare plans",
+  },
+  founding: {
+    left: "founding seats left",
+    off: "off for as long as your subscription stays active",
+    applied: "Founding price",
+  },
+  change: {
+    heading: "Change plan",
+    plan: "Plan",
+    interval: "Billing",
+    apply: "Apply change",
+    applying: "Applying…",
+    prorated: "Changes are prorated: the difference is charged or credited straight away.",
+    confirm: "Change your subscription now? The difference is charged or credited straight away.",
+    seatsHeading: "Seats",
+    seatsApply: "Update seats",
+    done: "Your subscription was updated.",
+  },
+  invoices: {
+    heading: "Invoices",
+    none: "No invoices yet.",
+    date: "Date",
+    number: "Number",
+    total: "Total",
+    tax: "Tax",
+    pdf: "PDF",
+    download: "Download",
+  },
+  history: {
+    heading: "Payment history",
+    none: "No payments yet.",
+    date: "Date",
+    plan: "Plan",
+    method: "Method",
+    amount: "Amount",
+    status: "Status",
+    card: "Card",
+  },
+  notices: {
+    confirming: "Confirming your payment…",
+    paid: "Payment received — your plan is active.",
+    processing: "Payment is still processing. Your plan appears here once the provider confirms it.",
+    unconfirmed: "We couldn't confirm the payment yet. It appears here once the provider confirms it.",
+    canceled: "Checkout was cancelled — you haven't been charged.",
+  },
+  // Who processes the card, by the provider /billing/plans offers.
+  providerNote: {
+    paddle:
+      "Payments are processed by Paddle, our reseller and Merchant of Record, who also issues your invoice.",
+    stripe: "Payments are processed by Stripe. Truebex Ltd issues your invoice.",
+  },
+} as const;
+
+export const CHECKOUT = {
+  title: "Checkout",
+  opening: "Opening secure checkout…",
+  open: "Open checkout",
+  missing: "This checkout link is incomplete. Start again from the billing page.",
+  unavailable: "Checkout isn't available right now. Try again from the billing page.",
+  back: "Back to billing",
+  done: "Payment received. Taking you back to billing…",
+} as const;
+
+// Terms of service, "Paid plans" (src/app/terms/page.tsx).
+export const TERMS_PAID_PLANS = [
+  {
+    title: "Plans",
+    text: "Pro and Studio are for one person; Team is billed per seat. You choose monthly or annual billing, and the price, tax and total are shown before you pay.",
+  },
+  {
+    title: "Our reseller",
+    text: "Our order process is conducted by our online reseller Paddle.com. Paddle.com is the Merchant of Record for all our card orders and handles customer service enquiries about payments and returns. Enterprise customers may instead be invoiced by Truebex Ltd.",
+  },
+  {
+    title: "Renewal and cancellation",
+    text: "Plans renew automatically at the end of each month or year until you cancel. Cancel at any time from the billing page; your plan stays active until the end of the period you paid for.",
+  },
+  {
+    title: "Changes",
+    text: "Adding seats, moving to a higher plan or to annual billing is charged pro rata straight away; moving down is credited against future payments.",
+  },
+  {
+    title: "Your right to cancel",
+    text: "If you buy as a consumer, you normally have 14 days to cancel. Because your plan starts as soon as you pay, we ask at checkout for your agreement to start straight away and your acknowledgement that you then lose that right for the purchase. You can still cancel future renewals.",
+  },
+  {
+    title: "Founding seats",
+    text: "A seat bought at the founding price keeps that price for as long as its subscription stays active without a break.",
+  },
+  {
+    title: "Prices",
+    text: "Prices are shown before you pay. We will give notice before changing the price of an active subscription.",
+  },
+] as const;
+
+// Privacy policy, "Who processes it for us": the payment processors.
+export const PAYMENT_PROCESSORS = [
+  {
+    name: "Paddle",
+    purpose:
+      "card payments, as our reseller and Merchant of Record: your name, email address, country and postcode for tax, and the payment details you enter on its checkout.",
+  },
+  {
+    name: "Stripe",
+    purpose: "business invoices, and card subscriptions started before Paddle.",
   },
 ] as const;

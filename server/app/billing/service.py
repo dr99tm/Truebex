@@ -362,6 +362,7 @@ def founding_status(db: Session, now: datetime | None = None) -> dict:
         "remaining": remaining,
         "discount_percent": FOUNDING.discount_percent,
         "ends_at": FOUNDING.ends_at,
+        "tiers": list(FOUNDING.tiers),
     }
 
 

@@ -24,8 +24,8 @@ const ENDPOINTS = [
 ];
 
 const LIMITS = [
-  { plan: "Starter", requests: "1,000", keys: "2" },
-  { plan: "Professional", requests: "100,000", keys: "20" },
+  { plan: "Free", requests: "1,000", keys: "2" },
+  { plan: "Pro", requests: "100,000", keys: "20" },
   { plan: "Enterprise", requests: "Custom", keys: "Custom" },
 ];
 

@@ -70,8 +70,12 @@ building services (MEP), the assistant that edits the model, Arabic UI.
 Content lives in `ROADMAP` in `src/lib/constants.ts`; never move an item into
 `FEATURES` until the roadmap 40 tracker shows its row merged.
 
-Payments: say "rolling out" for Stripe and Wayl until `/billing/plans` on the
-API lists them as enabled.
+Payments: say "rolling out" until `/billing/plans` on the live API names a
+`provider` (Paddle, the reseller and Merchant of Record, by default; Stripe as
+the alternative). Name a payment provider only where the law or the provider
+needs it (terms, privacy, the billing page's provider note); the Iraqi payment
+rail is retired from all public copy. Prices come from
+`server/app/catalogue.json`, never typed into copy.
 
 ## Voice
 

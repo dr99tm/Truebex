@@ -101,9 +101,12 @@ def catalog(db: Session = Depends(get_db)) -> BillingCatalog:
             )
         )
     offered = providers.checkout_provider(settings)
+    founding = service.founding_status(db)
+    # The offer is shown only while it can be bought.
+    founding["enabled"] = founding["enabled"] and offered is not None
     return BillingCatalog(
         tiers=tiers,
-        founding=FoundingOut(**service.founding_status(db)),
+        founding=FoundingOut(**founding),
         provider=offered.name if offered else None,
         currencies=list(CURRENCIES),
         providers=providers.enabled_providers(settings),
