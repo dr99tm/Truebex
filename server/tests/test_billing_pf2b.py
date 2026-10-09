@@ -33,6 +33,11 @@ LONG_AGO = date(2020, 1, 1)
 # --- helpers --------------------------------------------------------------------------
 
 
+@pytest.fixture(autouse=True)
+def empty_outbox():
+    mail.OUTBOX.clear()
+
+
 @pytest.fixture()
 def rules(monkeypatch):
     """Flip PF2b settings for one test."""
@@ -581,7 +586,7 @@ def test_key_information_acknowledged_with_payment(client, paddle, rules):
 
 def test_confirmation_mail_contents(client, paddle, rules):
     h = signup(client)
-    buy(client, h, paddle)
+    first, _ = buy(client, h, paddle)
     assert mails("order") == []  # wording not approved: the provider's receipt only
 
     rules(legal_wording_approved=True)
@@ -597,8 +602,9 @@ def test_confirmation_mail_contents(client, paddle, rules):
     assert "Pro" in text and co["reference"] in text
     assert consumer.money(row.amount, "GBP") in text and "every year" in text
     assert notices.RENEWAL_TERMS.render(interval="year") in text
-    # The seller.
+    # The seller, and who licenses the software.
     assert notices.SELLERS["paddle"] in text
+    assert notices.LICENSOR.render(company="Truebex Ltd") in text
     # The exact consent and acknowledgement text, with versions and times.
     assert notices.CONSENT_DRAFT["digital_content"].text in text
     assert notices.CONSENT_DRAFT["digital_content"].version in text
@@ -609,4 +615,12 @@ def test_confirmation_mail_contents(client, paddle, rules):
     s = get_settings()
     assert f"{s.site_url}/terms/" in text and consumer.eula_url() in text
     assert row.confirmation_sent_at is not None
-    assert msg.html.count("<") > 5 and "&lt;" not in notices.SELLERS["paddle"]
+    # The HTML part carries the same record.
+    assert "<h2" in msg.html and notices.SELLERS["paddle"] in msg.html and co["reference"] in msg.html
+    # Approval later does not mail old orders when a late event about them arrives.
+    with SessionLocal() as db:
+        old = db.scalar(select(Payment).where(Payment.reference == first["reference"]))
+        old.paid_at = datetime.now(timezone.utc) - timedelta(days=3)
+        db.commit()
+        assert consumer.payment_paid(db, old) is False
+    assert len(mails("order")) == 1

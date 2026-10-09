@@ -1,7 +1,5 @@
 $statement
 
-$refund
-
-Billing: $billing_url
+${refund_block}Billing: $billing_url
 
 $footer

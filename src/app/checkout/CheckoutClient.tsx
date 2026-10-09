@@ -119,7 +119,7 @@ export function CheckoutClient() {
     <>
       <Script src={PADDLE_JS} strategy="afterInteractive" onReady={() => setScriptReady(true)} />
       {summary ? (
-        <div className="grid w-full max-w-4xl gap-6 text-left md:grid-cols-2">
+        <div className="grid w-full max-w-4xl items-start gap-6 text-left md:grid-cols-2">
           <section
             aria-label={CHECKOUT.summary}
             className="rounded-[var(--radius-card)] border border-accent/30 bg-accent/5 p-5"

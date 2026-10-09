@@ -46,6 +46,8 @@ COOLING_OFF_DAYS = 14
 WITHDRAWAL_DAYS = 14
 # Provider steps of an exit are retried this long (billing.exits.retry).
 EXIT_RETRY_WINDOW = timedelta(days=7)
+# The order confirmation goes out for checkouts paid this recently.
+CONFIRMATION_WINDOW = timedelta(days=2)
 # Exits that end the plan now and refund.
 IMMEDIATE = ("cooling_off", "withdrawal")
 FULL = 1_000_000  # parts per million
@@ -197,11 +199,18 @@ def _send(to: str, template: str, subject: str, **data: object) -> bool:
         "footer": notices.FOOTER.render(support_email=get_settings().support_email),
         **data,
     }
+    if "refund" in values:
+        # The text part's refund line with its spacing, or nothing.
+        values["refund_block"] = f"{values['refund']}\n\n" if values["refund"] else ""
     try:
-        mail.send_mail(to, template, values)
+        msg = mail.send_mail(to, template, values)
     except Exception:  # noqa: BLE001 - a mail failure is retried, never fatal
         log.exception("could not mail %s to %s", template, to)
         return False
+    if get_settings().mail_backend == "console":
+        # Local runs: the whole text, readable in the API's log
+        # (uvicorn ... --log-config scripts/log-info.json).
+        log.info("console mail %s to %s: %s\n%s", template, to, msg.subject, msg.text)
     return True
 
 
@@ -349,6 +358,9 @@ def payment_paid(db: Session, payment: Payment) -> bool:
     one). Idempotent. Returns True when it was sent now."""
     if not wording_approved() or payment.status != "paid" or payment.confirmation_sent_at is not None:
         return False
+    paid = _aware(payment.paid_at)
+    if paid is None or paid < _now() - CONFIRMATION_WINDOW:
+        return False  # a late event about an old order: no confirmation out of the blue
     user = db.get(User, payment.user_id)
     if user is None:
         return False
@@ -370,7 +382,10 @@ def _order_data(payment: Payment, plan: str) -> dict:
         order += f" (tax {money(payment.tax_minor, payment.currency)})"
     order += f".\nReference {payment.reference}, paid {stamp(payment.paid_at)}."
     company = "Truebex Ltd" + (f", {s.company_address}" if s.company_address else "")
-    seller = company if payment.provider == "stripe" else f"{notices.SELLERS.get(payment.provider, '')}\n{company}"
+    if payment.provider == "stripe":
+        seller = company
+    else:
+        seller = f"{notices.SELLERS.get(payment.provider, '')}\n{notices.LICENSOR.render(company=company)}"
     agreed = []
     text = consent_text(payment.consent_version)
     if text:

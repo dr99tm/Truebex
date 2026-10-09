@@ -75,39 +75,6 @@ class Settings(BaseSettings):
     # Price of one Pro month in IQD (Wayl's minimum is 1000).
     wayl_price_pro_iqd: int = 130_000
 
-    # --- Licence API (PF1, contract licence-api) -------------------------------
-    # base64url Ed25519 seed that signs entitlements (server/scripts/
-    # make_signing_key.py --kind lic). Lives only in server/.env. Empty
-    # switches activation, entitlements and trials off (503 unavailable).
-    licence_signing_key: str = ""
-    licence_key_id: str = "lic-2026-10"
-    # Public halves published by GET /licence/keys, as "kid:key,kid:key".
-    # The rel-* private seeds never live on this host.
-    release_public_keys: str = ""
-    # Older lic-* public keys kept valid during a rotation (contract §3).
-    signing_keys_extra: str = ""
-    trial_days: int = 14
-
-    # --- Shared plumbing (PF14 owns the production adapters) -----------------
-    # "local": files under storage_dir, served by /files with HMAC-signed URLs.
-    storage_backend: str = "local"
-    storage_dir: str = "./storage"
-    # HMAC key for local signed URLs; empty derives one from secret_key.
-    storage_url_secret: str = ""
-    # background_tasks (inline | worker | off) is under Billing above.
-    # memory (in-process token buckets).
-    ratelimit_backend: str = "memory"
-
-    # Mail (PF14 Plumbing; the same settings as PF14's): "console" (kept in
-    # app.mail.OUTBOX and logged) or "smtp" (the provider's relay).
-    mail_backend: str = "console"
-    mail_from: str = "Truebex <hello@truebex.com>"
-    support_email: str = "hello@truebex.com"
-    smtp_host: str = ""
-    smtp_port: int = 587
-    smtp_user: str = ""
-    smtp_password: str = ""
-
     # --- Subscription consumer rules (PF2b; guides/GD5 §7.1-7.4) -------------
     # Built now, switched OFF until the owner's solicitor approves the wording.
     # UK DMCC Act 2024 subscription rules: renewal reminders, the trial-end
@@ -135,6 +102,64 @@ class Settings(BaseSettings):
     # EULA_URL uses the terms page.
     company_address: str = ""
     eula_url: str = ""
+
+    # --- Licence API (PF1, contract licence-api) -------------------------------
+    # base64url Ed25519 seed that signs entitlements (server/scripts/
+    # make_signing_key.py --kind lic). Lives only in server/.env. Empty
+    # switches activation, entitlements and trials off (503 unavailable).
+    licence_signing_key: str = ""
+    licence_key_id: str = "lic-2026-10"
+    # Public halves published by GET /licence/keys, as "kid:key,kid:key".
+    # The rel-* private seeds never live on this host.
+    release_public_keys: str = ""
+    # Older lic-* public keys kept valid during a rotation (contract §3).
+    signing_keys_extra: str = ""
+    trial_days: int = 14
+
+    # --- Operations and shared plumbing (PF14) --------------------------------
+    # Blob storage: "local" (files under storage_dir, served by /files with
+    # HMAC-signed URLs) or "s3" (any S3-compatible bucket, presigned URLs).
+    storage_backend: str = "local"
+    storage_dir: str = "./storage"
+    # HMAC key for local signed URLs; empty derives one from secret_key.
+    storage_url_secret: str = ""
+    s3_endpoint: str = ""
+    s3_region: str = "auto"
+    s3_bucket: str = ""
+    s3_access_key_id: str = ""
+    s3_secret_access_key: str = ""
+    # CDN hostname in front of the public, cacheable prefixes (tiles/, shares/,
+    # releases/). Empty = presigned URLs for everything.
+    cdn_base_url: str = ""
+
+    # Mail: "console" (kept in app.mail.OUTBOX and logged) or "smtp".
+    mail_backend: str = "console"
+    mail_from: str = "Truebex <hello@truebex.com>"
+    support_email: str = "hello@truebex.com"
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_user: str = ""
+    smtp_password: str = ""
+
+    # background_tasks (inline | worker | off) is under Billing above:
+    # "inline" runs the asyncio loop inside the API process, "worker" the
+    # separate `python -m app.worker` process.
+    # "memory" (one API process) or "db" (shared buckets in the database).
+    ratelimit_backend: str = "memory"
+
+    # Alerts from the server's own checks (backups); uptime alerts come from
+    # the hosted monitor. alert_push_url: an ntfy-style topic URL (phone push).
+    alert_email: str = ""
+    alert_push_url: str = ""
+    # True on the production host: a missing backup marker is then an alert.
+    backup_expected: bool = False
+
+    # Telemetry ingestion (contracts/telemetry.md). The kill switch stops
+    # usage events (5.1 `enabled: false`); ingestion off answers 503.
+    telemetry_events_enabled: bool = True
+    telemetry_ingestion_enabled: bool = True
+    # rust-minidump's stackwalker; absent = symbolicate the sent callstack only.
+    minidump_stackwalk: str = "minidump-stackwalk"
 
     @property
     def cors_origin_list(self) -> list[str]:

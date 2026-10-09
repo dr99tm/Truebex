@@ -85,6 +85,9 @@ HOW_TO_CANCEL = Wording(
     "you paid for.",
 )
 
+# The confirmation's seller block when a reseller sells: who licenses the app.
+LICENSOR = Wording(DRAFT_VERSION, "The software is licensed to you by {company}.")
+
 # Who sells, by the provider that takes the payment ("Sold by {seller}").
 SELLERS = {
     "paddle": "Paddle.com, our reseller and Merchant of Record",
