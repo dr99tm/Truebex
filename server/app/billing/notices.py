@@ -16,9 +16,21 @@ Two kinds of text:
   EU_WITHDRAWAL_ENABLED), and the solicitor reads them too (QS-18).
 
 `{name}` marks a value filled in when the text is used.
+
+Mail goes out through PF14's plumbing, `send_mail(to, template, data, *,
+reply_to=None)` with templates in app/mail/templates/. This is its only import
+in PF2b: until PF14 is merged into this branch `send_mail` is None, and every
+notice, confirmation and acknowledgement is logged and left unsent (the
+billing.subscription_notices job does nothing; billing.exits.retry sends the
+exit mails once mail exists, for 7 days).
 """
 
 from dataclasses import dataclass
+
+try:
+    from app.mail import send_mail
+except ImportError:  # PF14's app.mail not merged yet
+    send_mail = None
 
 
 @dataclass(frozen=True)

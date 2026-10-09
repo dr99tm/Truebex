@@ -3,8 +3,11 @@
 DMCC Act 2024 reminder notices and the renewal cooling-off, the easy exit,
 the EU withdrawal function (Directive 2011/83/EU Art. 11a), the key
 pre-contract information and the confirmation on a durable medium. Paddle is
-tests/mock_paddle.py served in-process; Stripe calls are monkeypatched; mail
-is PF14's console backend (app.mail.OUTBOX).
+tests/mock_paddle.py served in-process; Stripe calls are monkeypatched.
+
+Mail is PF14's console backend (app.mail.OUTBOX). Every test that reads mail
+starts with pytest.importorskip("app.mail") and skips while PF14 is not merged
+into this branch; the others run either way.
 """
 
 import re
@@ -15,7 +18,7 @@ import pytest
 import stripe
 from sqlalchemy import func, select
 
-from app import mail, tasks
+from app import tasks
 from app.billing import consent, consumer, jobs, notices, pricing
 from app.config import get_settings
 from app.database import SessionLocal
@@ -33,9 +36,15 @@ LONG_AGO = date(2020, 1, 1)
 # --- helpers --------------------------------------------------------------------------
 
 
-@pytest.fixture(autouse=True)
-def empty_outbox():
-    mail.OUTBOX.clear()
+def need_mail(mod):
+    """`mod` is pytest.importorskip("app.mail"). Before PF14 is merged only
+    PF2b's templates are in app/mail/, which then imports as an empty
+    namespace package: skip in that case too. Returns the module, its OUTBOX
+    emptied."""
+    if not hasattr(mod, "send_mail"):
+        pytest.skip("PF14's app.mail (send_mail, OUTBOX) is not merged into this branch yet")
+    mod.OUTBOX.clear()
+    return mod
 
 
 @pytest.fixture()
@@ -95,7 +104,7 @@ def payment(reference: str) -> Payment:
         return db.scalar(select(Payment).where(Payment.reference == reference))
 
 
-def mails(subject_part: str) -> list:
+def mails(mail, subject_part: str) -> list:
     return [m for m in mail.OUTBOX if subject_part in m.subject]
 
 
@@ -172,19 +181,40 @@ def test_notices_off_by_default(client, paddle, rules):
     assert "billing.subscription_notices" in tasks.jobs()
     end = aware(local_sub(provider="paddle").current_period_end)
     at = end - timedelta(days=2)
-    mail.OUTBOX.clear()
     # Flag off: nothing, however close the renewal.
     assert jobs.subscription_notices(at) == 0
     # Flag on, but before the rules start: nothing either.
     rules(subscription_notices_enabled=True, legal_wording_approved=True,
           subscription_rules_from=(at + timedelta(days=1)).date())
     assert jobs.subscription_notices(at) == 0
-    assert mail.OUTBOX == []
     with SessionLocal() as db:
         assert db.scalar(select(func.count()).select_from(SubscriptionNotice)) == 0
 
 
+def test_pf2b_without_mail_logs_and_does_nothing(client, paddle, rules, monkeypatch, caplog):
+    """Until PF14's send_mail is importable the notices job logs and does
+    nothing, and an exit is still recorded and sent to the provider; its
+    confirmation waits for billing.exits.retry."""
+    monkeypatch.setattr(notices, "send_mail", None)
+    rules(subscription_notices_enabled=True, subscription_rules_from=LONG_AGO)
+    h = signup(client)
+    buy(client, h, paddle)
+    end = aware(local_sub(provider="paddle").current_period_end)
+    caplog.set_level("WARNING")
+    assert jobs.subscription_notices(end - timedelta(days=2)) == 0
+    assert "not merged" in caplog.text
+    with SessionLocal() as db:
+        assert db.scalar(select(func.count()).select_from(SubscriptionNotice)) == 0
+    res = client.post("/billing/cancel", json={"confirm": True}, headers=h)
+    assert res.status_code == 200 and res.json()["status"] == "done"
+    assert paddle.STATE["cancels"][-1]["effective_from"] == "next_billing_period"
+    with SessionLocal() as db:
+        exit_ = db.scalar(select(SubscriptionExit))
+        assert exit_.canceled_at is not None and exit_.mail_sent_at is None
+
+
 def test_renewal_reminder_sent_once_per_period(client, paddle, rules):
+    mail = need_mail(pytest.importorskip("app.mail"))
     rules(subscription_notices_enabled=True, subscription_rules_from=LONG_AGO)
     h = signup(client)
     co, events = buy(client, h, paddle)
@@ -195,7 +225,7 @@ def test_renewal_reminder_sent_once_per_period(client, paddle, rules):
     assert jobs.subscription_notices(end - timedelta(days=4)) == 0  # 3-day lead for monthly
     assert jobs.subscription_notices(end - timedelta(days=2)) == 1
     assert jobs.subscription_notices(end - timedelta(days=1)) == 0  # once per period
-    (msg,) = mails("renews")
+    (msg,) = mails(mail, "renews")
     assert msg.to == "dev@example.com"
     amount = pricing.amount("pro", "month", "GBP", co["founding"])
     assert consumer.money(amount, "GBP") in msg.text
@@ -211,7 +241,7 @@ def test_renewal_reminder_sent_once_per_period(client, paddle, rules):
     new_end = aware(local_sub(provider="paddle").current_period_end)
     assert new_end > end
     assert jobs.subscription_notices(new_end - timedelta(days=2)) == 1
-    assert len(mails("renews")) == 2
+    assert len(mails(mail, "renews")) == 2
     with SessionLocal() as db:
         rows = db.scalars(select(SubscriptionNotice).order_by(SubscriptionNotice.id)).all()
         assert [r.kind for r in rows] == ["renewal_reminder", "renewal_reminder"]
@@ -222,7 +252,7 @@ def test_renewal_reminder_sent_once_per_period(client, paddle, rules):
     annual_end = aware(local_sub(provider="paddle", interval="year").current_period_end)
     assert jobs.subscription_notices(annual_end - timedelta(days=15)) == 0
     assert jobs.subscription_notices(annual_end - timedelta(days=10)) == 1
-    annual = [m for m in mails("renews") if m.to == "annual@example.com"]
+    annual = [m for m in mails(mail, "renews") if m.to == "annual@example.com"]
     assert len(annual) == 1 and notices.RENEWAL_COOLING_OFF.text in annual[0].text
 
     # Set to end at the period end: no reminder.
@@ -237,6 +267,7 @@ def test_renewal_reminder_sent_once_per_period(client, paddle, rules):
 
 
 def test_trial_end_notice(client, rules):
+    mail = need_mail(pytest.importorskip("app.mail"))
     rules(subscription_notices_enabled=True, subscription_rules_from=LONG_AGO)
     h = signup(client)
     uid = me(client, h)["id"]
@@ -250,7 +281,7 @@ def test_trial_end_notice(client, rules):
     assert jobs.subscription_notices(end - timedelta(days=4)) == 0  # 3 days ahead, not 4
     assert jobs.subscription_notices(end - timedelta(days=2)) == 1
     assert jobs.subscription_notices(end - timedelta(days=1)) == 0  # once
-    (msg,) = mails("trial")
+    (msg,) = mails(mail, "trial")
     assert msg.to == "dev@example.com"
     expected = notices.TRIAL_END.render(days=get_settings().trial_days, plan="Pro", date=consumer.long_date(end))
     assert expected in msg.text
@@ -279,7 +310,6 @@ def test_cancel_easy_exit(client, paddle):
     view = sub_view(client, h)
     assert view["can_cancel"] is True and view["cooling_off_until"] is None and view["withdrawal_until"] is None
 
-    mail.OUTBOX.clear()
     sent = len(paddle.STATE["sent"])
     res = client.post("/billing/cancel", json={"confirm": True}, headers=h)
     assert res.status_code == 200, res.text
@@ -295,11 +325,9 @@ def test_cancel_easy_exit(client, paddle):
     view = sub_view(client, h)
     assert view["cancel_at_period_end"] is False and view["can_cancel"] is False
     assert client.post("/billing/cancel", json={"confirm": True}, headers=h).status_code == 409
-    (msg,) = mails("cancelled")
-    assert consumer.long_date(sub.current_period_end) in msg.text
     with SessionLocal() as db:
         exit_ = db.scalar(select(SubscriptionExit))
-        assert exit_.kind == "cancel" and exit_.canceled_at is not None and exit_.mail_sent_at is not None
+        assert exit_.kind == "cancel" and exit_.canceled_at is not None
 
     deliver_sent(client, paddle, sent)
     view = sub_view(client, h)
@@ -311,8 +339,8 @@ def test_cancel_easy_exit(client, paddle):
 
 
 def test_exit_retry_job(client, paddle, monkeypatch):
-    """A cancellation the provider could not take is recorded, confirmed to
-    the customer and finished by billing.exits.retry."""
+    """A cancellation the provider could not take is recorded and finished by
+    billing.exits.retry."""
     from app.billing import paddle_provider
 
     h = signup(client)
@@ -325,14 +353,12 @@ def test_exit_retry_job(client, paddle, monkeypatch):
     monkeypatch.setattr(paddle_provider.PaddleProvider, "cancel_subscription", down)
     res = client.post("/billing/cancel", json={"confirm": True}, headers=h)
     assert res.status_code == 200 and res.json()["status"] == "processing"
-    assert len(mails("cancelled")) == 1
     assert client.post("/billing/cancel", json={"confirm": True}, headers=h).status_code == 409
     monkeypatch.setattr(paddle_provider.PaddleProvider, "cancel_subscription", original)
     assert "billing.exits.retry" in tasks.jobs()
     assert jobs.retry_exits(datetime.now(timezone.utc)) == 1
     assert paddle.STATE["cancels"][-1]["effective_from"] == "next_billing_period"
     assert jobs.retry_exits(datetime.now(timezone.utc)) == 0
-    assert len(mails("cancelled")) == 1
 
 
 # --- renewal cooling-off (DMCC) ---------------------------------------------------------------------
@@ -357,7 +383,6 @@ def test_renewal_cooling_off_refund_via_provider_mock(client, paddle, rules):
     assert until is not None
     assert timedelta(days=14) <= aware(datetime.fromisoformat(until)) - aware(sub.renewed_at) < timedelta(days=15)
 
-    mail.OUTBOX.clear()
     sent = len(paddle.STATE["sent"])
     res = client.post("/billing/cancel", json={"confirm": True, "refund": True}, headers=h)
     assert res.status_code == 200, res.text
@@ -378,8 +403,6 @@ def test_renewal_cooling_off_refund_via_provider_mock(client, paddle, rules):
     assert me(client, h)["plan"] == "pro"
     deliver_sent(client, paddle, sent)
     assert me(client, h)["plan"] == "free"
-    (msg,) = mails("cancelled")
-    assert consumer.money(out["refund_minor"], "GBP") in msg.text
 
     # Outside the 14 days: refused.
     h2 = signup(client, email="late@example.com")
@@ -444,6 +467,7 @@ def test_renewal_cooling_off_refund_stripe(client, stripe_prices, monkeypatch, r
 
 
 def test_eu_withdrawal_flow(client, paddle, rules):
+    mail = need_mail(pytest.importorskip("app.mail"))
     assert client.post("/billing/withdraw", json={"confirm": True}).status_code == 401
     h = signup(client)
     co, events = buy(client, h, paddle, country="DE")
@@ -476,7 +500,7 @@ def test_eu_withdrawal_flow(client, paddle, rules):
     adj = paddle.STATE["adjustments"][-1]
     assert adj["transaction_id"] == checkout_txn["id"] and adj["type"] == "full"
     # The acknowledgement on a durable medium, with the date and time.
-    (ack,) = mails("withdrawal")
+    (ack,) = mails(mail, "withdrawal")
     requested = aware(datetime.fromisoformat(out["requested_at"]))
     assert consumer.long_date(requested) in ack.text and requested.strftime("%H:%M") in ack.text
     assert notices.WITHDRAW_ACK.render(plan="Pro", date=consumer.long_date(requested),
@@ -508,13 +532,49 @@ def test_eu_withdrawal_flow(client, paddle, rules):
     assert client.post("/billing/withdraw", json={"confirm": True}, headers=h4).status_code == 409
 
 
+def test_eu_withdrawal_rules_without_mail(client, paddle, rules):
+    """The withdrawal's rules and provider steps, which need no mail: off ->
+    404; inside the window for an EU consumer -> cancel now and refund in
+    full, the plan changing only from the webhook; outside the EU, a business
+    purchase or after the period -> 409."""
+    h = signup(client)
+    co, events = buy(client, h, paddle, country="DE")
+    assert client.post("/billing/withdraw", json={"confirm": True}, headers=h).status_code == 404
+    rules(eu_withdrawal_enabled=True)
+    assert sub_view(client, h)["withdrawal_until"] is not None
+    assert client.post("/billing/withdraw", json={"confirm": False}, headers=h).status_code == 422
+    sent = len(paddle.STATE["sent"])
+    res = client.post("/billing/withdraw", json={"confirm": True}, headers=h)
+    assert res.status_code == 200 and res.json()["kind"] == "withdrawal"
+    checkout_txn = next(e for e in events if e["event_type"] == "transaction.completed")["data"]
+    assert paddle.STATE["adjustments"][-1]["transaction_id"] == checkout_txn["id"]
+    assert paddle.STATE["cancels"][-1]["effective_from"] == "immediately"
+    assert me(client, h)["plan"] == "pro"
+    deliver_sent(client, paddle, sent)
+    assert me(client, h)["plan"] == "free"
+    for email, country, business in (("uk@example.com", "GB", False), ("firm@example.com", "FR", True)):
+        hx = signup(client, email=email)
+        buy(client, hx, paddle, country=country, business=business)
+        assert sub_view(client, hx)["withdrawal_until"] is None
+        assert client.post("/billing/withdraw", json={"confirm": True}, headers=hx).status_code == 409
+    h4 = signup(client, email="late@example.com")
+    co4, _ = buy(client, h4, paddle, country="IE")
+    with SessionLocal() as db:
+        db.scalar(select(Payment).where(Payment.reference == co4["reference"])).paid_at = (
+            datetime.now(timezone.utc) - timedelta(days=16)
+        )
+        db.commit()
+    assert client.post("/billing/withdraw", json={"confirm": True}, headers=h4).status_code == 409
+
+
 def test_eu_withdrawal_after_complete_waiver_is_not_offered(client, paddle, rules):
     """Digital content: consent, acknowledgement and the confirmation mail
     together end the right (reg. 37, Art. 16(m)); the button then stays away."""
+    mail = need_mail(pytest.importorskip("app.mail"))
     rules(eu_withdrawal_enabled=True, legal_wording_approved=True)
     h = signup(client)
     buy(client, h, paddle, country="NL", body=approved_body())
-    assert len(mails("order")) == 1
+    assert len(mails(mail, "order")) == 1
     assert sub_view(client, h)["withdrawal_until"] is None
     # The service variant keeps the right (the customer pays for the days used).
     rules(consent_variant="service")
@@ -585,16 +645,17 @@ def test_key_information_acknowledged_with_payment(client, paddle, rules):
 
 
 def test_confirmation_mail_contents(client, paddle, rules):
+    mail = need_mail(pytest.importorskip("app.mail"))
     h = signup(client)
     first, _ = buy(client, h, paddle)
-    assert mails("order") == []  # wording not approved: the provider's receipt only
+    assert mails(mail, "order") == []  # wording not approved: the provider's receipt only
 
     rules(legal_wording_approved=True)
     h2 = signup(client, email="buyer@example.com")
     co, events = buy(client, h2, paddle, body=approved_body(interval="year"))
     for ev in events:  # replays do not send it twice
         paddle_post(client, ev)
-    (msg,) = mails("order")
+    (msg,) = mails(mail, "order")
     assert msg.to == "buyer@example.com"
     row = payment(co["reference"])
     text = msg.text
@@ -623,4 +684,38 @@ def test_confirmation_mail_contents(client, paddle, rules):
         old.paid_at = datetime.now(timezone.utc) - timedelta(days=3)
         db.commit()
         assert consumer.payment_paid(db, old) is False
-    assert len(mails("order")) == 1
+    assert len(mails(mail, "order")) == 1
+
+
+def test_exit_confirmation_mails(client, paddle, rules, monkeypatch):
+    """The easy exit's confirmation (once, also when the provider needed a
+    retry) and the cooling-off refund mail with the amount."""
+    from app.billing import paddle_provider
+
+    mail = need_mail(pytest.importorskip("app.mail"))
+    h = signup(client)
+    buy(client, h, paddle)
+    sub = local_sub(provider="paddle")
+    original = paddle_provider.PaddleProvider.cancel_subscription
+
+    def down(self, db, sub, *, immediately):
+        raise paddle_provider.ProviderError("Paddle unreachable")
+
+    monkeypatch.setattr(paddle_provider.PaddleProvider, "cancel_subscription", down)
+    assert client.post("/billing/cancel", json={"confirm": True}, headers=h).json()["status"] == "processing"
+    (msg,) = mails(mail, "cancelled")
+    assert msg.to == "dev@example.com"
+    assert f"It stays active until {consumer.long_date(sub.current_period_end)} and won't renew" in msg.text
+    monkeypatch.setattr(paddle_provider.PaddleProvider, "cancel_subscription", original)
+    assert jobs.retry_exits(datetime.now(timezone.utc)) == 1
+    assert len(mails(mail, "cancelled")) == 1  # confirmed once
+
+    rules(subscription_notices_enabled=True, subscription_rules_from=LONG_AGO)
+    h2 = signup(client, email="annual@example.com")
+    buy(client, h2, paddle, interval="year")
+    for ev in paddle.renew(local_sub(provider="paddle").provider_subscription_id):
+        paddle_post(client, ev)
+    out = client.post("/billing/cancel", json={"confirm": True, "refund": True}, headers=h2).json()
+    (refund,) = mails(mail, "refunded")
+    assert refund.to == "annual@example.com"
+    assert notices.REFUND_AMOUNT.render(amount=consumer.money(out["refund_minor"], "GBP")) in refund.text

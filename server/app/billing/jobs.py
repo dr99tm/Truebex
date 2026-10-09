@@ -90,8 +90,11 @@ def subscription_notices(now: datetime) -> int:
     """Renewal reminders before each renewal of a live paid subscription and
     the trial-end notice, once per period (subscription_notices). A no-op
     while SUBSCRIPTION_NOTICES_ENABLED is false or before
-    SUBSCRIPTION_RULES_FROM."""
+    SUBSCRIPTION_RULES_FROM, and (logged) while PF14's app.mail is not merged."""
     if not consumer.dmcc_active(now):
+        return 0
+    if not consumer.mail_available():
+        log.warning("PF14's app.mail is not merged: billing.subscription_notices does nothing")
         return 0
     with SessionLocal() as db:
         return consumer.send_due_notices(db, now)

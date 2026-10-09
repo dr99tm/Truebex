@@ -28,7 +28,6 @@ from sqlalchemy import and_, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from .. import mail
 from ..config import get_settings
 from ..models import Payment, Subscription, SubscriptionExit, SubscriptionNotice, User
 from ..plans import PLANS, currency_digits
@@ -193,7 +192,17 @@ def key_info_text(
 # --- mail ----------------------------------------------------------------------------------
 
 
+def mail_available() -> bool:
+    """PF14's send_mail is importable (notices.py imports it, guarded)."""
+    return notices.send_mail is not None
+
+
 def _send(to: str, template: str, subject: str, **data: object) -> bool:
+    """Mail through PF14's send_mail. False (logged, retried by the caller's
+    job) when it fails, or while PF14's plumbing is not merged."""
+    if notices.send_mail is None:
+        log.warning("PF14's app.mail is not merged: %s to %s not sent", template, to)
+        return False
     values = {
         "subject": subject,
         "footer": notices.FOOTER.render(support_email=get_settings().support_email),
@@ -203,7 +212,7 @@ def _send(to: str, template: str, subject: str, **data: object) -> bool:
         # The text part's refund line with its spacing, or nothing.
         values["refund_block"] = f"{values['refund']}\n\n" if values["refund"] else ""
     try:
-        msg = mail.send_mail(to, template, values)
+        msg = notices.send_mail(to, template, values)
     except Exception:  # noqa: BLE001 - a mail failure is retried, never fatal
         log.exception("could not mail %s to %s", template, to)
         return False
@@ -256,8 +265,12 @@ def _renewal_amount(db: Session, sub: Subscription) -> int | None:
 
 def send_due_notices(db: Session, now: datetime) -> int:
     """Mail the reminders that are due. A no-op while the DMCC switch is off
-    or before SUBSCRIPTION_RULES_FROM. Returns how many were sent."""
+    or before SUBSCRIPTION_RULES_FROM, and while PF14's mail is missing.
+    Returns how many were sent."""
     if not dmcc_active(now):
+        return 0
+    if not mail_available():
+        log.warning("PF14's app.mail is not merged: subscription notices not sent")
         return 0
     sent = _renewal_reminders(db, now)
     # The trial text is GD5 7.4 draft wording.
