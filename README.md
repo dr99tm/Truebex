@@ -31,6 +31,7 @@ around it on the web:
 - [Google sign-in](#google-sign-in)
 - [API keys and usage](#api-keys-and-usage)
 - [Licences, releases and downloads](#licences-releases-and-downloads)
+- [Share links](#share-links)
 - [Billing: Stripe and Wayl](#billing-stripe-and-wayl)
 - [Brand, content and SEO](#brand-content-and-seo)
 - [Demo request form](#demo-request-form)
@@ -87,8 +88,8 @@ src/
     page.tsx               Landing page (+ SoftwareApplication & FAQPage JSON-LD)
     layout.tsx             Global metadata, fonts, Organization JSON-LD
     login/ signup/         Auth pages (Google + email)
-    dashboard/             Signed-in area: overview (download, licence, devices), billing/,
-                           link/ (approve a sign-in from the app), keys/ + usage/ (Developer)
+    dashboard/             Signed-in area: overview (download, licence, devices), shares/,
+                           billing/, link/ (approve a sign-in from the app), keys/ + usage/ (Developer)
     download/ changelog/   Public Download and Changelog pages (from src/content/releases.json)
     developers/            Public API docs (indexable)
     account/               Redirect to /dashboard/ (old URL)
@@ -107,6 +108,8 @@ src/
     licence.ts             licence API calls (devices, link approval, release feed)
     catalogue.ts           plan names and limits from server/app/catalogue.json
     releaseNotes.ts        the release-notes Markdown subset, parsed to a React-rendered tree
+    shares.ts              share links (list, visits, extend, end)
+  viewer/                  the share page's viewer (no framework) → out/viewer/viewer.js + .css
   content/releases.json    the release feed as of the last `npm run sync:releases`
 public/
   brand/                   SVG media kit (mark + wordmark, grey/white/dark)
@@ -114,18 +117,24 @@ public/
   images/og-image.jpg      1200×630 social card (generated)
 scripts/make_web_assets.py Regenerates brand assets from the Unreal project
 scripts/sync-releases.mjs  `npm run sync:releases`: release feed → src/content/releases.json
+scripts/build-viewer.mjs   runs after `next build`: src/viewer → out/viewer (+ PDF.js)
+scripts/serve-out.py       serves out/ with CORS like GitHub Pages (autopilot-serve.ps1)
 server/
   app/
     main.py                App + routers
-    routers/               auth, keys, usage, billing, v1 (developer API), licence, releases, admin, files
+    routers/               auth, keys, usage, billing, v1 (developer API), licence, releases, admin, files,
+                           uploads, shares (+ /view/{slug}, /robots.txt)
     billing/               service.py (plan state) · providers.py (Stripe, Wayl)
     licence/               devices, link codes, seats, signed entitlements (Ed25519 over RFC 8785 JSON)
     releases/              signed release manifests, feed, download links
+    uploads/               resumable content-addressed uploads (8 MiB hashed parts)
+    shares/                share records, manifest rules, derivatives, preview card, the page's HTML
     contract_http.py       contract header + shared error envelope · ratelimit.py · tasks.py · storage/
     models.py database.py  SQLAlchemy models + additive SQLite migrations
     catalogue.json plans.py Plan catalogue: tiers, entitlement matrix, request quotas, key limits
-  scripts/                 make_signing_key.py · publish_release.py · make_licence_fixtures.py
-  tests/                   pytest suite (+ mock_wayl.py; contracts/licence/ = contract fixtures)
+  scripts/                 make_signing_key.py · publish_release.py · make_licence_fixtures.py ·
+                           make_share_fixtures.py · demo_share.py
+  tests/                   pytest suite (+ mock_wayl.py; contracts/licence/, contracts/share-bundle/)
 .claude/skills/            truebex-brand-voice · truebex-seo · truebex-deploy
 google-apps-script/        Code.gs for the demo-request sheet
 deploy-to-server.bat       Build → copy into the deploy repo → commit → push
@@ -262,6 +271,11 @@ in `localStorage`. New columns are added on startup by
 | GET | `/releases/feed` · `/releases/{version}/download` | — | Signed release manifests · a 15-minute download link |
 | GET / POST / PATCH | `/admin/releases`, `/admin/releases/{version}` | admin | Upload (≤ 90 MB, signed off-host), withdraw, new notes |
 | GET / PUT | `/files/{key}` | signed URL | Local storage downloads and uploads (HMAC, expiring) |
+| POST · PUT · GET | `/uploads`, `/uploads/{id}/files/{sha256}/parts/{n}`, `/uploads/{id}` | device, session, worker | Resumable upload: open, send a part, what arrived |
+| POST | `/shares` · `/shares/{id}/publish` | **device** | Create a share from a bundle manifest · publish once every file arrived |
+| GET / PATCH / DELETE | `/shares`, `/shares/{id}` | session or device | List with visits · change title or expiry · end the link |
+| GET · POST | `/s/{slug}` · `/s/{slug}/visits` | — | The viewer's data (URLs signed for 1 h) · count a visit |
+| GET | `/view/{slug}` · `/s/{slug}/card.jpg` | — | The share page (its own link preview) · its 1200 × 630 card |
 
 ### Running in production
 
@@ -356,6 +370,30 @@ retry_after_s, data}`.
 
 ---
 
+## Share links
+
+The app's Share command (contract `share-bundle` v1.0.0, in the Unreal project's
+`Docs/roadmap/40/contracts/`) uploads a bundle (panoramas with hotspots,
+renders, the sheet PDF) through `/uploads` in 8 MiB parts and publishes it with
+`/shares`. Publishing makes 4096- and 1024-wide copies of every panorama and a
+1200 × 630 preview card. The link is `${SHARE_BASE_URL}/view/{slug}` (empty
+`SHARE_BASE_URL` = `API_URL`): the API writes that share's own title, card and
+`noindex` around the viewer, which the page loads from
+`${SITE_URL}/viewer/viewer.js` (built by `npm run build`). truebex.com must keep
+answering `Access-Control-Allow-Origin: *` (GitHub Pages does).
+
+- Visits count once a day per visitor id the page keeps for 24 h; no address or
+  user agent is stored. A link ends at its expiry or when ended from the
+  dashboard (410 "This link has ended"); its files go 7 days later.
+- Limits per plan: live links `limits.share_links`; longest expiry and bytes
+  per bundle from `SHARE_MAX_DAYS` / `SHARE_MAX_BYTES` until the plan matrix
+  carries `share_days` / `share_bytes`.
+- Try it without the app: `cd server; .venv\Scripts\python.exe scripts\demo_share.py
+  --email <you> --password <pw> --fixture tests\contracts\share-bundle\manifest-house.json`
+  (needs `LICENCE_SIGNING_KEY`, like any device sign-in).
+
+---
+
 ## Billing: Stripe and Wayl
 
 Both providers are built in. Each turns on as soon as its keys are in
@@ -430,6 +468,7 @@ a Google Sheet. See [`google-apps-script/README.md`](google-apps-script/README.m
 | Payment providers need merchant keys | Billing shows "being set up" until keys are added | `server/.env` |
 | Desktop app doesn't read the plan yet | The licence API is live, but the app's sign-in and gates (LC1, LC3) are not shipped | Unreal project |
 | Installers are served from this PC | Downloads go through the home tunnel until PF14 adds object storage and a CDN | `server/storage/` |
+| Share bundles are stored on this PC too | Uploads (up to 1 GiB a share) fill the host disk until PF14's object storage | `server/storage/blobs/`, `shares/` |
 | `npm run dev` exhausts RAM on this PC | Use build + static server for local checks | — |
 | The demo form can't detect failures (`no-cors`) | It always shows "Request received!" | `CTAContact.tsx` |
 | Stale `gh-pages` branch | Confusing; not served | — |

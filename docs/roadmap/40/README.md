@@ -26,7 +26,7 @@ A task ticks ONLY its own row, on its own branch.
 | [ ] | [PF2](PF2-billing-through-the-uk-company.md) billing through the UK company | PF1 | 1 | — | |
 | [ ] | [PF3](PF3-organisations-seats-and-sso.md) organisations, seats and SSO | PF1 | 2 | — | |
 | [ ] | [PF4](PF4-project-service-log-storage-sync-versions-and-sharing.md) project service: log storage, sync, versions and sharing | PF1 | 2 | — | |
-| [ ] | [PF5](PF5-share-pages.md) share pages | PF1 | 1 | — | |
+| [x] | [PF5](PF5-share-pages.md) share pages | PF1 | 1 | `server/app/uploads/`, `server/app/shares/`, `/view/{slug}`, `src/viewer/`, `/dashboard/shares/` | 2026-10-09, Autopilot T5; also commits PF1's `server/app/storage/` (see As-built) |
 | [ ] | [PF6](PF6-cloud-render-orchestration.md) cloud render orchestration | PF4 | 2 | — | |
 | [ ] | [PF7](PF7-marketplace-backend.md) marketplace backend | PF1 | 1 | — | |
 | [ ] | [PF8](PF8-supplier-portal-and-app.md) supplier portal and app | PF7 | 1 | — | |

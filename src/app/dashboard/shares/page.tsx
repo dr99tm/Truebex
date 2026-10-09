@@ -27,7 +27,7 @@ export default function SharesPage() {
         description={T.description}
         actions={
           shares.data && limit !== null ? (
-            <p className="text-sm text-text-muted">
+            <p className="whitespace-nowrap text-sm text-text-muted">
               {live} of {limit} {T.limit}
             </p>
           ) : undefined
@@ -66,7 +66,7 @@ function ShareCard({ share, days, onChange }: { share: Share; days: number; onCh
   const [error, setError] = useState("");
   const [detail, setDetail] = useState<Share | null>(null);
   const [open, setOpen] = useState(false);
-  const open_ = share.state === "live" || share.state === "uploading";
+  const active = share.state === "live" || share.state === "uploading";
 
   async function act(fn: () => Promise<unknown>) {
     setBusy(true);
@@ -193,7 +193,7 @@ function ShareCard({ share, days, onChange }: { share: Share; days: number; onCh
             {T.extend} ({days} days)
           </button>
         )}
-        {open_ &&
+        {active &&
           (confirming ? (
             <span className="inline-flex gap-3">
               <button
