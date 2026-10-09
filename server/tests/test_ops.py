@@ -264,6 +264,9 @@ def test_fresh_process_never_queries_wmi(tmp_path):
         "from scripts import sqlite_to_postgres",  # imports SQLAlchemy before app
         "import platform; from app import tasks",  # platform first, as uvicorn does
         "import app.main",
+        # PF3's hand scripts, as `python scripts\<name>.py` loads them (scripts/ first on sys.path).
+        "import runpy, sys; sys.path.insert(0, 'scripts'); runpy.run_path('scripts/grant_org_seats.py')",
+        "import runpy, sys; sys.path.insert(0, 'scripts'); runpy.run_path('scripts/verify_org_domain.py')",
     ):
         assert json.loads(_fresh_python(spy + entry + probe, tmp_path)) == [], entry
     machine = json.loads(_fresh_python("import json, app, platform; print(json.dumps(platform.machine()))", tmp_path))

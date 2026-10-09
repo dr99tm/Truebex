@@ -246,3 +246,7 @@ As built: use `@example.com` addresses (the existing sign-up validator refuses t
   value): a PF2 test fix, not this merge's. Still open → PF2: checkout does not send `custom_data.org_id` or set
   `organisation_id`, and `billing.service.seats_assigned` still answers 1, so organisation seats are granted by hand
   (`grant_org_seats.py`) and the console's Billing link (`?org=`) opens the personal billing page.
+  Second sync (PF14a, T20): `grant_org_seats.py` imports `app` before SQLAlchemy (PF14a's fix for fresh processes
+  dying with 0xC000070A; `test_fresh_process_never_queries_wmi` now loads PF3's hand scripts too), and the deploy
+  skill names `SSO_SECRET_KEY`, `SAML_SP_ENTITY_ID`, `AUDIT_RETENTION_DAYS` and the hand-seat command, as
+  `test_deploy_skill.py` requires.
