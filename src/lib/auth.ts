@@ -37,8 +37,9 @@ export function register(email: string, password: string): Promise<AuthResult> {
   return signIn("/auth/register", { email, password });
 }
 
-export function login(email: string, password: string): Promise<AuthResult> {
-  return signIn("/auth/login", { email, password });
+export function login(email: string, password: string, breakGlassCode?: string): Promise<AuthResult> {
+  // PF3: an owner's one-time code when their organisation requires SSO.
+  return signIn("/auth/login", breakGlassCode ? { email, password, break_glass_code: breakGlassCode } : { email, password });
 }
 
 /** Exchange a Google Identity Services credential for a Truebex session. */
