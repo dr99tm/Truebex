@@ -933,3 +933,53 @@ def test_uploads_snapshot_purpose(client):
     error_of(client.post("/uploads", json={"purpose": "holiday", "files": [{"sha256": sha, "bytes": 1, "content_type": "a/b"}]}, headers=auth), 422, "validation_failed")
     error_of(client.post("/uploads", json={"purpose": "snapshot", "files": []}, headers=UPLOADS), 401, "unauthenticated")
     error_of(client.get(f"/uploads/{upload_id}", headers={**a.session, **UPLOADS}), 404, "not_found")
+
+
+def test_demo_replica_script_human_test_path(client, monkeypatch, capsys):
+    """scripts/demo_replica.py as the human test runs it (requests routed into
+    the in-process API): login with the trial, push the fixture, pull as the
+    invited editor, the conflicting move, presence."""
+    import requests
+
+    from scripts import demo_replica
+
+    def route(method, url, headers=None, timeout=None, **kw):
+        return client.request(method, url.replace("http://127.0.0.1:8000", ""), headers=headers, **kw)
+
+    monkeypatch.setattr(requests, "request", route)
+    monkeypatch.setattr(requests, "post", lambda url, **kw: route("POST", url, **kw))
+    signup(client, "a@example.com")
+    signup(client, "b@example.com")
+
+    def token_of(email: str) -> str:
+        demo_replica.main(["login", "--email", email, "--password", "password123", "--trial"])
+        out = capsys.readouterr().out
+        assert "Pro trial started" in out and "plan pro" in out
+        return out.split("device token: ")[1].split()[0]
+
+    ta, tb = token_of("a@example.com"), token_of("b@example.com")
+    demo_replica.main(["--token", ta, "push", "--fixture", str(FIXTURES)])
+    out = capsys.readouterr().out
+    assert "pushed: 12 accepted" in out and "project House, head 12" in out
+    pid = out.split("project id: ")[1].split()[0]
+    # The owner invites b in the dashboard; b accepts.
+    a_session = client.post("/auth/login", json={"email": "a@example.com", "password": "password123"}).json()["access_token"]
+    b_session = client.post("/auth/login", json={"email": "b@example.com", "password": "password123"}).json()["access_token"]
+    client.post(f"/projects/{pid}/members", json={"email": "b@example.com", "role": "editor"}, headers=web({"Authorization": f"Bearer {a_session}"}))
+    token = invite_token(mail.OUTBOX[-1].text)
+    assert client.post("/projects/invites/accept", json={"token": token}, headers=web({"Authorization": f"Bearer {b_session}"})).status_code == 200
+
+    demo_replica.main(["--token", tb, "pull", "--project", pid])
+    out = capsys.readouterr().out
+    assert "12 operations, head 12" in out
+    # Both at head 12: a moves the wall first, then b.
+    demo_replica.main(["--token", ta, "move", "--project", pid, "--base", "12"])
+    assert "accepted as 13" in capsys.readouterr().out
+    demo_replica.main(["--token", tb, "move", "--project", pid, "--base", "12"])
+    out = capsys.readouterr().out
+    assert "rejected (conflict): replaced by" in out and "13  Move wall" in out
+    # The latest snapshot is at 12, ready to be named as a version.
+    latest = client.get(f"/projects/{pid}/snapshots/latest", headers=dev(ta)).json()
+    assert latest["at_seq"] == 12
+    demo_replica.main(["--token", tb, "presence", "--project", pid, "--seconds", "0"])
+    assert "left the project" in capsys.readouterr().out
