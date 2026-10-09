@@ -49,6 +49,16 @@ export default function PrivacyPage() {
           your dashboard, where you can remove any of them.
         </li>
         <li>
+          <strong>Organisations.</strong> If you create or join an
+          organisation, we record your role, your seat, when you joined, and
+          an audit log of licence and organisation events (sign-ins to the
+          app, seat changes, shared-seat use, invitations), which the
+          organisation&rsquo;s owners and admins can see and export. We keep
+          the audit log for 24 months. If your organisation signs you in
+          through its own identity provider, that provider shares your e-mail
+          address and name with us; we use them only to sign you in.
+        </li>
+        <li>
           <strong>Billing records.</strong> Your plan, payment amounts,
           dates, status and the payment provider&rsquo;s reference. Card and
           wallet details are entered on the provider&rsquo;s own page and

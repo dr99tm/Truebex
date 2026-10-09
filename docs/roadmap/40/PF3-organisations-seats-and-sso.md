@@ -4,6 +4,8 @@
 
 ## Status
 
+**Done 2026-10-09** on `ap/t9-pf3-organisations-seats-and-sso` (Autopilot T9): the whole Scope: In, every test of the Tests table, verify gate green. See As-built (deviations, carry-over, and the fix to PF1's missing `server/app/storage/` package that this branch had to make first). The paragraph and table below are the pre-task snapshot.
+
 No organisations, roles, invites, seat assignment, SSO or audit log exist (`00-contract.md` P.1). The code this extends, verified with Grep on 2026-10-09:
 
 | Area | Where | Today |
@@ -140,13 +142,13 @@ Local stand-ins for the human test and the tests: `server/tests/mock_oidc.py` (d
 
 ## Deliverables
 
-- [ ] `server/app/orgs/` (`service.py`, `seats.py`, `audit.py`), `server/app/routers/orgs.py`; PF1's `seat_source` extended; `POST /licence/release` in `server/app/routers/licence.py`
-- [ ] `server/app/sso/` (`oidc.py`, `saml.py`, `domains.py`), `server/app/routers/sso.py`; `signxml`, `lxml` pinned
-- [ ] models, `_ADDED_COLUMNS` (`subscriptions.organisation_id`), settings (`SSO_SECRET_KEY`, `SAML_SP_ENTITY_ID`), `.env.example`
-- [ ] mail templates `org_invite`, `org_seat_assigned`, `org_removed`; `server/scripts/grant_org_seats.py` (hand assignment for Enterprise and tests)
-- [ ] `server/tests/mock_oidc.py`, `server/tests/mock_saml_idp.py`, test certificates under `server/tests/fixtures/sso/`
-- [ ] dashboard organisation pages, switcher, `/invite/`, `/login/sso/`, `AuthForm` SSO entry, `src/lib/orgs.ts`
-- [ ] the tests below; contract *implemented by* rows recorded in As-built
+- [x] `server/app/orgs/` (`service.py`, `seats.py`, `audit.py`), `server/app/routers/orgs.py`; PF1's `seat_source` extended; `POST /licence/release` in `server/app/routers/licence.py`
+- [x] `server/app/sso/` (`oidc.py`, `saml.py`, `domains.py`), `server/app/routers/sso.py`; `signxml`, `lxml` pinned
+- [x] models, `_ADDED_COLUMNS` (`subscriptions.organisation_id`), settings (`SSO_SECRET_KEY`, `SAML_SP_ENTITY_ID`), `.env.example`
+- [x] mail templates `org_invite`, `org_seat_assigned`, `org_removed`; `server/scripts/grant_org_seats.py` (hand assignment for Enterprise and tests)
+- [x] `server/tests/mock_oidc.py`, `server/tests/mock_saml_idp.py`, test certificates under `server/tests/fixtures/sso/`
+- [x] dashboard organisation pages, switcher, `/invite/`, `/login/sso/`, `AuthForm` SSO entry, `src/lib/orgs.ts`
+- [x] the tests below; contract *implemented by* rows recorded in As-built
 
 ## Tests
 
@@ -178,16 +180,18 @@ Local stand-ins for the human test and the tests: `server/tests/mock_oidc.py` (d
 
 ## Human test
 
+As built: use `@example.com` addresses (the existing sign-up validator refuses the reserved `.test` names), and verify the test domain by hand in step 10 (no DNS answers for it).
+
 1. Start the local API (`server\run.bat`, `MAIL_BACKEND=console`) and serve the build against it (`scripts/autopilot-serve.ps1`).
-2. Sign up as `owner@example.test`; Dashboard → Organisation → Create "Studio North" → the console appears with you as Owner.
+2. Sign up as `owner@example.com`; Dashboard → Organisation → Create "Studio North" → the console appears with you as Owner.
 3. Give the organisation a Team subscription with 2 seats: through PF2's sandbox checkout, or in `server/` run `.venv\Scripts\python.exe scripts\grant_org_seats.py --org studio-north --tier team --seats 2` (the hand-assignment helper, as `enterprise` is set by hand today).
 4. Seats tab: set floating to 1 → "Named 0 / 1 · Floating 0 / 1".
-5. Invite `a@example.test` (named) and `b@example.test` (floating) → two invite e-mails print in the API console with links.
+5. Invite `a@example.com` (named) and `b@example.com` (floating) → two invite e-mails print in the API console with links.
 6. In two private windows, sign up as a and b and open the links → Accept → Members lists both with their seat kinds.
-7. Activate a device as a and as b (an LC1 build, or PF1's curl steps with different fingerprints) → both entitlements show `team`; b's shows `seat_kind` `floating` with `expires_at` two hours ahead.
+7. Activate a device as a and as b (an LC1 build, or `server\scripts\try_device.py`, which acts as the app on a pretend computer) → both entitlements show `team`; b's shows `seat_kind` `floating` with `expires_at` two hours ahead.
 8. Seats tab → Floating "1 / 1 in use, b · Test PC 2 · since 14:03"; a third member set to floating gets 409 `no_seat_available` from `/licence/entitlement` and the app runs Free with "All 1 floating seats are in use".
 9. Audit tab → activation, seat assignment and lease rows; Export CSV downloads them.
-10. SSO (optional on the local stack): start `mock_oidc` (`uvicorn tests.mock_oidc:app --port 8098`), configure it on the SSO tab with a verified test domain, sign out, "Continue with SSO" with `c@example.test` → back on the dashboard as a new member.
+10. SSO (optional on the local stack): start `mock_oidc` (`uvicorn tests.mock_oidc:app --port 8098`), verify the test domain with `scripts\verify_org_domain.py --org studio-north --domain example.com`, configure the SSO tab (OpenID Connect, issuer `http://127.0.0.1:8098`, client id `truebex-local`, secret `mock-oidc-secret`), sign out, "Continue with SSO" with `c@example.com` → back on the dashboard as a new member.
 
 ## Risks / traps
 
@@ -200,9 +204,24 @@ Local stand-ins for the human test and the tests: `server/tests/mock_oidc.py` (d
 
 ## As-built
 
-* Date, branch, commits:
-* Counts (pytest before → after):
-* Deviations from Design and why:
-* GD7 seat rules and GD5 retention adopted:
-* Contract *implemented by* rows for the owner to apply in `contracts/licence-api.md` at merge:
-* Carry-over → which feature (SCIM, encrypted assertions):
+* **Date, branch, commits:** 2026-10-09, `ap/t9-pf3-organisations-seats-and-sso` from `ap/t1-pf1-licence-api-releases-and-dow` (fa824cf). `9faba33` (PF1's storage package, see deviation 1), `4cf397b` (server services and routers), `c5d5c6c` (server tests, mock providers, hand scripts), `4a6925e` (site), then docs and `scripts/try_device.py` (the app's stand-in for the human test).
+* **Counts:** pytest 68 → 98 in the verify gate (64 passed + 4 skipped before, all 98 pass now with `out/` built; new: `test_orgs.py` 9, `test_orgs_seats.py` 9, `test_sso.py` 9, `test_site_pf3.py` 3, PF1's hook test adjusted). Every name in the Tests table exists verbatim. Pages in `out/`: 16 → 25 `index.html` (`/invite/`, `/login/sso/`, `/dashboard/organisation/` and its six tabs). Self-tests beyond pytest: the human test's steps 2–10 run over HTTP against a real uvicorn API and `mock_oidc` under uvicorn (grant script, invite mails in the console, accept, two activations, the third floating member's 409, audit + CSV, 5.11, OIDC sign-in landing on `/login/sso/#token=`), and headless Edge over CDP opening all seven console pages, the Log in page's "Continue with SSO" and `/invite/` against that API with no browser errors.
+* **Deviations from Design and why:**
+  1. *PF1's `server/app/storage/` was never committed*: `server/.gitignore` ignored every `storage/` folder, so the base branch failed pytest at import. The ignore now names only the data folder (`/storage/`) and the package is rewritten to the PF14 Plumbing interface PF1's tests exercise (`put/open/stat/delete/list/signed_get_url/signed_put_url`, HMAC URLs, `local.clock`). **At merge:** keep PF1's own copy if it reappears on the PF1 branch, else this one.
+  2. *Test addresses.* Pydantic's `EmailStr` refuses `.test` addresses at `/auth/register`, so the tests and the human test use `@example.com`; a test domain is verified by hand with `scripts/verify_org_domain.py` (real domains verify by DNS TXT).
+  3. *The lease lock* is one portable statement, `UPDATE organisations SET lease_seq = lease_seq + 1` before counting: pysqlite opens its transaction at the first write, which takes SQLite's RESERVED lock; on Postgres the UPDATE holds the row lock as `SELECT … FOR UPDATE` would. `test_licence_floating_race_last_seat` widens the race window with a barrier and fails when the lock is removed (checked).
+  4. *Floating seats per device* (one running copy = one seat). A full pool falls back to another seat the person holds (their own paid plan, another organisation's seat) before answering 409 `no_seat_available` (`data: {total, org_id, org_name}`; holders are named only in the admin console). Activation (5.4) with a full pool still returns the device token with the personal seat, so the app can retry with 5.5.
+  5. *Domains* are unique among verified rows (a partial unique index), so several organisations may claim a pending domain but only one verifies it (`domain_taken`); TXT record `_truebex-verification.<domain>` = `truebex-domain-verification=<token>`.
+  6. *Endpoints beyond the table:* `POST /invites/preview` (what `/invite/` shows before sign-in), `POST /orgs/{id}/invites/{invite_id}/resend`, `GET /orgs/{id}/domains`, `DELETE /orgs/{id}/domains/{domain}`, `DELETE /orgs/{id}/sso`, `POST /orgs/{id}/sso/break-glass`, and `format=json` on `/auth/sso/start` (the site asks for `{url}` and can say "no SSO for this domain" in place).
+  7. *Columns beyond the Data table:* `organisations.break_glass_hash`, `.lease_seq`; `org_invites.created_at`, `.accepted_by`, `.expired_at`; `floating_leases.end_reason`; `sso_requests.login_hint`, `.created_at`, `.used_at`; `org_domains.id`, `.created_at`; `subscriptions.organisation_id` is also on the model and indexed. All new tables, so no other migration.
+  8. *Error codes* (shared envelope on every PF3 route): `last_owner`, `no_seat_left`, `already_member`, `already_invited`, `email_mismatch` (403), `invite_expired` (410: expired, revoked or used), `live_subscription`, `domain_taken`, `txt_mismatch`, `sso_not_ready`, `sso_not_found`, `sso_failed` (401), `sso_required` (401 on `/auth/login` and `/auth/google`, 403 on `/auth/register`).
+  9. *Personal vs organisation plans:* `billing.service.live_subscription` now ignores rows with `organisation_id`, so a seat bought for an organisation is never its buyer's personal plan; hand grants are `provider="manual"` rows (`scripts/grant_org_seats.py`, `--until` makes a fixed term that caps `expires_at`).
+  10. *SAML:* AuthnRequests are unsigned (HTTP-Redirect); IdP-initiated sign-in is refused (`InResponseTo` must name a pending request); a response must hold exactly one Assertion and the signed element must be that one, on top of reading only what `signxml` verified. `signxml==5.1.0` and `lxml==6.1.3` are pinned (signxml 4.x breaks with PF1's `cryptography==50`).
+  11. *OIDC* requires `email_verified: true`; the provider's token endpoint gets `client_secret_basic` unless its discovery lists only `client_secret_post`.
+  12. *Mail:* `server/app/mail/` (PF14's interface) with the `console` adapter only; a send failure is logged, never fails the request.
+  13. *Usage per member* answers the spec's list; storage, panoramas and AI credits stay `null` until an `app.metering` module exists (read through it when present).
+  14. PF1's `test_licence_floating_durations_hook` now stubs the new `seats.claim` step too (its fake organisation has no row to lease from).
+  15. *Site:* the Workspace switcher stores the choice in `localStorage` (`truebex_org`); the Organisation group shows Members to everyone, Invites/Seats/Member usage/Audit log to owners and admins, SSO to owners. The Billing link is `/dashboard/billing/?org=<id>` for PF2 to read. Public strings: `SSO_LOGIN`, `SSO_CALLBACK`, `INVITE_PAGE` in `constants.ts`; the privacy page gains an Organisations item (roles, seats, audit log kept 24 months, identity-provider claims).
+* **GD7 seat rules and GD5 retention adopted:** neither guide exists yet. Any tier may be granted to an organisation; the owner decides how many seats float (no minimums, no price difference between named and floating); audit retention 24 months as the placeholder `AUDIT_RETENTION_DAYS=730`.
+* **Contract *implemented by* rows for the owner to apply in `contracts/licence-api.md` at merge:** `POST /licence/release` → "PF3: done". 5.5 now leases floating seats (§6.1 durations) and answers 409 `no_seat_available` with `data {total, org_id, org_name}` (additive); 5.7 reports `seat {kind: named|floating, org_id, org_name}` and the organisation's `seats {total, assigned}` (assigned = named seats given + floating seats in use). Suggested *Changes* line: "2026-10-09 · 1.0.0 · PF3: 5.11 implemented; `no_seat_available` carries `data.total`, `data.org_id`, `data.org_name`."
+* **Carry-over → which feature:** SCIM provisioning → not planned (a row if an Enterprise deal asks). Encrypted SAML assertions and signed AuthnRequests → carry-over (only if an IdP insists). Providers that omit `email_verified` (some Entra ID set-ups) → carry-over: a per-connection "trust the IdP's e-mail" switch. Setting `subscriptions.organisation_id` from `custom_data.org_id`, the seat stepper and `change_subscription` from the Billing link → PF2. The `smtp` mail adapter and the race test on Postgres → PF14. Storage, panoramas and AI-credit columns → PF4, PF6, PF11 via `metering`. The app's seat display, 409 handling and `POST /licence/release` at exit → LC1.

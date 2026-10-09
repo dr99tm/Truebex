@@ -275,3 +275,23 @@ def test_orgs_seat_source_picks_best(client):
     assert activated(client, holder, fp("holder"))["entitlement"]["document"]["seat_kind"] == "floating"
     doc = _doc(refresh(client, dev["device_token"]))
     assert doc["plan"] == "pro" and doc["seat_kind"] == "personal"
+
+
+def test_try_device_script(client, monkeypatch, capsys):
+    """scripts/try_device.py (the human test's stand-in for the app) against the app in-process."""
+    from fastapi.testclient import TestClient
+
+    from app.main import app
+
+    from .org_helpers import load_script
+
+    h, org = _team(client, seats=2, floating=1)
+    join(client, h, org["id"], "b@example.com", seat="floating")
+    script = load_script("try_device")
+    monkeypatch.setattr(script.httpx, "Client", lambda base_url, timeout, headers: TestClient(app, headers=headers))
+    assert script.main(["--email", "b@example.com", "--password", "password123", "--name", "Test PC 2",
+                        "--refresh", "--release"]) == 0
+    out = capsys.readouterr().out
+    assert "activate: plan team · seat floating" in out and "entitlement: plan team · seat floating" in out
+    assert "release: 204" in out
+    assert script.main(["--email", "b@example.com", "--password", "wrong-password"]) == 1
