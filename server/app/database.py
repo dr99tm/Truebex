@@ -129,6 +129,10 @@ _ADDED_COLUMNS["payments"] += [
 
 # PF3a (organisation billing): the organisation a checkout buys for.
 _ADDED_COLUMNS.setdefault("payments", []).append(("organisation_id", "VARCHAR(32)"))
+# PF9 (mobile web client): a snapshot's project digest file.
+_ADDED_COLUMNS.setdefault("project_snapshots", []).extend(
+    [("digest_sha256", "VARCHAR(64)"), ("digest_bytes", "BIGINT")]
+)
 
 
 def _migrate(bind: Engine) -> None:

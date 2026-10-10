@@ -35,6 +35,9 @@ class UserOut(BaseModel):
     has_password: bool = True
     google_linked: bool = False
     is_admin: bool = False
+    # PF9: the project-log author id (licence 5.7) the web client writes into
+    # its operations; /auth/me mints it, other answers carry it once minted.
+    author_id: str | None = None
 
 
 class Token(BaseModel):

@@ -1,0 +1,239 @@
+{
+  "schema": "truebex-project-digest/1",
+  "note": "Fixture: what a kernel replica writes beside snapshot-0000 (PF9 proposal for project-log §6.4).",
+  "doc_version": 38,
+  "units": "mm",
+  "region": "GB",
+  "storeys": [
+    {
+      "id": "0199c6a2e00070048000000000000001",
+      "name": "Ground floor",
+      "elevation_mm": 0
+    }
+  ],
+  "rooms": [
+    {
+      "id": "0199c6a2e00070028000000000000001",
+      "name": "Living room",
+      "storey": "0199c6a2e00070048000000000000001",
+      "area_m2": 24.6,
+      "centroid_mm": [
+        4200,
+        2200,
+        0
+      ],
+      "theme": "nordic-calm",
+      "walls": [
+        {
+          "id": "0199c6a2e00070018000000000000001",
+          "name": "North wall",
+          "face": "right"
+        },
+        {
+          "id": "0199c6a2e00070018000000000000002",
+          "name": "East wall",
+          "face": "right"
+        },
+        {
+          "id": "0199c6a2e00070018000000000000003",
+          "name": "South wall",
+          "face": "left"
+        },
+        {
+          "id": "0199c6a2e00070018000000000000004",
+          "name": "West wall",
+          "face": "left"
+        }
+      ],
+      "finishes": {
+        "floor": {
+          "kind": "pattern3d",
+          "pattern": "slat",
+          "texture": "oak",
+          "tile_mm": [
+            180,
+            1200
+          ]
+        }
+      }
+    },
+    {
+      "id": "0199c6a2e00070028000000000000002",
+      "name": "Kitchen",
+      "storey": "0199c6a2e00070048000000000000001",
+      "area_m2": 12.3,
+      "centroid_mm": [
+        8600,
+        2400,
+        0
+      ],
+      "theme": null,
+      "walls": [
+        {
+          "id": "0199c6a2e00070018000000000000004",
+          "name": "West wall",
+          "face": "right"
+        },
+        {
+          "id": "0199c6a2e00070018000000000000005",
+          "name": "North wall",
+          "face": "right"
+        },
+        {
+          "id": "0199c6a2e00070018000000000000006",
+          "name": "East wall",
+          "face": "left"
+        }
+      ],
+      "finishes": {
+        "floor": {
+          "kind": "pattern3d",
+          "pattern": "tile",
+          "texture": "stone",
+          "tile_mm": [
+            600,
+            600
+          ]
+        }
+      }
+    },
+    {
+      "id": "0199c6a2e00070028000000000000003",
+      "name": "Bedroom",
+      "storey": "0199c6a2e00070048000000000000001",
+      "area_m2": 14.8,
+      "centroid_mm": [
+        4200,
+        7000,
+        0
+      ],
+      "theme": "warm-minimal",
+      "walls": [
+        {
+          "id": "0199c6a2e00070018000000000000007",
+          "name": "North wall",
+          "face": "right"
+        },
+        {
+          "id": "0199c6a2e00070018000000000000008",
+          "name": "East wall",
+          "face": "left"
+        }
+      ],
+      "finishes": {
+        "floor": null
+      }
+    }
+  ],
+  "views": [
+    {
+      "id": "0199c6a2e00070058000000000000001",
+      "name": "Living room",
+      "storey": "0199c6a2e00070048000000000000001",
+      "room": "0199c6a2e00070028000000000000001",
+      "eye_mm": [
+        4200,
+        1800,
+        1600
+      ],
+      "yaw_deg": 0
+    },
+    {
+      "id": "0199c6a2e00070058000000000000002",
+      "name": "Kitchen",
+      "storey": "0199c6a2e00070048000000000000001",
+      "room": "0199c6a2e00070028000000000000002",
+      "eye_mm": [
+        8600,
+        2400,
+        1600
+      ],
+      "yaw_deg": 270
+    },
+    {
+      "id": "0199c6a2e00070058000000000000003",
+      "name": "Bedroom",
+      "storey": "0199c6a2e00070048000000000000001",
+      "room": "0199c6a2e00070028000000000000003",
+      "eye_mm": [
+        4200,
+        7000,
+        1600
+      ],
+      "yaw_deg": 180
+    }
+  ],
+  "products": [
+    {
+      "id": "0199c6a2e00070068000000000000001",
+      "name": "Oslo 3-seater sofa",
+      "room": "0199c6a2e00070028000000000000001",
+      "category": "furniture/seating/sofas",
+      "product": {
+        "supplier_id": "f8afe1ba2b0bf97f23ef888f040cf46a",
+        "sku": "SOFA-OSLO-3",
+        "variant_id": "oat-linen"
+      },
+      "at_mm": [
+        3000,
+        3200,
+        0
+      ],
+      "bearing_deg": 180
+    },
+    {
+      "id": "0199c6a2e00070068000000000000002",
+      "name": "Aker coffee table",
+      "room": "0199c6a2e00070028000000000000001",
+      "category": "furniture/tables/coffee-tables",
+      "product": {
+        "supplier_id": "f8afe1ba2b0bf97f23ef888f040cf46a",
+        "sku": "TABLE-AKER-CT",
+        "variant_id": "default"
+      },
+      "at_mm": [
+        3000,
+        2200,
+        0
+      ],
+      "bearing_deg": 0
+    }
+  ],
+  "openings": [
+    {
+      "id": "0199c6a2e00070038000000000000001",
+      "kind": "door",
+      "name": "Door to the hall",
+      "room": "0199c6a2e00070028000000000000001",
+      "host": "0199c6a2e00070018000000000000003"
+    },
+    {
+      "id": "0199c6a2e00070038000000000000002",
+      "kind": "window",
+      "name": "Kitchen window",
+      "room": "0199c6a2e00070028000000000000002",
+      "host": "0199c6a2e00070018000000000000005"
+    },
+    {
+      "id": "0199c6a2e00070038000000000000003",
+      "kind": "window",
+      "name": "Bedroom window",
+      "room": "0199c6a2e00070028000000000000003",
+      "host": "0199c6a2e00070018000000000000007"
+    }
+  ],
+  "themes": [
+    {
+      "id": "nordic-calm",
+      "name": "Nordic calm"
+    },
+    {
+      "id": "warm-minimal",
+      "name": "Warm minimal"
+    },
+    {
+      "id": "classic-oak",
+      "name": "Classic oak"
+    }
+  ]
+}

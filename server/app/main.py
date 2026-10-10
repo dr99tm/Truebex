@@ -41,6 +41,7 @@ from .telemetry.service import record_server_exception
 from .shares import jobs as _share_jobs  # noqa: F401  (PF5: shares.expire, shares.purge)
 from .uploads import jobs as _upload_jobs  # noqa: F401  (PF5: uploads.expire)
 from .routers import shares, uploads  # PF5
+from .routers import mobile as mobile_router  # PF9: a project's panorama sets for members
 
 settings = get_settings()
 
@@ -159,3 +160,4 @@ app.include_router(telemetry.router)
 app.include_router(admin_telemetry.router)
 # PF6: cloud render orchestration
 app.include_router(render_router.router)
+app.include_router(mobile_router.router)  # PF9
