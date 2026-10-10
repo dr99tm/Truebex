@@ -1,0 +1,6 @@
+1:"$Sreact.fragment"
+2:I[10455,["/_next/static/chunks/0e5103f2447e21ad.js","/_next/static/chunks/c4b161a738c0e220.js","/_next/static/chunks/afcf371094d00eea.js","/_next/static/chunks/efef91d96af0d283.js","/_next/static/chunks/34659016375d563b.js"],"SignupForm"]
+3:I[97367,["/_next/static/chunks/ff1a16fafef87110.js","/_next/static/chunks/d2be314c3ece3fbe.js"],"OutletBoundary"]
+4:"$Sreact.suspense"
+0:{"buildId":"CX10Mg-SkGb05U_l-vjpv","rsc":["$","$1","c",{"children":[[["$","h1",null,{"className":"text-3xl font-bold tracking-tight sm:text-4xl","children":"Sell your products in Truebex"}],["$","p",null,{"className":"mt-4 text-text-secondary","children":"Designers place real products in their rooms and price their projects by region. Apply with your company details, the regions you deliver to and one company document; we verify every supplier before its products are listed."}],["$","section",null,{"className":"mt-8 rounded-[var(--radius-card)] border border-border bg-surface p-5 md:p-8","children":["$","$L2",null,{}]}]],[["$","script","script-0",{"src":"/_next/static/chunks/34659016375d563b.js","async":true}]],["$","$L3",null,{"children":["$","$4",null,{"name":"Next.MetadataOutlet","children":"$@5"}]}]]}],"loading":null,"isPartial":false}
+5:null

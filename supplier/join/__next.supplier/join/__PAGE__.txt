@@ -1,0 +1,6 @@
+1:"$Sreact.fragment"
+2:"$Sreact.suspense"
+3:I[21681,["/_next/static/chunks/0e5103f2447e21ad.js","/_next/static/chunks/c4b161a738c0e220.js","/_next/static/chunks/afcf371094d00eea.js","/_next/static/chunks/efef91d96af0d283.js","/_next/static/chunks/a3ea1e0559b3e05c.js"],"JoinPanel"]
+4:I[97367,["/_next/static/chunks/ff1a16fafef87110.js","/_next/static/chunks/d2be314c3ece3fbe.js"],"OutletBoundary"]
+0:{"buildId":"CX10Mg-SkGb05U_l-vjpv","rsc":["$","$1","c",{"children":[[["$","h1",null,{"className":"text-3xl font-bold tracking-tight sm:text-4xl","children":"Join your team on Truebex"}],["$","p",null,{"className":"mt-4 text-text-secondary","children":"Accept the invitation you received by e-mail. Sign in with the address it was sent to."}],["$","section",null,{"className":"mt-8 rounded-[var(--radius-card)] border border-border bg-surface p-5 md:p-8","children":["$","$2",null,{"fallback":["$","p",null,{"className":"text-text-muted","children":"…"}],"children":["$","$L3",null,{}]}]}]],[["$","script","script-0",{"src":"/_next/static/chunks/a3ea1e0559b3e05c.js","async":true}]],["$","$L4",null,{"children":["$","$2",null,{"name":"Next.MetadataOutlet","children":"$@5"}]}]]}],"loading":null,"isPartial":false}
+5:null

@@ -1,0 +1,6 @@
+1:"$Sreact.fragment"
+2:"$Sreact.suspense"
+3:I[13594,["/_next/static/chunks/0e5103f2447e21ad.js","/_next/static/chunks/c4b161a738c0e220.js","/_next/static/chunks/afcf371094d00eea.js","/_next/static/chunks/19c9ae76ce30c31a.js"],"CheckoutClient"]
+4:I[97367,["/_next/static/chunks/ff1a16fafef87110.js","/_next/static/chunks/d2be314c3ece3fbe.js"],"OutletBoundary"]
+0:{"buildId":"CX10Mg-SkGb05U_l-vjpv","rsc":["$","$1","c",{"children":[["$","main",null,{"className":"flex min-h-screen flex-col items-center justify-center gap-4 px-4 pt-20 text-center","children":[["$","h1",null,{"className":"text-2xl font-bold tracking-tight","children":"Checkout"}],["$","$2",null,{"fallback":["$","p",null,{"className":"text-text-secondary","children":"Opening secure checkout…"}],"children":["$","$L3",null,{}]}]]}],[["$","script","script-0",{"src":"/_next/static/chunks/19c9ae76ce30c31a.js","async":true}]],["$","$L4",null,{"children":["$","$2",null,{"name":"Next.MetadataOutlet","children":"$@5"}]}]]}],"loading":null,"isPartial":false}
+5:null

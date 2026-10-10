@@ -2,6 +2,7 @@ User-Agent: *
 Allow: /
 Disallow: /dashboard/
 Disallow: /account/
+Disallow: /supplier/
 
 Host: https://truebex.com
 Sitemap: https://truebex.com/sitemap.xml
