@@ -703,6 +703,11 @@ and `server/app/ai/`, the routes `server/app/routers/analysis_ai.py` (one router
   reset date, recent turns, Buy credits); `/dashboard/admin/render/` gains the CPU and `gpu-ai` classes, the
   inference servers and AI spend by alias against provider cost.
 
+- **Trying it without the app:** `server/scripts/demo_ai.py --token tbx_dev_… window` plays the assistant's
+  "window on the north wall" conversation against `/ai/messages`; `server/scripts/demo_analysis.py --token tbx_dev_…
+  wind` uploads a geometry and submits a wind job (`watch`, `output` follow it); `server/scripts/fake_ai_upstream.py`
+  stands in for the model provider (`ANTHROPIC_BASE_URL=http://127.0.0.1:8790`) so no key is spent.
+
 Known gaps: results are reports, never certificates, and no number is claimed publicly before GD2's validation
 cases pass; the app sides (AN2–AN4 exporting inputs, AI3's panel) ship separately, so the public copy keeps these
 on the roadmap.
