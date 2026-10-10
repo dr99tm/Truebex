@@ -5,7 +5,7 @@ import Link from "next/link";
 import Script from "next/script";
 import { useSearchParams } from "next/navigation";
 import { fetchPublicConfig } from "@/lib/auth";
-import { CHECKOUT } from "@/lib/constants";
+import { CHECKOUT, CLOUD_AI } from "@/lib/constants";
 
 // Paddle.js v2 (https://developer.paddle.com/paddlejs/overview). With
 // `_ptxn` in the URL it opens the overlay for that transaction by itself;
@@ -38,6 +38,9 @@ export function CheckoutClient() {
   const params = useSearchParams();
   const txn = params.get("_ptxn");
   const ref = params.get("ref") ?? "";
+  // A credit pack bought on the Cloud page goes back there (PF11); every
+  // other checkout goes back to billing.
+  const toCloud = params.get("back") === "dashboard-cloud";
   const [scriptReady, setScriptReady] = useState(false);
   const [state, setState] = useState<State>(txn ? "loading" : "missing");
   const started = useRef(false);
@@ -47,7 +50,9 @@ export function CheckoutClient() {
     if (!txn || !scriptReady || started.current) return;
     started.current = true;
     const back = (outcome: "success" | "canceled") =>
-      `/dashboard/billing/?checkout=${outcome}&ref=${encodeURIComponent(ref)}`;
+      toCloud
+        ? `/dashboard/cloud/?topup=${outcome}&ref=${encodeURIComponent(ref)}`
+        : `/dashboard/billing/?checkout=${outcome}&ref=${encodeURIComponent(ref)}`;
     fetchPublicConfig()
       .then((cfg) => {
         const paddle = window.Paddle;
@@ -76,7 +81,7 @@ export function CheckoutClient() {
         setState("open");
       })
       .catch(() => setState("unavailable"));
-  }, [txn, ref, scriptReady]);
+  }, [txn, ref, toCloud, scriptReady]);
 
   return (
     <>
@@ -87,7 +92,9 @@ export function CheckoutClient() {
           : state === "unavailable"
             ? CHECKOUT.unavailable
             : state === "done"
-              ? CHECKOUT.done
+              ? toCloud
+                ? CLOUD_AI.checkout.done
+                : CHECKOUT.done
               : CHECKOUT.opening}
       </p>
       {state === "open" && txn && (
@@ -99,8 +106,11 @@ export function CheckoutClient() {
           {CHECKOUT.open}
         </button>
       )}
-      <Link href="/dashboard/billing/" className="text-sm text-text-muted hover:text-text-primary">
-        {CHECKOUT.back}
+      <Link
+        href={toCloud ? "/dashboard/cloud/#ai-credits" : "/dashboard/billing/"}
+        className="text-sm text-text-muted hover:text-text-primary"
+      >
+        {toCloud ? CLOUD_AI.checkout.back : CHECKOUT.back}
       </Link>
     </>
   );

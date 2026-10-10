@@ -8,7 +8,7 @@ import { CLOUD } from "@/lib/constants";
 
 const CONTRACT = { "X-Truebex-Contract": "render-jobs/1.0" };
 
-export type JobKind = "panorama" | "tiles" | "pack" | "wind" | "energy";
+export type JobKind = "panorama" | "tiles" | "pack" | "wind" | "energy" | "acoustics" | "texture";
 export type JobState = "queued" | "claimed" | "running" | "succeeded" | "failed" | "cancelled" | "expired";
 export type Face = "n" | "e" | "s" | "w" | "u" | "d";
 export const FACES: readonly Face[] = ["n", "e", "s", "w", "u", "d"];
