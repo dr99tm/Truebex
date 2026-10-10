@@ -11,7 +11,7 @@ from urllib.parse import urlsplit
 from PIL import Image
 from sqlalchemy import inspect, select
 
-from app import tasks
+from app import ratelimit, tasks
 from app.config import get_settings
 from app.database import SessionLocal, engine
 from app.licence import clock
@@ -418,21 +418,29 @@ def test_shares_expire_job_marks_and_frees(client, monkeypatch):
         assert db.get(Share, abandoned["share_id"]).state == "expired"
 
 
-def test_shares_visits_rate_limited_no_ip(client):
+def test_shares_visits_rate_limited_no_ip(client, monkeypatch):
     token, _ = device_token(client)
     share = published(client, token)
+    # PF14's token bucket refills continuously (60 a minute = one a second):
+    # hold its clock still so the 61st visit is refused however slow the run.
+    now = [1000.0]
+    monkeypatch.setattr(ratelimit, "clock", lambda: now[0])
     for i in range(60):
         res = client.post(f"/s/{share['slug']}/visits", json={"visitor": f"{i:032x}"}, headers=CONTRACT)
         assert res.status_code == 204, (i, res.text)
     res = client.post(f"/s/{share['slug']}/visits", json={"visitor": "f" * 32}, headers=CONTRACT)
     body = error_of(res, 429, "rate_limited")
     assert body["retry_after_s"] >= 1 and res.headers["Retry-After"]
+    # A second later one visit is allowed again, and only one.
+    now[0] += 1.0
+    assert client.post(f"/s/{share['slug']}/visits", json={"visitor": "e" * 32}, headers=CONTRACT).status_code == 204
+    error_of(client.post(f"/s/{share['slug']}/visits", json={"visitor": "d" * 32}, headers=CONTRACT), 429, "rate_limited")
     # No address and no user agent are kept: only these columns exist.
     columns = {c["name"] for c in inspect(engine).get_columns("share_visits")}
     assert columns == {"id", "share_id", "day", "visitor", "count", "last_at"}
     with SessionLocal() as db:
         rows = db.scalars(select(ShareVisit)).all()
-        assert len(rows) == 60
+        assert len(rows) == 61  # the 60, then the one a second later
         stored = " ".join(f"{r.share_id} {r.day} {r.visitor}" for r in rows)
     assert "testclient" not in stored and "python" not in stored.lower()
 
