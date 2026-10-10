@@ -211,3 +211,4 @@ The first nine names are the contract's §10 platform tests.
   * `UsageChart` is master's (`label`, `unit`): the Shares page passes `unit="visits" label={T.byDay}`.
   * `npm run build` is `next build`, then PF13's `postbuild-lang.mjs`, then `build-viewer.mjs`.
   * Deploy skill: the live checks name `/viewer/viewer.js` with `access-control-allow-origin: *`; the secrets table and `infra/secrets/server.env.example` name `SHARE_BASE_URL`, `SHARE_MAX_DAYS` and `SHARE_MAX_BYTES`. Pillow reaches the VM in PF14's image, so the "pip install" note is gone.
+  * Synced with master's PF4 and PF3a (T28, second sync): PF4 had copied `server/app/uploads/` and `routers/uploads.py` byte for byte; one copy is kept (master's `uploads/jobs.py`) and one `share_max_bytes` setting (this feature's block). PF4's Projects sits before Shares in the dashboard's first group.

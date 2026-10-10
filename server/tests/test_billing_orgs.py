@@ -135,6 +135,8 @@ def test_org_checkout_roles(client, paddle):
         assert txn["items"][0]["quantity"] == 3
         pay = payment(co["reference"])
         assert pay.organisation_id == org["id"] and pay.seats == 3 and pay.plan == "team"
+        # PF2b: an organisation's purchase is a business one (no consumer cancellation rights).
+        assert pay.business is True
         if role == "owner":
             assert txn["custom_data"]["user_id"] == str(owner_id)
 
