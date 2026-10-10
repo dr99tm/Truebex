@@ -40,7 +40,7 @@ def test_catalogue_matches_contract_placeholder():
 
 
 def test_catalogue_existing_plans_keep_working(client):
-    assert get_plan("pro").price("month", "USD").amount_minor == 9900 and get_plan("pro").purchasable
+    assert get_plan("pro").price("month", "USD").amount_minor == 2900 and get_plan("pro").purchasable
     assert get_plan("nonsense").id == "free"
     assert (get_plan("free").monthly_requests, get_plan("free").max_api_keys) == (1_000, 2)
     assert (get_plan("pro").monthly_requests, get_plan("pro").max_api_keys) == (100_000, 20)

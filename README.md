@@ -33,6 +33,9 @@ around it on the web:
 - [Licences, releases and downloads](#licences-releases-and-downloads)
 - [Organisations, seats and SSO](#organisations-seats-and-sso)
 - [Cloud projects](#cloud-projects)
+- [Share links](#share-links)
+- [Marketplace (PF7)](#marketplace-pf7)
+- [Supplier portal (PF8)](#supplier-portal-pf8)
 - [Billing: Paddle and Stripe](#billing-paddle-and-stripe)
 - [Brand, content and SEO](#brand-content-and-seo)
 - [Demo request form](#demo-request-form)
@@ -105,17 +108,20 @@ src/
     ar/                    Arabic landing page (RTL; lang/dir set by scripts/postbuild-lang.mjs)
     login/ signup/         Auth pages (Google + email)
     dashboard/             Signed-in area: overview (download, licence, devices), projects/ (+ view/?id=),
-                           billing/, link/ (approve a sign-in from the app), keys/ + usage/ (Developer),
+                           shares/, billing/, link/ (approve a sign-in from the app), keys/ + usage/ (Developer),
                            admin/growth/ + admin/telemetry/
     invite/project/        Accept a project invitation (?t=, noindex)
     download/              Public Download page (from src/content/releases.json)
     developers/            Public API docs (indexable)
+    supplier/              Supplier portal (noindex): signup/, join/, catalogue/, prices/, imports/,
+                           inbox/, analytics/, billing/, team/
     account/               Redirect to /dashboard/ (old URL)
     sitemap.ts robots.ts manifest.ts icon.svg apple-icon.png favicon.ico
   components/
     brand/Logo.tsx         Lockup / LogoMark / Wordmark from the Figma masters
     sections/              Landing sections (Hero, CoreFeatures, Pricing, FAQ, …)
     dashboard/             Shell (auth guard, nav), UsageChart, UsageMeter
+    supplier/              SupplierShell (auth guard, supplier switcher, nav by role), SignupForm, JoinPanel
     releases/              DownloadPanel, ReleaseNotes
     auth/                  AuthForm, GoogleButton, ProfileMenu
   lib/
@@ -126,9 +132,12 @@ src/
     developer.ts           keys, usage, billing calls
     licence.ts             licence API calls (devices, link approval, release feed)
     projects.ts            project service calls (projects, people, versions, presence, invitations)
+    supplier.ts            supplier portal calls (X-Truebex-Supplier header), template download
     plans.ts               plan names and limits from server/app/catalogue.json
     releaseNotes.ts        the release-notes Markdown subset, parsed to a React-rendered tree
+    shares.ts              share links (list, visits, extend, end)
     telemetryAdmin.ts      admin telemetry dashboard calls
+  viewer/                  the share page's viewer (no framework) → out/viewer/viewer.js + .css
   content/                 roadmap.json, history.json; releases.json + releases-beta.json (the release
                            feed as of the last `npm run sync:releases`)
 public/
@@ -138,20 +147,23 @@ public/
 scripts/make_web_assets.py Regenerates brand assets from the Unreal project
 scripts/sync-releases.mjs  `npm run sync:releases`: release feed → src/content/releases.json (+ releases-beta.json)
 scripts/postbuild-lang.mjs <html lang="ar" dir="rtl"> for out/ar/ (part of npm run build)
+scripts/build-viewer.mjs   runs after `next build`: src/viewer → out/viewer (+ PDF.js)
 scripts/sync-roadmap.mjs   Roadmap statuses from the two trackers (owner, before a deploy)
 scripts/indexnow.mjs       Ping IndexNow with changed URLs (owner, after a deploy)
+scripts/serve-out.py       serves out/ with CORS like GitHub Pages (autopilot-serve.ps1)
 server/
   app/
     main.py                App + routers
     routers/               auth, keys, usage, billing, v1 (developer API), licence, releases, admin, files,
-                           growth, telemetry, admin_telemetry, projects, uploads
+                           growth, telemetry, admin_telemetry, projects, uploads, shares (+ /view/{slug}, /robots.txt)
     billing/               service.py (plan state) · base.py (BillingProvider) · paddle_, stripe_, wayl_provider.py · jobs.py
     licence/               devices, link codes, seats, signed entitlements (Ed25519 over RFC 8785 JSON)
     releases/              signed release manifests, feed, download links
     telemetry/             contracts/telemetry.md: service, privacy scanner, symbolication, jobs
     projects/              contracts/project-log.md: the log and its §6.3 rule, snapshots, versions, members,
                            presence, quotas, the on_ops_accepted push hook, jobs
-    uploads/               share-bundle §5: resumable, content-addressed uploads (PF5's module)
+    uploads/               share-bundle §5: resumable, content-addressed uploads (8 MiB hashed parts; PF5's, used by PF4)
+    shares/                share records, manifest rules, derivatives, preview card, the page's HTML
     idempotency.py         Idempotency-Key for contract POSTs (24 h)
     storage/ mail/         blob storage (local, s3) · mail (console, smtp) with templates
     tasks.py worker.py     periodic jobs (@periodic), inline or in the worker process
@@ -163,9 +175,10 @@ server/
     growth/                Admin growth counts (sign-ups, downloads, trials, checkouts)
   scripts/                 sync_prices.py (catalogue prices → Paddle or Stripe) · make_signing_key.py · publish_release.py ·
                            make_licence_fixtures.py · sqlite_to_postgres.py · upload_symbols.py · make_admin.py ·
-                           demo_replica.py (a scripted project replica) · make_project_log_fixtures.py
+                           make_share_fixtures.py · demo_share.py · demo_replica.py (a scripted project replica) ·
+                           make_project_log_fixtures.py
   tests/                   pytest suite (+ mock_paddle.py, mock_wayl.py for click-through tests; contracts/licence/,
-                           contracts/telemetry/ and contracts/project-log/ = contract fixtures)
+                           contracts/telemetry/, contracts/share-bundle/ and contracts/project-log/ = contract fixtures)
   Dockerfile               the API image (api and worker services)
 infra/                     the API host: OpenTofu, cloud-init, Compose, Caddy, backups,
                            monitoring, deploy.ps1, restore-test.ps1, CUTOVER.md
@@ -245,6 +258,7 @@ These end up in the public JavaScript, so never put secrets in them.
 | `STRIPE_PRICE_PRO` | The original monthly Pro price: existing subscribers keep Pro |
 | `STRIPE_TAX_ENABLED` | `true` turns on Stripe Tax (`automatic_tax`) |
 | `WAYL_ENABLED`, `WAYL_API_KEY`, `WAYL_WEBHOOK_SECRET`, `WAYL_ENV`, `WAYL_PRICE_PRO_IQD` | Dormant rail: off unless `WAYL_ENABLED=true`; never offered on the site |
+| `SUBSCRIPTION_NOTICES_ENABLED`, `SUBSCRIPTION_RULES_FROM`, `EU_WITHDRAWAL_ENABLED`, `LEGAL_WORDING_APPROVED`, `CONSENT_VARIANT` (+ lead times, `COMPANY_ADDRESS`, `EULA_URL`) | Subscription consumer rules (PF2b), all off until the solicitor signs off; see [Billing](#billing-paddle-and-stripe) |
 | `LICENCE_SIGNING_KEY`, `LICENCE_KEY_ID` | The `lic-*` Ed25519 seed that signs entitlements (`scripts/make_signing_key.py --kind lic`). Empty = licensing off (503). |
 | `RELEASE_PUBLIC_KEYS` | Public `rel-*` keys as `kid:key,…` (the seeds never live on the API host) |
 | `SIGNING_KEYS_EXTRA`, `TRIAL_DAYS` | Old `lic-*` public keys during a rotation; trial length (14) |
@@ -257,6 +271,8 @@ These end up in the public JavaScript, so never put secrets in them.
 | `TELEMETRY_EVENTS_ENABLED`, `TELEMETRY_INGESTION_ENABLED` | The usage-events kill switch; telemetry as a whole (off → 503) |
 | `SSO_SECRET_KEY` | Fernet key sealing organisations' SSO client secrets (empty derives one from `SECRET_KEY`) |
 | `SAML_SP_ENTITY_ID`, `AUDIT_RETENTION_DAYS` | This service's SAML entity id (empty: each organisation's metadata URL); how long the audit log keeps events (730) |
+| `FEED_PULL_HOUR_UTC` | Hour (UTC) the registered supplier feed URLs are read each day (2) |
+| `MARKET_MEDIA_FIXTURES` | Local trials only: serve the contract feed's picture and 3D URLs from `tests/contracts/marketplace` |
 | `PROJECTS_PRESENCE_BACKEND` | Project presence: `memory` (one process) or `db` (the VM's two API processes) |
 | `PROJECTS_MAX_WAITING_PULLS` | Long-poll pulls one account may hold open at once, per API process (20) |
 | `SHARE_MAX_BYTES` | Ceiling on one share upload's total bytes (the upload protocol; 1 GiB) |
@@ -315,6 +331,8 @@ Contract endpoints (`/telemetry/*`) answer errors in the shared envelope
 | POST | `/billing/seats` · `/billing/change` | session | Seats, or tier / interval, prorated |
 | GET | `/billing/invoices` | session | Invoices with PDF links |
 | POST | `/billing/portal` | session | The provider's customer portal |
+| POST | `/billing/cancel` · `/billing/withdraw` | session | Cancel in Billing (`{confirm: true, refund?}`) · EU withdrawal (`{confirm: true}`); the plan changes on the provider's webhook |
+| GET | `/billing/payments/{ref}` | session | One checkout with the key information the buyer acknowledged |
 | POST | `/billing/webhooks/paddle` · `/stripe` · `/wayl` | provider | Payment events (`/wayl` only with `WAYL_ENABLED`) |
 | GET | `/v1/ping` · `/v1/account` | **API key** | Developer API (metered) |
 | POST | `/licence/link` · `/licence/link/poll` | — / poll secret | The app starts a browser sign-in and polls for its session |
@@ -352,6 +370,11 @@ Contract endpoints (`/telemetry/*`) answer errors in the shared envelope
 | GET | `/auth/sso/start?email=&next=` | — | 302 to the organisation's identity provider (`format=json` → `{url}`) |
 | GET · POST | `/auth/sso/oidc/callback` · `/auth/sso/saml/{slug}/acs` | `state` · signed assertion | Finish SSO → `/login/sso/#token=…` |
 | GET | `/auth/sso/saml/{slug}/metadata` | — | SP metadata XML |
+| POST · PUT · GET | `/uploads`, `/uploads/{id}/files/{sha256}/parts/{n}`, `/uploads/{id}` | device, session, worker | Resumable upload: open, send a part, what arrived |
+| POST | `/shares` · `/shares/{id}/publish` | **device** | Create a share from a bundle manifest · publish once every file arrived |
+| GET / PATCH / DELETE | `/shares`, `/shares/{id}` | session or device | List with visits · change title or expiry · end the link |
+| GET · POST | `/s/{slug}` · `/s/{slug}/visits` | — | The viewer's data (URLs signed for 1 h) · count a visit |
+| GET | `/view/{slug}` · `/s/{slug}/card.jpg` | — | The share page (its own link preview) · its 1200 × 630 card |
 
 ### Running in production
 
@@ -534,6 +557,97 @@ envelope.
 
 ---
 
+## Share links
+
+The app's Share command (contract `share-bundle` v1.0.0, in the Unreal project's
+`Docs/roadmap/40/contracts/`) uploads a bundle (panoramas with hotspots,
+renders, the sheet PDF) through `/uploads` in 8 MiB parts and publishes it with
+`/shares`. Publishing makes 4096- and 1024-wide copies of every panorama and a
+1200 × 630 preview card. The link is `${SHARE_BASE_URL}/view/{slug}` (empty
+`SHARE_BASE_URL` = `API_URL`): the API writes that share's own title, card and
+`noindex` around the viewer, which the page loads from
+`${SITE_URL}/viewer/viewer.js` (built by `npm run build`). truebex.com must keep
+answering `Access-Control-Allow-Origin: *` (GitHub Pages does).
+
+- Visits count once a day per visitor id the page keeps for 24 h; no address or
+  user agent is stored. A link ends at its expiry or when ended from the
+  dashboard (410 "This link has ended"); its files go 7 days later.
+- Limits per plan: live links `limits.share_links`; longest expiry and bytes
+  per bundle from `SHARE_MAX_DAYS` / `SHARE_MAX_BYTES` until the plan matrix
+  carries `share_days` / `share_bytes`.
+- Try it without the app: `cd server; .venv\Scripts\python.exe scripts\demo_share.py
+  --email <you> --password <pw> --fixture tests\contracts\share-bundle\manifest-house.json`
+  (needs `LICENCE_SIGNING_KEY`, like any device sign-in).
+
+---
+
+## Marketplace (PF7)
+
+The catalogue behind the app's marketplace follows the contract `marketplace-api` v1.1.0 (the Unreal
+project's `Docs/roadmap/40/contracts/marketplace-api.md`); routes echo `X-Truebex-Contract:
+marketplace-api/1.1` and answer errors in the shared envelope. Code: `server/app/market/`,
+`server/app/routers/market.py` and `market_admin.py`; pages `/market/checkout/`, `/dashboard/orders/`,
+`/dashboard/admin/market/`.
+
+- **Catalogue (5.1–5.6).** Categories rooted on the app's taxonomy (`market/taxonomy/categories.json`,
+  a byte copy of the app's file; 5.1 reports its SHA-256), regions GB and AE (`market/regions.json`),
+  search through SQLite FTS5, prices as integer minor units per region. Anonymous reads are limited
+  per address (`MARKET_READS_PER_MINUTE`).
+- **Orders and requests (5.7–5.10).** Every line is priced again on the server; an order is split per
+  supplier and paid on `/market/checkout/` (Stripe Checkout, transfers to each supplier's Stripe
+  Connect account after it accepts, minus the commission). `MARKET_PAYMENTS_ENABLED` stays `false`
+  until the marketplace terms are signed off, so every supplier takes requests for quote only.
+- **Feeds.** `market/importer.py` turns CSV / JSON feeds (contract §6.4) into products, prices and
+  availability with a row-level report; PF8 adds the supplier endpoints and portal. Admins can import a
+  file for a supplier from `POST /admin/market/feeds`.
+- **Picture search.** `POST /market/search/image` (≤ 5 MB) with `EMBEDDING_MODEL=clip-vit-b32` after
+  `scripts\fetch_models.py` (weights stay out of git).
+- **A local trial catalogue:**
+
+  ```powershell
+  cd server
+  .venv\Scripts\python.exe -m pip install -r requirements.txt   # Pillow, numpy, onnxruntime, tokenizers
+  .venv\Scripts\python.exe scripts\seed_market.py --fixture tests\contracts\marketplace [--payments-ready]
+  .venv\Scripts\python.exe scripts\market_try.py --email you@example.com --password ... --kind quote   # or order
+  ```
+
+  The fixtures in `server/tests/contracts/marketplace/` are made by `scripts\make_market_fixtures.py`
+  (`--check` compares them with this server's answers).
+
+---
+
+## Supplier portal (PF8)
+
+Companies that sell furniture, finishes and fittings run their Truebex catalogue at `/supplier/`
+(noindex, every page usable at 375 px). Code: `server/app/supplier/`, `server/app/routers/supplier.py`,
+`src/app/supplier/`, `src/components/supplier/`, `src/lib/supplier.ts`; e-mails in `server/app/mail/`.
+
+- **Sign-up and verification.** `/supplier/signup/`: company, regions and contact, one company PDF
+  (≤ 10 MB, admins read it from Admin → Market → Suppliers → Application). The supplier is `applied` until
+  an admin verifies it; until then it prepares products but cannot submit them.
+- **Roles.** `owner` (everything), `catalogue` (products, prices, imports), `orders` (the inbox),
+  `viewer` (reads). Invitations by e-mail (`/supplier/join/?token=…`, 7 days).
+- **Catalogue, prices, imports.** Products with variants, pictures and checked 3D files (format by its
+  bytes, ≤ 100 MB, ≤ 500 000 triangles, size against `dims_mm`); a price and stock grid per region
+  that refuses what a feed would (`bad_price`, `currency_mismatch`, …); uploads of the XLSX template
+  (`GET /supplier/imports/template.xlsx`), CSV or JSON with a dry run kept 24 h, then Apply.
+- **Feeds for supplier systems (contract 5.11–5.13).** `POST /market/feeds` (202 queued),
+  `PUT /market/feeds/source` (an https URL read daily at 02:00 UTC), `GET /market/feeds/{id}` (the
+  report), with a supplier key from Team → Supplier keys (`Authorization: Bearer tbx_live_…`). Supplier
+  keys work only there; developer keys stay under Dashboard → API keys.
+- **Inbox, analytics, billing.** Requests for quote answered with prices and a message; orders accepted,
+  shipped (carrier, reference) and delivered. Daily counts per product and region (impressions, views,
+  placements, requests, orders, order value; no buyer identities). Listing plans, monthly statements,
+  and the Stripe Connect payout link.
+- **Jobs.** `market.feeds.run` (30 s), `market.feeds.pull` (daily, 02:00 UTC), `supplier.imports.purge`
+  (24 h), `supplier.listing.sync` (10 min).
+- **A local trial** (the API on :8000 with `MAIL_BACKEND=console` and
+  `MARKET_MEDIA_FIXTURES=tests/contracts/marketplace` in `server/.env`; the site built with
+  `NEXT_PUBLIC_AUTH_URL=http://127.0.0.1:8000`): apply at `/supplier/signup/`, verify it as an admin,
+  then upload `server/tests/contracts/marketplace/feed-two-regions.csv` under Imports.
+
+---
+
 ## Billing: Paddle and Stripe
 
 Truebex Ltd (the UK company) sells every plan. **Paddle** is the default: it
@@ -551,12 +665,17 @@ API fetches). The browser names a tier, an interval, a currency and seats; the
 server picks the price.
 
 **Catalogue.** `server/app/catalogue.json` holds the tiers (Free, Pro, Studio,
-Team per seat, Enterprise), monthly and annual prices in GBP, USD and EUR, and
-the founding offer (placeholders until the pricing guide GD7). The site imports
-it at build time (`src/lib/catalogue.ts`); the API serves it at `/billing/plans`.
-`server/scripts/sync_prices.py` mirrors every price, and each tier's founding
-price, to the provider and records the ids in `provider_prices`. Run it after
-any price change:
+Team per seat, Enterprise), their prices in GBP, USD and EUR and the founding
+offer: the owner's pricing plan (PF2a). Pro and Studio are monthly or annual;
+Team is annual only (from 2 seats), so a monthly Team checkout answers 400 and
+the site shows Team per month as the annual charge / 12, billed annually; the
+founding prices are the annual prices at `founding.discount_percent` off
+(`founding.intervals`). The public pages show prices only while
+`prices_final` is true. The site imports the file at build time
+(`src/lib/catalogue.ts`); the API serves it at `/billing/plans`.
+`server/scripts/sync_prices.py` mirrors every price, and each founding price,
+to the provider and records the ids in `provider_prices`. Run it after any
+price change (`--dry-run` lists what it would create):
 
 ```
 cd server
@@ -571,9 +690,10 @@ a transaction with `custom_data` naming the user and returns
 Checkout with `automatic_tax`, tax-ID and address collection, and its own
 consent box. Coupons (`?code=` on billing links) are the provider's own codes.
 
-**Founding seats.** A checkout holds founding seats for 30 minutes; a paid one
-keeps them for good and the subscription keeps the founding price. The count
-left is on `/billing/plans` and the billing page.
+**Founding seats.** An annual checkout of a founding tier holds a founding
+place for 30 minutes; a paid one keeps it for good and the subscription keeps
+the founding price while it stays on annual billing (a move to monthly ends
+it). The count left is on `/billing/plans`, `/pricing/` and the billing page.
 
 **Webhooks and jobs.** Paddle: `https://api.truebex.com/billing/webhooks/paddle`
 (subscription.* and transaction.* events; HMAC over `ts:body`, 300 s window).
@@ -607,6 +727,27 @@ without an account (see its docstring): run it on :8098, set
 `PADDLE_API_BASE=http://127.0.0.1:8098` and
 `PADDLE_WEBHOOK_SECRET=pdl_ntfset_mock_secret`, sync prices, and checkout opens
 the mock's pay page instead of Paddle.js.
+
+**Subscription consumer rules (PF2b), switched off.** Built to GD5 §7 and off
+until the solicitor approves the wording (details and the switch table:
+[`docs/roadmap/40/PF2b-subscription-consumer-rules.md`](docs/roadmap/40/PF2b-subscription-consumer-rules.md)):
+- **Always on:** **Cancel subscription** in Billing (cancel at the period
+  end, confirmation e-mail, no portal needed).
+- `SUBSCRIPTION_NOTICES_ENABLED` from `SUBSCRIPTION_RULES_FROM`: renewal
+  reminders and trial-end notices (job `billing.subscription_notices`), and
+  **Cancel and get a refund** within 14 days of an annual renewal.
+- `EU_WITHDRAWAL_ENABLED`: **Withdraw from contract** for EU consumers.
+- `LEGAL_WORDING_APPROVED`, together with a site build with
+  `NEXT_PUBLIC_LEGAL_WORDING_APPROVED=true`: the key information and GD5's
+  consent box at checkout (`CONSENT_VARIANT`), and the order confirmation
+  e-mail.
+
+The wording lives in `server/app/billing/notices.py` and `BILLING` in
+`src/lib/constants.ts`. Cancellations, refunds and withdrawals only ask the
+provider; the plan changes when its signed webhook arrives, and failed provider
+calls are retried by `billing.exits.retry`. To read console mails locally, run
+the API with `--log-config scripts/log-info.json`. Stripe needs `invoice.paid`
+on its webhook endpoint for renewals.
 
 **Wayl (dormant).** The Iraqi payment rail is retired from the site and the
 catalogue. Its code stays behind `WAYL_ENABLED=false` and its tests run with
@@ -663,6 +804,7 @@ a Google Sheet. See [`google-apps-script/README.md`](google-apps-script/README.m
 | Desktop app doesn't read the plan yet | The licence API is live, but the app's sign-in and gates (LC1, LC3) are not shipped | Unreal project |
 | Cloud projects wait for the app | The project service is live, but the app's cloud save (CL1) and collaboration (CL2) are not shipped; `demo_replica.py` stands in | Unreal project |
 | Installers are served from this PC | Downloads go through the home tunnel until PF14 adds object storage and a CDN | `server/storage/` |
+| Share bundles are stored on this PC too | Uploads (up to 1 GiB a share) fill the host disk until PF14's object storage | `server/storage/blobs/`, `shares/` |
 | `npm run dev` exhausts RAM on this PC | Use build + static server for local checks | — |
 | The demo form can't detect failures (`no-cors`) | It always shows "Request received!" | `CTAContact.tsx` |
 | Stale `gh-pages` branch | Confusing; not served | — |

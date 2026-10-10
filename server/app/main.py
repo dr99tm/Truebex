@@ -27,12 +27,19 @@ from .orgs import jobs as _org_jobs  # noqa: F401  (PF3: registers the organisat
 from .routers import admin, admin_telemetry, files, licence, releases, telemetry
 from .routers import orgs, sso
 from .sso import jobs as _sso_jobs  # noqa: F401  (PF3: registers the SSO jobs)
+from .market import jobs as _market_jobs  # noqa: F401  (PF7: registers the marketplace jobs)
+from .supplier import jobs as _supplier_jobs  # noqa: F401  (PF8: supplier jobs, e-mails, analytics)
+from .routers import market, market_admin
+from .routers import supplier
 from .routers import auth, billing, keys, usage, v1
 from .routers import growth as growth_router
 from .projects import jobs as _project_jobs  # noqa: F401  (PF4: projects.*)
 from .uploads import jobs as _upload_jobs  # noqa: F401  (uploads.expire)
 from .routers import projects, uploads  # PF4 (uploads: share-bundle §5, PF5's)
 from .telemetry.service import record_server_exception
+from .shares import jobs as _share_jobs  # noqa: F401  (PF5: shares.expire, shares.purge)
+from .uploads import jobs as _upload_jobs  # noqa: F401  (PF5: uploads.expire)
+from .routers import shares, uploads  # PF5
 
 settings = get_settings()
 
@@ -72,6 +79,8 @@ app.add_middleware(
         "Content-Disposition",
         contract_http.CONTRACT_HEADER,
         contract_http.REQUEST_ID_HEADER,
+        "ETag",
+        "Idempotency-Replayed",
     ],
 )
 # X-Request-Id on every response; the shared error envelope on contract routes
@@ -118,6 +127,21 @@ app.include_router(files.router)
 # PF3: organisations, seats, audit log and SSO
 app.include_router(orgs.router)
 app.include_router(sso.router)
+
+# PF5: uploads, shares, the share page and the API host's robots.txt
+app.include_router(uploads.router)
+app.include_router(shares.router)
+app.include_router(shares.public)
+
+# PF7: marketplace API, its platform routes and admin
+app.include_router(market.router)
+app.include_router(market.internal)
+app.include_router(market_admin.router)
+
+# PF8: the supplier portal, the feed endpoints 5.11-5.13, the admin's view of applications
+app.include_router(supplier.router)
+app.include_router(supplier.feeds_router)
+app.include_router(supplier.admin)
 
 app.include_router(auth.router)
 app.include_router(keys.router)

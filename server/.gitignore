@@ -8,3 +8,4 @@ __pycache__/
 venv/
 # The local storage adapter's data folder (STORAGE_DIR), not app/storage/.
 /storage/
+/models/

@@ -54,6 +54,19 @@ export interface FoundingOffer {
   discount_percent: number;
   ends_at: string | null;
   tiers: string[];
+  /** The billing intervals with a founding price (absent from older APIs: both). */
+  intervals?: Interval[];
+}
+
+/** PF2b: the subscription consumer rules the API has switched on. */
+export interface BillingRules {
+  wording_approved: boolean;
+  consent_variant: "digital_content" | "service";
+  /** The consent version checkout must carry now. */
+  consent_version: string;
+  key_info_version: string | null;
+  eu_withdrawal: boolean;
+  renewal_notices: boolean;
 }
 
 export interface Catalog {
@@ -62,6 +75,8 @@ export interface Catalog {
   /** The provider checkout uses, or null while online payment is not set up. */
   provider: Provider | null;
   currencies: string[];
+  /** Absent until the API answers (the static catalogue has none). */
+  rules?: BillingRules;
 }
 
 export interface Subscription {
@@ -77,10 +92,26 @@ export interface Subscription {
   founding: boolean;
   can_manage: boolean;
   currency: string | null;
+  // PF2b: cancel in Billing (the easy exit); the renewal cooling-off and the
+  // EU withdrawal period end then (null when not offered).
+  can_cancel: boolean;
+  cooling_off_until: string | null;
+  withdrawal_until: string | null;
   /** PF3a: the organisation this is; null for the signed-in person's own plan. */
   org_id?: string | null;
   /** Seats given to people: named seats + the floating pool (1 for a person). */
   seats_assigned?: number | null;
+}
+
+/** A cancellation made in Billing (PF2b). The plan changes once the payment
+ *  provider confirms it. */
+export interface ExitResult {
+  kind: "cancel" | "cooling_off" | "withdrawal";
+  requested_at: string;
+  effective_at: string | null;
+  refund_minor: number | null;
+  currency: string | null;
+  status: "done" | "processing";
 }
 
 export interface Payment {
@@ -96,6 +127,11 @@ export interface Payment {
   interval: Interval | null;
   seats: number | null;
   tax_minor: number | null;
+  // PF2b: what the buyer agreed to (key_info only once the wording is approved).
+  consent_version?: string | null;
+  key_info?: string | null;
+  key_info_at?: string | null;
+  business?: boolean | null;
   /** PF3a: the organisation the payment bought for, if any. */
   organisation_id?: string | null;
 }
@@ -119,6 +155,9 @@ export interface CheckoutRequest {
   seats: number;
   coupon?: string;
   consent: { version: string; accepted: true };
+  // PF2b, once the wording is approved: the key information was acknowledged.
+  key_info?: { version: string; acknowledged: true };
+  business?: boolean;
   /** PF3a: buy for this organisation (its owner and billing roles only). */
   org_id?: string;
 }
@@ -158,6 +197,20 @@ export const refreshPayment = (reference: string) =>
   });
 export const openBillingPortal = (orgId?: string | null) =>
   api<{ url: string }>("/billing/portal", orgId ? { method: "POST", json: orgBody(orgId) } : { method: "POST" });
+export const getPayment = (reference: string) =>
+  api<Payment>(`/billing/payments/${encodeURIComponent(reference)}`);
+/** Cancel at the period end, or (refund) now within the renewal cooling-off. */
+export const cancelSubscription = (refund = false) =>
+  api<ExitResult>("/billing/cancel", { method: "POST", json: { confirm: true, refund } });
+export const withdrawContract = () =>
+  api<ExitResult>("/billing/withdraw", { method: "POST", json: { confirm: true } });
+
+/** Fill `{name}` slots of a wording text (BILLING.rules, BILLING.exit). */
+export function fillWording(text: string, values: Record<string, string | number>): string {
+  return text.replace(/\{(\w+)\}/g, (slot, key: string) =>
+    key in values ? String(values[key]) : slot
+  );
+}
 
 /** An amount in minor units, with the currency's own decimals (pence, cents;
  *  none for currencies without them). */

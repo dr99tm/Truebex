@@ -1,0 +1,12 @@
+Hello,
+
+$inviter invited you to join $supplier_name's supplier portal on Truebex as
+$role_name.
+
+Accept the invitation (the link works for 7 days, until $expires):
+$link
+
+Sign in or create your account with this address ($email) to accept.
+If you did not expect this, ignore this e-mail and nothing changes.
+
+Truebex

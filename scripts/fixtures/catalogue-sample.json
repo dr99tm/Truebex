@@ -285,6 +285,7 @@
   "founding": {
     "total": 100,
     "discount_percent": 30,
-    "ends_at": "2027-03-31T23:59:59Z"
+    "ends_at": "2027-03-31T23:59:59Z",
+    "tiers": ["pro", "studio", "team"]
   }
 }

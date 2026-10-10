@@ -1,0 +1,9 @@
+Hello,
+
+$supplier_name is now a verified supplier on Truebex.
+
+You can submit products for review, connect payouts and invite your team
+in the supplier portal:
+$portal_url
+
+Truebex

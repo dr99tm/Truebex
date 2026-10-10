@@ -1,0 +1,11 @@
+Hello,
+
+The catalogue import for $supplier_name ($source, $finished) skipped
+$rejected of $rows rows; every other row was imported.
+
+$errors
+
+Fix the rows and upload the file again. The full report:
+$imports_url
+
+Truebex

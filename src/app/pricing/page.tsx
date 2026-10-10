@@ -3,7 +3,6 @@ import { Footer } from "@/components/layout/Footer";
 import { SectionHeading } from "@/components/ui/SectionHeading";
 import { FaqList } from "@/components/sections/FaqList";
 import { TierCards } from "@/components/pricing/TierCards";
-import { FoundingBanner } from "@/components/pricing/FoundingBanner";
 import { ComparisonTable } from "@/components/pricing/ComparisonTable";
 import { annualSavingPercent, foundingLive } from "@/lib/catalogue";
 import { loadCatalogue } from "@/lib/catalogue-data";
@@ -41,15 +40,17 @@ export default function PricingPage() {
         </header>
 
         <div className="mt-12">
-          {foundingLive(catalogue) && catalogue.founding && (
-            <FoundingBanner founding={catalogue.founding} copy={PRICING.founding} />
-          )}
           <TierCards
             tiers={catalogue.tiers}
             copy={PRICING.tiers}
             labels={PRICING.labels}
             saving={annualSavingPercent(catalogue)}
             showControls
+            founding={
+              foundingLive(catalogue) && catalogue.founding
+                ? { offer: catalogue.founding, copy: PRICING.founding }
+                : null
+            }
           />
         </div>
 

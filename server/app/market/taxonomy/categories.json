@@ -1,0 +1,42 @@
+{
+  "version": 1,
+  "note": "Truebex CATEGORY TAXONOMY (roadmap 39 / S1, understanding §20 + §21). One row per category; a row with children is a branch, a row without is a LEAF. `align` is the placement rule a prototype of that category is born with (O3) and the rule a swapped-in real asset inherits, `bounds_mm` is the typical bounding box [width, height, depth] the placeholder box uses, `mount_mm` is the default mounting height for WallMounted rows. Scripts/gen_taxonomy.py turns this file into the compiled-in default in CadTaxonomy.cpp -- edit HERE, then run the script, so the packaged app (which has no project tree) and the editor can never disagree.",
+  "categories": [
+    { "path": "structure",             "label": "Structure",   "align": "FloorFree",        "bounds_mm": [3000, 2700, 300],  "tags": ["wall", "slab", "column", "beam"] },
+    { "path": "openings",              "label": "Openings",    "align": "InOpening",        "bounds_mm": [900, 2100, 120],   "tags": ["door", "window", "hatch"] },
+
+    { "path": "furniture",             "label": "Furniture",   "align": "FloorBackToWall",  "bounds_mm": [900, 900, 600],    "tags": ["furniture"] },
+    { "path": "furniture/seating",     "label": "Seating",     "align": "FloorBackToWall",  "bounds_mm": [900, 900, 850],    "tags": ["sofa", "chair", "armchair", "stool", "bench"] },
+    { "path": "furniture/tables",      "label": "Tables",      "align": "FloorFree",        "bounds_mm": [1600, 750, 900],   "tags": ["table", "desk", "coffee table"] },
+    { "path": "furniture/storage",     "label": "Storage",     "align": "FloorBackToWall",  "bounds_mm": [1000, 2000, 600],  "tags": ["wardrobe", "shelf", "cabinet", "sideboard"] },
+    { "path": "furniture/beds",        "label": "Beds",        "align": "FloorBackToWall",  "bounds_mm": [1600, 600, 2000],  "tags": ["bed", "mattress", "cot"] },
+
+    { "path": "kitchen",               "label": "Kitchen",     "align": "FloorBackToWall",  "bounds_mm": [600, 900, 600],    "tags": ["kitchen", "worktop", "base unit", "sink"] },
+    { "path": "bath",                  "label": "Bath",        "align": "FloorBackToWall",  "bounds_mm": [700, 850, 500],    "tags": ["bath", "shower", "wc", "basin"] },
+
+    { "path": "lighting",              "label": "Lighting",    "align": "CeilingMounted",   "bounds_mm": [300, 300, 300],    "tags": ["light", "lamp"] },
+    { "path": "lighting/ceiling",      "label": "Ceiling",     "align": "CeilingMounted",   "bounds_mm": [400, 350, 400],    "tags": ["pendant", "downlight", "chandelier"] },
+    { "path": "lighting/wall",         "label": "Wall",        "align": "WallMounted",      "bounds_mm": [200, 300, 150],    "mount_mm": 1800, "tags": ["sconce", "wall light", "picture light"] },
+    { "path": "lighting/floor",        "label": "Floor",       "align": "FloorFree",        "bounds_mm": [350, 1600, 350],   "tags": ["floor lamp", "uplighter"] },
+    { "path": "lighting/table",        "label": "Table",       "align": "FloorFree",        "bounds_mm": [300, 500, 300],    "tags": ["table lamp", "desk lamp"] },
+
+    { "path": "appliances",            "label": "Appliances",  "align": "FloorBackToWall",  "bounds_mm": [600, 850, 600],    "tags": ["fridge", "oven", "washer", "dishwasher"] },
+    { "path": "plants",                "label": "Plants",      "align": "FloorFree",        "bounds_mm": [500, 1200, 500],   "tags": ["plant", "pot", "tree"] },
+    { "path": "decoration",            "label": "Decoration",  "align": "WallMounted",      "bounds_mm": [600, 800, 40],     "mount_mm": 1500, "tags": ["picture", "mirror", "art", "rug"] },
+    { "path": "mep",                   "label": "MEP",         "align": "WallMounted",      "bounds_mm": [150, 150, 60],     "mount_mm": 1100, "tags": ["socket", "switch", "radiator", "duct"] },
+    { "path": "outdoor",               "label": "Outdoor",     "align": "FloorFree",        "bounds_mm": [1200, 800, 800],   "tags": ["garden", "terrace", "fence", "parasol"] },
+
+    { "path": "finishes",              "label": "Finishes",    "align": "OnFace",           "bounds_mm": [1000, 1000, 5],    "tags": ["finish"] },
+    { "path": "finishes/paint",        "label": "Paint",       "align": "OnFace",           "bounds_mm": [1000, 1000, 1],    "tags": ["paint", "colour", "emulsion"] },
+    { "path": "finishes/wallpaper",    "label": "Wallpaper",   "align": "OnFace",           "bounds_mm": [1000, 1000, 2],    "tags": ["wallpaper", "pattern"] },
+    { "path": "finishes/tile",         "label": "Tile",        "align": "OnFace",           "bounds_mm": [300, 300, 10],     "tags": ["tile", "mosaic", "ceramic"] },
+
+    { "path": "sections",              "label": "Sections",    "align": "OnFace",           "bounds_mm": [80, 80, 80],       "tags": ["profile", "moulding"] },
+    { "path": "sections/skirting",     "label": "Skirting",    "align": "OnFace",           "bounds_mm": [20, 120, 20],      "tags": ["skirting", "baseboard"] },
+    { "path": "sections/cornice",      "label": "Cornice",     "align": "OnFace",           "bounds_mm": [90, 90, 90],       "tags": ["cornice", "coving", "crown"] },
+    { "path": "sections/architrave",   "label": "Architrave",  "align": "OnFace",           "bounds_mm": [20, 70, 20],       "tags": ["architrave", "casing"] },
+    { "path": "sections/frame",        "label": "Frame",       "align": "InOpening",        "bounds_mm": [60, 60, 60],       "tags": ["frame", "jamb", "sill"] },
+
+    { "path": "sheets",                "label": "Sheets",      "align": "OnFace",           "bounds_mm": [210, 297, 1],      "tags": ["sheet", "title block", "template"] }
+  ]
+}

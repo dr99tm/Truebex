@@ -30,13 +30,14 @@ Write-Host "npm ci ..."
 & npm ci --no-audit --no-fund
 if ($LASTEXITCODE -ne 0) { throw "npm ci failed ($LASTEXITCODE)" }
 
-# The venv is "ready" only when pip finished for the CURRENT requirements: a marker holds the hash of
-# requirements-dev.txt and is written after pip succeeded. A venv left behind by a failed pip (a network
-# outage during setup) or an older requirements file is installed again; python.exe existing proves nothing.
+# The venv is "ready" only when pip finished for the CURRENT requirements: a marker holds the hashes of
+# requirements-dev.txt and the requirements.txt it includes (features pin their packages there) and is
+# written after pip succeeded. A venv left behind by a failed pip (a network outage during setup) or older
+# requirements files is installed again; python.exe existing proves nothing.
 $venvPy = Join-Path $Worktree 'server\.venv\Scripts\python.exe'
-$reqFile = Join-Path $Worktree 'server\requirements-dev.txt'
+$reqFiles = @('server\requirements-dev.txt', 'server\requirements.txt') | ForEach-Object { Join-Path $Worktree $_ }
 $marker = Join-Path $Worktree 'server\.venv\.requirements-ok'
-$reqHash = (Get-FileHash $reqFile -Algorithm SHA256).Hash
+$reqHash = ($reqFiles | ForEach-Object { (Get-FileHash $_ -Algorithm SHA256).Hash }) -join '+'
 $ready = (Test-Path $venvPy) -and (Test-Path $marker) -and ((Get-Content $marker -Raw).Trim() -eq $reqHash)
 if (-not $ready) {
     Push-Location (Join-Path $Worktree 'server')

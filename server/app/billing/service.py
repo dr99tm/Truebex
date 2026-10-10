@@ -38,6 +38,10 @@ FOUNDING_HOLD = timedelta(minutes=30)
 # Providers whose subscriptions the customer manages (portal, seats, change).
 MANAGED_PROVIDERS = ("paddle", "stripe")
 
+# PF8: a supplier's listing plan is a Stripe subscription on these tables too
+# (tier `listing_<plan>`), but it is never an app plan.
+LISTING_TIER_PREFIX = "listing_"
+
 # Trials are subscriptions rows too (licence contract 5.6).
 TRIAL_PROVIDER = "trial"
 
@@ -68,10 +72,13 @@ def is_live(sub: Subscription, now: datetime | None = None) -> bool:
 
 def live_subscription(db: Session, user: User) -> Subscription | None:
     """The user's own best live subscription. An organisation's subscription
-    (PF3, `organisation_id` set) is never its buyer's personal plan."""
+    (PF3, `organisation_id` set) is never its buyer's personal plan, nor is a
+    supplier's listing plan (PF8)."""
     subs = db.scalars(
         select(Subscription).where(
-            Subscription.user_id == user.id, Subscription.organisation_id.is_(None)
+            Subscription.user_id == user.id,
+            Subscription.organisation_id.is_(None),
+            ~Subscription.plan.startswith(LISTING_TIER_PREFIX, autoescape=True),
         )
     )
     best: Subscription | None = None
@@ -104,6 +111,7 @@ def managed_subscription(db: Session, user: User) -> Subscription | None:
             .where(
                 Subscription.user_id == user.id,
                 Subscription.provider.in_(MANAGED_PROVIDERS),
+                ~Subscription.plan.startswith(LISTING_TIER_PREFIX, autoescape=True),
                 Subscription.organisation_id.is_(None),
             )
             .order_by(Subscription.updated_at.desc(), Subscription.id.desc())
@@ -322,6 +330,31 @@ def upsert_subscription(
     return sub
 
 
+def record_renewal(
+    db: Session,
+    provider: str,
+    provider_subscription_id: str | None,
+    at: datetime | None,
+    charge_id: str,
+) -> bool:
+    """A renewal charge the provider billed (from its verified event or API):
+    remember the newest one, which opens the renewal cooling-off (PF2b).
+    Returns True when it was new."""
+    if not provider_subscription_id or at is None:
+        return False
+    sub = find_subscription(db, provider, provider_subscription_id)
+    if sub is None:
+        return False
+    newest = _aware(sub.renewed_at)
+    if newest is not None and _aware(at) <= newest:
+        return False
+    sub.renewed_at = at
+    sub.renewal_charge_id = charge_id
+    db.add(sub)
+    db.commit()
+    return True
+
+
 def _end_trials(db: Session, user_id: int) -> None:
     """A purchase ends a running trial (licence contract 5.6: a paid plan
     answers 409 plan_active to a trial request)."""
@@ -461,16 +494,22 @@ def founding_status(db: Session, now: datetime | None = None) -> dict:
         "discount_percent": FOUNDING.discount_percent,
         "ends_at": FOUNDING.ends_at,
         "tiers": list(FOUNDING.tiers),
+        "intervals": list(FOUNDING.intervals),
     }
 
 
 def hold_founding(
-    db: Session, user: User, reference: str, tier: str, now: datetime | None = None
+    db: Session,
+    user: User,
+    reference: str,
+    tier: str,
+    interval: str,
+    now: datetime | None = None,
 ) -> bool:
     """Hold a founding place for one checkout. False when the offer is
-    closed, does not cover the tier, or has no place left."""
+    closed, does not cover the tier and interval, or has no place left."""
     now = now or _now()
-    if tier not in FOUNDING.tiers or not _founding_open(now):
+    if not FOUNDING.covers(tier, interval) or not _founding_open(now):
         return False
     # A new checkout replaces the user's earlier open hold.
     for old in db.scalars(

@@ -1,0 +1,196 @@
+{
+  "request": {
+    "method": "POST",
+    "path": "/market/orders",
+    "headers": {
+      "Idempotency-Key": "1893ec519f7c195432c66c3767627eeb"
+    },
+    "body": {
+      "kind": "order",
+      "region": "AE",
+      "project": {
+        "name": "House",
+        "project_id": null
+      },
+      "contact": {
+        "name": "Layla Haddad",
+        "email": "buyer@example.com",
+        "phone": null,
+        "message": "Delivery after 1 Dec"
+      },
+      "delivery": {
+        "country": "AE",
+        "city": "Dubai",
+        "postcode": null
+      },
+      "lines": [
+        {
+          "supplier_id": "f8afe1ba2b0bf97f23ef888f040cf46a",
+          "sku": "SOFA-OSLO-3",
+          "variant_id": "oat-linen",
+          "qty": 1,
+          "price_seen": {
+            "amount": 129900,
+            "currency": "AED",
+            "exponent": 2,
+            "region": "AE",
+            "includes_tax": true,
+            "tax_rate_bp": 500,
+            "at": "2026-10-09T10:00:00Z"
+          }
+        },
+        {
+          "supplier_id": "f8afe1ba2b0bf97f23ef888f040cf46a",
+          "sku": "PAINT-CHALK",
+          "variant_id": "2-5l",
+          "qty": 4,
+          "price_seen": {
+            "amount": 18900,
+            "currency": "AED",
+            "exponent": 2,
+            "region": "AE",
+            "includes_tax": true,
+            "tax_rate_bp": 500,
+            "at": "2026-10-09T10:00:00Z"
+          }
+        }
+      ]
+    }
+  },
+  "http_status": 201,
+  "body": {
+    "order_id": "1ce56654dc8372bbb7261b4079779e75",
+    "kind": "order",
+    "state": "awaiting_payment",
+    "payment": "platform",
+    "region": "AE",
+    "currency": "AED",
+    "exponent": 2,
+    "checkout_url": "https://truebex.com/market/checkout/?order=1ce56654dc8372bbb7261b4079779e75",
+    "project": {
+      "name": "House",
+      "project_id": null,
+      "project_uid": null
+    },
+    "delivery": {
+      "country": "AE",
+      "city": "Dubai",
+      "postcode": null,
+      "address": null
+    },
+    "suppliers": [
+      {
+        "supplier_id": "f8afe1ba2b0bf97f23ef888f040cf46a",
+        "supplier_name": "Nord Living",
+        "state": "pending",
+        "lines": 2,
+        "subtotal": {
+          "amount": 205500,
+          "currency": "AED",
+          "exponent": 2
+        },
+        "delivery": {
+          "amount": 15000,
+          "currency": "AED",
+          "exponent": 2
+        },
+        "tax": {
+          "amount": 10500,
+          "currency": "AED",
+          "exponent": 2
+        },
+        "total": {
+          "amount": 220500,
+          "currency": "AED",
+          "exponent": 2
+        },
+        "delivery_days": {
+          "min": 7,
+          "max": 14
+        },
+        "quote": null,
+        "reason": null
+      }
+    ],
+    "lines": [
+      {
+        "supplier_id": "f8afe1ba2b0bf97f23ef888f040cf46a",
+        "product_id": "00e167c6f66b6daa824878b7cb698fa9",
+        "sku": "SOFA-OSLO-3",
+        "variant_id": "oat-linen",
+        "name": "Oslo 3-seater sofa",
+        "qty": 1,
+        "price": {
+          "amount": 129900,
+          "currency": "AED",
+          "exponent": 2,
+          "region": "AE",
+          "includes_tax": true,
+          "tax_rate_bp": 500,
+          "at": "2026-10-09T10:00:00Z"
+        },
+        "quoted_price": null,
+        "total": {
+          "amount": 129900,
+          "currency": "AED",
+          "exponent": 2
+        }
+      },
+      {
+        "supplier_id": "f8afe1ba2b0bf97f23ef888f040cf46a",
+        "product_id": "cfdc4581e6f8c03d089dee2029b17fde",
+        "sku": "PAINT-CHALK",
+        "variant_id": "2-5l",
+        "name": "Chalk White matt emulsion",
+        "qty": 4,
+        "price": {
+          "amount": 18900,
+          "currency": "AED",
+          "exponent": 2,
+          "region": "AE",
+          "includes_tax": true,
+          "tax_rate_bp": 500,
+          "at": "2026-10-09T10:00:00Z"
+        },
+        "quoted_price": null,
+        "total": {
+          "amount": 75600,
+          "currency": "AED",
+          "exponent": 2
+        }
+      }
+    ],
+    "subtotal": {
+      "amount": 205500,
+      "currency": "AED",
+      "exponent": 2
+    },
+    "delivery_total": {
+      "amount": 15000,
+      "currency": "AED",
+      "exponent": 2
+    },
+    "tax": {
+      "amount": 10500,
+      "currency": "AED",
+      "exponent": 2
+    },
+    "total": {
+      "amount": 220500,
+      "currency": "AED",
+      "exponent": 2
+    },
+    "quote_id": null,
+    "order_ref": null,
+    "expires_at": null,
+    "paid_at": null,
+    "created_at": "2026-10-09T10:00:00Z",
+    "updated_at": "2026-10-09T10:00:00Z",
+    "contact": {
+      "name": "Layla Haddad",
+      "email": "buyer@example.com",
+      "phone": null,
+      "message": "Delivery after 1 Dec"
+    }
+  }
+}

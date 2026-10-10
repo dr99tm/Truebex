@@ -1,0 +1,43 @@
+{
+  "note": "POST /s/{slug}/visits at each `at` (UTC); GET /shares/{id} then reports `expect` as `visits` (by_day: the last 30 days, oldest first; count = visits, unique = distinct visitors that day).",
+  "visits": [
+    {
+      "visitor": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "at": "2026-10-08T21:00:00Z"
+    },
+    {
+      "visitor": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "at": "2026-10-09T08:00:00Z"
+    },
+    {
+      "visitor": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "at": "2026-10-09T08:05:00Z"
+    },
+    {
+      "visitor": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "at": "2026-10-09T09:00:00Z"
+    },
+    {
+      "visitor": "cccccccccccccccccccccccccccccccc",
+      "at": "2026-10-09T23:59:59Z"
+    }
+  ],
+  "now": "2026-10-10T00:00:00Z",
+  "expect": {
+    "total": 5,
+    "unique": 4,
+    "last_at": "2026-10-09T23:59:59Z",
+    "by_day": [
+      {
+        "day": "2026-10-08",
+        "count": 1,
+        "unique": 1
+      },
+      {
+        "day": "2026-10-09",
+        "count": 4,
+        "unique": 3
+      }
+    ]
+  }
+}

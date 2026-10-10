@@ -1,0 +1,2 @@
+# Contract fixtures are byte-exact (hashes, CSV line endings, pictures): never convert line endings.
+* -text

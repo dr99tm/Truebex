@@ -267,6 +267,10 @@ def test_fresh_process_never_queries_wmi(tmp_path):
         # PF3's hand scripts, as `python scripts\<name>.py` loads them (scripts/ first on sys.path).
         "import runpy, sys; sys.path.insert(0, 'scripts'); runpy.run_path('scripts/grant_org_seats.py')",
         "import runpy, sys; sys.path.insert(0, 'scripts'); runpy.run_path('scripts/verify_org_domain.py')",
+        # PF7's trial catalogue, the same way.
+        "import contextlib, io, runpy, sys; sys.path.insert(0, 'scripts'); g = runpy.run_path('scripts/seed_market.py'); "
+        "r = contextlib.redirect_stdout(io.StringIO()); r.__enter__(); g['main'](['--fixture', 'no-such-folder']); "
+        "r.__exit__(None, None, None)",
     ):
         assert json.loads(_fresh_python(spy + entry + probe, tmp_path)) == [], entry
     machine = json.loads(_fresh_python("import json, app, platform; print(json.dumps(platform.machine()))", tmp_path))
@@ -274,7 +278,7 @@ def test_fresh_process_never_queries_wmi(tmp_path):
 
 
 def test_worker_process_registers_every_feature_job(tmp_path):
-    # The worker imports only app.worker: PF1's, PF2's and PF3's jobs must still run there.
+    # The worker imports only app.worker: PF1's, PF2's, PF3's, PF4's, PF5's, PF7's and PF8's jobs must still run there.
     names = set(json.loads(_fresh_python("import json; from app import tasks; print(json.dumps(tasks.registered()))", tmp_path)))
     for job in (
         "telemetry.rollup",
@@ -283,10 +287,29 @@ def test_worker_process_registers_every_feature_job(tmp_path):
         "licence.devices.lapse",
         "billing.founding.expire",
         "billing.reconcile",
+        "billing.subscription_notices",
+        "billing.exits.retry",
         "licence.leases.expire",
         "orgs.invites.expire",
         "audit.purge",
         "sso.requests.purge",
+        "shares.expire",
+        "shares.purge",
+        "uploads.expire",
+        "market.embeddings",
+        "market.quotes.expire",
+        "market.orders.unpaid",
+        "market.transfers",
+        "market.commissions.invoice",
+        "market.availability.stale",
+        "market.feeds.run",
+        "market.feeds.pull",
+        "supplier.imports.purge",
+        "supplier.listing.sync",
+        "projects.snapshots.prune",
+        "projects.purge_deleted",
+        "projects.presence.sweep",
+        "idempotency.expire",
     ):
         assert job in names, job
 
@@ -487,17 +510,24 @@ def _seed_sqlite(url: str) -> None:
 
 
 def test_sqlite_to_postgres_lists_every_feature_table(tmp_path):
-    # A fresh process (the cutover runs the script on its own): PF1's and PF3's tables too.
+    # A fresh process (the cutover runs the script on its own): PF1's, PF3's, PF4's, PF5's, PF7's and PF8's tables too.
     code = "import json; from scripts import sqlite_to_postgres as s; print(json.dumps([t.name for t in s._models()]))"
     tables = json.loads(_fresh_python(code, tmp_path))
     for table in (
         "users", "subscriptions", "provider_prices", "devices", "releases", "telemetry_events", "crash_reports",
         "organisations", "org_members", "org_invites", "seat_assignments", "floating_leases", "org_domains",
         "audit_events", "sso_connections", "sso_requests", "sso_assertions_seen",
+        "blobs", "upload_sessions", "shares", "share_derivatives", "share_visits",
+        "suppliers", "market_categories", "market_regions", "products", "product_variants", "variant_prices",
+        "market_orders", "market_order_suppliers", "market_order_lines", "commissions", "product_reviews", "feed_runs",
+        "supplier_applications", "feed_sources", "supplier_imports", "market_events_daily", "supplier_member_invites",
+        "listing_subscriptions", "subscription_notices", "subscription_exits",
+        "projects", "project_members", "project_ops", "project_snapshots", "project_versions", "idempotency_keys",
     ):
         assert table in tables, table
     assert tables.index("users") < tables.index("devices")  # parents first
     assert tables.index("organisations") < tables.index("org_members")
+    assert tables.index("suppliers") < tables.index("products") < tables.index("product_variants")
 
 
 def test_sqlite_to_postgres_on_sqlite_target_and_precheck(tmp_path):

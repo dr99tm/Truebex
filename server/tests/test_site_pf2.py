@@ -70,3 +70,47 @@ def test_site_pf2_terms_and_privacy_name_the_reseller():
 def test_site_pf2_billing_page_noindex():
     html = _text(OUT / "dashboard" / "billing" / "index.html")
     assert re.search(r'<meta name="robots" content="noindex, nofollow"', html)
+
+
+# --- PF2b: GD5 7.4 draft wording stays out of the site until approved --------------------
+
+
+def _draft_fragments() -> list[str]:
+    """The fixed runs of every GD5 7.4 draft a page could show (the parts
+    between `{slots}`), at least 16 characters long."""
+    from app.billing import notices
+
+    runs = []
+    for wording in notices.SITE_DRAFTS:
+        for run in re.split(r"\{\w+\}", wording.text):
+            run = run.strip(" .,()")
+            if len(run) >= 16:
+                runs.append(run)
+    return runs
+
+
+def _plain(text: str) -> str:
+    """Page or script text with HTML entities and JS string escapes undone."""
+    import html
+
+    return html.unescape(text).replace("\\'", "'").replace('\\"', '"').replace("\\u2014", "—")
+
+
+def test_site_pf2b_no_draft_wording_in_out():
+    import os
+
+    from app.config import get_settings
+
+    if os.environ.get("NEXT_PUBLIC_LEGAL_WORDING_APPROVED") == "true" or get_settings().legal_wording_approved:
+        pytest.skip("built with the approved wording")
+    fragments = _draft_fragments()
+    assert "Withdraw from contract" in fragments and "Confirm withdrawal" in fragments
+    assert any(f.startswith("I'm buying for a business") for f in fragments)
+    files = _pages() + sorted(OUT.rglob("*.txt")) + sorted((OUT / "_next").rglob("*.js"))
+    hits = [
+        (f.relative_to(OUT).as_posix(), frag)
+        for f in files
+        for frag in fragments
+        if frag in _plain(_text(f))
+    ]
+    assert hits == []

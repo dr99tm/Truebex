@@ -43,6 +43,7 @@ Only the owner deploys, after merging. Never from a task.
     - `/download/`: the same latest version, and its button downloads (`/releases/<version>/download` → 302 → 200).
     - `/checkout/`: 200 with `noindex` in its HTML (`curl -s https://truebex.com/checkout/ | grep -c noindex` ≥ 1), and not in `/sitemap.xml`.
     - `curl -s https://api.truebex.com/billing/plans`: `provider` is `paddle` (whatever `BILLING_PROVIDER` names), the catalogue's tiers and prices, `founding` as intended, and no `wayl` in `providers`.
+    - `/viewer/viewer.js` (PF5): share pages on the API's origin load the viewer from the site, so `curl -sI https://truebex.com/viewer/viewer.js` must answer 200 with `access-control-allow-origin: *`.
 11. `npm run indexnow -- --sitemap` (PF13): tells Bing and the other IndexNow engines about every URL in `out/sitemap.xml` → `indexnow: 200` or `202`. `--dry-run` prints the request first. The key file `public/9453d000061b1c7726749ca61a17a0db.txt` must be live at `https://truebex.com/9453d000061b1c7726749ca61a17a0db.txt`.
 
 `deploy-to-server.bat` automates 6–8 (plus a backup folder per run). It runs none of 3–5 or 9–11; do those by hand around it.
@@ -108,8 +109,13 @@ and never offered on the site. A provider is on only when its API key and its we
   `transaction.*`. Its secret key
   (`pdl_ntfset_…`) is that environment's `PADDLE_WEBHOOK_SECRET`.
 - **Stripe webhook:** `https://api.truebex.com/billing/webhooks/stripe` with `checkout.session.completed`,
-  `checkout.session.expired` and `customer.subscription.created/updated/deleted/paused/resumed`; its signing secret
-  is `STRIPE_WEBHOOK_SECRET`.
+  `checkout.session.expired`, `customer.subscription.created/updated/deleted/paused/resumed` and `invoice.paid`
+  (PF2b: a renewal charge opens the renewal cooling-off); its signing secret is `STRIPE_WEBHOOK_SECRET`. Paddle
+  needs no new event (`transaction.*` carries renewals).
+- **Marketplace Stripe webhook (PF7):** `https://api.truebex.com/market/webhooks/stripe` with
+  `checkout.session.completed`, `checkout.session.async_payment_succeeded` and (Connect) `account.updated`; its
+  signing secret(s) are `STRIPE_CONNECT_WEBHOOK_SECRET` (empty = the endpoint answers 404). Orders stay quote-only
+  while `MARKET_PAYMENTS_ENABLED=false`, which it stays until the marketplace terms (GD5) are signed off.
 - **Paddle approval:** the seller account and the domain truebex.com, before production (the pricing, terms and
   privacy pages must be live first). Paddle.js runs only on approved domains: the overlay is on `/checkout/`.
 - When the founding offer closes, archive the founding prices in Paddle and Stripe.
@@ -170,6 +176,10 @@ reads the switches at runtime through `/config` and `/billing/plans`, with no si
 | Mail (PF14) | `MAIL_BACKEND=smtp`, `MAIL_FROM`, `SUPPORT_EMAIL`, `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD` | — |
 | Alerts, telemetry (PF14) | `ALERT_EMAIL`, `ALERT_PUSH_URL`; `TELEMETRY_EVENTS_ENABLED` (the events kill switch), `TELEMETRY_INGESTION_ENABLED` | ingestion off = 503 |
 | Organisations, SSO (PF3) | `SSO_SECRET_KEY` (a Fernet key sealing each organisation's SSO client secret: set it once and keep it), `SAML_SP_ENTITY_ID`, `AUDIT_RETENTION_DAYS` (730) | no `SSO_SECRET_KEY` = derived from `SECRET_KEY`, so a new `SECRET_KEY` makes every organisation re-enter its SSO secret; no entity id = each organisation's metadata URL |
+| Share pages (PF5) | `SHARE_BASE_URL` (the links' origin), `SHARE_MAX_DAYS` (30), `SHARE_MAX_BYTES` (1 GiB per bundle) | no `SHARE_BASE_URL` = links are `{API_URL}/view/{slug}`; the bundles live in the data bucket with the installers |
+| Marketplace (PF7) | `MARKET_PAYMENTS_ENABLED` (`false` until GD5 signs off the marketplace terms), `STRIPE_CONNECT_WEBHOOK_SECRET` (the `/market/webhooks/stripe` endpoint's; uses `STRIPE_SECRET_KEY`), `MARKET_READS_PER_MINUTE` (120), `EMBEDDING_MODEL`, `EMBEDDING_DIR` | payments off = every supplier takes requests for quote only; no webhook secret = 404; no `EMBEDDING_MODEL` = picture search off (the weights from `scripts/fetch_models.py` are not in the image) |
+| Supplier portal (PF8) | `FEED_PULL_HOUR_UTC` (2: the daily read of registered feed URLs), `MARKET_MEDIA_FIXTURES` (local trials only) | `MARKET_MEDIA_FIXTURES` stays empty on the VM |
+| Consumer rules (PF2b), all off until the solicitor approves GD5 §7 | `SUBSCRIPTION_NOTICES_ENABLED`, `SUBSCRIPTION_RULES_FROM` (2027-01-01), `RENEWAL_REMINDER_DAYS_YEAR` / `_MONTH`, `TRIAL_END_NOTICE_DAYS`, `EU_WITHDRAWAL_ENABLED`, `LEGAL_WORDING_APPROVED` (with a site build made with `NEXT_PUBLIC_LEGAL_WORDING_APPROVED=true` at the same time, or checkout says "being set up"), `CONSENT_VARIANT`, `COMPANY_ADDRESS`, `EULA_URL` | each switch `false`: no reminder, no renewal refund, no withdrawal button, the placeholder consent; when to flip each one is the switch table in `docs/roadmap/40/PF2b-subscription-consumer-rules.md` (As-built) |
 
 `infra/host/compose.yaml` sets `BACKGROUND_TASKS=worker`, `RATELIMIT_BACKEND=db` and (worker) `BACKUP_EXPECTED=true`;
 they are not in the file.

@@ -54,6 +54,7 @@ def _roles(client):
 
 def org_checkout(client, h, org_id, **kw):
     kw.setdefault("tier", "team")
+    kw.setdefault("interval", "year")  # Team is annual only (PF2a)
     kw.setdefault("seats", 3)
     res = client.post("/billing/checkout", json=checkout_body(org_id=org_id, **kw), headers=h)
     assert res.status_code == 200, res.text
@@ -80,7 +81,7 @@ def payment(reference) -> Payment:
         return db.scalar(select(Payment).where(Payment.reference == reference))
 
 
-def team_price(paddle, interval="month", currency="GBP") -> dict:
+def team_price(paddle, interval="year", currency="GBP") -> dict:
     return next(
         p for p in paddle.STATE["prices"].values()
         if p["custom_data"]["tier"] == "team" and p["custom_data"]["founding"] == "0"
@@ -106,18 +107,18 @@ def forged_sub(paddle, sub_id, custom, quantity=5, **extra) -> dict:
 
 def test_org_checkout_roles(client, paddle):
     org, h = _roles(client)
-    body = checkout_body(tier="team", seats=3, org_id=org["id"])
+    body = checkout_body(tier="team", interval="year", seats=3, org_id=org["id"])
     assert client.post("/billing/checkout", json=body).status_code == 401
     envelope(client.post("/billing/checkout", json=body, headers=h["admin"]), 403, "forbidden")
     envelope(client.post("/billing/checkout", json=body, headers=h["member"]), 403, "forbidden")
     envelope(client.post("/billing/checkout", json=body, headers=h["outsider"]), 404, "not_found")
-    unknown = checkout_body(tier="team", seats=3, org_id="0" * 32)
+    unknown = checkout_body(tier="team", interval="year", seats=3, org_id="0" * 32)
     envelope(client.post("/billing/checkout", json=unknown, headers=h["owner"]), 404, "not_found")
-    malformed = checkout_body(tier="team", seats=3, org_id="Studio-North")
+    malformed = checkout_body(tier="team", interval="year", seats=3, org_id="Studio-North")
     assert client.post("/billing/checkout", json=malformed, headers=h["owner"]).status_code == 422
 
     # The catalogue's rules apply as for people.
-    few = checkout_body(tier="team", seats=1, org_id=org["id"])
+    few = checkout_body(tier="team", interval="year", seats=1, org_id=org["id"])
     assert client.post("/billing/checkout", json=few, headers=h["owner"]).status_code == 422
     assert client.post(
         "/billing/checkout", json=checkout_body(tier="enterprise", org_id=org["id"]), headers=h["owner"]
@@ -134,6 +135,8 @@ def test_org_checkout_roles(client, paddle):
         assert txn["items"][0]["quantity"] == 3
         pay = payment(co["reference"])
         assert pay.organisation_id == org["id"] and pay.seats == 3 and pay.plan == "team"
+        # PF2b: an organisation's purchase is a business one (no consumer cancellation rights).
+        assert pay.business is True
         if role == "owner":
             assert txn["custom_data"]["user_id"] == str(owner_id)
 
@@ -263,7 +266,7 @@ def test_org_second_live_subscription_conflict(client, paddle):
     org, h = _roles(client)
     org_buy(client, h["owner"], paddle, org["id"])
     for role in ("owner", "billing"):
-        res = client.post("/billing/checkout", json=checkout_body(tier="team", seats=4, org_id=org["id"]),
+        res = client.post("/billing/checkout", json=checkout_body(tier="team", interval="year", seats=4, org_id=org["id"]),
                           headers=h[role])
         assert res.status_code == 409, res.text
         assert res.json()["code"] == "live_subscription"
@@ -288,7 +291,7 @@ def test_org_second_live_subscription_conflict(client, paddle):
     paddle_post(client, paddle.event("subscription.past_due", overdue))
     view = client.get("/billing/subscription", params={"org_id": org["id"]}, headers=h["billing"]).json()
     assert view["status"] == "past_due" and view["can_manage"]
-    res = client.post("/billing/checkout", json=checkout_body(tier="team", seats=3, org_id=org["id"]),
+    res = client.post("/billing/checkout", json=checkout_body(tier="team", interval="year", seats=3, org_id=org["id"]),
                       headers=h["owner"])
     assert res.status_code == 409
 
@@ -373,13 +376,17 @@ def test_org_billing_management_roles(client, paddle):
     assert "/portal/ctm_" in client.post("/billing/portal", json=q, headers=h["billing"]).json()["url"]
     assert client.post("/billing/portal", headers=h["owner"]).status_code == 404  # no personal one
 
-    res = client.post("/billing/change", json={"interval": "year", **q}, headers=h["billing"])
+    # Team is annual only (PF2a), so the billing role changes the tier: to Studio
+    # (one seat, none given out yet), then back to Team.
+    res = client.post("/billing/change", json={"tier": "studio", **q}, headers=h["billing"])
     assert res.status_code == 200, res.text
-    assert res.json()["interval"] == "year" and res.json()["org_id"] == org["id"]
+    assert res.json()["tier"] == "studio" and res.json()["interval"] == "year" and res.json()["org_id"] == org["id"]
     (sub,) = org_subs(org["id"])
-    assert sub.interval == "year"
+    assert sub.plan == "studio" and sub.interval == "year"
     price = paddle.STATE["subscriptions"][sub.provider_subscription_id]["items"][0]["price"]
-    assert price["billing_cycle"]["interval"] == "year"
+    assert price["custom_data"]["tier"] == "studio" and price["billing_cycle"]["interval"] == "year"
+    res = client.post("/billing/change", json={"tier": "team", **q}, headers=h["billing"])
+    assert res.status_code == 200 and res.json()["tier"] == "team" and res.json()["seats"] == 2, res.text
     # A change that leaves fewer seats than are assigned is refused.
     set_floating(client, h["owner"], org["id"], 2)
     res = client.post("/billing/change", json={"tier": "pro", **q}, headers=h["owner"])
@@ -397,7 +404,7 @@ def test_org_founding_one_place_per_subscription(client, paddle):
     assert res.status_code == 200 and res.json()["founding"] is True
     assert client.get("/billing/plans").json()["founding"]["remaining"] == total - 1
     # The buyer's own founding subscription is a separate place.
-    res = client.post("/billing/checkout", json=checkout_body(tier="pro"), headers=owner)
+    res = client.post("/billing/checkout", json=checkout_body(tier="pro", interval="year"), headers=owner)
     assert res.json()["founding"] is True
     for ev in paddle.pay(txn_of(res.json()["url"])):
         paddle_post(client, ev)
@@ -456,14 +463,15 @@ def test_org_stripe_metadata_org_id(client, stripe_prices, monkeypatch):
     assert f"org={org['id']}" in captured["success_url"] and f"org={org['id']}" in captured["cancel_url"]
     assert payment(co["reference"]).organisation_id == org["id"]
 
-    amount = PLANS["team"].price("month", "GBP").amount_minor
-    key = (f"truebex_team_month_gbp_{service.FOUNDING.discounted(amount)}_founding" if co["founding"]
-           else f"truebex_team_month_gbp_{amount}")
+    amount = PLANS["team"].price("year", "GBP").amount_minor
+    key = (f"truebex_team_year_gbp_{service.FOUNDING.discounted(amount)}_founding" if co["founding"]
+           else f"truebex_team_year_gbp_{amount}")
     end = int(time.time()) + 30 * 86400
     sub_event = stripe_sub_event(
         "customer.subscription.created", owner_id, "active", end, price=stripe_prices[key], quantity=3,
         sub_id="sub_org_s1", meta={"user_id": str(owner_id), "plan": "team", "org_id": org["id"],
                                    "reference": co["reference"], "founding": "1" if co["founding"] else "0"},
+        interval="year",
     )
     # The subscription's own event comes first: held back until our session links it.
     assert stripe_post(client, sub_event).status_code == 200
@@ -485,8 +493,9 @@ def test_org_stripe_metadata_org_id(client, stripe_prices, monkeypatch):
     # Metadata naming the organisation on a subscription no session of ours
     # created: not attached (the person it names gets it, as in PF2).
     forged = stripe_sub_event(
-        "customer.subscription.created", member_id, "active", end, price=stripe_prices[f"truebex_team_month_gbp_{amount}"],
+        "customer.subscription.created", member_id, "active", end, price=stripe_prices[f"truebex_team_year_gbp_{amount}"],
         quantity=9, sub_id="sub_forged_s", meta={"user_id": str(member_id), "plan": "team", "org_id": org["id"]},
+        interval="year",
     )
     assert stripe_post(client, forged).status_code == 200
     assert [s.provider_subscription_id for s in org_subs(org["id"])] == ["sub_org_s1"]

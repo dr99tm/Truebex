@@ -1,0 +1,13 @@
+Hello,
+
+$buyer_name asks $supplier_name for a quote, for delivery to $delivery.
+
+$lines
+
+Message: $message
+
+Answer it with your prices in the supplier portal (requests expire after
+30 days):
+$inbox_url
+
+Truebex

@@ -117,8 +117,27 @@ class FoundingOut(BaseModel):
     remaining: int
     discount_percent: int
     ends_at: datetime | None
-    # The tiers the founding price applies to.
+    # The tiers and billing intervals the founding price applies to.
     tiers: list[str] = []
+    intervals: list[str] = []
+
+
+class RulesOut(BaseModel):
+    """PF2b: which subscription consumer rules are switched on (GD5 §7)."""
+
+    # GD5 7.4 wording approved: checkout asks for the key information and
+    # the draft consent; the order confirmation is mailed.
+    wording_approved: bool
+    # QS-17: digital_content | service.
+    consent_variant: str
+    # The consent version checkout must carry now.
+    consent_version: str
+    # The key information version to acknowledge (null while not approved).
+    key_info_version: str | None
+    # The EU withdrawal function (Art. 11a).
+    eu_withdrawal: bool
+    # The UK DMCC rules are on: renewal reminders and the cooling-off refund.
+    renewal_notices: bool
 
 
 class BillingCatalog(BaseModel):
@@ -130,11 +149,19 @@ class BillingCatalog(BaseModel):
     # Every provider switched on (wayl only with WAYL_ENABLED; never offered
     # on the website).
     providers: list[str]
+    rules: RulesOut
 
 
 class ConsentIn(BaseModel):
     version: str = Field(min_length=1, max_length=32)
     accepted: Literal[True]
+
+
+class KeyInfoIn(BaseModel):
+    """The key pre-contract information was shown and acknowledged (PF2b)."""
+
+    version: str = Field(min_length=1, max_length=32)
+    acknowledged: Literal[True]
 
 
 class CheckoutRequest(BaseModel):
@@ -144,6 +171,10 @@ class CheckoutRequest(BaseModel):
     seats: int = Field(default=1, ge=1, le=1000)
     coupon: str | None = Field(default=None, max_length=64)
     consent: ConsentIn
+    # Required while LEGAL_WORDING_APPROVED (PF2b); ignored before.
+    key_info: KeyInfoIn | None = None
+    # GD5 7.4's business box: no consumer cancellation rights.
+    business: bool = False
     # Only "wayl" (dormant, WAYL_ENABLED); otherwise BILLING_PROVIDER decides.
     provider: Literal["wayl"] | None = None
     # PF3a: buy for this organisation (its owner or billing role only).
@@ -154,6 +185,8 @@ class CheckoutResponse(BaseModel):
     url: str
     reference: str
     founding: bool
+    # The key information stored with the payment (null while not approved).
+    key_info: str | None = None
 
 
 class SubscriptionOut(BaseModel):
@@ -167,10 +200,40 @@ class SubscriptionOut(BaseModel):
     founding: bool
     can_manage: bool
     currency: str | None = None
+    # PF2b: the easy exit is open; the renewal cooling-off and the EU
+    # withdrawal period end then (null when not offered).
+    can_cancel: bool = False
+    cooling_off_until: datetime | None = None
+    withdrawal_until: datetime | None = None
     # PF3a: the organisation this is (None = the caller's own plan), and the
     # seats given to people (named seats + the floating pool; 1 for a person).
     org_id: str | None = None
     seats_assigned: int | None = None
+
+
+class CancelRequest(BaseModel):
+    # The confirm step: the customer pressed "Confirm".
+    confirm: Literal[True]
+    # The renewal cooling-off: cancel now and refund the rest of the year.
+    refund: bool = False
+
+
+class WithdrawRequest(BaseModel):
+    confirm: Literal[True]
+
+
+class ExitOut(BaseModel):
+    """A cancellation made in Billing. The plan changes when the provider's
+    webhook confirms it."""
+
+    kind: Literal["cancel", "cooling_off", "withdrawal"]
+    requested_at: datetime
+    # When the plan ends.
+    effective_at: datetime | None
+    refund_minor: int | None
+    currency: str | None
+    # done: the provider took it; processing: retried until it does.
+    status: Literal["done", "processing"]
 
 
 class SeatsRequest(BaseModel):
@@ -213,6 +276,11 @@ class PaymentOut(BaseModel):
     interval: str | None = None
     seats: int | None = None
     tax_minor: int | None = None
+    # PF2b: what the buyer agreed to.
+    consent_version: str | None = None
+    key_info: str | None = None
+    key_info_at: datetime | None = None
+    business: bool | None = None
     organisation_id: str | None = None
 
 

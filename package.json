@@ -5,7 +5,7 @@
   "scripts": {
     "sync:releases": "node scripts/sync-releases.mjs",
     "dev": "next dev",
-    "build": "next build && node scripts/postbuild-lang.mjs",
+    "build": "next build && node scripts/postbuild-lang.mjs && node scripts/build-viewer.mjs",
     "build:custom": "npm run build && xcopy /E /I /Y /H out\\* X:\\Truebex_site_files\\Truebex\\",
     "start": "next start",
     "lint": "eslint",
@@ -25,8 +25,10 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "esbuild": "0.28.2",
     "eslint": "^9",
     "eslint-config-next": "16.1.6",
+    "pdfjs-dist": "6.4.299",
     "tailwindcss": "^4",
     "typescript": "^5"
   }

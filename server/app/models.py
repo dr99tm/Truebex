@@ -85,6 +85,9 @@ class ApiKey(Base):
     revoked_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    # PF8: a supplier key (made in the supplier portal) feeds that supplier's
+    # catalogue only (contract marketplace-api 5.11-5.13); None = a developer key.
+    supplier_id: Mapped[str | None] = mapped_column(String(32), index=True, nullable=True)
 
 
 class UsageDaily(Base):
@@ -165,6 +168,14 @@ class Subscription(Base):
     # reach the organisation's members through seat_source, never users.plan);
     # None = the user's own.
     organisation_id: Mapped[str | None] = mapped_column(String(32), index=True, nullable=True)
+    # --- PF2b (subscription consumer rules) -----------------------------------
+    # The latest renewal charge, from the provider's verified event: when it
+    # was billed and its id (Paddle transaction, Stripe invoice). An annual
+    # renewal opens the 14-day renewal cooling-off (DMCC Act 2024).
+    renewed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    renewal_charge_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
 
 
 class Payment(Base):
@@ -203,10 +214,91 @@ class Payment(Base):
         DateTime(timezone=True), nullable=True
     )
     invoice_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    # --- PF2b columns (database._ADDED_COLUMNS, all nullable) -----------------
+    # The key pre-contract information acknowledged at checkout (GD5 7.4,
+    # behind LEGAL_WORDING_APPROVED): the exact text, its version and time.
+    key_info: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+    key_info_version: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    key_info_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    # The business box was ticked, or the provider holds a business tax id:
+    # consumer cancellation rights do not apply.
+    business: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    # The buyer's billing country (ISO 3166-1 alpha-2) from the provider.
+    country: Mapped[str | None] = mapped_column(String(2), nullable=True)
+    # The provider subscription this checkout started.
+    provider_subscription_id: Mapped[str | None] = mapped_column(
+        String(128), nullable=True
+    )
+    # The confirmation on a durable medium (GD5 7.4 "The confirmation email").
+    confirmation_sent_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     # PF3a: the organisation this checkout buys for (None = the buyer's own).
     # The subscription the provider creates from it is attached to that
     # organisation from this row, never from custom_data.
     organisation_id: Mapped[str | None] = mapped_column(String(32), nullable=True)
+
+
+class SubscriptionNotice(Base):
+    """A notice mailed about a subscription: once per kind and period (PF2b)."""
+
+    __tablename__ = "subscription_notices"
+    __table_args__ = (
+        UniqueConstraint(
+            "subscription_id", "kind", "period_end", name="uq_subscription_notice"
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    subscription_id: Mapped[int] = mapped_column(
+        ForeignKey("subscriptions.id", ondelete="CASCADE"), index=True, nullable=False
+    )
+    # renewal_reminder | trial_end
+    kind: Mapped[str] = mapped_column(String(32), nullable=False)
+    period_end: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    sent_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_utcnow, nullable=False
+    )
+
+
+class SubscriptionExit(Base):
+    """A customer's cancellation made inside Billing (PF2b): the easy exit,
+    the renewal cooling-off or the EU withdrawal. The record is the
+    customer's statement with its date and time; the provider steps are done
+    at once and retried by billing.exits.retry until they succeed. The plan
+    itself changes only from the provider's verified webhook."""
+
+    __tablename__ = "subscription_exits"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), index=True, nullable=False
+    )
+    subscription_id: Mapped[int] = mapped_column(
+        ForeignKey("subscriptions.id", ondelete="CASCADE"), index=True, nullable=False
+    )
+    # cancel (at the period end) | cooling_off | withdrawal (both immediate, refunded)
+    kind: Mapped[str] = mapped_column(String(16), nullable=False)
+    requested_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_utcnow, nullable=False
+    )
+    # When the plan ends: the period end, or the request for immediate kinds.
+    effective_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # The charge to refund (provider transaction or invoice id; None = the
+    # subscription's latest renewal) and the share of it, in parts per million.
+    refund_charge_id: Mapped[str | None] = mapped_column(String(128))
+    refund_ppm: Mapped[int | None] = mapped_column(Integer)
+    refund_minor: Mapped[int | None] = mapped_column(Integer)
+    currency: Mapped[str | None] = mapped_column(String(3))
+    refund_id: Mapped[str | None] = mapped_column(String(128))
+    # Provider steps done (None = still to do).
+    canceled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    refunded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    mail_sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # The last provider error, kept for the owner.
+    error: Mapped[str | None] = mapped_column(String(500))
 
 
 class ProviderPrice(Base):

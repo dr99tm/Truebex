@@ -1,0 +1,7 @@
+$reminder
+
+$cooling_off
+
+Billing: $billing_url
+
+$footer
