@@ -493,3 +493,41 @@ def test_webhook_jobs_registered():
     for name in ("webhooks.deliver", "webhooks.digest", "webhooks.disable", "webhooks.purge"):
         assert name in names
     assert tasks.jobs()["webhooks.deliver"].seconds == 5
+
+
+def test_webhook_echo_receives_a_real_delivery(client, monkeypatch, capsys):
+    """scripts/webhook_echo.py verifies what the API really sends over HTTP
+    (the human test's receiver), with WEBHOOKS_ALLOW_HTTP_LOCAL."""
+    import socket
+    import threading
+    from http.server import ThreadingHTTPServer
+
+    from scripts import webhook_echo
+
+    assert webhook_echo.verify(VECTOR["secret"], {"webhook-id": VECTOR["id"], "webhook-timestamp": str(VECTOR["timestamp"]),
+                               "webhook-signature": VECTOR["signature"]}, VECTOR["body"].encode(), now=VECTOR["timestamp"]) is None
+    monkeypatch.setattr(get_settings(), "webhooks_allow_http_local", True)
+    with socket.socket() as s:
+        s.bind(("127.0.0.1", 0))
+        port = s.getsockname()[1]
+    session = signup(client)
+    key = make_key(client, session, ["webhooks:manage"])
+    made = hook(client, key, ["job.failed"], url=f"http://127.0.0.1:{port}/")
+    server = ThreadingHTTPServer(("127.0.0.1", port), webhook_echo.make_handler(made["secret"]))
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    try:
+        client.post(f"/v1/webhooks/{made['endpoint_id']}/test", headers=kh(key))
+        assert run() == 1
+        out = capsys.readouterr().out
+        assert "webhook.test" in out and "signature valid" in out
+        log = client.get(f"/v1/webhooks/{made['endpoint_id']}/deliveries", headers=kh(key)).json()["deliveries"]
+        assert log[0]["status"] == "succeeded" and log[0]["response_code"] == 204
+        # A wrong secret on the receiver's side: 401, the delivery fails and is retried later.
+        server.RequestHandlerClass = webhook_echo.make_handler(signing.new_secret())
+        client.post(f"/v1/webhooks/{made['endpoint_id']}/test", headers=kh(key))
+        run()
+        assert "signature INVALID" in capsys.readouterr().out
+        log = client.get(f"/v1/webhooks/{made['endpoint_id']}/deliveries", headers=kh(key)).json()["deliveries"]
+        assert {d["status"] for d in log} == {"succeeded", "failed", "pending"}
+    finally:
+        server.shutdown()

@@ -524,6 +524,7 @@ def test_sqlite_to_postgres_lists_every_feature_table(tmp_path):
         "listing_subscriptions", "subscription_notices", "subscription_exits",
         "projects", "project_members", "project_ops", "project_snapshots", "project_versions", "idempotency_keys",
         "render_jobs", "render_sets", "workers", "overage_charges", "render_overage_caps", "meter_daily",  # PF6
+        "webhook_endpoints", "webhook_events", "webhook_deliveries", "webhook_pending_ops",  # PF12
     ):
         assert table in tables, table
     assert tables.index("users") < tables.index("devices")  # parents first
