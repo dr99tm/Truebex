@@ -1037,3 +1037,62 @@ def test_demo_replica_script_human_test_path(client, monkeypatch, capsys):
     assert latest["at_seq"] == 12
     demo_replica.main(["--token", tb, "presence", "--project", pid, "--seconds", "0"])
     assert "left the project" in capsys.readouterr().out
+
+
+def test_projects_hardening(client, monkeypatch):
+    """Review fixes: NaN never enters the log or presence, a replica id cannot
+    be taken over, an invitation whose mail fails is not stored, odd member
+    references are 404, and bytes are recounted from what the project keeps."""
+    a = Person(client, "a@example.com")
+    b = Person(client, "b@example.com")
+    pid = create(client, a.dev)["project_id"]
+    invite_and_accept(client, a, pid, b, "editor")
+
+    # NaN / Infinity in a push (here inside an action) → 422, nothing stored.
+    raw = json.dumps({"replica_id": a.replica, "ops": [action_op(a.author_id, [hex32()])]})
+    raw = raw.replace('"by_mm": [0, 600, 0]', '"by_mm": [0, NaN, 0]')
+    res = client.post(f"/projects/{pid}/ops", content=raw, headers={**a.dev, "Content-Type": "application/json"})
+    error_of(res, 422, "validation_failed")
+    assert pull(client, a.dev, pid)["head_seq"] == 0
+    bad_view = '{"replica_id": "%s", "client": "web", "view": {"yaw_deg": Infinity}}' % a.replica
+    res = client.put(f"/projects/{pid}/presence", content=bad_view, headers={**a.web, "Content-Type": "application/json"})
+    error_of(res, 422, "validation_failed")
+
+    # b cannot end or overwrite a's presence by reusing a's replica id.
+    client.put(f"/projects/{pid}/presence", json={"replica_id": a.replica, "client": "desktop"}, headers=a.dev)
+    for body in ({"replica_id": a.replica, "client": "web", "leaving": True}, {"replica_id": a.replica, "client": "web"}):
+        assert error_of(client.put(f"/projects/{pid}/presence", json=body, headers=b.web), 403, "forbidden")["data"] == {
+            "replica_id": a.replica
+        }
+    present = client.get(f"/projects/{pid}/presence", headers=b.web).json()["present"]
+    assert [(p["user_id"], p["client"]) for p in present] == [(a.user_id, "desktop")]
+
+    # Mail that cannot leave: 503, no invitation stored, the retry (same key) invites.
+    from app.projects import members as members_mod
+
+    def broken_mail(*args, **kwargs):
+        raise OSError("relay down")
+
+    monkeypatch.setattr(members_mod, "send_mail", broken_mail)
+    key = hex32()
+    body = {"email": "c@example.com", "role": "viewer"}
+    res = client.post(f"/projects/{pid}/members", json=body, headers={**a.web, "Idempotency-Key": key})
+    assert error_of(res, 503, "unavailable")["retry_after_s"] == 60
+    assert "c@example.com" not in [m["email"] for m in client.get(f"/projects/{pid}/members", headers=a.web).json()["members"]]
+    monkeypatch.undo()
+    res = client.post(f"/projects/{pid}/members", json=body, headers={**a.web, "Idempotency-Key": key})
+    assert res.status_code == 201 and res.json()["state"] == "invited"
+
+    # A Unicode digit is not a user id.
+    error_of(client.patch(f"/projects/{pid}/members/%C2%B2", json={"role": "viewer"}, headers=a.web), 404, "not_found")
+
+    # Bytes: offloaded deltas plus each kept snapshot file once, recounted under the lock.
+    pushed(client, a.dev, pid, a.replica, [delta_op(a.author_id, [hex32()], delta=b"z" * 70_000)])
+    assert snapshot(client, a.dev, pid, 1, b"s" * 1000).status_code == 201
+    assert snapshot(client, b.dev, pid, 1, b"s" * 1000).status_code == 201  # the same file again
+    assert client.get(f"/projects/{pid}", headers=a.web).json()["bytes"] == 70_000 + 1000
+    with SessionLocal() as db:
+        db.get(Project, pid).bytes = 5  # drifted
+        db.commit()
+    assert snapshot(client, a.dev, pid, 1, b"t" * 500).status_code == 201
+    assert client.get(f"/projects/{pid}", headers=a.web).json()["bytes"] == 70_000 + 1000 + 500

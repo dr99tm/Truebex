@@ -102,6 +102,11 @@ def _invalid(field: str, message: str, **extra) -> ContractError:
     )
 
 
+def _no_constants(name: str):
+    """NaN and Infinity are not JSON: stored, they would break every later pull."""
+    raise ValueError(name)
+
+
 def _parse_at(value: str) -> None:
     try:
         parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
@@ -134,9 +139,9 @@ def parse_push(raw: bytes, author_id: str) -> tuple[str, list[ParsedOp]]:
     if len(raw) > MAX_PUSH_BYTES:
         raise ContractError("too_large", 413, "A push carries at most 16 MiB.", {"limit": MAX_PUSH_BYTES})
     try:
-        data = json.loads(raw)
+        data = json.loads(raw, parse_constant=_no_constants)
     except (ValueError, UnicodeDecodeError):
-        raise _invalid("body", "JSON")
+        raise _invalid("body", "JSON without NaN or Infinity")
     if isinstance(data, dict) and isinstance(data.get("ops"), list) and len(data["ops"]) > MAX_OPS:
         raise ContractError(
             "too_large", 413, f"A push carries at most {MAX_OPS} operations.", {"limit": MAX_OPS, "ops": len(data["ops"])}

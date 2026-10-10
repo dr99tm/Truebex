@@ -4,15 +4,16 @@ The app uploads `<name>.tbxp` (and `<name>.tbxpack` when the project embeds
 assets) through the upload protocol (share-bundle §5, purpose `snapshot`) and
 registers them at `at_seq`. Registering copies each file, content-addressed,
 to `projects/{pid}/blobs/{sha256}` (a file the project already holds is not
-copied or counted twice) and adds its bytes to the project. Download URLs are
-signed for 15 minutes. `prune` keeps the newest five and every version's.
+copied or counted twice) and recounts the project's bytes under the project
+lock. Download URLs are signed for 15 minutes. `prune` keeps the newest five
+and every version's.
 """
 
 import re
 import secrets
 from datetime import timedelta
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from ..contract_http import ContractError
@@ -20,8 +21,8 @@ from ..licence import clock
 from ..storage import get_store
 from ..uploads import service as uploads
 from ..uploads.credentials import UploadCaller
-from . import quotas
-from .models import Project, ProjectSnapshot, ProjectVersion
+from . import ops, quotas
+from .models import Project, ProjectOp, ProjectSnapshot, ProjectVersion
 from .service import is_hex32, not_found, touch
 
 URL_TTL_S = 900
@@ -90,6 +91,7 @@ def register(
         raise _bad("doc_version", "1 or more")
     if at_seq < 0:
         raise _bad("at_seq", "0 or more")
+    db.refresh(project)  # the head as of now, not as the route first read it
     if at_seq > project.head_seq:
         raise ContractError(
             "seq_ahead",
@@ -112,35 +114,75 @@ def register(
             {"missing": missing},
         )
     store = get_store()
-    new_bytes = sum(have[s].bytes for s in set(named) if store.stat(blob_key(project.project_id, s)) is None)
+    pid = project.project_id
+    new_bytes = sum(have[s].bytes for s in set(named) if store.stat(blob_key(pid, s)) is None)
     if new_bytes and bytes_cap is not None:
         used = quotas.bytes_used(db, project.owner_user_id)
         if used + new_bytes > bytes_cap:
             raise quotas.exceeded("cloud_bytes", bytes_cap, used)
-    for sha in set(named):
-        key = blob_key(project.project_id, sha)
+    # Copy outside the project lock (files can be large) ...
+    _copy_missing(store, pid, set(named), have)
+    # ... then record under it, so pushes and the prune job never see a
+    # half-written byte count or drop a blob this snapshot names.
+    project = ops.lock_project(db, pid)
+    try:
+        _copy_missing(store, pid, set(named), have)
+        snap = ProjectSnapshot(
+            snapshot_id=secrets.token_hex(16),
+            project_id=pid,
+            at_seq=at_seq,
+            doc_version=doc_version,
+            tbxp_sha256=tbxp,
+            tbxp_bytes=have[tbxp].bytes,
+            tbxpack_sha256=tbxpack,
+            tbxpack_bytes=have[tbxpack].bytes if tbxpack else None,
+            created_by=user_id,
+            created_at=clock.now(),
+        )
+        db.add(snap)
+        db.flush()
+        recount_bytes(db, project)
+        if doc_version > project.doc_version:
+            project.doc_version = doc_version
+        touch(project)
+        answer = snapshot_json(project, snap)
+        db.commit()
+    except BaseException:
+        db.rollback()
+        raise
+    return answer
+
+
+def _copy_missing(store, project_id: str, shas: set[str], have: dict) -> None:
+    for sha in shas:
+        key = blob_key(project_id, sha)
         if store.stat(key) is None:
             with store.open(have[sha].storage_key) as fh:
                 store.put(key, fh, content_type="application/octet-stream")
-    snap = ProjectSnapshot(
-        snapshot_id=secrets.token_hex(16),
-        project_id=project.project_id,
-        at_seq=at_seq,
-        doc_version=doc_version,
-        tbxp_sha256=tbxp,
-        tbxp_bytes=have[tbxp].bytes,
-        tbxpack_sha256=tbxpack,
-        tbxpack_bytes=have[tbxpack].bytes if tbxpack else None,
-        created_by=user_id,
-        created_at=clock.now(),
+
+
+def recount_bytes(db: Session, project: Project) -> None:
+    """`bytes` = every snapshot file the project keeps (each once) plus its
+    offloaded deltas. The caller holds the project lock."""
+    sizes: dict[str, int] = {}
+    rows = db.execute(
+        select(
+            ProjectSnapshot.tbxp_sha256,
+            ProjectSnapshot.tbxp_bytes,
+            ProjectSnapshot.tbxpack_sha256,
+            ProjectSnapshot.tbxpack_bytes,
+        ).where(ProjectSnapshot.project_id == project.project_id)
+    ).all()
+    for tbxp, tbxp_bytes, pack, pack_bytes in rows:
+        sizes[tbxp] = int(tbxp_bytes)
+        if pack:
+            sizes[pack] = int(pack_bytes or 0)
+    deltas = db.scalar(
+        select(func.coalesce(func.sum(ProjectOp.delta_bytes), 0)).where(
+            ProjectOp.project_id == project.project_id, ProjectOp.delta_key.is_not(None)
+        )
     )
-    db.add(snap)
-    project.bytes += new_bytes
-    if doc_version > project.doc_version:
-        project.doc_version = doc_version
-    touch(project)
-    db.commit()
-    return snapshot_json(project, snap)
+    project.bytes = sum(sizes.values()) + int(deltas or 0)
 
 
 def latest(db: Session, project: Project) -> dict:
@@ -165,33 +207,36 @@ def get(db: Session, project: Project, snapshot_id: str) -> ProjectSnapshot:
 # --- projects.snapshots.prune ------------------------------------------------------
 
 
-def prune_project(db: Session, project: Project) -> int:
+def prune_project(db: Session, project_id: str) -> int:
     """Keep the newest five and every version's snapshot; drop the rest and
-    the blobs nothing names any more. Returns how many snapshots went."""
-    snaps = db.scalars(
-        select(ProjectSnapshot)
-        .where(ProjectSnapshot.project_id == project.project_id)
-        .order_by(ProjectSnapshot.at_seq.desc(), ProjectSnapshot.created_at.desc())
-    ).all()
-    pinned = set(db.scalars(select(ProjectVersion.snapshot_id).where(ProjectVersion.project_id == project.project_id)))
-    keep = [s for i, s in enumerate(snaps) if i < KEEP_NEWEST or s.snapshot_id in pinned]
-    drop = [s for s in snaps if s not in keep]
-    if not drop:
-        return 0
-    kept_shas = {s.tbxp_sha256 for s in keep} | {s.tbxpack_sha256 for s in keep if s.tbxpack_sha256}
-    store = get_store()
-    freed = 0
-    for sha in {s.tbxp_sha256 for s in drop} | {s.tbxpack_sha256 for s in drop if s.tbxpack_sha256}:
-        if sha in kept_shas:
-            continue
-        info = store.stat(blob_key(project.project_id, sha))
-        if info is not None:
-            freed += info.bytes
-            store.delete(blob_key(project.project_id, sha))
-    for snap in drop:
-        db.delete(snap)
-    project.bytes = max(0, project.bytes - freed)
-    db.commit()
+    the blobs nothing names any more (under the project lock, so a snapshot
+    being registered keeps its files). Returns how many snapshots went."""
+    project = ops.lock_project(db, project_id)
+    try:
+        snaps = db.scalars(
+            select(ProjectSnapshot)
+            .where(ProjectSnapshot.project_id == project_id)
+            .order_by(ProjectSnapshot.at_seq.desc(), ProjectSnapshot.created_at.desc())
+        ).all()
+        pinned = set(db.scalars(select(ProjectVersion.snapshot_id).where(ProjectVersion.project_id == project_id)))
+        keep = [s for i, s in enumerate(snaps) if i < KEEP_NEWEST or s.snapshot_id in pinned]
+        drop = [s for s in snaps if s not in keep]
+        if not drop:
+            db.rollback()
+            return 0
+        kept_shas = {s.tbxp_sha256 for s in keep} | {s.tbxpack_sha256 for s in keep if s.tbxpack_sha256}
+        store = get_store()
+        for sha in {s.tbxp_sha256 for s in drop} | {s.tbxpack_sha256 for s in drop if s.tbxpack_sha256}:
+            if sha not in kept_shas:
+                store.delete(blob_key(project_id, sha))
+        for snap in drop:
+            db.delete(snap)
+        db.flush()
+        recount_bytes(db, project)
+        db.commit()
+    except BaseException:
+        db.rollback()
+        raise
     return len(drop)
 
 
@@ -204,7 +249,8 @@ def prune_all(db: Session) -> int:
     ).all()
     total = 0
     for pid in ids:
-        project = db.get(Project, pid)
-        if project is not None:
-            total += prune_project(db, project)
+        try:
+            total += prune_project(db, pid)
+        except ContractError:  # deleted in the meantime
+            continue
     return total

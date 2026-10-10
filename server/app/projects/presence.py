@@ -11,11 +11,12 @@ processes). Times come from `licence.clock` so tests can move them.
 import threading
 from datetime import datetime, timedelta
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, FiniteFloat, field_validator
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from ..config import get_settings
+from ..contract_http import ContractError
 from ..licence import clock
 from ..models import User
 from .models import Presence
@@ -37,8 +38,8 @@ class ViewIn(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
     storey: str | None = None
-    eye_mm: list[float] | None = Field(default=None, min_length=3, max_length=3)
-    yaw_deg: float | None = None
+    eye_mm: list[FiniteFloat] | None = Field(default=None, min_length=3, max_length=3)
+    yaw_deg: FiniteFloat | None = None
 
     @field_validator("storey")
     @classmethod
@@ -108,6 +109,11 @@ class MemoryPresence:
         with self._lock:
             self._entries.pop((project_id, replica_id), None)
 
+    def owner_of(self, db: Session, project_id: str, replica_id: str, now: datetime) -> int | None:
+        with self._lock:
+            found = self._entries.get((project_id, replica_id))
+        return found[1]["user_id"] if found and _fresh(found[0], now) else None
+
     def present(self, db: Session, project_id: str, now: datetime) -> list[dict]:
         with self._lock:
             return [e for (pid, _), (seen, e) in self._entries.items() if pid == project_id and _fresh(seen, now)]
@@ -145,6 +151,10 @@ class DbPresence:
         db.execute(delete(Presence).where(Presence.project_id == project_id, Presence.replica_id == replica_id))
         db.commit()
 
+    def owner_of(self, db: Session, project_id: str, replica_id: str, now: datetime) -> int | None:
+        row = db.get(Presence, (project_id, replica_id))
+        return row.user_id if row is not None and _fresh(row.seen_at, now) else None
+
     def present(self, db: Session, project_id: str, now: datetime) -> list[dict]:
         rows = db.scalars(
             select(Presence).where(Presence.project_id == project_id, Presence.seen_at >= now - timedelta(seconds=TTL_S))
@@ -175,6 +185,12 @@ def backend() -> MemoryPresence | DbPresence:
 def heartbeat(db: Session, project_id: str, user: User, body: PresenceIn) -> dict:
     now = clock.now()
     store = backend()
+    owner = store.owner_of(db, project_id, body.replica_id, now)
+    if owner is not None and owner != user.id:
+        # Replica ids are listed in 5.18: one person cannot move or end another's.
+        raise ContractError(
+            "forbidden", 403, "That replica belongs to someone else.", {"replica_id": body.replica_id}
+        )
     if body.leaving:
         store.remove(db, project_id, body.replica_id)
     else:

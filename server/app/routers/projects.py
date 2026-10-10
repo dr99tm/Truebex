@@ -188,6 +188,9 @@ async def push_ops(
     caller: ProjectCaller = Depends(get_project_caller),
     db: Session = Depends(get_db),
 ) -> dict:
+    # Auth ran on this session: give its connection back to the pool while a
+    # slow client sends up to 16 MiB.
+    await run_in_threadpool(db.rollback)
     raw = await _read_body(request, ops.MAX_PUSH_BYTES)
     answer, accepted = await run_in_threadpool(_push, db, caller, project_id, raw)
     await run_in_threadpool(_after_append, project_id, accepted)
@@ -310,8 +313,9 @@ def create_version(
 def restore_version(
     project_id: str,
     version_id: str,
-    caller: ProjectCaller = Depends(get_project_caller),
+    # Before the caller: the body is read before auth takes a connection.
     idem: Idempotency = idempotent("projects.restore"),
+    caller: ProjectCaller = Depends(get_project_caller),
     db: Session = Depends(get_db),
 ):
     service.open_project(db, caller, project_id, "editor")

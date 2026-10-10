@@ -9,10 +9,11 @@ member's `user_id` in the path of 5.15 and 5.16 may be either).
 """
 
 import hashlib
+import logging
 import re
 import secrets
 
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ..config import get_settings
@@ -23,6 +24,8 @@ from ..models import User
 from . import quotas
 from .models import Project, ProjectMember
 from .service import display_name, is_hex32, not_found, record
+
+log = logging.getLogger("truebex.projects.members")
 
 INVITE_ROLES = ("editor", "viewer")
 _EMAIL = re.compile(r"^[^@\s]{1,64}@[^@\s]+\.[^@\s]{2,}$")
@@ -71,10 +74,6 @@ def _role(value: str, field: str = "role") -> str:
     return value
 
 
-def _people(db: Session, project_id: str) -> int:
-    return db.scalar(select(func.count()).select_from(ProjectMember).where(ProjectMember.project_id == project_id)) or 0
-
-
 def invite(db: Session, project: Project, inviter: User, email: str, role: str) -> dict:
     email = (email or "").strip().lower()
     if not _EMAIL.match(email) or len(email) > 320:
@@ -105,29 +104,37 @@ def invite(db: Session, project: Project, inviter: User, email: str, role: str) 
         invited_by=inviter.id,
         invited_at=now,
     )
+    link = f"{get_settings().site_url.rstrip('/')}/invite/project/?t={token}"
+    # Mail first: if it cannot leave, nothing is stored and a retry (same
+    # Idempotency-Key) invites afresh instead of meeting 409 already_member.
+    try:
+        send_mail(
+            email,
+            "project_invite",
+            {
+                "inviter": display_name(inviter),
+                "inviter_email": inviter.email,
+                "project": project.name,
+                "role": role,
+                "role_words": ROLE_WORDS[role],
+                "link": link,
+            },
+            reply_to=inviter.email,
+        )
+    except Exception as exc:  # noqa: BLE001 - the relay's own errors vary
+        log.exception("project invitation mail to %s failed", email)
+        raise ContractError(
+            "unavailable", 503, "The invitation email could not be sent. Try again in a minute.", retry_after_s=60
+        ) from exc
     db.add(member)
     db.commit()
-    link = f"{get_settings().site_url.rstrip('/')}/invite/project/?t={token}"
-    send_mail(
-        email,
-        "project_invite",
-        {
-            "inviter": display_name(inviter),
-            "inviter_email": inviter.email,
-            "project": project.name,
-            "role": role,
-            "role_words": ROLE_WORDS[role],
-            "link": link,
-        },
-        reply_to=inviter.email,
-    )
     return member_json(db, member)
 
 
 def find(db: Session, project_id: str, ref: str) -> ProjectMember:
     """A member by user id, or a pending invitation by invite id."""
     member = None
-    if ref.isdigit() and len(ref) < 20:
+    if ref.isascii() and ref.isdigit() and len(ref) < 20:
         member = db.scalar(
             select(ProjectMember).where(ProjectMember.project_id == project_id, ProjectMember.user_id == int(ref))
         )
