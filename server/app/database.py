@@ -161,6 +161,9 @@ def init_db(bind: Engine | None = None) -> None:
     from .releases import models as _release_models  # noqa: F401  (PF1)
     from .orgs import models as _org_models  # noqa: F401  (PF3)
     from .sso import models as _sso_models  # noqa: F401  (PF3)
+    from . import idempotency as _idempotency  # noqa: F401  (PF14 plumbing, first user PF4)
+    from .projects import models as _project_models  # noqa: F401  (PF4)
+    from .uploads import models as _upload_models  # noqa: F401  (PF5's, PF4 landed first)
 
     bind = bind or engine
     Base.metadata.create_all(bind=bind)

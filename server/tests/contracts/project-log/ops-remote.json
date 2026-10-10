@@ -1,0 +1,229 @@
+{
+  "note": "12 operations by the editor (a second author) against ids of snapshot-0000; a 5.6 push body.",
+  "replica_id": "5e1d0c0ffee000000000000000000b07",
+  "ops": [
+    {
+      "op_id": "752b5fab81ea61855b86cfb6215df300",
+      "author": "0199c6a2f0007000a000000000000007",
+      "author_kind": "person",
+      "at": "2026-10-09T10:01:00.000Z",
+      "touched": [
+        "0199c6a2e00070018000000000000001"
+      ],
+      "delta": "VEJYRHsic3RhbmRfaW4iOnRydWUsIm5hbWUiOiJNb3ZlIHdhbGwiLCJyb3dzIjpbIjAxOTljNmEyZTAwMDcwMDE4MDAwMDAwMDAwMDAwMDAxIl19",
+      "server_seq": 0,
+      "replica_id": "5e1d0c0ffee000000000000000000b07",
+      "base_seq": 0,
+      "kind": "delta",
+      "name": "Move wall",
+      "delta_format": "o5/38",
+      "action": null,
+      "restore": null
+    },
+    {
+      "op_id": "d8cb5c56aa1dab2dc42397c7f833c21d",
+      "author": "0199c6a2f0007000a000000000000007",
+      "author_kind": "person",
+      "at": "2026-10-09T10:02:00.000Z",
+      "touched": [
+        "0199c6a2e00070018000000000000002",
+        "0199c6a2e00070028000000000000001"
+      ],
+      "delta": "VEJYRHsic3RhbmRfaW4iOnRydWUsIm5hbWUiOiJNb3ZlIHdhbGwiLCJyb3dzIjpbIjAxOTljNmEyZTAwMDcwMDE4MDAwMDAwMDAwMDAwMDAyIiwiMDE5OWM2YTJlMDAwNzAwMjgwMDAwMDAwMDAwMDAwMDEiXX0=",
+      "server_seq": 0,
+      "replica_id": "5e1d0c0ffee000000000000000000b07",
+      "base_seq": 0,
+      "kind": "delta",
+      "name": "Move wall",
+      "delta_format": "o5/38",
+      "action": null,
+      "restore": null
+    },
+    {
+      "op_id": "ecf1892d8bc4d9d6d7ab1872422c06d8",
+      "author": "0199c6a2f0007000a000000000000007",
+      "author_kind": "person",
+      "at": "2026-10-09T10:03:00.000Z",
+      "touched": [
+        "0199c6a2e00070018000000000000003",
+        "0199c6a2e00070038000000000000001"
+      ],
+      "delta": "VEJYRHsic3RhbmRfaW4iOnRydWUsIm5hbWUiOiJBZGQgZG9vciIsInJvd3MiOlsiMDE5OWM2YTJlMDAwNzAwMTgwMDAwMDAwMDAwMDAwMDMiLCIwMTk5YzZhMmUwMDA3MDAzODAwMDAwMDAwMDAwMDAwMSJdfQ==",
+      "server_seq": 0,
+      "replica_id": "5e1d0c0ffee000000000000000000b07",
+      "base_seq": 0,
+      "kind": "delta",
+      "name": "Add door",
+      "delta_format": "o5/38",
+      "action": null,
+      "restore": null
+    },
+    {
+      "op_id": "9bcaf522c0865595d578dd1411041f2d",
+      "author": "0199c6a2f0007000a000000000000007",
+      "author_kind": "person",
+      "at": "2026-10-09T10:04:00.000Z",
+      "touched": [
+        "0199c6a2e00070038000000000000002"
+      ],
+      "delta": "VEJYRHsic3RhbmRfaW4iOnRydWUsIm5hbWUiOiJSZXNpemUgd2luZG93Iiwicm93cyI6WyIwMTk5YzZhMmUwMDA3MDAzODAwMDAwMDAwMDAwMDAwMiJdfQ==",
+      "server_seq": 0,
+      "replica_id": "5e1d0c0ffee000000000000000000b07",
+      "base_seq": 0,
+      "kind": "delta",
+      "name": "Resize window",
+      "delta_format": "o5/38",
+      "action": null,
+      "restore": null
+    },
+    {
+      "op_id": "55196c9f61a65da2d73a0cad9a0af3ed",
+      "author": "0199c6a2f0007000a000000000000007",
+      "author_kind": "person",
+      "at": "2026-10-09T10:05:00.000Z",
+      "touched": [
+        "0199c6a2e00070018000000000000004",
+        "0199c6a2e00070018000000000000005"
+      ],
+      "delta": "VEJYRHsic3RhbmRfaW4iOnRydWUsIm5hbWUiOiJQYWludCB3YWxscyIsInJvd3MiOlsiMDE5OWM2YTJlMDAwNzAwMTgwMDAwMDAwMDAwMDAwMDQiLCIwMTk5YzZhMmUwMDA3MDAxODAwMDAwMDAwMDAwMDAwNSJdfQ==",
+      "server_seq": 0,
+      "replica_id": "5e1d0c0ffee000000000000000000b07",
+      "base_seq": 0,
+      "kind": "delta",
+      "name": "Paint walls",
+      "delta_format": "o5/38",
+      "action": null,
+      "restore": null
+    },
+    {
+      "op_id": "78f78ba5950a87296ac7d950ff53ba31",
+      "author": "0199c6a2f0007000a000000000000007",
+      "author_kind": "person",
+      "at": "2026-10-09T10:06:00.000Z",
+      "touched": [
+        "0199c6a2e00070028000000000000002"
+      ],
+      "delta": "VEJYRHsic3RhbmRfaW4iOnRydWUsIm5hbWUiOiJSZW5hbWUgcm9vbSIsInJvd3MiOlsiMDE5OWM2YTJlMDAwNzAwMjgwMDAwMDAwMDAwMDAwMDIiXX0=",
+      "server_seq": 0,
+      "replica_id": "5e1d0c0ffee000000000000000000b07",
+      "base_seq": 0,
+      "kind": "delta",
+      "name": "Rename room",
+      "delta_format": "o5/38",
+      "action": null,
+      "restore": null
+    },
+    {
+      "op_id": "5c2867ad1404100b2b416d51bfc516a6",
+      "author": "0199c6a2f0007000a000000000000007",
+      "author_kind": "person",
+      "at": "2026-10-09T10:07:00.000Z",
+      "touched": [
+        "0199c6a2e00070018000000000000006",
+        "0199c6a2e00070028000000000000002",
+        "0199c6a2e00070028000000000000003"
+      ],
+      "delta": "VEJYRHsic3RhbmRfaW4iOnRydWUsIm5hbWUiOiJBZGQgd2FsbCIsInJvd3MiOlsiMDE5OWM2YTJlMDAwNzAwMTgwMDAwMDAwMDAwMDAwMDYiLCIwMTk5YzZhMmUwMDA3MDAyODAwMDAwMDAwMDAwMDAwMiIsIjAxOTljNmEyZTAwMDcwMDI4MDAwMDAwMDAwMDAwMDAzIl19",
+      "server_seq": 0,
+      "replica_id": "5e1d0c0ffee000000000000000000b07",
+      "base_seq": 0,
+      "kind": "delta",
+      "name": "Add wall",
+      "delta_format": "o5/38",
+      "action": null,
+      "restore": null
+    },
+    {
+      "op_id": "9372d68cec74a8d098175afb7f624195",
+      "author": "0199c6a2f0007000a000000000000007",
+      "author_kind": "person",
+      "at": "2026-10-09T10:08:00.000Z",
+      "touched": [
+        "0199c6a2e00070038000000000000001"
+      ],
+      "delta": "VEJYRHsic3RhbmRfaW4iOnRydWUsIm5hbWUiOiJNb3ZlIGRvb3IiLCJyb3dzIjpbIjAxOTljNmEyZTAwMDcwMDM4MDAwMDAwMDAwMDAwMDAxIl19",
+      "server_seq": 0,
+      "replica_id": "5e1d0c0ffee000000000000000000b07",
+      "base_seq": 0,
+      "kind": "delta",
+      "name": "Move door",
+      "delta_format": "o5/38",
+      "action": null,
+      "restore": null
+    },
+    {
+      "op_id": "283fbdf5330bed9dfe01d0ec53208298",
+      "author": "0199c6a2f0007000a000000000000007",
+      "author_kind": "person",
+      "at": "2026-10-09T10:09:00.000Z",
+      "touched": [
+        "0199c6a2e00070028000000000000003"
+      ],
+      "delta": "VEJYRHsic3RhbmRfaW4iOnRydWUsIm5hbWUiOiJTZXQgZmxvb3IgZmluaXNoIiwicm93cyI6WyIwMTk5YzZhMmUwMDA3MDAyODAwMDAwMDAwMDAwMDAwMyJdfQ==",
+      "server_seq": 0,
+      "replica_id": "5e1d0c0ffee000000000000000000b07",
+      "base_seq": 0,
+      "kind": "delta",
+      "name": "Set floor finish",
+      "delta_format": "o5/38",
+      "action": null,
+      "restore": null
+    },
+    {
+      "op_id": "76a0c3b21ab2668c7b800130b891e96f",
+      "author": "0199c6a2f0007000a000000000000007",
+      "author_kind": "person",
+      "at": "2026-10-09T10:10:00.000Z",
+      "touched": [
+        "00000000000000000000000000000001"
+      ],
+      "delta": "VEJYRHsic3RhbmRfaW4iOnRydWUsIm5hbWUiOiJDaGFuZ2UgdW5pdHMiLCJyb3dzIjpbIjAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAxIl19",
+      "server_seq": 0,
+      "replica_id": "5e1d0c0ffee000000000000000000b07",
+      "base_seq": 0,
+      "kind": "delta",
+      "name": "Change units",
+      "delta_format": "o5/38",
+      "action": null,
+      "restore": null
+    },
+    {
+      "op_id": "2c5c517fef6a9c3c81eb28fa7eb066e2",
+      "author": "0199c6a2f0007000a000000000000007",
+      "author_kind": "person",
+      "at": "2026-10-09T10:11:00.000Z",
+      "touched": [
+        "0199c6a2e00070018000000000000007",
+        "0199c6a2e00070038000000000000003"
+      ],
+      "delta": "VEJYRHsic3RhbmRfaW4iOnRydWUsIm5hbWUiOiJBZGQgd2luZG93Iiwicm93cyI6WyIwMTk5YzZhMmUwMDA3MDAxODAwMDAwMDAwMDAwMDAwNyIsIjAxOTljNmEyZTAwMDcwMDM4MDAwMDAwMDAwMDAwMDAzIl19",
+      "server_seq": 0,
+      "replica_id": "5e1d0c0ffee000000000000000000b07",
+      "base_seq": 0,
+      "kind": "delta",
+      "name": "Add window",
+      "delta_format": "o5/38",
+      "action": null,
+      "restore": null
+    },
+    {
+      "op_id": "a9b36fb6b36d6a7b32e097d9978c2963",
+      "author": "0199c6a2f0007000a000000000000007",
+      "author_kind": "person",
+      "at": "2026-10-09T10:12:00.000Z",
+      "touched": [
+        "0199c6a2e00070018000000000000008",
+        "0199c6a2e00070028000000000000003"
+      ],
+      "delta": "VEJYRHsic3RhbmRfaW4iOnRydWUsIm5hbWUiOiJNb3ZlIHdhbGwiLCJyb3dzIjpbIjAxOTljNmEyZTAwMDcwMDE4MDAwMDAwMDAwMDAwMDA4IiwiMDE5OWM2YTJlMDAwNzAwMjgwMDAwMDAwMDAwMDAwMDMiXX0=",
+      "server_seq": 0,
+      "replica_id": "5e1d0c0ffee000000000000000000b07",
+      "base_seq": 0,
+      "kind": "delta",
+      "name": "Move wall",
+      "delta_format": "o5/38",
+      "action": null,
+      "restore": null
+    }
+  ]
+}

@@ -142,6 +142,17 @@ class Settings(BaseSettings):
     # Audit events are kept this long (24 months until GD5 says otherwise).
     audit_retention_days: int = 730
 
+    # --- Project service (PF4, contract project-log) ---------------------------
+    # Presence (5.17): "memory" (one API process) or "db" (the presence table,
+    # several processes; PF14).
+    projects_presence_backend: str = "memory"
+    # Long-poll pulls (5.7) waiting at once per account; more answer 429.
+    projects_max_waiting_pulls: int = 20
+
+    # --- Uploads (share-bundle §5.1-5.3; PF5 owns these, PF4 landed first) ----
+    # Ceiling on one share upload's total bytes (POST /shares checks the tier).
+    share_max_bytes: int = 1024 * 1024 * 1024
+
     @property
     def cors_origin_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]

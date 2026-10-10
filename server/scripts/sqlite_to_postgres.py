@@ -76,6 +76,9 @@ def _models() -> list[Table]:
     from app.orgs import models as _orgs  # noqa: F401
     from app.releases import models as _releases  # noqa: F401
     from app.sso import models as _sso  # noqa: F401
+    from app import idempotency as _idempotency  # noqa: F401  (PF4)
+    from app.projects import models as _projects  # noqa: F401  (PF4)
+    from app.uploads import models as _uploads  # noqa: F401  (PF4 / PF5)
 
     return list(Base.metadata.sorted_tables)  # parents before children
 

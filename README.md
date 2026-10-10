@@ -9,7 +9,7 @@ around it on the web:
 
 - **Marketing site:** a static Next.js export on GitHub Pages.
 - **Dashboard:** sign in with Google or email, manage API keys, see usage, and handle billing.
-- **API server** (`server/`, FastAPI): accounts, API keys, usage metering, billing through the UK company (Paddle as reseller by default, Stripe with Stripe Tax as the alternative), licences, devices and the release feed for the desktop app, and its opt-in telemetry, crash reports and feedback, served at `api.truebex.com` from a Linux VM (Docker Compose behind Cloudflare, built from [`infra/`](infra/README.md)).
+- **API server** (`server/`, FastAPI): accounts, API keys, usage metering, billing through the UK company (Paddle as reseller by default, Stripe with Stripe Tax as the alternative), licences, devices and the release feed for the desktop app, its opt-in telemetry, crash reports and feedback, and cloud projects (an operation log in server order, snapshots, versions, sharing and presence), served at `api.truebex.com` from a Linux VM (Docker Compose behind Cloudflare, built from [`infra/`](infra/README.md)).
 - **Demo-request form:** writes to a Google Sheet via Apps Script.
 
 > **Two repos, one GitHub project.** This folder (`X:\Truebex`, branch
@@ -32,6 +32,7 @@ around it on the web:
 - [API keys and usage](#api-keys-and-usage)
 - [Licences, releases and downloads](#licences-releases-and-downloads)
 - [Organisations, seats and SSO](#organisations-seats-and-sso)
+- [Cloud projects](#cloud-projects)
 - [Billing: Paddle and Stripe](#billing-paddle-and-stripe)
 - [Brand, content and SEO](#brand-content-and-seo)
 - [Demo request form](#demo-request-form)
@@ -103,9 +104,10 @@ src/
     roadmap/ changelog/    Roadmap (src/content/roadmap.json); changelog (milestones + releases, version anchors) + feed.xml
     ar/                    Arabic landing page (RTL; lang/dir set by scripts/postbuild-lang.mjs)
     login/ signup/         Auth pages (Google + email)
-    dashboard/             Signed-in area: overview (download, licence, devices), billing/,
-                           link/ (approve a sign-in from the app), keys/ + usage/ (Developer),
+    dashboard/             Signed-in area: overview (download, licence, devices), projects/ (+ view/?id=),
+                           billing/, link/ (approve a sign-in from the app), keys/ + usage/ (Developer),
                            admin/growth/ + admin/telemetry/
+    invite/project/        Accept a project invitation (?t=, noindex)
     download/              Public Download page (from src/content/releases.json)
     developers/            Public API docs (indexable)
     account/               Redirect to /dashboard/ (old URL)
@@ -123,6 +125,7 @@ src/
     auth.ts                accounts + Google sign-in
     developer.ts           keys, usage, billing calls
     licence.ts             licence API calls (devices, link approval, release feed)
+    projects.ts            project service calls (projects, people, versions, presence, invitations)
     plans.ts               plan names and limits from server/app/catalogue.json
     releaseNotes.ts        the release-notes Markdown subset, parsed to a React-rendered tree
     telemetryAdmin.ts      admin telemetry dashboard calls
@@ -141,11 +144,15 @@ server/
   app/
     main.py                App + routers
     routers/               auth, keys, usage, billing, v1 (developer API), licence, releases, admin, files,
-                           growth, telemetry, admin_telemetry
+                           growth, telemetry, admin_telemetry, projects, uploads
     billing/               service.py (plan state) · base.py (BillingProvider) · paddle_, stripe_, wayl_provider.py · jobs.py
     licence/               devices, link codes, seats, signed entitlements (Ed25519 over RFC 8785 JSON)
     releases/              signed release manifests, feed, download links
     telemetry/             contracts/telemetry.md: service, privacy scanner, symbolication, jobs
+    projects/              contracts/project-log.md: the log and its §6.3 rule, snapshots, versions, members,
+                           presence, quotas, the on_ops_accepted push hook, jobs
+    uploads/               share-bundle §5: resumable, content-addressed uploads (PF5's module)
+    idempotency.py         Idempotency-Key for contract POSTs (24 h)
     storage/ mail/         blob storage (local, s3) · mail (console, smtp) with templates
     tasks.py worker.py     periodic jobs (@periodic), inline or in the worker process
     ratelimit.py contract_http.py health.py ops.py   shared plumbing (PF14): limits, contract header and
@@ -155,9 +162,10 @@ server/
     plans.py               Reads catalogue.json: prices, entitlement matrix, request quotas, key limits
     growth/                Admin growth counts (sign-ups, downloads, trials, checkouts)
   scripts/                 sync_prices.py (catalogue prices → Paddle or Stripe) · make_signing_key.py · publish_release.py ·
-                           make_licence_fixtures.py · sqlite_to_postgres.py · upload_symbols.py · make_admin.py
-  tests/                   pytest suite (+ mock_paddle.py, mock_wayl.py for click-through tests; contracts/licence/ and
-                           contracts/telemetry/ = contract fixtures)
+                           make_licence_fixtures.py · sqlite_to_postgres.py · upload_symbols.py · make_admin.py ·
+                           demo_replica.py (a scripted project replica) · make_project_log_fixtures.py
+  tests/                   pytest suite (+ mock_paddle.py, mock_wayl.py for click-through tests; contracts/licence/,
+                           contracts/telemetry/ and contracts/project-log/ = contract fixtures)
   Dockerfile               the API image (api and worker services)
 infra/                     the API host: OpenTofu, cloud-init, Compose, Caddy, backups,
                            monitoring, deploy.ps1, restore-test.ps1, CUTOVER.md
@@ -249,6 +257,9 @@ These end up in the public JavaScript, so never put secrets in them.
 | `TELEMETRY_EVENTS_ENABLED`, `TELEMETRY_INGESTION_ENABLED` | The usage-events kill switch; telemetry as a whole (off → 503) |
 | `SSO_SECRET_KEY` | Fernet key sealing organisations' SSO client secrets (empty derives one from `SECRET_KEY`) |
 | `SAML_SP_ENTITY_ID`, `AUDIT_RETENTION_DAYS` | This service's SAML entity id (empty: each organisation's metadata URL); how long the audit log keeps events (730) |
+| `PROJECTS_PRESENCE_BACKEND` | Project presence: `memory` (one process) or `db` (the VM's two API processes) |
+| `PROJECTS_MAX_WAITING_PULLS` | Long-poll pulls one account may hold open at once, per API process (20) |
+| `SHARE_MAX_BYTES` | Ceiling on one share upload's total bytes (the upload protocol; 1 GiB) |
 
 On the VM these come from `infra/secrets/*.sops.env` (template: `infra/secrets/server.env.example`).
 
@@ -319,6 +330,14 @@ Contract endpoints (`/telemetry/*`) answer errors in the shared envelope
 | GET | `/telemetry/config` | — | Event allow-list, sampling, kill switch (`X-Truebex-Contract: telemetry/1.0`) |
 | POST | `/telemetry/events` · `/crashes` · `/feedback` · `/delete` | — (device token for a feedback reply; install secret for delete) | Opt-in usage events, crash reports, feedback, deletion |
 | GET / PATCH / POST | `/admin/telemetry/*` · `/admin/feedback/*` · `/admin/symbols` | **admin** | Telemetry dashboard, crash groups, feedback inbox and replies, symbols |
+| POST / GET | `/projects`, `/projects/{id}` (+ PATCH, DELETE) | session or device (DELETE: session) | Cloud projects: create, list owned and shared, open, rename, delete |
+| POST / GET | `/projects/{id}/ops` | editor / viewer | Push operations (§6.3 order and conflicts) · pull after a number (long-poll ≤ 25 s) |
+| POST / GET | `/projects/{id}/snapshots`, `…/snapshots/latest` | editor / viewer | Register an uploaded `.tbxp` (+ `.tbxpack`) · the newest with 15-minute URLs |
+| GET / POST | `/projects/{id}/versions`, `…/versions/{vid}/restore` | viewer / editor | Named versions · restore (appends a `restore` operation) |
+| GET / POST / PATCH / DELETE | `/projects/{id}/members[/{user_id or invite_id}]` | viewer / owner (or the member leaving) | People and invitations by email |
+| PUT / GET | `/projects/{id}/presence` | viewer | Heartbeat (30 s) · who is here |
+| POST | `/projects/invites/accept` | session | Accept an emailed invitation (`/invite/project/?t=`) |
+| POST / PUT / GET | `/uploads`, `/uploads/{id}/files/{sha256}/parts/{n}`, `/uploads/{id}` | session or device | Resumable uploads in 8 MiB parts (`share-bundle/1.0`) |
 | GET / PUT | `/files/{key}?exp=&sig=` | signed URL | Local storage downloads and uploads (HMAC, expiring) |
 | POST | `/licence/release` | **device** | Hand a floating seat back at exit (contract 5.11) |
 | POST / GET | `/orgs` | session | Create an organisation (you become owner) · your organisations |
@@ -481,6 +500,40 @@ organisation). Roles: owner, admin, billing, member; at least one owner always.
 
 ---
 
+## Cloud projects
+
+The project service follows the contract `project-log` v1.0.0 (Unreal project,
+`Docs/roadmap/40/contracts/project-log.md`; the app side is authoritative).
+Every route echoes `X-Truebex-Contract: project-log/1.0`; errors use the shared
+envelope.
+
+- **The log.** A project is an append-only log of operations; the server gives
+  each accepted one the next `server_seq` under a lock on the project row
+  (contiguous under concurrent pushes), answers a repeated `op_id` with its
+  first number, and rejects an operation when another replica changed one of its
+  `touched` ids after its `base_seq` (`rejected` with the `winning` operations;
+  the rest of the batch `not_processed`). It never decodes a delta or runs an
+  action. Deltas over 64 KiB live in storage (`projects/{id}/ops/`).
+- **Pulls** long-poll up to 25 s on the event loop, woken by the next push (a
+  push on the other API process is seen within 1 s).
+- **Snapshots** upload through `/uploads` (purpose `snapshot`), are copied to
+  `projects/{id}/blobs/{sha256}` and kept: the newest five plus every named
+  version's (`projects.snapshots.prune`, hourly). Restore appends a `restore`
+  operation that every replica applies.
+- **People.** Owner, editor, viewer (the contract's §4 matrix); non-members get
+  404. Invitations are emailed links with a 256-bit token (stored hashed) that
+  attach to whoever accepts while signed in. Only a session deletes a project
+  (soft delete; rows and files go after 30 days, `projects.purge_deleted`).
+- **Plans.** Creating, inviting and pushing from the app need `cloud.sync`;
+  quotas `cloud_projects`, `cloud_bytes`, `project_members` are placeholders in
+  `server/app/projects/quotas.py` until GD7 (a value in `catalogue.json`
+  `limits` wins).
+- **Without the app:** `server/scripts/demo_replica.py` signs a "computer" in,
+  pushes the contract fixtures, pulls, makes a conflicting move and holds
+  presence, exactly as the app will (`--help`).
+
+---
+
 ## Billing: Paddle and Stripe
 
 Truebex Ltd (the UK company) sells every plan. **Paddle** is the default: it
@@ -608,6 +661,7 @@ a Google Sheet. See [`google-apps-script/README.md`](google-apps-script/README.m
 | Provider names are placeholders | VM, buckets, mail relay and uptime monitor wait for GD3 | `infra/README.md` |
 | Payment providers need merchant keys | Billing shows "being set up" until keys are added | `server/.env` |
 | Desktop app doesn't read the plan yet | The licence API is live, but the app's sign-in and gates (LC1, LC3) are not shipped | Unreal project |
+| Cloud projects wait for the app | The project service is live, but the app's cloud save (CL1) and collaboration (CL2) are not shipped; `demo_replica.py` stands in | Unreal project |
 | Installers are served from this PC | Downloads go through the home tunnel until PF14 adds object storage and a CDN | `server/storage/` |
 | `npm run dev` exhausts RAM on this PC | Use build + static server for local checks | — |
 | The demo form can't detect failures (`no-cors`) | It always shows "Request received!" | `CTAContact.tsx` |

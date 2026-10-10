@@ -14,7 +14,8 @@ BACKGROUND_TASKS picks who runs them:
 A job runs once at start, then every `seconds`. A failing job is logged and
 recorded in the crash store, retried at its next slot, and the others still
 run. Users: PF14 (telemetry.*, crash.*, backup.*, worker.*, ratelimit.*),
-PF1 (licence.*) and PF2 (billing.*).
+PF1 (licence.*), PF2 (billing.*), PF4 (projects.*, idempotency.expire) and
+the upload protocol (uploads.expire).
 """
 
 import asyncio
@@ -63,6 +64,9 @@ def _load_jobs() -> None:
     from .orgs import jobs as _orgs  # noqa: F401
     from .sso import jobs as _sso  # noqa: F401
     from .telemetry import jobs as _telemetry  # noqa: F401
+    from . import idempotency  # noqa: F401  (idempotency.expire)
+    from .projects import jobs as _projects  # noqa: F401  (PF4)
+    from .uploads import jobs as _uploads  # noqa: F401
 
 
 def jobs() -> dict[str, Job]:
