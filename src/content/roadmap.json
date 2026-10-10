@@ -186,7 +186,7 @@
         "PR4",
         "PF5"
       ],
-      "status": "planned"
+      "status": "in_progress"
     },
     {
       "id": "headset",
@@ -224,7 +224,7 @@
         "PF3",
         "PF4"
       ],
-      "status": "planned",
+      "status": "in_progress",
       "home": true
     },
     {
@@ -257,7 +257,7 @@
         "PF7",
         "PF8"
       ],
-      "status": "planned",
+      "status": "in_progress",
       "home": true
     },
     {
@@ -328,7 +328,7 @@
         "PF1",
         "PF2"
       ],
-      "status": "planned"
+      "status": "in_progress"
     },
     {
       "id": "developers",
@@ -351,7 +351,7 @@
         "OP1",
         "PF14"
       ],
-      "status": "planned"
+      "status": "in_progress"
     }
   ]
 }
