@@ -36,6 +36,7 @@ from .routers import growth as growth_router
 from .projects import jobs as _project_jobs  # noqa: F401  (PF4: projects.*)
 from .uploads import jobs as _upload_jobs  # noqa: F401  (uploads.expire)
 from .routers import projects, uploads  # PF4 (uploads: share-bundle §5, PF5's)
+from .routers import render as render_router  # PF6: jobs, workers, tiles, render admin
 from .telemetry.service import record_server_exception
 from .shares import jobs as _share_jobs  # noqa: F401  (PF5: shares.expire, shares.purge)
 from .uploads import jobs as _upload_jobs  # noqa: F401  (PF5: uploads.expire)
@@ -156,3 +157,5 @@ app.include_router(projects.router)
 app.include_router(health.router)
 app.include_router(telemetry.router)
 app.include_router(admin_telemetry.router)
+# PF6: cloud render orchestration
+app.include_router(render_router.router)

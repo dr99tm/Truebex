@@ -838,3 +838,62 @@ organisation's invoices; admins and members see the plan read-only.
 - **Locally**, with `tests/mock_paddle.py` as in the billing section: buy
   Team for an organisation from its billing page, pay on the mock's page, and
   you return to `/dashboard/billing/?org=<id>`.
+
+---
+
+## Cloud rendering
+
+The render queue follows the contract `render-jobs` v1.0.0 (Unreal project,
+`Docs/roadmap/40/contracts/render-jobs.md`; the app side is authoritative).
+Every route echoes `X-Truebex-Contract: render-jobs/1.0`; errors use the shared
+envelope. The code is `server/app/render/`, the routes `server/app/routers/jobs.py`
+(5.1–5.6), `workers.py` (5.7–5.10), `tiles.py` and `admin_render.py`.
+
+- **Jobs.** The app (a device token), the website (a session) or the developer
+  API (an API key, metered like `/v1`) submits a `panorama` set, a `tiles` update
+  or a `pack` against a project and a sequence number, with an `Idempotency-Key`.
+  The answer carries an estimate in cost units; 5.2 long-polls the job's `rev`
+  (25 s). Kinds `wind` and `energy` arrive with PF11 on the same queue.
+- **The queue is the `render_jobs` table.** A worker claims with its token
+  (`tbx_wrk_…`, issued and revoked in Admin → Render, stored hashed, scoped to
+  kinds): one conditional UPDATE (`FOR UPDATE SKIP LOCKED` on Postgres), a
+  120 s lease kept alive by heartbeats every 30 s, cancel delivered through the
+  heartbeat, three retries (the fourth lapse fails the job), 24 h in the queue
+  expires it. A job only goes to a worker whose `doc_version_max` reads its log.
+- **Followed sets.** A `follow: true` panorama subscribes to the project's
+  pushes (PF4's push hook): each push queues one `tiles` job with the pushed
+  `touched` ids, or joins the set's queued one, so a burst of edits is one render.
+  Each finished update replaces the set's manifest and bumps its `rev`.
+- **Tiles** are content-addressed JPEGs at `tiles/<sha256>.jpg`, immutable and
+  readable from any origin, served from `TILES_BASE_URL` (the CDN in front of
+  the data bucket in production, `infra/README.md`; this API's `/tiles/` route
+  locally). Manifests stay private (5.5). `render.tiles.gc` drops tiles no
+  manifest of the last 90 days names.
+- **Cost units.** 1 cu = 1 minute on `gpu-std`; charged on success only, rounded
+  up to 0.1 cu, into `meter_daily` (`server/app/metering.py`). The allowance is
+  `limits.cloud_cu_month`; until GD7 writes it, the placeholders in
+  `server/app/render/quotas.py` apply (Pro 120, Studio and Team 600, Enterprise
+  unlimited). Studio and Team may set an overage cap on `/dashboard/cloud/`; the
+  overage is charged monthly through the billing provider (`render.overage.charge`).
+- **Pages.** `/dashboard/cloud/` (usage, recent jobs, cancel, a live cube-tile
+  preview of a followed set), `/dashboard/admin/render/` (queue, pool, workers,
+  tokens, cost). `src/viewer/cube.ts` and `live.ts` are the share viewer's
+  cube-tile mode: a share panorama with `live_job_id` (a followed set of the
+  share's account) shows the set's tiles and swaps them as edits re-render,
+  through `GET /s/{slug}/live`; ending the share ends it.
+- **Workers.** `worker/truebex_worker.py` (Python 3.12, standard library only)
+  claims, downloads the inputs, writes the job file, runs
+  `Truebex.exe -mwrender=<job.json>`, uploads the tiles and completes; settings
+  in `worker.toml` (`worker/worker.toml.example`). `infra/worker/bootstrap.ps1`
+  sets up a Windows GPU machine; `build-image.ps1` makes the golden image.
+- **Without the app's headless render:** run the worker with
+  `--app worker\tests\fake_truebex.py` (it writes the contract fixtures' tiles),
+  and submit with `server\scripts\demo_render.py --token tbx_dev_… submit
+  --project <id> --follow`; `demo_replica.py … move --project <id>` makes an edit;
+  `demo_share.py --token tbx_dev_… --fixture tests\contracts\share-bundle\manifest-house.json
+  --live <follow job id>` shares the house with the living room live.
+
+Known gaps: the app's headless render (CL3) and its Cloud panorama command
+(CL4) are not shipped, so cloud panoramas stay on the roadmap in the public
+copy; `live_job_id` and `/s/{slug}/live` are a share-bundle MINOR proposal until
+the owner writes them into the contract.

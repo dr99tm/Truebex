@@ -10,6 +10,12 @@ Prints the parts it sent and the share's url. Running it again sends no
 part (every file is `present`) and returns the same share. With --email and
 --password it signs in and activates a "Share demo" device (licence-api 5.4,
 which needs LICENCE_SIGNING_KEY on the server) and prints its token.
+
+--live <job id> (PF6) makes the start panorama follow that render set: the
+share page shows the set's newest tiles and swaps them as edits re-render
+(`live_job_id`, a share-bundle MINOR proposal). The job is a `follow: true`
+panorama of the same account (server/scripts/demo_render.py submit --follow).
+The bundle gets its own bundle_id, so the plain share stays as it was.
 """
 
 import argparse
@@ -83,9 +89,14 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--api", default=os.environ.get("TRUEBEX_API", "http://127.0.0.1:8000"))
     parser.add_argument("--title", default=None, help="share title (default: '<project> — client review')")
     parser.add_argument("--days", type=int, default=30)
+    parser.add_argument("--live", metavar="JOB_ID", help="show this followed render set live (PF6)")
     args = parser.parse_args(argv)
 
     manifest = json.loads(args.fixture.read_text(encoding="utf-8"))
+    if args.live:
+        start = next((p for p in manifest["panoramas"] if p["id"] == manifest.get("start")), manifest["panoramas"][0])
+        start["live_job_id"] = args.live
+        manifest["bundle_id"] = hashlib.sha256(f"{manifest['bundle_id']}|live|{args.live}".encode()).hexdigest()[:32]
     by_sha = {}
     for path in args.fixture.parent.iterdir():
         if path.is_file() and path.suffix.lower() in (".jpg", ".jpeg", ".png", ".pdf"):

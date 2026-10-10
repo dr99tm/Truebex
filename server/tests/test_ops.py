@@ -523,6 +523,7 @@ def test_sqlite_to_postgres_lists_every_feature_table(tmp_path):
         "supplier_applications", "feed_sources", "supplier_imports", "market_events_daily", "supplier_member_invites",
         "listing_subscriptions", "subscription_notices", "subscription_exits",
         "projects", "project_members", "project_ops", "project_snapshots", "project_versions", "idempotency_keys",
+        "render_jobs", "render_sets", "workers", "overage_charges", "render_overage_caps", "meter_daily",  # PF6
     ):
         assert table in tables, table
     assert tables.index("users") < tables.index("devices")  # parents first

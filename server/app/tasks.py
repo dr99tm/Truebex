@@ -70,6 +70,7 @@ def _load_jobs() -> None:
     from .supplier import jobs as _supplier  # noqa: F401  (PF8; also its e-mail and count listeners)
     from . import idempotency  # noqa: F401  (idempotency.expire)
     from .projects import jobs as _projects  # noqa: F401  (PF4)
+    from .render import jobs as _render  # noqa: F401  (PF6: render.*)
 
 
 def jobs() -> dict[str, Job]:

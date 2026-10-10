@@ -1,0 +1,8 @@
+#!/bin/sh
+# PF6: how many render jobs are queued, for host-check.sh (which alerts when
+# the number passes QUEUE_DEPTH_MAX, default 50). Prints one number; 0 when
+# the worker container cannot answer (host-check.sh reports that separately).
+set -u
+cd /opt/truebex
+depth=$(docker compose exec -T worker python -m app.render.depth 2>/dev/null | tail -n 1 | tr -dc '0-9')
+echo "${depth:-0}"

@@ -61,16 +61,18 @@ def origin(url: str) -> str:
     return f"{parts.scheme}://{parts.netloc}" if parts.scheme and parts.netloc else ""
 
 
-def csp(site_url: str, files_url: str) -> str:
-    """The share page runs only the viewer from the site; files come from storage."""
+def csp(site_url: str, files_url: str, tiles_url: str = "") -> str:
+    """The share page runs only the viewer from the site; files come from storage
+    (and a live panorama's tiles from TILES_BASE_URL, PF6)."""
     site, files = origin(site_url), origin(files_url)
     hosts = " ".join(dict.fromkeys(h for h in (site, files) if h))
+    images = " ".join(dict.fromkeys(h for h in (site, files, origin(tiles_url)) if h))
     return "; ".join(
         [
             "default-src 'none'",
             f"script-src {site}",
             f"style-src {site} 'unsafe-inline'",
-            f"img-src 'self' {hosts} data: blob:",
+            f"img-src 'self' {images} data: blob:",
             f"connect-src 'self' {hosts}",
             f"worker-src {site} blob:",
             f"font-src {site} data:",

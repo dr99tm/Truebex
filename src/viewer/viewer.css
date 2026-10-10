@@ -334,6 +334,24 @@ button {
   opacity: 0;
 }
 
+/* PF6: a panorama following the designer's edits (cube tiles, src/viewer/cube.ts) */
+.tbx-live {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  margin: 0;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: #000000a0;
+  color: var(--color-accent);
+  font-size: 0.8125rem;
+  pointer-events: none;
+}
+
+.tbx-live[hidden] {
+  display: none;
+}
+
 .tbx-flat {
   position: absolute;
   inset: 0;

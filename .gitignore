@@ -78,3 +78,7 @@ infra/secrets/*.pem
 infra/secrets/*.key
 !infra/secrets/*.sops.env
 !infra/secrets/*.env.example
+
+# PF6: a render worker's settings hold its token; its job folders
+worker/worker.toml
+worker/jobs/

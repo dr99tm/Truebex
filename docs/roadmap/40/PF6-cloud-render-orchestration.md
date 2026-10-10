@@ -4,7 +4,14 @@
 
 ## Status
 
-No jobs, workers, tiles or cloud metering exist (`00-contract.md` P.1; the contract's §11 lists every endpoint as "PF6: not yet"). What this builds on, verified with Grep on 2026-10-09:
+**Built 2026-10-10** on `ap/t11-pf6-cloud-render-orchestration` (base: PF4's branch): the queue and the ten endpoints in
+`server/app/render/` and `server/app/routers/{jobs,workers,tiles,admin_render}.py`, the worker wrapper in `worker/`,
+the image scripts in `infra/worker/`, `/dashboard/cloud/` and `/dashboard/admin/render/`, the cube-tile viewer in
+`src/viewer/`. Waiting on others: the app's `-mwrender` (CL3) and Cloud panorama command (CL4), GD3 / GD7 numbers.
+Merged with PF5 (and PF2a, PF2b, PF3, PF3a, PF7, PF8) on 2026-10-10 (Autopilot T30): the share page shows a followed
+set live. See As-built.
+
+Before this task, no jobs, workers, tiles or cloud metering existed (`00-contract.md` P.1; the contract's §11 lists every endpoint as "PF6: not yet"). What this builds on, verified with Grep on 2026-10-09:
 
 | Area | Where | Today |
 |---|---|---|
@@ -145,13 +152,13 @@ Cost per job = `wall_s / 3600 × P` (+ boot time amortised over the jobs a machi
 
 ## Deliverables
 
-- [ ] `server/app/render/` (`service.py`, `queue.py`, `estimates.py` + `estimates.json`, `sets.py`, `pools.py`, `overage.py`), `server/app/routers/jobs.py`, `server/app/routers/workers.py`, admin routes
-- [ ] `server/app/metering.py` and `meter_daily` (PF14 Plumbing row), models, settings (`TILES_BASE_URL`, `CU_CLASS_WEIGHTS`, pool limits)
-- [ ] `worker/truebex_worker.py`, `worker/worker.toml.example`, `worker/tests/fake_truebex.py` (a stand-in that writes the fixture manifest and tiles)
-- [ ] `infra/worker/bootstrap.ps1`, `infra/worker/build-image.ps1`
-- [ ] `src/app/dashboard/cloud/`, `src/app/dashboard/admin/render/`, the viewer's cube-tile mode, `src/lib/jobs.ts`
-- [ ] `server/tests/contracts/render-jobs/` copied from the app repo's fixtures (copied, never edited)
-- [ ] contract §11 rows and the share-bundle MINOR proposal (`live_job_id`, `/s/{slug}/live`) recorded in As-built
+- [x] `server/app/render/` (`service.py`, `queue.py`, `estimates.py` + `estimates.json`, `sets.py`, `pools.py`, `overage.py`; also `quotas.py`, `tiles.py`, `workers.py`, `live.py`, `jobs.py`, `depth.py`, `models.py`), `server/app/routers/jobs.py`, `server/app/routers/workers.py`, admin routes (`routers/admin_render.py`), public tiles and the live share read (`routers/tiles.py`)
+- [x] `server/app/metering.py` and `meter_daily` (PF14 Plumbing row), models, settings (`TILES_BASE_URL`, `CU_CLASS_WEIGHTS`, pool limits)
+- [x] `worker/truebex_worker.py`, `worker/worker.toml.example`, `worker/tests/fake_truebex.py` (a stand-in that writes the fixture manifest and tiles)
+- [x] `infra/worker/bootstrap.ps1`, `infra/worker/build-image.ps1`; `infra/host/bin/queue-depth`; the CDN for `tiles/` in `infra/tofu`
+- [x] `src/app/dashboard/cloud/`, `src/app/dashboard/admin/render/`, the viewer's cube-tile mode (`src/viewer/cube.ts`, `live.ts`), `src/lib/jobs.ts`
+- [x] `server/tests/contracts/render-jobs/` — authored here to the letter of the contract (the app repo has none yet; As-built 1)
+- [x] contract §11 rows and the share-bundle MINOR proposal (`live_job_id`, `/s/{slug}/live`) recorded in As-built
 
 ## Tests
 
@@ -207,9 +214,128 @@ The first ten names are the contract's §10 platform tests.
 
 ## As-built
 
-* Date, branch, commits:
-* Counts (pytest before → after); measured seconds per kind on the first worker:
-* Deviations from Design and why:
-* GD3 numbers adopted (provider, class hardware, prices, pool limits):
-* Contract §11 rows for the owner to set to "PF6: done" in `contracts/render-jobs.md`; the share-bundle MINOR proposal:
-* Carry-over → which feature:
+* **Date, branch, commits:** 2026-10-10, `ap/t11-pf6-cloud-render-orchestration` (base: PF4's branch
+  `ap/t10-pf4-project-service-log-storage` at 99cc527): `b2d6127` (contract fixtures), `ca135b2` (server, worker
+  wrapper, fake app, tests), `2b2a11d` (site), `9222812` (infra, `demo_render.py`), `4eeb833` (review hardening), and
+  the docs commit ticking this row.
+* **Counts:** pytest 215 → 257 collected; the verify gate on SQLite: 252 passed, 5 skipped (the Postgres-marked tests).
+  New: `tests/test_render.py` 33 (the doc's 22 pytest names, per-endpoint auth and validation, the claim race on both
+  backends, tile GC, the live share read, the admin, the upload extension, the queue-depth command, the fixtures
+  against §6.2, and the review fixes), `tests/test_render_worker.py` 5 (the wrapper with `fake_truebex.py` as a real
+  process: the job file field by field, a followed edit, failure, cancel killing the app, a lease lost while uploading,
+  revocation, the image scripts parse), `tests/test_site_pf6.py` 4 build checks. **Postgres:** a disposable PostgreSQL
+  17.10 cluster on this PC (scratchpad, port 55433, removed afterwards): the render tests 38 passed, including
+  `test_claim_is_atomic_postgres` (40 jobs, 8 concurrent workers, `SKIP LOCKED`: each job claimed exactly once); the
+  whole suite with the app on Postgres 255 passed, 1 failed — PF2's `test_wayl_checkout_and_verified_webhook`, the
+  failure PF4's As-built already records on its base commit. **Live run:** uvicorn on SQLite with inline jobs, the
+  wrapper with `fake_truebex.py`, `demo_replica.py` and `demo_render.py`: a followed panorama (6 faces, 30 tiles sent),
+  an edit → one `tiles` job → the follow job's `rev` moved 1.1–1.4 s after the push (2 faces, 10 tiles); a tile answered
+  `public, max-age=31536000, immutable` with `Access-Control-Allow-Origin: *`; queue depth 0. Headless Edge over CDP on
+  the served `out/` (built against that API): `/dashboard/cloud/` showed 0.2 of 120.0 cost units, by kind, the jobs with
+  Preview and Stop following; the preview loaded 24 of 24 tiles, turned to the east face with the keyboard, and swapped
+  the north face about 2 s after a `demo_replica.py move` ("Showing operation 14"); `/dashboard/admin/render/` showed
+  queue, pool, workers and cost and issued a token from the form. Measured seconds per kind on a real worker: none yet
+  (no CL3 build; the fake app takes 0.1–0.3 s).
+* **Deviations from Design and why:**
+  1. *Fixtures authored here.* The app repo has no `Docs/roadmap/fixtures/contracts/render-jobs/` (CL3 makes it), so
+     `server/scripts/make_render_job_fixtures.py` wrote the §9 set to the letter of §5.6, §5.7, §6.1–§6.3 (one view,
+     levels 512 and 1024, 30 + 10 drawn JPEG tiles, a partial update carrying 4 faces, a wind result, `usage.json`,
+     `claim.json`; README in the folder). CL3 copies it or replaces it.
+  2. *Job outputs and the upload protocol.* A claim opens an empty `job-output` session; its files are only known after
+     the render, so the worker declares them with `POST /uploads` plus `upload_id` (≤ 500 files a call, ≤ 20 000 a
+     session): an additive change in `server/app/uploads/service.py` (`add_files`) and `routers/uploads.py`, PF5's module
+     (PF5's merge keeps it). Completion checks every rendered tile against that session (or the tile store). A worker
+     token without a live lease gets 409 `lease_lost` from `/uploads`, so the worker discards the job and carries on. The
+     upload's copies are left to `uploads.expire` (7 days) rather than deleted inside the completion.
+  3. *Claim and job file additions:* the claim's job record also carries `changed` and `params` (the worker writes the
+     job file from them); the job file adds `project.project_id` and `params` (the manifest names the project; a pack
+     needs its items). A `pack` output is `{"schema": "truebex-pack/1", "job_id", "files": [{name, sha256, bytes,
+     content_type}]}`: the contract has no pack shape.
+  4. *Retries:* "the fourth lapse → failed" (this doc) is followed: three retries after the first try. The contract's
+     §6.4 wording "at most 3 attempts" should say "3 retries" (PATCH proposal).
+  5. *Allowance and overage placeholders (GD7):* the contract's matrix gives every tier `cloud_cu_month` 0, so a tier
+     holding `cloud.panoramas` with 0 takes `render/quotas.py`'s placeholder (Pro 120, Studio 600, Team 600, Enterprise
+     unlimited); any other value (or null) in `catalogue.json` wins at once. Quotas count the estimates of jobs still in
+     flight as reserved. Overage: Studio and Team, up to the account's cap (default 0, set on the Cloud page), 10p / 12¢ /
+     12 c per cu, whole cu rounded up. It accrues at each completion under the plan and cap in force then (an `open` row
+     per month), so a later cap change never rewrites a used month; the run charges earlier months' rows through PF2
+     (`charged`), leaves `pending` for a trial or a provider that cannot charge, and retries `failed`.
+  6. *Additive API:* `PUT /jobs/usage/overage` (session only); 5.6 adds `daily`, `reserved_cu`, `plan`, `overage`; the
+     record adds `views`, `changed_count`, `base_job_id`, `quality`, `follow`, `class`, `updated_at`; 5.1 adds `coalesced`;
+     5.5 answers `Cache-Control: private, no-store`.
+  7. *Workers:* `worker_id` is the name the admin issued the token for (the claim's must match, 422); a claim takes the
+     requested kinds within the token's scope (403 when none overlap); a worker holds one lease at a time (claiming again
+     ends the previous one as a lapse); usage is charged at the token's class, whatever the worker reports.
+  8. *Followed sets:* one queued update per set (changes under the set's row lock); updates run one at a time and only
+     after the set has a manifest; a set stops when its account leaves the project (at the push and at the claim); an
+     update that fails, expires or is cancelled, or a push skipped because the allowance is used up, marks the set stale
+     and the next update renders every face.
+  9. *Pool:* `static` only (GD3 names no provider); `start` and `stop` record what the pool wants (shown on the admin
+     page) and a hand-run machine that claims is taken as running. The admin routes live in `routers/admin_render.py` and
+     the feature registers through one `routers/render.py` (merge hygiene), not `routers/admin.py`.
+  10. *Live share:* `GET /s/{slug}/live` resolves the share through PF5's `shares.service.by_slug` when that module exists
+      (404 before PF5 merges; tested with a stand-in resolver), serves only a set of the share's own account, and its
+      wait re-checks the set's `rev` and reads the manifest once. `src/viewer/cube.ts` (a CSS 3D cube of tiles, compass
+      faces as §6.2 orients them) and `live.ts` are framework-free for PF5's viewer; until it merges, the dashboard's
+      Cloud preview is the live view the human test uses.
+  11. *Worker image:* a scheduled task at boot under the low-privilege account (no service host to install) instead of a
+      Windows service; `Truebex.exe` is blocked from the network by a program firewall rule, and the host's egress
+      allowlist belongs in the provider firewall (GD3). The data bucket gets a CORS rule and public read of `tiles/` only;
+      the CDN hostname reaches the bucket through a Cloudflare origin rule (host header) (`tofu validate` green with
+      OpenTofu 1.13.1, `fmt` clean).
+  12. *Small shared edits:* `UsageMeter` takes `unit`, `label`, `digits` (defaults unchanged); PF4's `demo_replica.py
+      move` defaults `--base` to the head; `queue-depth` is installed by `deploy.ps1` beside the `.sh` scripts.
+  13. *Review hardening* (an independent review of the diff): items 2, 5 and 8 above, plus tiles bases older than 90 days
+      refused, the collector keeping running jobs' bases, and reused old tiles rewritten so the collector keeps them.
+* **GD3 numbers adopted (provider, class hardware, prices, pool limits):** none; GD3 is unwritten. Placeholders:
+  `render/estimates.json` seconds per unit (panorama 45 / 90 / 240 per view by quality, tiles 10 / 20 / 60, pack 60 / 120 /
+  300 per item) until 50 real jobs of a kind replace them; `CU_CLASS_WEIGHTS` gpu-std 1.0, cpu-8 0.25; pool min 0, max 4,
+  warm pool off, idle stop 600 s, one machine per 4 queued jobs plus one while the oldest has waited over 30 s.
+* **Contract §11 rows** for the owner to set in `contracts/render-jobs.md`: all ten endpoint rows "PF6: done (2026-10-10,
+  `ap/t11-pf6-cloud-render-orchestration`)"; the job-file row "PF6 (worker image): done (wrapper, fake app and bootstrap;
+  the first real run waits for CL3)". **MINOR proposals:** render-jobs: the claim's job carries `changed` and `params`;
+  the job file's `project.project_id` and `params`; `truebex-pack/1`; 5.6's additive keys and `PUT /jobs/usage/overage`;
+  §6.4 "3 retries". share-bundle: 5.1 `upload_id` (add files to an open `job-output` session) and 409 `lease_lost` for a
+  worker without a lease; §6.1 a panorama's optional `live_job_id` (a followed set of the share's account; the
+  panorama's `file` stays as the still fallback); a new public read `GET /s/{slug}/live?rev=&wait_s=&panorama=` →
+  `{rev, job_id, follow_job_id, at_seq, following, manifest (§6.2 with tiles_base)}`, 404 without a live view, 410 when
+  the share ended.
+* **Carry-over → which feature:** **PF5 merge**: done at the T30 merge (below). **PF11**: `wind` and `energy` entries in `render/quotas.KINDS`
+  (`analysis.reports`, `cpu-8`), §6.3 outputs and their file URLs in 5.5. **PF9 / PF10 / PR5**: viewers of followed sets
+  through 5.2 or `/s/{slug}/live`. **PF3**: organisation accounts (`account_kind` "org"). **PF12**: the jobs routes under
+  `/v1` if wanted (API keys already work here). **CL3**: the real `-mwrender`, the fixtures into the app repo, the first
+  measured seconds per kind. **CL4**: the app's Cloud panorama command and the edit-to-tiles latency. **GD3**: provider,
+  instance type, prices, pool limits, a cloud `WorkerPool` adapter, the `build-image.ps1` snapshot step, estimate seeds.
+  **GD7**: allowances, overage tiers and price into `catalogue.json`. **The owner**: the §11 rows and proposals above;
+  `cdn_target` and `CDN_BASE_URL` (`infra/README.md`, "Tiles and the CDN"); a worker token per machine and
+  `infra/worker/bootstrap.ps1` on the RTX PC; `QUEUE_DEPTH_MAX` in `secrets/host.env` if 50 is wrong.
+* **Merged with master: PF5, PF7, PF8, PF2a, PF2b, PF3, PF3a (2026-10-10, Autopilot T30,
+  `ap/t30-merge-t11-pf6-cloud-render-orche`):** verify green (lint, build, pytest; counts in the commit and the
+  report); a headless run of the human test's steps 3-7 against one real API process (fresh SQLite, the worker wrapper
+  with `fake_truebex.py`, `demo_replica.py`, `demo_render.py`, `demo_share.py --live`, headless Edge on `/view/{slug}`)
+  showed the living room's 24 cube tiles with "Live view", swapped the two faces an edit touched 2.5 s after the push,
+  logged no console or CSP error, and answered 410 `share_gone` on `/s/{slug}/live` after the share was ended.
+  * Conflicts: `config.py`, `.env.example`, `database.py`, `tasks.py` keep one PF5 uploads block (master's) and add
+    only PF6's lines; `DashboardShell.tsx` has Shares then Cloud, Market then Render; `constants.ts`, `README.md` and
+    the tracker keep both sides.
+  * PF5's carry-over: `uploads/` is master's module with this feature's `add_files` and `upload_id` on top
+    (`test_render.py`, `test_render_worker.py` pass against it). `src/viewer/main.ts` shows a panorama with
+    `live_job_id` live (its still image until the first tiles; the set's view whose id is the panorama's, else the
+    first; the room chips leave and return to it); `shares/manifest.py` checks `live_job_id` (32 hex, rule `type`);
+    the share page's CSP allows the tiles' origin for a live share only; `demo_share.py --live <job id>` (its own
+    bundle_id). `tests/test_render_shares.py` (3) goes through PF5's real shares; `test_site_pf6.py` checks the bundle.
+  * Fixed on the way (both master's): PF2b's top-level `process.env.NEXT_PUBLIC_LEGAL_WORDING_APPROVED` in
+    `constants.ts` reached PF5's `viewer.js` and threw before the share page started, so every share page was blank;
+    `scripts/build-viewer.mjs` now inlines `NEXT_PUBLIC_*` as `next build` does (`@next/env`), and a build check keeps
+    `process.` out of the bundle. Master's head (3b12c52) set `prices_final` false while PF2a's tests required true:
+    the tests now follow the owner's switch (amounts still pinned; the `out/` checks skip while it is off). Master
+    reverted the switch to true (8206f90), so every price check runs again.
+  * The PF6 tick moves the public roadmap's "On your phone and in a headset" (CL3, CL4, PF6, PF9, PF10) from planned
+    to in progress: `npm run sync:roadmap` with both trackers (`--check` clean afterwards).
+  * PF14's SQLite → Postgres cutover (`scripts/sqlite_to_postgres.py`) now imports this feature's models, so it
+    copies `render_jobs`, `render_sets`, `workers`, `overage_charges`, `render_overage_caps` and `meter_daily`
+    (`test_ops.py` lists them).
+  * PF3: quotas and overage read `seats.seat_source`, so a member on an organisation's seat gets that tier's
+    allowance and its overage is charged to the organisation's subscription; pooling per organisation
+    (`account_kind` "org") stays PF3's carry-over.
+  * Left as found: master's `main.py` registers `uploads.router` twice (T28/T29 merges); harmless, same handler.

@@ -1,0 +1,35 @@
+# The render worker's settings. Copy to worker.toml (gitignored: it holds the token).
+#   py -3.12 worker\truebex_worker.py --config worker.toml
+
+# The Truebex API (local: http://127.0.0.1:8000).
+api = "https://api.truebex.com"
+# Admin -> Render -> Issue worker token (shown once).
+token = "tbx_wrk_..."
+# The name the token was issued for.
+worker_id = "pc-rtx"
+# Kinds to claim (the token's scope may be wider; the platform hands out only these).
+kinds = ["panorama", "tiles", "pack"]
+# The worker class the usage is charged at (5.6 publishes the weights).
+class = "gpu-std"
+
+# The packaged app (the Shipping build of the release this machine runs).
+# Before the app's headless mode lands: app = "worker/tests/fake_truebex.py".
+app = 'C:\Program Files\Truebex\Truebex.exe'
+# The app version, and the newest document version its log reader reads
+# (o5/<n>): the platform never hands this worker a job that needs more.
+app_version = "1.1.0"
+doc_version_max = 38
+
+# Where each job's inputs, job file and outputs live while it runs.
+work_dir = 'C:\TruebexWorker\jobs'
+keep_work = false
+
+heartbeat_s = 30
+job_timeout_s = 3600
+# Long-poll per claim (at most 20 s, inside Cloudflare's 100 s idle limit).
+wait_s = 20
+
+# What the job file asks the app for (contract §6.1).
+face_px = 2048
+tile_px = 512
+jpeg_quality = 85

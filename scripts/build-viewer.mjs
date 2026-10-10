@@ -8,6 +8,7 @@
 //
 //   node scripts/build-viewer.mjs [--out <dir>]
 
+import nextEnv from "@next/env";
 import { build, transform } from "esbuild";
 import { copyFileSync, mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
@@ -28,6 +29,21 @@ export function brandTokens(css) {
   return `:root{${tokens.map(([, name, value]) => `${name}:${value.trim()}`).join(";")}}`;
 }
 
+/**
+ * esbuild `define`s that inline process.env.NEXT_PUBLIC_* as `next build` does
+ * (from the environment and the .env files), so code shared with the site
+ * (src/lib/constants.ts) never reads `process` in a browser; any other
+ * process.env read becomes undefined.
+ */
+export function publicEnvDefines(root) {
+  nextEnv.loadEnvConfig(root);
+  const defines = { "process.env": "{}" };
+  for (const [name, value] of Object.entries(process.env)) {
+    if (name.startsWith("NEXT_PUBLIC_")) defines[`process.env.${name}`] = JSON.stringify(value);
+  }
+  return defines;
+}
+
 mkdirSync(join(OUT, "pdfjs"), { recursive: true });
 
 await build({
@@ -40,6 +56,7 @@ await build({
   minify: true,
   legalComments: "none",
   logLevel: "warning",
+  define: publicEnvDefines(ROOT),
 });
 
 const tokens = brandTokens(readFileSync(join(ROOT, "src", "app", "globals.css"), "utf8"));

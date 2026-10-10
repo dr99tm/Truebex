@@ -252,6 +252,10 @@ def check(m: Any) -> list[dict]:
         c.angle(p, "start_bearing_deg", path, "bearing", 0, 360, required=False)
         c.angle(p, "start_pitch_deg", path, "pitch", -90, 90, required=False)
         c.angle(p, "start_hfov_deg", path, "hfov", 10, 150, required=False)
+        # PF6 (a MINOR proposal): the followed render set the page shows live.
+        live = p.get("live_job_id")
+        if live is not None and (not isinstance(live, str) or not _HEX32.match(live)):
+            c.err(f"{path}.live_job_id", "type")
         hotspots = p.get("hotspots", [])
         if not isinstance(hotspots, list):
             c.err(f"{path}.hotspots", "type")

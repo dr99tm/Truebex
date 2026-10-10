@@ -17,6 +17,7 @@ from .. import ratelimit
 from ..config import get_settings
 from ..contract_http import ContractError, contract
 from ..database import get_db
+from ..render import tiles as render_tiles  # PF6: a live panorama's tiles
 from ..deps import DeviceCaller, LicenceCaller, get_device, get_session_or_device
 from ..shares import manifest, page
 from ..shares import service as shares
@@ -176,10 +177,12 @@ def view(slug: str, db: Session = Depends(get_db)) -> HTMLResponse:
         first_render_url=urls["files"].get(first_render) if first_render else None,
         pdf_url=urls["files"].get(pdf) if pdf else None,
     )
+    # PF6: a panorama following a render set loads its tiles from TILES_BASE_URL.
+    live = any(isinstance(p.get("live_job_id"), str) for p in manifest.panoramas(m))
     headers = {
         **base,
         "Cache-Control": "public, max-age=300",
-        "Content-Security-Policy": page.csp(site, s.api_url),
+        "Content-Security-Policy": page.csp(site, s.api_url, render_tiles.tiles_base() if live else ""),
     }
     return _html(content, 200, headers)
 

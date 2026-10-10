@@ -1,0 +1,22 @@
+{
+  "schema": "truebex-render-job/1",
+  "job_id": "a11ce000000000000000000000000001",
+  "kind": "panorama",
+  "quality": "standard",
+  "seed": 1,
+  "project": {
+    "tbxp": "Docs/roadmap/fixtures/Z0-baseline.tbxp",
+    "tbxpack": null,
+    "ops": "Docs/roadmap/fixtures/contracts/render-jobs/ops-empty.json",
+    "at_seq": 0
+  },
+  "views": [
+    "0199c6a2e00070058000000000000001"
+  ],
+  "changed": [],
+  "base_manifest": null,
+  "face_px": 1024,
+  "tile_px": 512,
+  "jpeg_quality": 85,
+  "out_dir": "Saved/RenderJobs/a11ce000000000000000000000000001/out"
+}

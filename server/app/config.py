@@ -214,6 +214,23 @@ class Settings(BaseSettings):
     # Long-poll pulls (5.7) waiting at once per account; more answer 429.
     projects_max_waiting_pulls: int = 20
 
+    # --- Cloud render orchestration (PF6, contract render-jobs) ---------------
+    # Where tiles are fetched (`<base>/<sha256>.jpg`). Empty = CDN_BASE_URL/tiles
+    # on the s3 backend with a CDN, else this API's public /tiles route.
+    tiles_base_url: str = ""
+    # Cost-unit weight per worker class, "class:weight,…" (1 cu = 1 min on
+    # gpu-std; GD3 names the hardware).
+    cu_class_weights: str = "gpu-std:1.0,cpu-8:0.25"
+    # The worker pool (GD3 placeholders): "static" (machines registered by
+    # hand) until GD3 names a cloud provider; machines per class, the
+    # business-hours warm pool ("8-18" UTC hours) and the idle stop.
+    render_pool: str = "static"
+    render_pool_min: int = 0
+    render_pool_max: int = 4
+    render_pool_warm_min: int = 0
+    render_pool_warm_hours: str = ""
+    render_pool_idle_stop_s: int = 600
+
     @property
     def cors_origin_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]

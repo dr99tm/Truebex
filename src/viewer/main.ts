@@ -6,10 +6,14 @@
 //
 // Built by scripts/build-viewer.mjs into out/viewer/viewer.js; framework-free
 // so it loads fast on a phone from another origin. Copy: SHARE_PAGE.
+// A panorama naming a followed render set (`live_job_id`, PF6) is shown live
+// from that set's tiles (cube.ts, live.ts). Copy: SHARE_LIVE.
 
-import { SHARE_PAGE } from "../lib/constants";
+import { SHARE_LIVE, SHARE_PAGE } from "../lib/constants";
+import { CubeTileViewer } from "./cube";
 import { buildGallery } from "./gallery";
 import { meteredConnection, pickSources } from "./geometry";
+import { followShareLive, type LiveState } from "./live";
 import { PanoViewer } from "./pano";
 import { buildDrawings } from "./pdf";
 import { SCHEMA_MAJOR, schemaMajor, type Manifest, type PageData, type Panorama } from "./types";
@@ -19,6 +23,12 @@ const VISITOR_KEY = "truebex_share_visitor";
 const VISITOR_LIFETIME_MS = 24 * 3600 * 1000;
 
 type Tab = "panoramas" | "renders" | "drawings";
+
+/** Where a live panorama long-polls `GET /s/{slug}/live` (PF6). */
+interface LiveLink {
+  api: string;
+  slug: string;
+}
 
 function el<K extends keyof HTMLElementTagNameMap>(tag: K, cls?: string, text?: string): HTMLElementTagNameMap[K] {
   const node = document.createElement(tag);
@@ -109,10 +119,10 @@ async function start(root: HTMLElement): Promise<void> {
     keepalive: true,
   }).catch(() => undefined);
 
-  render(root, data, site, base);
+  render(root, data, site, base, { api, slug });
 }
 
-function render(root: HTMLElement, data: PageData, site: string, base: URL): void {
+function render(root: HTMLElement, data: PageData, site: string, base: URL, live: LiveLink): void {
   const m = data.manifest;
   const urls = fileUrls(m);
   const panoramas = (m.panoramas ?? []).filter((p) => urls.has(p.file) || p.derivatives?.["pano-4096"]);
@@ -160,7 +170,7 @@ function render(root: HTMLElement, data: PageData, site: string, base: URL): voi
   }
   if (available.length < 2) tabs.hidden = true;
 
-  if (panoramas.length) setupPanoramas(panels.get("panoramas")!, panoramas, m, urls, openers);
+  if (panoramas.length) setupPanoramas(panels.get("panoramas")!, panoramas, m, urls, openers, live);
   if (renders.length) panels.get("renders")!.append(buildGallery(renders, SHARE_PAGE));
   if (sheets && pdfFile?.url) {
     const drawings = buildDrawings({
@@ -184,6 +194,7 @@ function setupPanoramas(
   m: Manifest,
   urls: Map<string, string>,
   openers: Map<Tab, () => void>,
+  live: LiveLink,
 ): void {
   const byId = new Map(panoramas.map((p) => [p.id, p]));
   const first = byId.get(m.start ?? "") ?? panoramas[0];
@@ -209,10 +220,52 @@ function setupPanoramas(
   let viewer: PanoViewer | null = null;
   let currentId = "";
 
+  // PF6: a live panorama shows its still image until the set's first tiles
+  // arrive, then the cube-tile view, whose faces swap as edits re-render. It
+  // shows the set's view whose id is the panorama's, else the set's first.
+  const badge = el("p", "tbx-live", SHARE_LIVE.badge);
+  badge.title = SHARE_LIVE.hint;
+  badge.hidden = true;
+  let follow: AbortController | null = null;
+  let cube: CubeTileViewer | null = null;
+  const stopLive = () => {
+    follow?.abort();
+    follow = null;
+    cube?.destroy();
+    cube = null;
+    badge.hidden = true;
+    if (viewer) viewer.element.hidden = false;
+  };
+  const startLive = (pano: Panorama) => {
+    const ctl = new AbortController();
+    follow = ctl;
+    const onUpdate = (state: LiveState) => {
+      const m = state.manifest;
+      const view = m ? (m.views.find((v) => v.view === pano.id) ?? m.views[0]) : undefined;
+      if (ctl.signal.aborted || !m || !view) return;
+      if (!cube) {
+        cube = new CubeTileViewer(panel, {
+          tilesBase: m.tiles_base,
+          label: `${pano.title}. ${SHARE_LIVE.hint}`,
+          yawDeg: pano.start_bearing_deg ?? pano.center_bearing_deg,
+          pitchDeg: pano.start_pitch_deg,
+          hfovDeg: pano.start_hfov_deg,
+        });
+        panel.prepend(cube.root);
+        cube.root.addEventListener("pointerdown", () => hint.classList.add("tbx-hint-gone"), { once: true });
+        if (viewer) viewer.element.hidden = true;
+        badge.hidden = false;
+      }
+      cube.update(view, m.tiles_base);
+    };
+    void followShareLive(live.api, live.slug, onUpdate, ctl.signal, pano.id);
+  };
+
   const go = (id: string, keepBearing: boolean) => {
     const pano = byId.get(id);
     if (!pano || !viewer) return;
     currentId = id;
+    stopLive();
     for (const c of chips.querySelectorAll<HTMLButtonElement>("button")) {
       c.setAttribute("aria-pressed", String(c.dataset.id === id));
     }
@@ -227,6 +280,7 @@ function setupPanoramas(
       .finally(() => {
         if (currentId === id) delete panel.dataset.loading;
       });
+    if (pano.live_job_id) startLive(pano);
   };
 
   for (const p of panoramas) {
@@ -272,7 +326,7 @@ function setupPanoramas(
     tools.append(motion);
   }
 
-  panel.append(chips, tools, hint);
+  panel.append(chips, tools, hint, badge);
   openers.set("panoramas", () => {
     if (viewer) return;
     viewer = new PanoViewer(panel, (target) => go(target, true), SHARE_PAGE);
