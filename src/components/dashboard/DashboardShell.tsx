@@ -3,7 +3,7 @@
 import { createContext, useContext, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Activity, CreditCard, FolderOpen, Gauge, KeyRound, LayoutGrid, BookOpen, TrendingUp } from "lucide-react";
+import { Activity, Cloud, CreditCard, Cpu, FolderOpen, Gauge, KeyRound, LayoutGrid, BookOpen, TrendingUp } from "lucide-react";
 import { useCurrentUser } from "@/lib/useAuth";
 import { getToken } from "@/lib/auth";
 import type { User } from "@/lib/auth";
@@ -23,6 +23,7 @@ const NAV_GROUPS: { label: string | null; items: NavItem[] }[] = [
     items: [
       { href: "/dashboard/", label: "Overview", icon: LayoutGrid },
       { href: "/dashboard/projects/", label: "Projects", icon: FolderOpen },
+      { href: "/dashboard/cloud/", label: "Cloud", icon: Cloud },
       { href: "/dashboard/billing/", label: "Billing", icon: CreditCard },
     ],
   },
@@ -42,6 +43,7 @@ const ADMIN_GROUP = {
   items: [
     { href: "/dashboard/admin/growth/", label: "Growth", icon: TrendingUp },
     { href: "/dashboard/admin/telemetry/", label: "Telemetry", icon: Activity },
+    { href: "/dashboard/admin/render/", label: "Render", icon: Cpu },
   ],
 };
 

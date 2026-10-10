@@ -1,0 +1,265 @@
+// The share viewer's cube-tile mode (PF6): a panorama rendered in the cloud
+// as six faces of content-addressed JPEG tiles (contract render-jobs §6.2),
+// shown from inside a CSS 3D cube. Framework-free, so the share page (PF5's
+// viewer bundle) and the dashboard's live preview both mount it.
+//
+// Faces n, e, s, w look north (+Y), east, south and west with +Z up; u looks
+// up and d down, both with the image's top edge toward north. Seen from the
+// cube's centre, n is ahead at yaw 0, e to its right, u overhead. Each face
+// shows one level (the smallest whose pixels cover the face on screen);
+// `update()` swaps only the tiles whose hashes changed, after they load, so an
+// edit re-renders two faces and the viewer fetches only those.
+
+export type CubeFace = "n" | "e" | "s" | "w" | "u" | "d";
+
+export interface CubeFaceTiles {
+  tiles: string[][];
+}
+
+export interface CubeView {
+  face_px: number;
+  tile_px: number;
+  levels: number[];
+  faces: Record<CubeFace, CubeFaceTiles>;
+}
+
+export interface CubeOptions {
+  /** `<tiles_base>/<sha256>.jpg` (the manifest's `tiles_base`). */
+  tilesBase: string;
+  /** What the cube shows, for screen readers. */
+  label: string;
+  hfovDeg?: number;
+  yawDeg?: number;
+  pitchDeg?: number;
+}
+
+const ORDER: CubeFace[] = ["n", "e", "s", "w", "u", "d"];
+
+// Each face starts facing the viewer at the centre; these place it on the cube
+// (H = half the face) so its image reads as the camera saw it.
+function faceTransform(face: CubeFace, half: number): string {
+  const t = `translateZ(${-half}px)`;
+  switch (face) {
+    case "n":
+      return t;
+    case "e":
+      return `rotateY(-90deg) ${t}`;
+    case "s":
+      return `rotateY(180deg) ${t}`;
+    case "w":
+      return `rotateY(90deg) ${t}`;
+    case "u":
+      return `rotateX(-90deg) ${t} rotateZ(180deg)`;
+    case "d":
+      return `rotateX(90deg) ${t}`;
+  }
+}
+
+const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
+
+export class CubeTileViewer {
+  readonly root: HTMLDivElement;
+  private readonly cube: HTMLDivElement;
+  private readonly faces = new Map<CubeFace, HTMLDivElement>();
+  private readonly shown = new Map<string, string>(); // `${face}:${index}` -> sha
+  private view: CubeView | null = null;
+  private level = -1;
+  private yaw: number;
+  private pitch: number;
+  private hfov: number;
+  private focal = 500;
+  private readonly resize: ResizeObserver | null = null;
+  private drag: { x: number; y: number; yaw: number; pitch: number } | null = null;
+
+  constructor(
+    private readonly host: HTMLElement,
+    private readonly options: CubeOptions
+  ) {
+    this.yaw = options.yawDeg ?? 0;
+    this.pitch = options.pitchDeg ?? 0;
+    this.hfov = options.hfovDeg ?? 80;
+    this.root = document.createElement("div");
+    this.root.tabIndex = 0;
+    this.root.setAttribute("role", "img");
+    this.root.setAttribute("aria-label", options.label);
+    Object.assign(this.root.style, {
+      position: "relative",
+      width: "100%",
+      height: "100%",
+      overflow: "hidden",
+      cursor: "grab",
+      touchAction: "none",
+      userSelect: "none",
+      background: "#161616",
+    });
+    this.cube = document.createElement("div");
+    Object.assign(this.cube.style, {
+      position: "absolute",
+      left: "50%",
+      top: "50%",
+      width: "0",
+      height: "0",
+      transformStyle: "preserve-3d",
+    });
+    for (const face of ORDER) {
+      const el = document.createElement("div");
+      el.dataset.face = face;
+      Object.assign(el.style, { position: "absolute", transformStyle: "preserve-3d", overflow: "hidden" });
+      this.faces.set(face, el);
+      this.cube.append(el);
+    }
+    this.root.append(this.cube);
+    host.append(this.root);
+    this.root.addEventListener("pointerdown", this.onDown);
+    this.root.addEventListener("pointermove", this.onMove);
+    this.root.addEventListener("pointerup", this.onUp);
+    this.root.addEventListener("pointercancel", this.onUp);
+    this.root.addEventListener("wheel", this.onWheel, { passive: false });
+    this.root.addEventListener("keydown", this.onKey);
+    if (typeof ResizeObserver !== "undefined") {
+      this.resize = new ResizeObserver(() => this.layout());
+      this.resize.observe(this.root);
+    }
+    this.layout();
+  }
+
+  /** Show `view` (the first time) or swap the tiles that changed. */
+  update(view: CubeView, tilesBase?: string): void {
+    if (tilesBase) this.options.tilesBase = tilesBase;
+    this.view = view;
+    this.layout(true);
+  }
+
+  destroy(): void {
+    this.resize?.disconnect();
+    this.root.remove();
+  }
+
+  private pickLevel(): number {
+    const view = this.view;
+    if (!view) return -1;
+    const ratio = typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1;
+    const need = 2 * this.focal * ratio;
+    const idx = view.levels.findIndex((px) => px >= need);
+    return idx === -1 ? view.levels.length - 1 : idx;
+  }
+
+  private layout(force = false): void {
+    const width = this.root.clientWidth || 640;
+    this.focal = width / 2 / Math.tan((this.hfov * Math.PI) / 360);
+    const half = this.focal;
+    this.root.style.perspective = `${this.focal}px`;
+    for (const [face, el] of this.faces) {
+      Object.assign(el.style, {
+        width: `${2 * half}px`,
+        height: `${2 * half}px`,
+        left: `${-half}px`,
+        top: `${-half}px`,
+        transform: faceTransform(face, half),
+      });
+    }
+    this.orient();
+    const level = this.pickLevel();
+    if (force || level !== this.level) this.paint(level, level !== this.level);
+  }
+
+  private orient(): void {
+    this.cube.style.transform = `translateZ(${this.focal}px) rotateX(${this.pitch}deg) rotateY(${this.yaw}deg)`;
+  }
+
+  private paint(level: number, rebuild: boolean): void {
+    const view = this.view;
+    if (!view || level < 0) return;
+    this.level = level;
+    const size = view.levels[level];
+    const n = Math.max(1, Math.floor(size / view.tile_px));
+    const cell = 100 / n;
+    for (const face of ORDER) {
+      const el = this.faces.get(face)!;
+      const shas = view.faces[face]?.tiles?.[level] ?? [];
+      if (rebuild || el.childElementCount !== shas.length) {
+        el.replaceChildren();
+        for (let i = 0; i < shas.length; i++) {
+          const img = document.createElement("img");
+          img.alt = "";
+          img.draggable = false;
+          img.decoding = "async";
+          const row = Math.floor(i / n);
+          const col = i % n;
+          // A hair of overlap hides the seams between tiles.
+          Object.assign(img.style, {
+            position: "absolute",
+            left: `${col * cell}%`,
+            top: `${row * cell}%`,
+            width: `calc(${cell}% + 1px)`,
+            height: `calc(${cell}% + 1px)`,
+            pointerEvents: "none",
+          });
+          el.append(img);
+        }
+        for (const key of [...this.shown.keys()]) if (key.startsWith(`${face}:`)) this.shown.delete(key);
+      }
+      shas.forEach((sha, i) => this.swap(face, i, sha, el.children[i] as HTMLImageElement));
+    }
+  }
+
+  private swap(face: CubeFace, index: number, sha: string, img: HTMLImageElement): void {
+    const key = `${face}:${index}`;
+    if (this.shown.get(key) === sha) return;
+    this.shown.set(key, sha);
+    const url = `${this.options.tilesBase.replace(/\/$/, "")}/${sha}.jpg`;
+    if (!img.getAttribute("src")) {
+      img.src = url;
+      return;
+    }
+    // Keep the old tile on screen until the new one has arrived.
+    const next = new Image();
+    next.decoding = "async";
+    next.onload = () => {
+      if (this.shown.get(key) === sha) img.src = url;
+    };
+    next.src = url;
+  }
+
+  private turn(dYaw: number, dPitch: number): void {
+    this.yaw = (((this.yaw + dYaw) % 360) + 360) % 360;
+    this.pitch = clamp(this.pitch + dPitch, -89, 89);
+    this.orient();
+  }
+
+  private readonly onDown = (e: PointerEvent) => {
+    this.drag = { x: e.clientX, y: e.clientY, yaw: this.yaw, pitch: this.pitch };
+    this.root.setPointerCapture?.(e.pointerId);
+    this.root.style.cursor = "grabbing";
+  };
+
+  private readonly onMove = (e: PointerEvent) => {
+    if (!this.drag) return;
+    const perPx = this.hfov / (this.root.clientWidth || 640);
+    this.yaw = this.drag.yaw;
+    this.pitch = this.drag.pitch;
+    this.turn(-(e.clientX - this.drag.x) * perPx, (e.clientY - this.drag.y) * perPx);
+  };
+
+  private readonly onUp = () => {
+    this.drag = null;
+    this.root.style.cursor = "grab";
+  };
+
+  private readonly onWheel = (e: WheelEvent) => {
+    e.preventDefault();
+    this.hfov = clamp(this.hfov + Math.sign(e.deltaY) * 5, 30, 110);
+    this.layout();
+  };
+
+  private readonly onKey = (e: KeyboardEvent) => {
+    const step = { ArrowLeft: [-5, 0], ArrowRight: [5, 0], ArrowUp: [0, 5], ArrowDown: [0, -5] }[e.key];
+    if (step) {
+      e.preventDefault();
+      this.turn(step[0], step[1]);
+    } else if (e.key === "+" || e.key === "-") {
+      this.hfov = clamp(this.hfov + (e.key === "+" ? -5 : 5), 30, 110);
+      this.layout();
+    }
+  };
+}

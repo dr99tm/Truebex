@@ -1539,3 +1539,115 @@ export const PROJECT_INVITE = {
   already: "You're already on this project.",
   privacy: "The link works once, for whoever accepts it signed in. Accepting shares your name and email with the people on the project.",
 } as const;
+
+// --- Cloud rendering (PF6) --------------------------------------------------------
+// The dashboard's Cloud page and the render admin (account pages, noindex).
+// Cloud panoramas stay "On the roadmap" in the public copy (FEATURES, the
+// roadmap page) until the app's headless render and edit-to-panorama loop ship;
+// these pages only show what an account already has. Tokens: {used}, {n},
+// {price}, {name}, {seq}.
+
+export const CLOUD = {
+  title: "Cloud",
+  description: "Rendering in the cloud: what this month used, and your recent jobs.",
+  loading: "Loading…",
+  meter: {
+    unit: "cost units",
+    label: "Cost units used this month",
+    unlimited: "{used} cost units used. Your plan has no monthly limit.",
+    none: "Cloud rendering comes with Pro, Studio, Team and the 14-day trial.",
+    planCta: "See plans",
+    help: "One cost unit is one minute of rendering on the standard machine. Only finished jobs count; failed and cancelled jobs cost nothing.",
+    reserved: "{n} cost units are held for jobs still running.",
+  },
+  chart: { title: "Cost units per day", label: "Cost units per day this month", unit: "cost units" },
+  byKind: { title: "By job type", empty: "Nothing rendered yet this month." },
+  kinds: {
+    panorama: "Panorama set",
+    tiles: "Panorama update",
+    pack: "Presentation pack",
+    wind: "Wind study",
+    energy: "Energy study",
+  },
+  states: {
+    queued: "Queued",
+    claimed: "Starting",
+    running: "Rendering",
+    succeeded: "Done",
+    failed: "Failed",
+    cancelled: "Cancelled",
+    expired: "Expired",
+  },
+  jobs: {
+    title: "Recent jobs",
+    empty: "No cloud jobs yet.",
+    columns: { job: "Job", state: "State", submitted: "Submitted", cost: "Cost units", actions: "Actions" },
+    estimate: "about {n}",
+    following: "follows edits",
+    cancel: "Cancel",
+    stopFollowing: "Stop following",
+    preview: "Preview",
+    hide: "Hide",
+    more: "Show more",
+  },
+  preview: {
+    title: "Live panorama",
+    hint: "Drag to look around. Faces an edit changes swap in when their render finishes.",
+    loading: "Loading tiles…",
+    updated: "Showing operation {seq}.",
+    view: "View",
+    none: "This job has no tiles yet.",
+  },
+  overage: {
+    title: "Past the allowance",
+    text: "Studio and Team can keep rendering past the monthly allowance, up to a cap you set, at {price} a cost unit, added to the next bill.",
+    label: "Monthly cap, in cost units",
+    save: "Save cap",
+    saving: "Saving…",
+    saved: "Cap saved.",
+    used: "{n} cost units past the allowance this month.",
+  },
+  errors: { generic: "Something went wrong." },
+} as const;
+
+export const ADMIN_RENDER = {
+  title: "Render",
+  description: "The cloud render queue, its workers and this month's cost.",
+  adminsOnly: "This page is for Truebex admins.",
+  queue: {
+    title: "Queue",
+    kind: "Kind",
+    queued: "Queued",
+    running: "Running",
+    oldest: "Oldest wait",
+    empty: "Nothing queued.",
+  },
+  pool: { title: "Pool", cls: "Class", desired: "Wanted", running: "Running" },
+  workers: {
+    title: "Workers",
+    name: "Worker",
+    kinds: "Kinds",
+    version: "App",
+    heartbeat: "Last heartbeat",
+    state: "Pool",
+    job: "Job",
+    revoke: "Revoke",
+    revoked: "Revoked",
+    confirm: "Revoke {name}? Its next call is refused and its job goes back in the queue.",
+    empty: "No workers yet. Issue a token below.",
+  },
+  issue: {
+    title: "Issue a worker token",
+    name: "Name",
+    namePlaceholder: "pc-rtx",
+    kinds: "Kinds",
+    cls: "Class",
+    submit: "Issue token",
+    busy: "Issuing…",
+    shown: "Token for {name}. It is shown once: put it in worker.toml now.",
+    copy: "Copy",
+    copied: "Copied",
+  },
+  cost: { title: "Cost this month", unit: "cost units", empty: "Nothing charged yet this month." },
+  failures: { title: "Recent failures", empty: "No failures." },
+} as const;
