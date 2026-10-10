@@ -250,7 +250,7 @@ def _seats_assigned_conflict(db: Session, org: Organisation | None, assigned: in
         "seats_assigned",
         409,
         f"{assigned} of {org.name}'s seats are assigned ({named} named, {floating} floating). "
-        "Free seats on the Seats tab before lowering the count.",
+        "Unassign seats or shrink the floating pool on the Seats tab before lowering the count.",
         {"assigned": assigned, "named": named, "floating": floating},
     )
 

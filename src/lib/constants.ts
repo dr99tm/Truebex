@@ -1472,7 +1472,7 @@ export const ORG_BILLING = {
   noPlan: "No seats yet",
   noPlanHint: "Buy seats below, then give them to people on the Seats tab.",
   assigned: "assigned",
-  assignedHint: "Seats given to people (named seats and the floating pool) stay paid for. Free seats on the Seats tab before lowering the count.",
+  assignedHint: "Named seats and the floating pool count as given to people. Unassign seats or shrink the pool on the Seats tab before lowering the count.",
   seatsTab: "Open the Seats tab",
   readOnly: "Only an owner or a billing member of this organisation can change its plan and see its invoices.",
   paidUntil: "Paid until",

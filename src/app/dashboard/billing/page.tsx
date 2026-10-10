@@ -264,7 +264,10 @@ function BillingManager({ org }: { org: OrgDetail | null }) {
   const [currency, setCurrency] = useState<string>(
     () => params.get("currency")?.toUpperCase() ?? localeCurrency()
   );
-  const [tierId, setTierId] = useState<string>(params.get("tier") ?? params.get("plan") ?? "pro");
+  // Organisations most often buy the per-seat tier.
+  const [tierId, setTierId] = useState<string>(
+    params.get("tier") ?? params.get("plan") ?? (org ? "team" : "pro")
+  );
   const [seatChoice, setSeatChoice] = useState<number>(
     Math.min(1000, Math.max(0, Math.floor(Number(params.get("seats")) || 0)))
   );
