@@ -1,0 +1,124 @@
+{
+  "schema": "truebex-tiles/1",
+  "job_id": "a11ce000000000000000000000000001",
+  "project_id": "0199c6a2f1007a3c8b5e2d4f6a7b8c9d",
+  "at_seq": 0,
+  "app_version": "1.1.0",
+  "quality": "standard",
+  "views": [
+    {
+      "view": "0199c6a2e00070058000000000000001",
+      "title": "Living room",
+      "eye_mm": [
+        4200,
+        1800,
+        1600
+      ],
+      "face_px": 1024,
+      "tile_px": 512,
+      "levels": [
+        512,
+        1024
+      ],
+      "faces": {
+        "n": {
+          "rendered": true,
+          "reason": "full",
+          "tiles": [
+            [
+              "28746b924afdd6a1eb06011a2811b57ac05f67e96c27779cd9d6ed348f462846"
+            ],
+            [
+              "b9754a9148cc223c8a8a9d53cfa904871f6e48ecdb8d91bef76b5bdb6624b2a2",
+              "12f0a3172028866964ca3647f5facc92854c1f8102c1f14b31ed225eaca12503",
+              "a6f66ecf3c041fff1afe31167fd8e301f6a871347bfbbc62b4207d9b888fc61f",
+              "1bdd2c6f7d4438a5236db57be5402d9e8b0377bff69407cb15f8ff7223471d69"
+            ]
+          ]
+        },
+        "e": {
+          "rendered": true,
+          "reason": "full",
+          "tiles": [
+            [
+              "74b772ec92d50de04469fc34999eb4d180d3d90a1343daf8df719ee7a8a98218"
+            ],
+            [
+              "24813112c406b213f0334d0515092dccaa47ccb1d01c9afee1bf46eaec17df25",
+              "7e11863d8648167f16b2e80206d61003118a0a15aa0ecaea66505cfc22ae8688",
+              "e3a47ca9dfb0c59a76f24b9d8dafc98cfdac022e4c6ba05f62d16ccec030827b",
+              "fcb04869ad6c376fa456d22b0fb319557f55ae28579f52d0615d528c91da499a"
+            ]
+          ]
+        },
+        "s": {
+          "rendered": true,
+          "reason": "full",
+          "tiles": [
+            [
+              "682abe52231bebc2b64083b04c9c3eec163e319be9de5329ff64f3d5bad1110a"
+            ],
+            [
+              "0dad671ab40d0c950a119cd265e56bb7fa0388e536735e39a5eed55ae144b884",
+              "3d7294f75bae816e03b814be68edf8d39c6fedaf7a3f43ba541880cf3adf643e",
+              "cbf93e2f8d7064f9d85a1d93b87f9eed9f24fa8ec4349daffa40c30713e2a06b",
+              "adda065bc7f547ee417eb1f455fe7e7368f9cbf69e2a7de5f3d601a31bd307fa"
+            ]
+          ]
+        },
+        "w": {
+          "rendered": true,
+          "reason": "full",
+          "tiles": [
+            [
+              "3cbb72d2fc6b063dd11e35906c624755fd823253e890750e071dee2ed0e579b4"
+            ],
+            [
+              "d029d94bbe1f0d8cbede0196669a8a0d20b74b8f5f68554f67b56c9a9e6e7e33",
+              "81432ab0cb2274e50ccd222745b1b4e13f959263e0f13317823412f78f8e7789",
+              "b83954827efbc53ca01d50489d5728e883747f47f065b0fd430998e0612048e4",
+              "351a419e899764aca45f1126d5665e1cd789e860447c39e2a115cd5c119243af"
+            ]
+          ]
+        },
+        "u": {
+          "rendered": true,
+          "reason": "full",
+          "tiles": [
+            [
+              "38ef84da894f1bb1928b9ddcec5551d7e3da4c064807be6a69009e466548c029"
+            ],
+            [
+              "3dd2f6823468abfc3e93a6e8fd72ee45b06b7ad3b6c9b9542234b9458e62c264",
+              "ce76162874c5609d70d9b1a35ee0ed335efc16988cd7c38ae549867ccdd15db4",
+              "22ac67e2f662b196042545563ee7da14845fed12eacb01fa62dce9b5196f617d",
+              "5041598c087ab7ac7c89d5c8ccfa68e659349fcad18cc826d25b4343e021ab9a"
+            ]
+          ]
+        },
+        "d": {
+          "rendered": true,
+          "reason": "full",
+          "tiles": [
+            [
+              "cc15445abfac6be7319fd6000d9a18bee0d247b40da695bd5332227caacaac8a"
+            ],
+            [
+              "c42946080963317515a4fed3671d85e4dbab706f88febd6539fec027d8afa9d3",
+              "b1a1f443be07b450ee221675dbc0dfc11bd1d08e2c40cd5f9a48d96e46969bd0",
+              "5be3bdd702636a45784afb8f81524cf1972c92e3fdc7dd509da1456a1e5ebdb8",
+              "b834b142406d28af6d59d38d3aed14ec883cd25fa9df54ee262616a42a7d66b5"
+            ]
+          ]
+        }
+      }
+    }
+  ],
+  "faces_rendered": 6,
+  "faces_reused": 0,
+  "ms": {
+    "open": 3100,
+    "render": 21000,
+    "encode": 900
+  }
+}

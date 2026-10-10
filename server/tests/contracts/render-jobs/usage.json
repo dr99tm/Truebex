@@ -1,0 +1,15 @@
+{
+  "period_start": "2026-10-01T00:00:00Z",
+  "period_end": "2026-11-01T00:00:00Z",
+  "used_cu": 41.2,
+  "limit_cu": 600,
+  "remaining_cu": 558.8,
+  "classes": {
+    "gpu-std": 1.0,
+    "cpu-8": 0.25
+  },
+  "by_kind": {
+    "tiles": 30.1,
+    "wind": 11.1
+  }
+}

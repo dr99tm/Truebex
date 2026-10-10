@@ -1,0 +1,24 @@
+{
+  "ops": [
+    {
+      "op_id": "1652155934a4e0c9e19dd040c2f8705a",
+      "server_seq": 1,
+      "replica_id": "5e1d0c0ffee000000000000000000b07",
+      "author": "0199c6a2f0007000a000000000000007",
+      "author_kind": "person",
+      "at": "2026-10-09T11:00:00.000Z",
+      "kind": "delta",
+      "name": "Move wall",
+      "base_seq": 0,
+      "touched": [
+        "0199c6a2e00070018000000000000001"
+      ],
+      "delta_format": "o5/38",
+      "delta": "VEJYRHsic3RhbmRfaW4iOnRydWV9",
+      "action": null,
+      "restore": null
+    }
+  ],
+  "head_seq": 1,
+  "more": false
+}

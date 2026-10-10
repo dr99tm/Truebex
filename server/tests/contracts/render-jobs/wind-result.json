@@ -1,0 +1,47 @@
+{
+  "schema": "truebex-analysis/1",
+  "kind": "wind",
+  "project_id": "0199c6a2f1007a3c8b5e2d4f6a7b8c9d",
+  "at_seq": 12,
+  "params": {
+    "speed_ms": 5,
+    "direction_deg": 225,
+    "reference_height_m": 10,
+    "terrain": "suburban",
+    "comfort": "lawson"
+  },
+  "engine": {
+    "name": "cfd-solver",
+    "version": "1",
+    "image": "sha256:196aaf67ab68601e4222ae8c5301453c1a6555f75b9d48f43c09cbeff6a66ddd"
+  },
+  "summary": {
+    "max_speed_ms": 7.2
+  },
+  "fields": [
+    {
+      "name": "pressure_coefficient",
+      "unit": "1",
+      "on": "faces",
+      "count": 8,
+      "values": "07e4728b5d56aaeef464c6c8ee968eccfd71e799be8ec6271af8e3a75a136c87",
+      "entities": "c7eb3214dcb71769885cd9ab732d5af7c4686a05fc346127fa321a07a1378500"
+    }
+  ],
+  "grids": [
+    {
+      "name": "comfort_lawson",
+      "unit": "class",
+      "origin_mm": [
+        -20000,
+        -20000,
+        1500
+      ],
+      "cell_mm": 500,
+      "nx": 4,
+      "ny": 4,
+      "values": "eafe2a993e63ae46d5550a9c21a1aad0de669f7edef6109b26e31922da030e3e"
+    }
+  ],
+  "report": null
+}
