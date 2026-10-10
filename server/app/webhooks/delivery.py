@@ -12,6 +12,7 @@ import random
 import secrets
 import time
 from collections.abc import Callable
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta
 from urllib.parse import urlsplit
 
@@ -20,6 +21,7 @@ from sqlalchemy import delete, select, update
 from sqlalchemy.orm import Session
 
 from ..config import get_settings
+from ..database import SessionLocal
 from ..licence import clock
 from ..models import User
 from . import signing, urls
@@ -32,7 +34,9 @@ SCHEDULE_S: tuple[int, ...] = (0, 5, 5 * 60, 30 * 60, 2 * 3600, 5 * 3600, 10 * 3
 JITTER = 0.1
 DISABLE_AFTER = timedelta(days=5)
 KEEP = timedelta(days=30)
-BATCH = 100
+# Deliveries sent at once, and the longest one run of deliver_due keeps going.
+PARALLEL = 8
+RUN_BUDGET_S = 30.0
 # A delivery claimed by a runner that died mid-send goes back to pending.
 STUCK_AFTER = timedelta(minutes=5)
 USER_AGENT = "Truebex-Webhooks/1"
@@ -119,8 +123,52 @@ def send(db: Session, d: WebhookDelivery, now: datetime) -> bool:
     return ok
 
 
+def _claim(db: Session, now: datetime, limit: int) -> list[str]:
+    """Mark up to `limit` due deliveries `sending` (a second runner skips them)."""
+    ids = list(
+        db.scalars(
+            select(WebhookDelivery.delivery_id)
+            .where(WebhookDelivery.status == "pending", WebhookDelivery.next_attempt_at <= now)
+            .order_by(WebhookDelivery.next_attempt_at)
+            .limit(limit)
+        )
+    )
+    claimed = [
+        delivery_id
+        for delivery_id in ids
+        if db.execute(
+            update(WebhookDelivery)
+            .where(WebhookDelivery.delivery_id == delivery_id, WebhookDelivery.status == "pending")
+            .values(status="sending")
+        ).rowcount
+    ]
+    db.commit()
+    return claimed
+
+
+def _send_one(delivery_id: str, now: datetime) -> bool:
+    with SessionLocal() as db:
+        d = db.get(WebhookDelivery, delivery_id)
+        if d is None:
+            return False
+        try:
+            return send(db, d, now)
+        except Exception:  # noqa: BLE001 - one bad endpoint must not stop the rest
+            db.rollback()
+            log.exception("webhook delivery %s", delivery_id)
+            db.execute(
+                update(WebhookDelivery)
+                .where(WebhookDelivery.delivery_id == delivery_id)
+                .values(status="failed", error="internal error", next_attempt_at=None)
+            )
+            db.commit()
+            return False
+
+
 def deliver_due(db: Session, now: datetime | None = None) -> int:
-    """Every pending delivery whose time has come (oldest first, 100 a run)."""
+    """Send due deliveries, oldest first, PARALLEL at a time, for at most
+    RUN_BUDGET_S (the rest wait for the next run), so a slow receiver never
+    holds up the other background jobs. Returns how many succeeded."""
     now = now or clock.now()
     db.execute(
         update(WebhookDelivery)
@@ -128,35 +176,14 @@ def deliver_due(db: Session, now: datetime | None = None) -> int:
         .values(status="pending")
     )
     db.commit()
-    due = db.scalars(
-        select(WebhookDelivery)
-        .where(WebhookDelivery.status == "pending", WebhookDelivery.next_attempt_at <= now)
-        .order_by(WebhookDelivery.next_attempt_at)
-        .limit(BATCH)
-    ).all()
+    started = time.monotonic()
     sent = 0
-    for d in due:
-        # Claim it first: a second runner skips it.
-        claimed = db.execute(
-            update(WebhookDelivery)
-            .where(WebhookDelivery.delivery_id == d.delivery_id, WebhookDelivery.status == "pending")
-            .values(status="sending")
-        ).rowcount
-        db.commit()
-        if not claimed:
-            continue
-        db.refresh(d)
-        try:
-            sent += 1 if send(db, d, now) else 0
-        except Exception:  # noqa: BLE001 - one bad endpoint must not stop the rest
-            db.rollback()
-            log.exception("webhook delivery %s", d.delivery_id)
-            db.execute(
-                update(WebhookDelivery)
-                .where(WebhookDelivery.delivery_id == d.delivery_id)
-                .values(status="failed", error="internal error")
-            )
-            db.commit()
+    with ThreadPoolExecutor(max_workers=PARALLEL, thread_name_prefix="webhooks") as pool:
+        while time.monotonic() - started < RUN_BUDGET_S:
+            batch = _claim(db, now, PARALLEL)
+            if not batch:
+                break
+            sent += sum(pool.map(lambda delivery_id: _send_one(delivery_id, now), batch))
     return sent
 
 
