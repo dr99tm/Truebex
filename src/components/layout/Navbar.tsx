@@ -26,6 +26,8 @@ export function Navbar() {
   const pathname = usePathname() ?? "/";
   const locale = pathname === "/ar" || pathname.startsWith("/ar/") ? "ar" : "en";
   const t = COPY[locale];
+  // PF9: the mobile web client under /app/ has its own full-screen chrome.
+  const inApp = pathname === "/app" || pathname.startsWith("/app/");
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 50);
@@ -44,6 +46,8 @@ export function Navbar() {
       document.body.style.overflow = "";
     };
   }, [mobileOpen]);
+
+  if (inApp) return null;
 
   return (
     <>

@@ -61,6 +61,14 @@ export async function fetchMe(): Promise<User | null> {
 
 export function logout(): void {
   clearToken();
+  // PF9: the mobile app's offline copy (projects, digests, edits, tiles) goes with the session.
+  try {
+    indexedDB.deleteDatabase("truebex-app");
+    indexedDB.deleteDatabase("truebex-tiles");
+    void caches.delete("tiles-v1").catch(() => undefined);
+  } catch {
+    /* no storage APIs here (private mode): nothing was kept */
+  }
 }
 
 export interface PublicConfig {

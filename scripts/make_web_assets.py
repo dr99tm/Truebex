@@ -2,6 +2,7 @@
 
     py -3.12 scripts/make_web_assets.py
     py -3.12 scripts/make_web_assets.py --features     (only the feature-page crops)
+    py -3.12 scripts/make_web_assets.py --icons        (only the icons)
 
 Sources (the Unreal project owns the brand; this script only reads it):
     T:/unreal5_7_4_projects/truebex_compact/Brand/Truebex/logo/figma_original/*.svg
@@ -17,6 +18,8 @@ Writes (all committed):
     src/app/apple-icon.png              180 px home-screen icon
     src/app/favicon.ico                 16/32/48 px
     public/icon-192.png, icon-512.png   web app manifest icons
+    public/icon-maskable-512.png        the manifest's maskable icon (PF9): full-bleed
+                                        ground, the mark inside the 80 % safe zone
     public/images/og-image.jpg          1200x630 social card
     public/images/product/*.jpg         cropped in-app captures (debug HUD removed)
     public/images/features/<page>.jpg   1600x1000 crops for /features/<page>/, only
@@ -93,10 +96,20 @@ def tile_icon(size: int, radius_ratio: float = 0.0) -> Image.Image:
     return img
 
 
+def maskable_icon(size: int) -> Image.Image:
+    """Launchers crop a maskable icon to any shape inside the central circle
+    of 80 % diameter: the mark's corners stay within it (W3C appmanifest)."""
+    img = Image.new("RGBA", (size, size), GROUND + (255,))
+    mark = mark_image(int(size * 0.56))
+    img.alpha_composite(mark, ((size - mark.width) // 2, (size - mark.height) // 2))
+    return img
+
+
 def icons() -> None:
     tile_icon(180).convert("RGB").save(out("src", "app", "apple-icon.png"))
     for s in (192, 512):
         tile_icon(s).convert("RGB").save(out("public", f"icon-{s}.png"))
+    maskable_icon(512).convert("RGB").save(out("public", "icon-maskable-512.png"))
     ico = tile_icon(256, 0.22)
     ico.save(out("src", "app", "favicon.ico"), sizes=[(16, 16), (32, 32), (48, 48)])
 
@@ -226,6 +239,10 @@ if __name__ == "__main__":
 
     if "--features" in sys.argv:
         feature_shots()
+        sys.exit(0)
+    if "--icons" in sys.argv:
+        icons()
+        print("icons written")
         sys.exit(0)
     media_kit()
     icons()
