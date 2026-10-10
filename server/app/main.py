@@ -34,8 +34,7 @@ from .routers import supplier
 from .routers import auth, billing, keys, usage, v1
 from .routers import growth as growth_router
 from .projects import jobs as _project_jobs  # noqa: F401  (PF4: projects.*)
-from .uploads import jobs as _upload_jobs  # noqa: F401  (uploads.expire)
-from .routers import projects, uploads  # PF4 (uploads: share-bundle §5, PF5's)
+from .routers import projects  # PF4 (its snapshots use PF5's uploads, registered below)
 from .routers import render as render_router  # PF6: jobs, workers, tiles, render admin
 from .telemetry.service import record_server_exception
 from .shares import jobs as _share_jobs  # noqa: F401  (PF5: shares.expire, shares.purge)
@@ -150,8 +149,7 @@ app.include_router(usage.router)
 app.include_router(billing.router)
 app.include_router(v1.router)
 app.include_router(growth_router.router)
-# PF4: the project service, and the upload protocol its snapshots use
-app.include_router(uploads.router)
+# PF4: the project service (its snapshots use the uploads registered under PF5)
 app.include_router(projects.router)
 # PF14: deep health, telemetry ingestion and its admin
 app.include_router(health.router)
