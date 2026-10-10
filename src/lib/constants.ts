@@ -1460,3 +1460,24 @@ export const ADMIN_TELEMETRY = {
   emptyCrashes: "No crashes reported. Good.",
   emptyFeedback: "No feedback yet.",
 } as const;
+
+// PF3a: an organisation's billing page (/dashboard/billing/?org=<id>), opened
+// from the organisation console's Billing link. Owners and billing members
+// buy and change seats there; everyone else in the organisation reads the plan.
+export const ORG_BILLING = {
+  description: "Plan, seats, invoices and payments of",
+  console: "Organisation console",
+  loading: "Loading the organisation…",
+  invalid: "This billing link is incomplete. Open Billing from the organisation console.",
+  noPlan: "No seats yet",
+  noPlanHint: "Buy seats below, then give them to people on the Seats tab.",
+  assigned: "assigned",
+  assignedHint: "Seats given to people (named seats and the floating pool) stay paid for. Free seats on the Seats tab before lowering the count.",
+  seatsTab: "Open the Seats tab",
+  readOnly: "Only an owner or a billing member of this organisation can change its plan and see its invoices.",
+  paidUntil: "Paid until",
+  paid: "Payment received. The organisation's seats are active.",
+  yourOrgs: "Organisations you buy for",
+  yourOrgsHint: "Seats for an organisation are bought and changed on its own billing page.",
+  openBilling: "Billing",
+} as const;

@@ -3,19 +3,20 @@
 import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { Check, Download, Minus, Plus } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, Download, Minus, Plus } from "lucide-react";
 import {
   ErrorNote,
   PageHeader,
   Panel,
   useDashboardUser,
 } from "@/components/dashboard/DashboardShell";
+import { useOrgs } from "@/components/dashboard/OrgContext";
 import { useApiData } from "@/components/dashboard/useApiData";
 import { Button } from "@/components/ui/Button";
 import { API_URL, formatDate } from "@/lib/api";
 import { STATIC_CATALOG } from "@/lib/billing-catalog";
 import { foundingPrice } from "@/lib/catalogue";
-import { BILLING } from "@/lib/constants";
+import { BILLING, ORG_BILLING } from "@/lib/constants";
 import {
   changePlan,
   changeSeats,
@@ -32,7 +33,12 @@ import {
   type PlanInfo,
   type Subscription,
 } from "@/lib/developer";
+import { getOrg, type OrgDetail, type Role } from "@/lib/orgs";
 import { cn } from "@/lib/utils";
+
+// PF3a: /dashboard/billing/?org=<id> is an organisation's billing page.
+const ORG_ID = /^[0-9a-f]{32}$/;
+const BUYER_ROLES: readonly Role[] = ["owner", "billing"];
 
 // Eurozone regions: the browser's locale picks EUR there, USD in the US and
 // GBP everywhere else (the company bills from the UK).
@@ -170,15 +176,19 @@ function CurrentPlan({
   fallbackPlan,
   busy,
   onManage,
+  isOrg = false,
 }: {
   sub: Subscription | null;
   cat: Catalog;
   fallbackPlan: string;
   busy: boolean;
   onManage: () => void;
+  isOrg?: boolean;
 }) {
   const tier = sub?.tier ?? fallbackPlan;
-  const name = cat.tiers.find((t) => t.id === tier)?.name ?? tier;
+  // An organisation without a subscription has no seats (not a Free plan).
+  const orgWithout = isOrg && (!sub || sub.status === "none");
+  const name = orgWithout ? ORG_BILLING.noPlan : (cat.tiers.find((t) => t.id === tier)?.name ?? tier);
   // A trial is a subscription row without billing (licence contract 5.6).
   const isTrial = sub?.provider === "trial";
   const hasSub = !!sub?.provider && !isTrial;
@@ -201,7 +211,8 @@ function CurrentPlan({
           {BILLING.plan.trialEnds} {formatDate(sub.current_period_end)}
         </p>
       )}
-      {!hasSub && tier === "free" && (
+      {orgWithout && <p className="mt-2 text-sm text-text-secondary">{ORG_BILLING.noPlanHint}</p>}
+      {!orgWithout && !hasSub && tier === "free" && (
         <p className="mt-2 text-sm text-text-secondary">{BILLING.plan.free}</p>
       )}
       {sub && hasSub && (
@@ -210,6 +221,7 @@ function CurrentPlan({
             {sub.interval === "year" ? BILLING.choose.annual : BILLING.choose.monthly}
             {" · "}
             {sub.seats === 1 ? BILLING.plan.oneSeat : `${sub.seats} ${BILLING.plan.seats}`}
+            {isOrg && sub.seats_assigned != null && ` · ${sub.seats_assigned} ${ORG_BILLING.assigned}`}
             {sub.provider && !MANAGED.has(sub.provider) && ` · ${providerLabel(sub.provider)}`}
           </p>
           {sub.current_period_end && (
@@ -231,13 +243,17 @@ function CurrentPlan({
   );
 }
 
-function BillingInner() {
+/** The billing page of the signed-in person (`org` null) or, for its owner
+ *  and billing members, of an organisation (PF3a). */
+function BillingManager({ org }: { org: OrgDetail | null }) {
   const user = useDashboardUser();
   const params = useSearchParams();
+  const orgId = org?.id ?? null;
   const catalog = useApiData(getCatalog);
-  const sub = useApiData(getSubscription);
-  const payments = useApiData(listPayments);
-  const invoices = useApiData(listInvoices);
+  // Keyed on the organisation by the caller, so each loader runs for one scope.
+  const sub = useApiData(() => getSubscription(orgId));
+  const payments = useApiData(() => listPayments(orgId));
+  const invoices = useApiData(() => listInvoices(orgId));
   const cat: Catalog = catalog.data ?? STATIC_CATALOG;
 
   // A link like /dashboard/billing/?tier=team&interval=year&seats=5&code=X
@@ -275,7 +291,7 @@ function BillingInner() {
         const p = await refreshPayment(ref);
         if (cancelled) return;
         if (p.status === "paid") {
-          setNotice(BILLING.notices.paid);
+          setNotice(org ? ORG_BILLING.paid : BILLING.notices.paid);
         } else if (n < 2) {
           await new Promise((r) => setTimeout(r, 3000 * (n + 1)));
           return attempt(n + 1);
@@ -314,8 +330,12 @@ function BillingInner() {
   const current = sub.data;
   const managed = !!current?.provider && MANAGED.has(current.provider);
   const managedActive = managed && current?.status === "active";
-  // A past-due or paused subscription is fixed under Manage, not bought again.
-  const showChoose = !managed && (current?.tier ?? user.plan) !== "enterprise";
+  // A past-due or paused subscription is fixed under Manage, not bought again;
+  // an organisation buys only while it has no subscription (seats set up by
+  // hand included).
+  const showChoose = org
+    ? !managed && (current?.status ?? "none") === "none"
+    : !managed && (current?.tier ?? user.plan) !== "enterprise";
 
   async function checkout() {
     if (!tier || !consent) return;
@@ -329,6 +349,7 @@ function BillingInner() {
         seats,
         coupon: coupon.trim() || undefined,
         consent: { version: BILLING.consent.version, accepted: true },
+        org_id: orgId ?? undefined,
       });
       window.location.href = url;
     } catch (err) {
@@ -341,7 +362,7 @@ function BillingInner() {
     setBusy("portal");
     setError("");
     try {
-      window.location.href = (await openBillingPortal()).url;
+      window.location.href = (await openBillingPortal(orgId)).url;
     } catch (err) {
       setError(err instanceof Error ? err.message : "Couldn't open the billing portal.");
       setBusy(null);
@@ -366,7 +387,11 @@ function BillingInner() {
 
   return (
     <>
-      <PageHeader title={BILLING.title} description={BILLING.description} />
+      <PageHeader
+        title={BILLING.title}
+        description={org ? `${ORG_BILLING.description} ${org.name}.` : BILLING.description}
+      />
+      {org && <ConsoleLink />}
 
       {notice && (
         <p role="status" className="mb-6 rounded-[var(--radius-button)] border border-accent/30 bg-accent/5 px-4 py-3 text-sm text-text-primary">
@@ -383,9 +408,10 @@ function BillingInner() {
         <CurrentPlan
           sub={current}
           cat={cat}
-          fallbackPlan={user.plan}
+          fallbackPlan={org ? "free" : user.plan}
           busy={busy === "portal"}
           onManage={manage}
+          isOrg={!!org}
         />
         {managedActive && current && (
           // Keyed on the subscription so the form resets after a change.
@@ -395,9 +421,12 @@ function BillingInner() {
             cat={cat}
             busy={busy}
             run={run}
+            orgId={orgId}
           />
         )}
       </div>
+
+      {!org && <OrgsYouBuyFor />}
 
       {showChoose && (
         <Panel className="mt-6">
@@ -666,11 +695,13 @@ function ChangePanel({
   cat,
   busy,
   run,
+  orgId,
 }: {
   sub: Subscription;
   cat: Catalog;
   busy: string | null;
   run: (label: string, action: () => Promise<Subscription>) => Promise<void>;
+  orgId: string | null;
 }) {
   const buyable = cat.tiers.filter((t) => t.purchasable);
   const [tierId, setTierId] = useState(sub.tier);
@@ -718,7 +749,7 @@ function ChangePanel({
         size="sm"
         className="mt-4 disabled:cursor-not-allowed disabled:opacity-50"
         disabled={!changed || busy !== null}
-        onClick={() => run("change", () => changePlan({ tier: tierId, interval }))}
+        onClick={() => run("change", () => changePlan({ tier: tierId, interval }, orgId))}
       >
         {busy === "change" ? BILLING.change.applying : BILLING.change.apply}
       </Button>
@@ -733,11 +764,19 @@ function ChangePanel({
               variant="secondary"
               disabled={seats === sub.seats || busy !== null}
               className="disabled:cursor-not-allowed disabled:opacity-50"
-              onClick={() => run("seats", () => changeSeats(seats))}
+              onClick={() => run("seats", () => changeSeats(seats, orgId))}
             >
               {busy === "seats" ? BILLING.change.applying : BILLING.change.seatsApply}
             </Button>
           </div>
+          {orgId && sub.seats_assigned != null && (
+            <p className="mt-3 text-xs text-text-muted">
+              {sub.seats_assigned} {ORG_BILLING.assigned}. {ORG_BILLING.assignedHint}{" "}
+              <Link href="/dashboard/organisation/seats/" className="text-accent hover:underline">
+                {ORG_BILLING.seatsTab}
+              </Link>
+            </p>
+          )}
         </div>
       )}
       <p className="mt-4 text-xs text-text-muted">{BILLING.change.prorated}</p>
@@ -745,10 +784,102 @@ function ChangePanel({
   );
 }
 
+function ConsoleLink() {
+  return (
+    <p className="-mt-4 mb-6 text-sm">
+      <Link href="/dashboard/organisation/" className="inline-flex items-center gap-1 text-accent hover:underline">
+        <ArrowLeft size={14} aria-hidden />
+        {ORG_BILLING.console}
+      </Link>
+    </p>
+  );
+}
+
+/** On the person's own billing page: the organisations they buy for. */
+function OrgsYouBuyFor() {
+  const { orgs } = useOrgs();
+  const mine = orgs.filter((o) => BUYER_ROLES.includes(o.role));
+  if (mine.length === 0) return null;
+  return (
+    <Panel className="mt-6">
+      <h2 className="font-semibold">{ORG_BILLING.yourOrgs}</h2>
+      <p className="mt-1 text-sm text-text-muted">{ORG_BILLING.yourOrgsHint}</p>
+      <ul className="mt-4 space-y-2 text-sm">
+        {mine.map((o) => (
+          <li key={o.id} className="flex items-center justify-between gap-3">
+            <span className="text-text-primary">{o.name}</span>
+            <a href={`/dashboard/billing/?org=${o.id}`} className="inline-flex items-center gap-1 text-accent hover:underline">
+              {ORG_BILLING.openBilling} <ArrowRight size={14} aria-hidden />
+            </a>
+          </li>
+        ))}
+      </ul>
+    </Panel>
+  );
+}
+
+/** Admins and members see the organisation's plan, read-only. */
+function OrgReadOnly({ org }: { org: OrgDetail }) {
+  const s = org.subscription;
+  return (
+    <>
+      <PageHeader title={BILLING.title} description={`${ORG_BILLING.description} ${org.name}.`} />
+      <ConsoleLink />
+      <div className="grid gap-6 lg:grid-cols-2">
+        <Panel>
+          <h2 className="font-semibold">{BILLING.plan.heading}</h2>
+          <p className="mt-4 text-3xl font-semibold">{s ? s.plan_name : ORG_BILLING.noPlan}</p>
+          {s && (
+            <div className="mt-2 space-y-1 text-sm text-text-secondary">
+              <p>{s.seats === 1 ? BILLING.plan.oneSeat : `${s.seats} ${BILLING.plan.seats}`}</p>
+              {s.current_period_end && (
+                <p>
+                  {ORG_BILLING.paidUntil} {formatDate(s.current_period_end)}
+                </p>
+              )}
+            </div>
+          )}
+          <p className="mt-5 text-sm text-text-muted">{ORG_BILLING.readOnly}</p>
+        </Panel>
+      </div>
+    </>
+  );
+}
+
+/** Loads the organisation (any member may), then the page its role gets. */
+function OrgBilling({ orgId }: { orgId: string }) {
+  const detail = useApiData(() => getOrg(orgId));
+  const org = detail.data;
+  if (!org) {
+    return (
+      <>
+        <PageHeader title={BILLING.title} description={detail.error ? undefined : ORG_BILLING.loading} />
+        {detail.error && <ErrorNote message={detail.error} />}
+      </>
+    );
+  }
+  return BUYER_ROLES.includes(org.role) ? <BillingManager org={org} /> : <OrgReadOnly org={org} />;
+}
+
+function BillingSwitch() {
+  const params = useSearchParams();
+  const org = params.get("org");
+  if (org === null) return <BillingManager org={null} />;
+  if (!ORG_ID.test(org)) {
+    return (
+      <>
+        <PageHeader title={BILLING.title} />
+        <ErrorNote message={ORG_BILLING.invalid} />
+      </>
+    );
+  }
+  return <OrgBilling key={org} orgId={org} />;
+}
+
 export default function BillingPage() {
   return (
     <Suspense fallback={null}>
-      <BillingInner />
+      <BillingSwitch />
     </Suspense>
   );
 }
