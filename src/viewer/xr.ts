@@ -404,6 +404,9 @@ export class HeadsetView {
 
   private hit(c: Three.Group): { kind: "spot" | "menu" | "button"; id: string } | null {
     const T = this.three;
+    // A select arrives between frames, with the controller's pose just updated.
+    c.updateMatrixWorld(true);
+    this.sky.updateMatrixWorld(true);
     const rot = new T.Matrix4().extractRotation(c.matrixWorld);
     this.raycaster.ray.origin.setFromMatrixPosition(c.matrixWorld);
     this.raycaster.ray.direction.set(0, 0, -1).applyMatrix4(rot);

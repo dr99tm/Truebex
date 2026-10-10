@@ -328,11 +328,16 @@ function ProductEdit({
 }) {
   const [step, setStep] = useState(250);
   const [choices, setChoices] = useState<SwapChoice[] | null>(null);
+  const [swapFailed, setSwapFailed] = useState(false);
   useEffect(() => {
     let live = true;
     swapChoices(product, region)
       .then((c) => live && setChoices(c))
-      .catch(() => live && setChoices([]));
+      .catch(() => {
+        if (!live) return;
+        setChoices([]);
+        setSwapFailed(true);
+      });
     return () => {
       live = false;
     };
@@ -376,7 +381,7 @@ function ProductEdit({
       </Section>
       <Section title={APP.edit.swap}>
         {choices === null && <p className="text-sm text-text-secondary">{APP.edit.swapLoading}</p>}
-        {choices?.length === 0 && <p className="text-sm text-text-secondary">{APP.edit.swapNone}</p>}
+        {choices?.length === 0 && <p className="text-sm text-text-secondary">{swapFailed ? APP.edit.swapOffline : APP.edit.swapNone}</p>}
         <ul className="space-y-2">
           {choices?.map((c) => (
             <li key={`${c.ref.sku}|${c.ref.variant_id}`}>

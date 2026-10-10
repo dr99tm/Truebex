@@ -114,23 +114,32 @@ function ProjectView({ pid }: { pid: string }) {
     queueMicrotask(() => setMotion(orientationAvailable() && window.matchMedia?.("(pointer: coarse)").matches === true));
   }, []);
 
-  // Keep the other views' tiles on this device too, so hotspots work offline.
+  // Keep the other views' tiles on this device too, so hotspots work offline:
+  // one at a time, once the page is idle, after the view on screen has loaded.
   const prefetched = useRef(new Set<string>());
   useEffect(() => {
     if (!manifest || typeof navigator === "undefined" || !navigator.serviceWorker?.controller) return;
     const need = (window.innerWidth / Math.tan((40 * Math.PI) / 180)) * (window.devicePixelRatio || 1);
+    const base = manifest.tiles_base.replace(/\/$/, "");
+    const urls: string[] = [];
     for (const v of manifest.views) {
       const level = v.levels.findIndex((px) => px >= need);
       const l = level === -1 ? v.levels.length - 1 : level;
-      for (const face of Object.values(v.faces)) {
-        for (const sha of face.tiles[l] ?? []) {
-          const url = `${manifest.tiles_base.replace(/\/$/, "")}/${sha}.jpg`;
-          if (prefetched.current.has(url)) continue;
-          prefetched.current.add(url);
-          void fetch(url, { mode: "cors", credentials: "omit" }).catch(() => prefetched.current.delete(url));
-        }
-      }
+      for (const face of Object.values(v.faces)) for (const sha of face.tiles[l] ?? []) urls.push(`${base}/${sha}.jpg`);
     }
+    let live = true;
+    const timer = setTimeout(async () => {
+      for (const url of urls) {
+        if (!live) return;
+        if (prefetched.current.has(url)) continue;
+        prefetched.current.add(url);
+        await fetch(url, { mode: "cors", credentials: "omit" }).catch(() => prefetched.current.delete(url));
+      }
+    }, 4000);
+    return () => {
+      live = false;
+      clearTimeout(timer);
+    };
   }, [manifest]);
 
   const canEdit = project ? project.role !== "viewer" : false;
@@ -263,7 +272,7 @@ function ProjectView({ pid }: { pid: string }) {
           />
         </div>
         {views.length > 1 && (
-          <label className="mt-2 flex items-center gap-2 text-xs text-text-secondary">
+          <label className="mt-2 inline-flex items-center gap-2 rounded-[var(--radius-button)] bg-background/70 py-1 pl-2.5 pr-1 text-xs text-text-secondary backdrop-blur">
             {APP.project.view}
             <select
               value={current?.view ?? ""}

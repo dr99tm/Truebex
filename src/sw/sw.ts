@@ -142,15 +142,38 @@ async function tile(req: Request, event: FetchEvent): Promise<Response> {
 
 async function store(cache: Cache, url: string, res: Response): Promise<void> {
   const body = await res.blob();
-  const headers = new Headers(res.headers);
-  await cache.put(url, new Response(body, { status: 200, headers }));
-  await saveLru([{ url, bytes: body.size, used: Date.now() }], []);
-  const drop = planEviction([...(await lru()).values()], TILE_BUDGET_BYTES);
-  for (const gone of drop) await cache.delete(gone);
-  if (drop.length) await saveLru([], drop);
+  await cache.put(url, new Response(body, { status: 200, headers: new Headers(res.headers) }));
+  const index = await loadIndex();
+  const entry = { url, bytes: body.size, used: Date.now() };
+  index.set(url, entry);
+  dirty.set(url, entry);
+  const drop = planEviction([...index.values()], TILE_BUDGET_BYTES);
+  for (const gone of drop) {
+    index.delete(gone);
+    dirty.delete(gone);
+    dropped.add(gone);
+    await cache.delete(gone);
+  }
+  await saveSoon();
+}
+
+async function touch(url: string): Promise<void> {
+  const entry = (await loadIndex()).get(url);
+  if (!entry) return;
+  entry.used = Date.now();
+  dirty.set(url, entry);
+  await saveSoon();
 }
 
 // --- the LRU index (IndexedDB truebex-tiles, store lru: url -> {bytes, used}) -----------------
+// Read once per worker life and kept in memory; changes are written in one
+// transaction a second later, so a panorama's tiles arriving together cost a
+// single write, not one database round trip each.
+
+let indexPromise: Promise<Map<string, CacheEntry>> | null = null;
+const dirty = new Map<string, CacheEntry>();
+const dropped = new Set<string>();
+let pendingSave: Promise<void> | null = null;
 
 function openLru(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
@@ -161,43 +184,48 @@ function openLru(): Promise<IDBDatabase> {
   });
 }
 
-async function lru(): Promise<Map<string, CacheEntry>> {
-  const db = await openLru();
-  const rows = await new Promise<CacheEntry[]>((resolve, reject) => {
-    const r = db.transaction("lru").objectStore("lru").getAll();
-    r.onsuccess = () => resolve(r.result as CacheEntry[]);
-    r.onerror = () => reject(r.error);
-  });
-  db.close();
-  return new Map(rows.map((e) => [e.url, e]));
+function loadIndex(): Promise<Map<string, CacheEntry>> {
+  indexPromise ??= (async () => {
+    try {
+      const db = await openLru();
+      const rows = await new Promise<CacheEntry[]>((resolve, reject) => {
+        const r = db.transaction("lru").objectStore("lru").getAll();
+        r.onsuccess = () => resolve(r.result as CacheEntry[]);
+        r.onerror = () => reject(r.error);
+      });
+      db.close();
+      return new Map(rows.map((e) => [e.url, e]));
+    } catch {
+      return new Map<string, CacheEntry>();
+    }
+  })();
+  return indexPromise;
 }
 
-async function saveLru(entries: CacheEntry[], dropped: string[]): Promise<void> {
-  const db = await openLru();
-  await new Promise<void>((resolve, reject) => {
-    const tx = db.transaction("lru", "readwrite");
-    const s = tx.objectStore("lru");
-    for (const e of entries) s.put(e);
-    for (const url of dropped) s.delete(url);
-    tx.oncomplete = () => resolve();
-    tx.onerror = () => reject(tx.error);
+function saveSoon(): Promise<void> {
+  pendingSave ??= new Promise<void>((resolve) => setTimeout(resolve, 1000)).then(async () => {
+    pendingSave = null;
+    const put = [...dirty.values()];
+    const del = [...dropped];
+    dirty.clear();
+    dropped.clear();
+    if (!put.length && !del.length) return;
+    try {
+      const db = await openLru();
+      await new Promise<void>((resolve, reject) => {
+        const tx = db.transaction("lru", "readwrite");
+        const s = tx.objectStore("lru");
+        for (const e of put) s.put(e);
+        for (const url of del) s.delete(url);
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+      });
+      db.close();
+    } catch {
+      /* the next change writes the index again */
+    }
   });
-  db.close();
-}
-
-async function touch(url: string): Promise<void> {
-  const db = await openLru();
-  await new Promise<void>((resolve) => {
-    const tx = db.transaction("lru", "readwrite");
-    const s = tx.objectStore("lru");
-    const r = s.get(url);
-    r.onsuccess = () => {
-      const e = r.result as CacheEntry | undefined;
-      if (e) s.put({ ...e, used: Date.now() });
-    };
-    tx.oncomplete = tx.onerror = () => resolve();
-  });
-  db.close();
+  return pendingSave;
 }
 
 // --- messages and background sync ------------------------------------------------------------
@@ -205,6 +233,9 @@ async function touch(url: string): Promise<void> {
 sw.addEventListener("message", (event) => {
   const data = event.data as { type?: string } | null;
   if (data?.type === "clear") {
+    indexPromise = null;
+    dirty.clear();
+    dropped.clear();
     event.waitUntil(
       Promise.all([
         caches.delete(TILES_CACHE),

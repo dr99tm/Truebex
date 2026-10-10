@@ -32,11 +32,13 @@ export function AppHome() {
       if (live && cached) setProjects(cached);
       try {
         const [me, page] = await Promise.all([getMe(), listProjects()]);
+        // Signed out meanwhile: keep nothing of this account on the device.
+        if (!live) return;
         const known = await kv.get<Me>("me");
         if (known && known.id !== me.id) await clearAppData(); // another account on this device
+        if (!live) return;
         await kv.set("me", me);
         await kv.set("projects", page.projects);
-        if (!live) return;
         setProjects(page.projects);
         setOffline(false);
       } catch (err) {

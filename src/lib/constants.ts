@@ -2562,6 +2562,7 @@ export const APP = {
     swap: "Swap for",
     swapLoading: "Finding products of the same kind…",
     swapNone: "No other products of this kind in this region yet.",
+    swapOffline: "Products to swap for show when you are online.",
     recent: "Your edits",
     none: "No edits yet.",
     mm: "{n} mm",
