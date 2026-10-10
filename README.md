@@ -878,7 +878,9 @@ envelope. The code is `server/app/render/`, the routes `server/app/routers/jobs.
 - **Pages.** `/dashboard/cloud/` (usage, recent jobs, cancel, a live cube-tile
   preview of a followed set), `/dashboard/admin/render/` (queue, pool, workers,
   tokens, cost). `src/viewer/cube.ts` and `live.ts` are the share viewer's
-  cube-tile mode (wired into PF5's share page at its merge).
+  cube-tile mode: a share panorama with `live_job_id` (a followed set of the
+  share's account) shows the set's tiles and swaps them as edits re-render,
+  through `GET /s/{slug}/live`; ending the share ends it.
 - **Workers.** `worker/truebex_worker.py` (Python 3.12, standard library only)
   claims, downloads the inputs, writes the job file, runs
   `Truebex.exe -mwrender=<job.json>`, uploads the tiles and completes; settings
@@ -887,8 +889,11 @@ envelope. The code is `server/app/render/`, the routes `server/app/routers/jobs.
 - **Without the app's headless render:** run the worker with
   `--app worker\tests\fake_truebex.py` (it writes the contract fixtures' tiles),
   and submit with `server\scripts\demo_render.py --token tbx_dev_… submit
-  --project <id> --follow`; `demo_replica.py … move --project <id>` makes an edit.
+  --project <id> --follow`; `demo_replica.py … move --project <id>` makes an edit;
+  `demo_share.py --token tbx_dev_… --fixture tests\contracts\share-bundle\manifest-house.json
+  --live <follow job id>` shares the house with the living room live.
 
 Known gaps: the app's headless render (CL3) and its Cloud panorama command
 (CL4) are not shipped, so cloud panoramas stay on the roadmap in the public
-copy; the share page's live view waits for PF5's share viewer to merge.
+copy; `live_job_id` and `/s/{slug}/live` are a share-bundle MINOR proposal until
+the owner writes them into the contract.

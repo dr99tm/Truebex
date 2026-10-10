@@ -7,8 +7,9 @@
 **Built 2026-10-10** on `ap/t11-pf6-cloud-render-orchestration` (base: PF4's branch): the queue and the ten endpoints in
 `server/app/render/` and `server/app/routers/{jobs,workers,tiles,admin_render}.py`, the worker wrapper in `worker/`,
 the image scripts in `infra/worker/`, `/dashboard/cloud/` and `/dashboard/admin/render/`, the cube-tile viewer in
-`src/viewer/`. Waiting on others: the app's `-mwrender` (CL3) and Cloud panorama command (CL4), PF5's share viewer for
-the live share page, GD3 / GD7 numbers. See As-built.
+`src/viewer/`. Waiting on others: the app's `-mwrender` (CL3) and Cloud panorama command (CL4), GD3 / GD7 numbers.
+Merged with PF5 (and PF2a, PF2b, PF3, PF3a, PF7, PF8) on 2026-10-10 (Autopilot T30): the share page shows a followed
+set live. See As-built.
 
 Before this task, no jobs, workers, tiles or cloud metering existed (`00-contract.md` P.1; the contract's §11 lists every endpoint as "PF6: not yet"). What this builds on, verified with Grep on 2026-10-09:
 
@@ -299,9 +300,7 @@ The first ten names are the contract's §10 platform tests.
   panorama's `file` stays as the still fallback); a new public read `GET /s/{slug}/live?rev=&wait_s=&panorama=` →
   `{rev, job_id, follow_job_id, at_seq, following, manifest (§6.2 with tiles_base)}`, 404 without a live view, 410 when
   the share ended.
-* **Carry-over → which feature:** **PF5 merge**: keep one `server/app/uploads/` with `add_files`; mount
-  `src/viewer/cube.ts` and `live.ts` in the share viewer for a panorama with `live_job_id`; let the manifest rules accept
-  `live_job_id`; `demo_share.py --live <follow job id>`. **PF11**: `wind` and `energy` entries in `render/quotas.KINDS`
+* **Carry-over → which feature:** **PF5 merge**: done at the T30 merge (below). **PF11**: `wind` and `energy` entries in `render/quotas.KINDS`
   (`analysis.reports`, `cpu-8`), §6.3 outputs and their file URLs in 5.5. **PF9 / PF10 / PR5**: viewers of followed sets
   through 5.2 or `/s/{slug}/live`. **PF3**: organisation accounts (`account_kind` "org"). **PF12**: the jobs routes under
   `/v1` if wanted (API keys already work here). **CL3**: the real `-mwrender`, the fixtures into the app repo, the first
@@ -310,3 +309,24 @@ The first ten names are the contract's §10 platform tests.
   **GD7**: allowances, overage tiers and price into `catalogue.json`. **The owner**: the §11 rows and proposals above;
   `cdn_target` and `CDN_BASE_URL` (`infra/README.md`, "Tiles and the CDN"); a worker token per machine and
   `infra/worker/bootstrap.ps1` on the RTX PC; `QUEUE_DEPTH_MAX` in `secrets/host.env` if 50 is wrong.
+* **Merged with master: PF5, PF7, PF8, PF2a, PF2b, PF3, PF3a (2026-10-10, Autopilot T30,
+  `ap/t30-merge-t11-pf6-cloud-render-orche`):** verify green (lint, build, pytest; counts in the commit and the
+  report); a headless run of the human test's steps 3-7 against one real API process (fresh SQLite, the worker wrapper
+  with `fake_truebex.py`, `demo_replica.py`, `demo_render.py`, `demo_share.py --live`, headless Edge on `/view/{slug}`)
+  showed the living room's 24 cube tiles with "Live view", swapped the two faces an edit touched 2.5 s after the push,
+  logged no console or CSP error, and answered 410 `share_gone` on `/s/{slug}/live` after the share was ended.
+  * Conflicts: `config.py`, `.env.example`, `database.py`, `tasks.py` keep one PF5 uploads block (master's) and add
+    only PF6's lines; `DashboardShell.tsx` has Shares then Cloud, Market then Render; `constants.ts`, `README.md` and
+    the tracker keep both sides.
+  * PF5's carry-over: `uploads/` is master's module with this feature's `add_files` and `upload_id` on top
+    (`test_render.py`, `test_render_worker.py` pass against it). `src/viewer/main.ts` shows a panorama with
+    `live_job_id` live (its still image until the first tiles; the set's view whose id is the panorama's, else the
+    first; the room chips leave and return to it); `shares/manifest.py` checks `live_job_id` (32 hex, rule `type`);
+    the share page's CSP allows the tiles' origin for a live share only; `demo_share.py --live <job id>` (its own
+    bundle_id). `tests/test_render_shares.py` (3) goes through PF5's real shares; `test_site_pf6.py` checks the bundle.
+  * Fixed on the way (both master's): PF2b's top-level `process.env.NEXT_PUBLIC_LEGAL_WORDING_APPROVED` in
+    `constants.ts` reached PF5's `viewer.js` and threw before the share page started, so every share page was blank;
+    `scripts/build-viewer.mjs` now inlines `NEXT_PUBLIC_*` as `next build` does (`@next/env`), and a build check keeps
+    `process.` out of the bundle. Master's head (3b12c52) set `prices_final` false while PF2a's tests required true:
+    the tests now follow the owner's switch (amounts still pinned; the `out/` checks skip while it is off).
+  * Left as found: master's `main.py` registers `uploads.router` twice (T28/T29 merges); harmless, same handler.

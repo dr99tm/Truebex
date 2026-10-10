@@ -2455,3 +2455,11 @@ export const ADMIN_RENDER = {
   cost: { title: "Cost this month", unit: "cost units", empty: "Nothing charged yet this month." },
   failures: { title: "Recent failures", empty: "No failures." },
 } as const;
+
+// PF6 on the share page (src/viewer/main.ts): a panorama that follows a render
+// set (`live_job_id`) shows the newest cloud render and updates as the
+// designer edits. Only a share whose designer turned it on shows this.
+export const SHARE_LIVE = {
+  badge: "Live view",
+  hint: "This view updates as the designer works.",
+} as const;

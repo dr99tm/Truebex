@@ -28,6 +28,8 @@ export interface Panorama {
   start_hfov_deg?: number;
   hotspots?: Hotspot[];
   derivatives?: Partial<Record<"pano-4096" | "pano-1024", Derivative>>;
+  /** PF6 (a MINOR proposal): a followed render set this view shows live. */
+  live_job_id?: string | null;
 }
 
 export interface Render {
