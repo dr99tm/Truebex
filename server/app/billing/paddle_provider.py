@@ -224,6 +224,42 @@ class PaddleProvider(BillingProvider):
         # Back on the organisation's billing page after paying.
         return f"{url}&org={payment.organisation_id}" if payment.organisation_id else url
 
+    def create_one_time_checkout(
+        self,
+        db: Session,
+        user: User,
+        payment: Payment,
+        description: str,
+        return_path: str,
+    ) -> str:
+        # A non-catalogue price made for this transaction alone: the amount
+        # comes from our server, and the item is matched by the transaction id.
+        body: dict[str, Any] = {
+            "items": [
+                {
+                    "quantity": 1,
+                    "price": {
+                        "description": description,
+                        "name": description,
+                        "unit_price": {"amount": str(payment.amount), "currency_code": payment.currency},
+                        "product": {"name": description, "tax_category": "standard"},
+                    },
+                }
+            ],
+            "customer_id": self._customer_id(db, user),
+            "currency_code": payment.currency,
+            "collection_mode": "automatic",
+            "custom_data": {"user_id": str(user.id), "reference": payment.reference, "item": payment.plan},
+            "checkout": {"url": f"{self.settings.site_url}/checkout/"},
+        }
+        data = self._api("POST", "/transactions", json_body=body)["data"]
+        payment.provider_ref = data["id"]
+        url = (data.get("checkout") or {}).get("url") or (
+            f"{self.settings.site_url}/checkout/?_ptxn={data['id']}"
+        )
+        back = return_path.strip("/").replace("/", "-")
+        return f"{url}{'&' if '?' in url else '?'}ref={payment.reference}&back={back}"
+
     # --- Applying Paddle state ------------------------------------------------------
 
     def _price_rows(self, db: Session, items: list[dict]) -> list:

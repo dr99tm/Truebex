@@ -1,8 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { AiAdmin } from "@/components/cloud/AiAdmin";
 import { ErrorNote, PageHeader, Panel, useDashboardUser } from "@/components/dashboard/DashboardShell";
 import { Button } from "@/components/ui/Button";
+import { kindLabel } from "@/lib/ai";
 import { fill } from "@/lib/catalogue";
 import { ADMIN_RENDER, CLOUD } from "@/lib/constants";
 import {
@@ -16,8 +18,8 @@ import {
 } from "@/lib/jobs";
 import { timeAgo } from "@/lib/time";
 
-const KINDS: JobKind[] = ["panorama", "tiles", "pack", "wind", "energy"];
-const CLASSES = ["gpu-std", "cpu-8"];
+const KINDS: JobKind[] = ["panorama", "tiles", "pack", "wind", "energy", "acoustics", "texture"];
+const CLASSES = ["gpu-std", "cpu-8", "gpu-ai"];
 const REFRESH_MS = 15_000;
 const inputClass =
   "min-w-0 rounded-[var(--radius-button)] border border-border bg-background px-3 py-2 text-text-primary placeholder:text-text-muted outline-none focus:border-accent/50";
@@ -253,7 +255,7 @@ export default function RenderAdminPage() {
                 <tbody>
                   {data.queue.map((q) => (
                     <tr key={q.kind} className="border-t border-border">
-                      <td className="py-2 pr-4 text-text-secondary">{CLOUD.kinds[q.kind] ?? q.kind}</td>
+                      <td className="py-2 pr-4 text-text-secondary">{kindLabel(q.kind)}</td>
                       <td className="py-2 pr-4 text-right tabular-nums text-text-primary">{q.queued}</td>
                       <td className="py-2 pr-4 text-right tabular-nums text-text-primary">{q.running}</td>
                       <td className="py-2 text-right tabular-nums text-text-secondary">{wait(q.oldest_wait_s)}</td>
@@ -292,7 +294,7 @@ export default function RenderAdminPage() {
                   <tbody>
                     {cost.map(([kind, cu]) => (
                       <tr key={kind} className="border-t border-border first:border-t-0">
-                        <td className="py-2 pr-4 text-text-secondary">{CLOUD.kinds[kind as JobKind] ?? kind}</td>
+                        <td className="py-2 pr-4 text-text-secondary">{kindLabel(kind)}</td>
                         <td className="py-2 text-right tabular-nums text-text-primary">
                           {formatCu(cu)} <span className="text-xs text-text-muted">{ADMIN_RENDER.cost.unit}</span>
                         </td>
@@ -314,7 +316,7 @@ export default function RenderAdminPage() {
                 {data.recent_failures.map((f) => (
                   <li key={f.job_id} className="flex flex-wrap gap-x-3 text-text-secondary">
                     <span className="font-mono text-xs text-text-muted">{f.job_id.slice(0, 8)}</span>
-                    <span>{CLOUD.kinds[f.kind] ?? f.kind}</span>
+                    <span>{kindLabel(f.kind)}</span>
                     <span className="text-red-300">{f.error?.code}</span>
                     <span>{f.error?.message}</span>
                     <span className="text-text-muted">{timeAgo(f.finished_at)}</span>
@@ -325,6 +327,7 @@ export default function RenderAdminPage() {
           </Panel>
         </>
       )}
+      <AiAdmin className="mt-10" />
     </>
   );
 }

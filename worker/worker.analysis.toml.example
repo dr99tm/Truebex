@@ -1,0 +1,29 @@
+# An analysis worker's settings (PF11). Copy to worker.toml (gitignored: it holds the token).
+#   py -3.12 worker\truebex_worker.py --config worker.toml --mode container
+
+# The Truebex API (local: http://127.0.0.1:8000).
+api = "https://api.truebex.com"
+# Admin -> Render -> Issue worker token, class cpu-8, kinds wind / energy / acoustics (shown once).
+token = "tbx_wrk_..."
+worker_id = "cpu-eu-01"
+kinds = ["wind", "energy", "acoustics"]
+class = "cpu-8"
+
+# Run each job as a solver container (Docker on Linux, or Docker Desktop).
+mode = "container"
+docker = "docker"
+# Images per kind (default: the image the job's profile names, truebex-analysis-<kind>:1),
+# built by infra/worker/analysis/<kind>/build.ps1 (or build.sh).
+# images = { wind = "truebex-analysis-wind:1" }
+# Per container: CPUs, memory, the unprivileged user, a process cap.
+cpus = 4.0
+memory = "12g"
+container_user = "1000:1000"
+pids_limit = 512
+
+work_dir = "/var/lib/truebex-worker/jobs"
+keep_work = false
+heartbeat_s = 30
+# A CFD run on a house takes about half an hour (GD3); a cap of 3 hours.
+job_timeout_s = 10800
+wait_s = 20

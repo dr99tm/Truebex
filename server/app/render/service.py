@@ -153,6 +153,10 @@ def submit(db: Session, caller: ProjectCaller, body: dict) -> tuple[RenderJob, b
     """Validate and queue a job. Returns (the job, joined an existing one)."""
     user = caller.user
     kind_name = body.get("kind")
+    from ..analysis import submit as analysis_submit  # PF11: wind, energy, acoustics, texture
+
+    if analysis_submit.handles(kind_name):
+        return analysis_submit.submit(db, caller, body)
     kind = quotas.KINDS.get(kind_name) if isinstance(kind_name, str) else None
     if kind is None:
         raise _invalid("kind", f"one of {', '.join(quotas.KINDS)}")
@@ -358,7 +362,11 @@ def output(db: Session, user: User, job_id: str) -> dict:
     data = tiles.read_json(job.output_key)
     if data is None:
         raise ContractError("not_found", 404, "This job's output is no longer stored.")
-    if data.get("schema", "").startswith("truebex-pack/"):
+    from ..analysis import results as analysis_results  # PF11: §6.3 results with file URLs
+
+    if analysis_results.handles_output(data):
+        analysis_results.sign(job, data, OUTPUT_URL_TTL)
+    elif data.get("schema", "").startswith("truebex-pack/"):
         store = get_store()
         source = job.output_key.rsplit("/", 1)[0]  # jobs/{the job that made it}
         for f in data.get("files", []):
