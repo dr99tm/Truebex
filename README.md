@@ -897,3 +897,59 @@ Known gaps: the app's headless render (CL3) and its Cloud panorama command
 (CL4) are not shipped, so cloud panoramas stay on the roadmap in the public
 copy; `live_job_id` and `/s/{slug}/live` are a share-bundle MINOR proposal until
 the owner writes them into the contract.
+
+---
+
+## Public API, SDKs, webhooks and the MCP package
+
+The developer API (PF12) is everything an API key reaches, described by one
+OpenAPI document, `openapi/v1.json`, from which the SDKs and the reference
+tables on `/developers/` are generated. The code is `server/app/routers/v1/`,
+`server/app/scopes.py` and `server/app/webhooks/`.
+
+- **Keys and scopes.** A key is made with scopes (`projects:read`,
+  `projects:write`, `jobs:write`, `shares:write`, `market:read`,
+  `supplier:feed`, `webhooks:manage`); keys made before scopes read as every
+  read scope. Every key call is metered as before and held to a per-key burst
+  limit (`API_KEY_BURST` 60 at once, refilled at `API_KEY_PER_MINUTE` 600):
+  past it, 429 `rate_limited` with `retry_after_s`.
+- **The mirror.** `/v1/projects…` (project-log 5.1–5.18), `/v1/jobs…`
+  (render-jobs 5.1–5.6) and `/v1/uploads…`, `/v1/shares…` (share-bundle
+  5.1–5.9) hand each call to the contract router's own handler with the key as
+  an `api_key` caller, so shapes and errors are the contract's. A key's pushes
+  are `author_kind: "agent"` with the key's author id (`GET /v1/account`);
+  deleting a project stays the website's (403 `session_required`). Marketplace
+  reads take an optional key (`market:read`: metered, no anonymous limit);
+  supplier feeds need `supplier:feed` (keys made before scopes keep PF8's
+  access).
+- **Webhooks.** Endpoints per account (`/v1/webhooks` with `webhooks:manage`,
+  or Dashboard → Webhooks), https to public addresses only (checked again at
+  each delivery). Events are signed per the Standard Webhooks specification
+  (`webhook-id`, `webhook-timestamp`, `webhook-signature: v1,…`), retried
+  immediately, 5 s, 5 min, 30 min, 2 h, 5 h, 10 h, 14 h, 20 h and 24 h, logged
+  per attempt, re-sendable, and an endpoint failing for five days is switched
+  off with an e-mail. Events come from PF4's push hook (`project.ops_appended`,
+  one per 30 s per project) and a session observer that sees jobs end, shares go
+  live, versions, invitations, order changes and feed runs, without those
+  features calling in. Secrets are sealed with `WEBHOOK_SECRET_KEY`.
+  `server\scripts\webhook_echo.py --port 9900 --secret whsec_…` is a local
+  receiver that checks signatures (with `WEBHOOKS_ALLOW_HTTP_LOCAL=true`).
+- **The document and the SDKs.** `server\scripts\export_openapi.py --v1`
+  writes `openapi/v1.json` (a test fails when it drifts);
+  `scripts\gen-sdks.ps1` regenerates it, the Python SDK `truebex`
+  (`sdks/python/`, standard library only; types by datamodel-code-generator)
+  and the JavaScript SDK `@truebex/sdk` (`sdks/js/`; types by
+  openapi-typescript), each with a webhook verifier. Publishing to PyPI and
+  npm is the owner's; flip `DEVELOPER_DOCS.sdksPublished` in
+  `src/lib/constants.ts` afterwards.
+- **The MCP package.** `packages/mcp/` is `@truebex/mcp` (bin `truebex-mcp`):
+  the stdio bridge of contract agent-interface §6.6 that relays tool calls to
+  the running app over a per-user named pipe, with `tools.json` (also copied to
+  `src/content/tools.json` for `/developers/mcp/`). Until the app ships its own
+  `Tools/mcp/`, the package holds a stand-in written to the contract;
+  `scripts\sync-mcp.ps1` copies the app's files over it at an app release.
+  Install notes are in `packages/mcp/README.md`.
+
+Try it locally: `server\run.bat` with `WEBHOOKS_ALLOW_HTTP_LOCAL=true` in
+`server\.env`, then from `sdks\python`:
+`py -3.12 -c "import truebex; print(truebex.Client(api_key='tbx_live_…', base_url='http://127.0.0.1:8000').account.get())"`.
