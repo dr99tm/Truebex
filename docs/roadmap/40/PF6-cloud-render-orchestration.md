@@ -329,4 +329,10 @@ The first ten names are the contract's §10 platform tests.
     `scripts/build-viewer.mjs` now inlines `NEXT_PUBLIC_*` as `next build` does (`@next/env`), and a build check keeps
     `process.` out of the bundle. Master's head (3b12c52) set `prices_final` false while PF2a's tests required true:
     the tests now follow the owner's switch (amounts still pinned; the `out/` checks skip while it is off).
+  * PF14's SQLite → Postgres cutover (`scripts/sqlite_to_postgres.py`) now imports this feature's models, so it
+    copies `render_jobs`, `render_sets`, `workers`, `overage_charges`, `render_overage_caps` and `meter_daily`
+    (`test_ops.py` lists them).
+  * PF3: quotas and overage read `seats.seat_source`, so a member on an organisation's seat gets that tier's
+    allowance and its overage is charged to the organisation's subscription; pooling per organisation
+    (`account_kind` "org") stays PF3's carry-over.
   * Left as found: master's `main.py` registers `uploads.router` twice (T28/T29 merges); harmless, same handler.

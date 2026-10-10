@@ -82,6 +82,7 @@ def _models() -> list[Table]:
     from app.supplier import models as _supplier  # noqa: F401  (PF8)
     from app import idempotency as _idempotency  # noqa: F401  (PF4)
     from app.projects import models as _projects  # noqa: F401  (PF4)
+    from app.render import models as _render  # noqa: F401  (PF6, and metering's meter_daily)
 
     return list(Base.metadata.sorted_tables)  # parents before children
 
