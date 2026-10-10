@@ -226,8 +226,9 @@ export default function CloudPage() {
     void refresh();
   }, [refresh]);
 
-  // While a job is queued or rendering, refresh the list every 10 s.
-  const anyLive = jobs.some((j) => LIVE.has(j.state));
+  // While a job is queued or rendering, or a set follows edits (each edit
+  // queues an update), refresh the list every 10 s.
+  const anyLive = jobs.some((j) => LIVE.has(j.state) || (j.state === "succeeded" && j.follow));
   useEffect(() => {
     if (!anyLive) return;
     const t = setInterval(() => void refresh(), REFRESH_MS);

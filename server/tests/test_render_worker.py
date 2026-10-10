@@ -3,6 +3,7 @@ the fake app (worker/tests/fake_truebex.py) as a real subprocess (PF6)."""
 
 import importlib.util
 import json
+import shutil
 import sys
 import threading
 import time
@@ -13,9 +14,8 @@ import pytest
 from app.database import SessionLocal
 from app.render.models import RenderJob
 
-from .project_helpers import hex32
+from .project_helpers import Person, hex32
 from .render_helpers import WALL, admin, issue_worker, job, project, push_touch, rj, submitted
-from .project_helpers import Person
 
 ROOT = Path(__file__).resolve().parents[2]
 FAKE = ROOT / "worker" / "tests" / "fake_truebex.py"
@@ -135,3 +135,21 @@ def test_worker_wrapper_revoked_and_config(client, rig, tmp_path):
     assert res.returncode == 2
     assert json.loads((tmp_path / "o" / "error.json").read_text("utf-8"))["code"] == "bad_input"
     assert hex32()
+
+
+@pytest.mark.skipif(shutil.which("powershell") is None, reason="Windows PowerShell not available")
+def test_worker_image_scripts_parse():
+    """infra/worker/*.ps1 install drivers and services, so they are not run
+    here: they must at least parse (and keep the one-job-at-a-time wrapper)."""
+    import subprocess
+
+    for name in ("bootstrap.ps1", "build-image.ps1"):
+        path = ROOT / "infra" / "worker" / name
+        cmd = (
+            "$e=$null; [System.Management.Automation.Language.Parser]::ParseFile("
+            f"'{path}', [ref]$null, [ref]$e) | Out-Null; $e.Count"
+        )
+        res = subprocess.run(["powershell", "-NoProfile", "-Command", cmd], capture_output=True, text=True, timeout=60)
+        assert res.stdout.strip() == "0", (name, res.stdout, res.stderr)
+    text = (ROOT / "infra" / "worker" / "bootstrap.ps1").read_text("utf-8")
+    assert "truebex_worker.py" in text and "Block" in text and "-ImageOnly" in (ROOT / "infra" / "worker" / "build-image.ps1").read_text("utf-8")

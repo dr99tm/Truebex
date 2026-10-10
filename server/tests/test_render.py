@@ -770,6 +770,8 @@ def test_admin_render_overview_and_auth(client, setup):
     finish(client, token, claimed(client, token))
     body = client.get("/admin/render", headers=adm).json()
     assert body["cost_by_kind"] == {"panorama": 1.5} and body["workers"][0]["last_heartbeat_at"]
+    pool = body["pool"]["classes"][0]
+    assert pool["class"] == "gpu-std" and pool["machines"] == 1 and pool["running"] == 0 and pool["queued"] == 0
     assert client.get("/admin/workers", headers=adm).json()["workers"][0]["kinds"] == ["pack", "panorama", "tiles"]
     assert client.get("/admin/render", headers=a.session).status_code == 403
     assert client.get("/admin/render").status_code == 401

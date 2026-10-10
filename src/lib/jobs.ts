@@ -132,7 +132,11 @@ export interface RenderOverview {
   now: string;
   queue: { kind: JobKind; queued: number; running: number; oldest_wait_s: number | null }[];
   workers: WorkerRow[];
-  pool: { name: string; classes: { class: string; desired: number | null; running: number; queued: number }[] };
+  pool: {
+    name: string;
+    /** `machines`: running machines of the class; `running`: jobs in progress. */
+    classes: { class: string; desired: number | null; machines: number; running: number; queued: number }[];
+  };
   cost_by_kind: Record<string, number>;
   period_start: string;
   recent_failures: { job_id: string; kind: JobKind; error: { code: string; message: string } | null; finished_at: string | null }[];

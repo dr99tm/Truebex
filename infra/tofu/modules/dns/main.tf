@@ -134,6 +134,28 @@ resource "cloudflare_record" "cdn" {
   proxied = true
 }
 
+# PF6: the bucket answers only to its own host name, so requests to the CDN
+# hostname reach it with that Host header (cdn_target is the bucket's
+# virtual-hosted endpoint, e.g. truebex-data.fsn1.your-objectstorage.com).
+resource "cloudflare_ruleset" "cdn_origin" {
+  count       = var.cdn_target != "" ? 1 : 0
+  zone_id     = var.zone_id
+  name        = "Truebex CDN origin"
+  description = "The CDN hostname reaches the data bucket under the bucket's own host name (PF6)."
+  kind        = "zone"
+  phase       = "http_request_origin"
+
+  rules {
+    action = "route"
+    action_parameters {
+      host_header = var.cdn_target
+    }
+    expression  = "(http.host eq \"${var.cdn_hostname}.${var.zone_name}\")"
+    description = "cdn -> data bucket"
+    enabled     = true
+  }
+}
+
 # --- mail (the smtp adapter's provider) ---------------------------------------------------
 
 resource "cloudflare_record" "spf" {

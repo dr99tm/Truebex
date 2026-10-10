@@ -22,7 +22,11 @@ backup_bucket         = "truebex-db-backups"
 backup_retention_days = 30
 
 # share_target = ""      # PF5
-# cdn_target   = ""      # PF6: the data bucket's public endpoint
+# PF6: the CDN hostname (cdn.<zone>) in front of the data bucket's public
+# tiles/. cdn_target is the bucket's virtual-hosted endpoint, <bucket>.<host
+# of data_s3_endpoint>; then set CDN_BASE_URL=https://cdn.truebex.com on the
+# API (infra/README.md, "Tiles and the CDN").
+# cdn_target   = "truebex-data.fsn1.your-objectstorage.com"
 
 manage_mail_records = false # import the existing SPF / DMARC records first
 alert_email         = "hello@truebex.com"

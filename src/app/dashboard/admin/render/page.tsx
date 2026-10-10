@@ -238,9 +238,9 @@ export default function RenderAdminPage() {
           <div className="mb-6 grid gap-6 lg:grid-cols-2">
             <Panel>
               <h2 className="font-semibold">{ADMIN_RENDER.queue.title}</h2>
-              {data.queue.every((q) => q.queued === 0 && q.running === 0) ? (
+              {data.queue.every((q) => q.queued === 0 && q.running === 0) && (
                 <p className="mt-4 text-sm text-text-muted">{ADMIN_RENDER.queue.empty}</p>
-              ) : null}
+              )}
               <table className="mt-4 w-full text-sm">
                 <thead className="text-left text-xs text-text-muted">
                   <tr>
@@ -279,7 +279,7 @@ export default function RenderAdminPage() {
                         {c.class} <span className="text-xs text-text-muted">({data.pool.name})</span>
                       </td>
                       <td className="py-2 pr-4 text-right tabular-nums text-text-primary">{c.desired ?? "—"}</td>
-                      <td className="py-2 text-right tabular-nums text-text-primary">{c.running}</td>
+                      <td className="py-2 text-right tabular-nums text-text-primary">{c.machines}</td>
                     </tr>
                   ))}
                 </tbody>

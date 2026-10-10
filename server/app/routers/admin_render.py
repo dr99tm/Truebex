@@ -75,10 +75,10 @@ def overview(_admin: User = Depends(require_admin), db: Session = Depends(get_db
             "name": pool.name,
             "classes": [
                 {
+                    **pools.queue_stats(db, c, now),  # queued, running (jobs), oldest_wait_s
                     "class": c,
                     "desired": pools.DESIRED.get(c),
-                    "running": sum(1 for m in pool.list(db, c) if m.state == "running"),
-                    **pools.queue_stats(db, c, now),
+                    "machines": sum(1 for m in pool.list(db, c) if m.state == "running"),
                 }
                 for c in classes
             ],

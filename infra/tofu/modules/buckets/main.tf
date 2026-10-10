@@ -82,6 +82,46 @@ resource "aws_s3_bucket_lifecycle_configuration" "backup" {
   }
 }
 
+# --- PF6: public tiles behind the CDN ------------------------------------------------------
+# Tiles (tiles/<sha256>.jpg) are public by hash: the CDN hostname (dns module,
+# cdn_target) serves them from this bucket, and viewers on any origin fetch them
+# (WebGL refuses cross-origin textures without CORS). Every other prefix stays
+# private and is reached through presigned URLs only.
+
+variable "public_prefixes" {
+  description = "Prefixes of the data bucket anyone may read (through the CDN)."
+  type        = list(string)
+  default     = ["tiles/"]
+}
+
+resource "aws_s3_bucket_cors_configuration" "data" {
+  provider = aws.data
+  bucket   = aws_s3_bucket.data.id
+
+  cors_rule {
+    allowed_methods = ["GET", "HEAD"]
+    allowed_origins = ["*"]
+    allowed_headers = ["*"]
+    max_age_seconds = 86400
+  }
+}
+
+resource "aws_s3_bucket_policy" "public_read" {
+  count    = length(var.public_prefixes) > 0 ? 1 : 0
+  provider = aws.data
+  bucket   = aws_s3_bucket.data.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid       = "PublicReadByHash"
+      Effect    = "Allow"
+      Principal = "*"
+      Action    = ["s3:GetObject"]
+      Resource  = [for p in var.public_prefixes : "arn:aws:s3:::${var.data_bucket}/${p}*"]
+    }]
+  })
+}
+
 output "data_bucket" {
   value = aws_s3_bucket.data.bucket
 }

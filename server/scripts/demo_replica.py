@@ -15,7 +15,8 @@ holds `cloud.sync`; it prints the device token. `push` creates the project,
 uploads the fixture snapshot (share-bundle §5, purpose snapshot), pushes the
 12 operations of ops-remote.json as this account (their `author` becomes the
 account's author_id) and registers a snapshot at the new head. `move` pushes
-one "Move wall" operation made at --base, touching the fixture's first wall,
+one "Move wall" operation made at --base (default the head), touching the
+fixture's first wall (or --entity),
 from a fresh replica: two people doing it at the same base show the conflict
 rule. API: --api (default http://127.0.0.1:8000).
 """
@@ -166,6 +167,8 @@ def cmd_move(api: Api, args) -> None:
     remote = json.loads((Path(args.fixture) / "ops-remote.json").read_text(encoding="utf-8"))
     entity = (args.entity or remote["ops"][0]["touched"][0]).lower()
     author = api.call("GET", "/licence/account", headers=LICENCE)["author_id"]
+    if args.base is None:  # made at the head: accepted unless someone pushes first
+        args.base = api.call("GET", f"/projects/{args.project}", headers=LOG)["head_seq"]
     replica = secrets.token_hex(16)
     op = {
         "op_id": secrets.token_hex(16),
@@ -229,7 +232,7 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--wait", type=int, default=0, help="long-poll seconds (0-25)")
     p = sub.add_parser("move", help="push one Move wall operation made at --base")
     p.add_argument("--project", required=True)
-    p.add_argument("--base", type=int, required=True)
+    p.add_argument("--base", type=int, help="the sequence it was made at (default: the head)")
     p.add_argument("--entity", help="32-hex entity id (default: the fixture's first wall)")
     p.add_argument("--fixture", default=str(DEFAULT_FIXTURE))
     p = sub.add_parser("presence", help="stay present (heartbeats every 10 s), then leave")

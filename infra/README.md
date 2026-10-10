@@ -151,3 +151,36 @@ Every feature codes against these; the production adapters are PF14's.
 | `ratelimit.py` (`memory`, `db`) | `RATELIMIT_BACKEND` |
 | `contract_http.py` | — |
 | `health.py` (`/health/deep`), `ops.py` (heartbeat, backup check, alerts) | `ALERT_EMAIL`, `ALERT_PUSH_URL`, `BACKUP_EXPECTED` |
+
+## Tiles and the CDN (PF6)
+
+Cloud renders write their tiles content-addressed to the data bucket at `tiles/<sha256>.jpg` (immutable,
+`Cache-Control: public, max-age=31536000, immutable`); job manifests and everything else stay private.
+Viewers fetch tiles from `TILES_BASE_URL`, which defaults to `CDN_BASE_URL/tiles` on the `s3` backend.
+
+1. `modules/buckets` gives the data bucket a CORS rule (GET and HEAD from any origin: WebGL refuses
+   cross-origin textures without it) and a policy that lets anyone read `tiles/*` only
+   (`public_prefixes`). A hash is unguessable and appears only in manifests served to the job's account
+   or a live share.
+2. In `terraform.tfvars` set `cdn_target` to the bucket's virtual-hosted endpoint,
+   `<data_bucket>.<host of data_s3_endpoint>` (e.g. `truebex-data.fsn1.your-objectstorage.com`).
+   `modules/dns` then adds the proxied CNAME `cdn.<zone>` and an origin rule that sends the bucket's own
+   host name, so the bucket answers. `tofu apply`.
+3. Check: `curl -I https://cdn.truebex.com/tiles/<a tile's sha256>.jpg` → 200, `image/jpeg`, the
+   immutable `Cache-Control`, `cf-cache-status: HIT` on the second request.
+4. Set `CDN_BASE_URL=https://cdn.truebex.com` in `secrets/server.env` (leave `TILES_BASE_URL` empty)
+   and deploy. Until the CDN exists, tiles are served by the API's own `/tiles/` route.
+
+`releases/` and `shares/` are also served from `CDN_BASE_URL` by the storage adapter; PF1 and PF5 add
+their prefixes to `public_prefixes` when they move there.
+
+## Render queue and workers (PF6)
+
+* `bin/queue-depth` (installed by `deploy.ps1` beside the `.sh` scripts) prints the number of queued
+  render jobs (`python -m app.render.depth` in the worker container). `host-check.sh` alerts when it
+  passes `QUEUE_DEPTH_MAX` (default 50, in `secrets/host.env`).
+* The worker process runs the render jobs: `render.leases.reap` (15 s), `render.jobs.expire` (5 min),
+  `render.autoscale` (30 s), `render.tiles.gc` (weekly), `render.overage.charge` (6 h).
+* GPU workers are separate Windows machines (`../worker/`, `worker/bootstrap.ps1`): until GD3 names a
+  cloud provider they form the `static` pool, registered by hand with a token from Admin → Render. They
+  need outbound HTTPS to the API, the data bucket and the CDN only.
