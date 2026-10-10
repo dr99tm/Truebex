@@ -287,6 +287,8 @@ def test_worker_process_registers_every_feature_job(tmp_path):
         "licence.devices.lapse",
         "billing.founding.expire",
         "billing.reconcile",
+        "billing.subscription_notices",
+        "billing.exits.retry",
         "licence.leases.expire",
         "orgs.invites.expire",
         "audit.purge",
@@ -515,7 +517,7 @@ def test_sqlite_to_postgres_lists_every_feature_table(tmp_path):
         "suppliers", "market_categories", "market_regions", "products", "product_variants", "variant_prices",
         "market_orders", "market_order_suppliers", "market_order_lines", "commissions", "product_reviews", "feed_runs",
         "supplier_applications", "feed_sources", "supplier_imports", "market_events_daily", "supplier_member_invites",
-        "listing_subscriptions",
+        "listing_subscriptions", "subscription_notices", "subscription_exits",
     ):
         assert table in tables, table
     assert tables.index("users") < tables.index("devices")  # parents first

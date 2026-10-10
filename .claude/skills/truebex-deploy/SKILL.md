@@ -109,8 +109,9 @@ and never offered on the site. A provider is on only when its API key and its we
   `transaction.*`. Its secret key
   (`pdl_ntfset_…`) is that environment's `PADDLE_WEBHOOK_SECRET`.
 - **Stripe webhook:** `https://api.truebex.com/billing/webhooks/stripe` with `checkout.session.completed`,
-  `checkout.session.expired` and `customer.subscription.created/updated/deleted/paused/resumed`; its signing secret
-  is `STRIPE_WEBHOOK_SECRET`.
+  `checkout.session.expired`, `customer.subscription.created/updated/deleted/paused/resumed` and `invoice.paid`
+  (PF2b: a renewal charge opens the renewal cooling-off); its signing secret is `STRIPE_WEBHOOK_SECRET`. Paddle
+  needs no new event (`transaction.*` carries renewals).
 - **Marketplace Stripe webhook (PF7):** `https://api.truebex.com/market/webhooks/stripe` with
   `checkout.session.completed`, `checkout.session.async_payment_succeeded` and (Connect) `account.updated`; its
   signing secret(s) are `STRIPE_CONNECT_WEBHOOK_SECRET` (empty = the endpoint answers 404). Orders stay quote-only
@@ -178,6 +179,7 @@ reads the switches at runtime through `/config` and `/billing/plans`, with no si
 | Share pages (PF5) | `SHARE_BASE_URL` (the links' origin), `SHARE_MAX_DAYS` (30), `SHARE_MAX_BYTES` (1 GiB per bundle) | no `SHARE_BASE_URL` = links are `{API_URL}/view/{slug}`; the bundles live in the data bucket with the installers |
 | Marketplace (PF7) | `MARKET_PAYMENTS_ENABLED` (`false` until GD5 signs off the marketplace terms), `STRIPE_CONNECT_WEBHOOK_SECRET` (the `/market/webhooks/stripe` endpoint's; uses `STRIPE_SECRET_KEY`), `MARKET_READS_PER_MINUTE` (120), `EMBEDDING_MODEL`, `EMBEDDING_DIR` | payments off = every supplier takes requests for quote only; no webhook secret = 404; no `EMBEDDING_MODEL` = picture search off (the weights from `scripts/fetch_models.py` are not in the image) |
 | Supplier portal (PF8) | `FEED_PULL_HOUR_UTC` (2: the daily read of registered feed URLs), `MARKET_MEDIA_FIXTURES` (local trials only) | `MARKET_MEDIA_FIXTURES` stays empty on the VM |
+| Consumer rules (PF2b), all off until the solicitor approves GD5 §7 | `SUBSCRIPTION_NOTICES_ENABLED`, `SUBSCRIPTION_RULES_FROM` (2027-01-01), `RENEWAL_REMINDER_DAYS_YEAR` / `_MONTH`, `TRIAL_END_NOTICE_DAYS`, `EU_WITHDRAWAL_ENABLED`, `LEGAL_WORDING_APPROVED` (with a site build made with `NEXT_PUBLIC_LEGAL_WORDING_APPROVED=true` at the same time, or checkout says "being set up"), `CONSENT_VARIANT`, `COMPANY_ADDRESS`, `EULA_URL` | each switch `false`: no reminder, no renewal refund, no withdrawal button, the placeholder consent; when to flip each one is the switch table in `docs/roadmap/40/PF2b-subscription-consumer-rules.md` (As-built) |
 
 `infra/host/compose.yaml` sets `BACKGROUND_TASKS=worker`, `RATELIMIT_BACKEND=db` and (worker) `BACKUP_EXPECTED=true`;
 they are not in the file.

@@ -290,6 +290,15 @@ export const DOWNLOAD = {
 // a placeholder until the legal guide (GD5); the owner signs it off before
 // production.
 
+// PF2b: the wording of guides/GD5 §7.4 is a DRAFT for the solicitor, "not to
+// be shown to customers until approved". It is compiled into the site only
+// when the build runs with NEXT_PUBLIC_LEGAL_WORDING_APPROVED=true (set it with
+// LEGAL_WORDING_APPROVED=true in server/.env). next.config.ts always defines
+// the variable, so otherwise the minifier drops BILLING.rules' texts and none
+// of them reaches out/ (build check in server/tests/test_site_pf2.py).
+export const LEGAL_WORDING_APPROVED =
+  process.env.NEXT_PUBLIC_LEGAL_WORDING_APPROVED === "true";
+
 export const BILLING = {
   title: "Billing",
   description: "Your plan, seats, invoices and payment history.",
@@ -387,6 +396,64 @@ export const BILLING = {
     unconfirmed: "We couldn't confirm the payment yet. It appears here once the provider confirms it.",
     canceled: "Checkout was cancelled — you haven't been charged.",
   },
+  // PF2b, GD5 §7.4 DRAFTS (see LEGAL_WORDING_APPROVED above): the same texts
+  // and versions as server/app/billing/notices.py
+  // (test_pf2b_wording_matches_site). `{name}` is filled in on the page.
+  rules: LEGAL_WORDING_APPROVED
+    ? {
+        draftVersion: "gd5-2026-10-09",
+        keyInfoHeading: "Key information",
+        keyInfo:
+          "Truebex {plan} — {price} incl. VAT a {interval} ({currency}). Renews automatically every {interval} until you cancel. Cancel any time in Billing; your plan stays active until the end of the period you paid for. Sold by {seller}.",
+        keyInfoAck: "I've read the key information above.",
+        consentDigital:
+          "Start my plan now. I ask Truebex to give me access straight away, before the 14-day cancellation period ends. I understand that once access starts I lose my right to cancel.",
+        consentDigitalVersion: "gd5-2026-10-09-digital",
+        consentService:
+          "Start my plan now. I ask Truebex to give me access straight away, before the 14-day cancellation period ends. I understand that if I cancel within 14 days I pay for the days I used.",
+        consentServiceVersion: "gd5-2026-10-09-service",
+        business:
+          "I'm buying for a business. (Consumer cancellation rights don't apply to business purchases.)",
+        trialEnd:
+          "Your {days}-day {plan} trial ends on {date}. You won't be charged — Truebex returns to Free unless you choose a plan.",
+        withdrawButton: "Withdraw from contract",
+        withdrawConfirm: "Confirm withdrawal",
+        withdrawHint: "Open until {date}. Your plan ends straight away and we refund you.",
+        withdrawDone:
+          "Withdrawal received. We've e-mailed you an acknowledgement with the date and time.",
+        sellerPaddle: "Paddle.com, our reseller and Merchant of Record",
+        sellerStripe: "Truebex Ltd",
+        reasons: "Tick both boxes above to continue.",
+        mismatch: "The payment terms are being updated. Reload the page in a moment.",
+      }
+    : null,
+  // PF2b: ending a plan inside Billing (the easy exit, and the renewal
+  // cooling-off refund when the API offers it).
+  exit: {
+    cancel: "Cancel subscription",
+    cancelConfirm: "Your plan stays active until {date} and won't renew. You won't be charged again.",
+    cancelGo: "Confirm cancellation",
+    keep: "Keep my plan",
+    refund: "Cancel and get a refund",
+    refundConfirm:
+      "Your plan ends now and we refund the rest of the year you paid for. Open until {date}.",
+    refundGo: "Cancel now and refund",
+    working: "Sending…",
+    sent: "Cancellation sent and confirmed by e-mail. This card updates once the payment provider confirms it.",
+    processing:
+      "Your request is recorded and confirmed by e-mail. The payment provider hasn't answered yet; we keep trying.",
+  },
+  // PF2b notices the API mails (server/app/billing/notices.py, same texts and
+  // version); they go out only behind the API's switches.
+  mails: {
+    noticeVersion: "pf2b-2026-10-09",
+    renewalReminder:
+      "Your Truebex {plan} plan renews automatically on {date} for {price} ({currency}). If you don't want it to renew, cancel before then in Billing: {billing_url}. Your plan stays active until {date}.",
+    renewalCoolingOff:
+      "After an annual renewal you can still cancel within 14 days and get a refund for the rest of the year: choose Cancel and get a refund in Billing.",
+    withdrawAck:
+      "We received your withdrawal from your Truebex {plan} contract on {date} at {time} UTC.",
+  },
   // Who processes the card, by the provider /billing/plans offers.
   providerNote: {
     paddle:
@@ -403,6 +470,9 @@ export const CHECKOUT = {
   unavailable: "Checkout isn't available right now. Try again from the billing page.",
   back: "Back to billing",
   done: "Payment received. Taking you back to billing…",
+  // PF2b: the key information stored with the checkout, shown beside the
+  // pay button (present only once the GD5 wording is approved).
+  summary: "What you're buying",
 } as const;
 
 // Terms of service, "Paid plans" (src/app/terms/page.tsx).

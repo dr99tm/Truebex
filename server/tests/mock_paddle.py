@@ -9,10 +9,18 @@ MOCK_PADDLE_WEBHOOK_SECRET to match yours). Run scripts/sync_prices.py after
 the mock starts (its state lives in memory).
 
 Unlike real Paddle, a transaction's checkout URL opens the mock's own pay
-page (no Paddle.js): "Pay with a test card" completes the transaction, starts
-the subscription, sends signed webhooks to MOCK_PADDLE_WEBHOOK_URL and
-redirects back to the billing page. The customer portal can cancel at the
-end of the period; seat and plan changes add a prorated invoice.
+page (no Paddle.js): "Pay with a test card" (with the buyer's country and an
+optional business purchase) completes the transaction, starts the
+subscription, sends signed webhooks to MOCK_PADDLE_WEBHOOK_URL and redirects
+back to the billing page. The customer portal can cancel at the end of the
+period; seat and plan changes add a prorated invoice.
+
+PF2b: `POST /subscriptions/{id}/cancel` (at the period end or immediately),
+`POST /adjustments` (refunds, full or partial), `renew(sub_id)` (a renewal
+charge and the next period, as Paddle bills it; also `POST /mock/renew/{id}`
+for clicking through) and the buyer's address
+(`GET /customers/{id}/addresses/{id}`). Every event the mock makes is kept in
+STATE["sent"], so tests can deliver what an API call caused.
 """
 
 import calendar
@@ -25,6 +33,7 @@ import secrets
 import time
 from datetime import datetime, timedelta, timezone
 from typing import Any
+from urllib.parse import parse_qs
 
 import httpx
 from fastapi import FastAPI, Request
@@ -59,6 +68,11 @@ def reset() -> None:
         subscriptions={},
         charges=[],
         requests=[],
+        addresses={},
+        cancels=[],
+        adjustments=[],
+        # Every webhook event made, newest last (sent or not).
+        sent=[],
         invoice_seq=0,
         discounts={
             "dsc_launch10": {
@@ -144,6 +158,7 @@ def event(kind: str, data: dict, occurred_at: datetime | None = None) -> dict:
 
 
 def _send(events: list[dict]) -> None:
+    STATE["sent"].extend(events)
     if not WEBHOOK["send"] or not WEBHOOK["url"]:
         return
     for ev in events:
@@ -181,6 +196,21 @@ def _totals(items: list[dict], currency: str, discount: dict | None) -> dict:
         "earnings": None,
         "currency_code": currency,
     }
+
+
+def _line_items(items: list[dict], currency: str) -> list[dict]:
+    out = []
+    for item in items:
+        totals = _totals([item], currency, None)
+        out.append(
+            {
+                "id": _id("txnitm"),
+                "price_id": item["price"].get("id"),
+                "quantity": item["quantity"],
+                "totals": {"subtotal": totals["subtotal"], "tax": totals["tax"], "total": totals["total"]},
+            }
+        )
+    return out
 
 
 def _next_invoice_number() -> str:
@@ -370,8 +400,10 @@ async def create_transaction(request: Request):
         "custom_data": body.get("custom_data"),
         "discount_id": body.get("discount_id"),
         "items": items,
-        "details": {"totals": _totals(items, currency, discount)},
+        "details": {"totals": _totals(items, currency, discount), "line_items": _line_items(items, currency)},
         "checkout": {"url": url, "return": back},
+        "address_id": None,
+        "business_id": None,
         "subscription_id": None,
         "invoice_id": None,
         "invoice_number": None,
@@ -385,25 +417,45 @@ async def create_transaction(request: Request):
 
 
 @app.get("/transactions")
-def list_transactions(request: Request, customer_id: str = "", status: str = ""):
+def list_transactions(
+    request: Request, customer_id: str = "", status: str = "", subscription_id: str = "", origin: str = ""
+):
     if (denied := _auth(request)) is not None:
         return denied
     wanted = {s for s in status.split(",") if s}
+    origins = {o for o in origin.split(",") if o}
     rows = [
         t
         for t in STATE["transactions"].values()
-        if (not customer_id or t["customer_id"] == customer_id) and (not wanted or t["status"] in wanted)
+        if (not customer_id or t["customer_id"] == customer_id)
+        and (not wanted or t["status"] in wanted)
+        and (not subscription_id or t.get("subscription_id") == subscription_id)
+        and (not origins or t.get("origin") in origins)
     ]
     rows.sort(key=lambda t: t.get("billed_at") or t["created_at"], reverse=True)
     return _list(rows)
 
 
 @app.get("/transactions/{txn_id}")
-def get_transaction(txn_id: str, request: Request):
+def get_transaction(txn_id: str, request: Request, include: str = ""):
     if (denied := _auth(request)) is not None:
         return denied
     txn = STATE["transactions"].get(txn_id)
-    return _ok(txn) if txn else _error(404, "entity_not_found", "transaction not found")
+    if txn is None:
+        return _error(404, "entity_not_found", "transaction not found")
+    if "address" in include.split(",") and txn.get("address_id"):
+        return _ok({**txn, "address": STATE["addresses"].get(txn["address_id"])})
+    return _ok(txn)
+
+
+@app.get("/customers/{customer_id}/addresses/{address_id}")
+def get_address(customer_id: str, address_id: str, request: Request):
+    if (denied := _auth(request)) is not None:
+        return denied
+    address = STATE["addresses"].get(address_id)
+    if address is None or address["customer_id"] != customer_id:
+        return _error(404, "entity_not_found", "address not found")
+    return _ok(address)
 
 
 @app.patch("/transactions/{txn_id}")
@@ -465,10 +517,22 @@ def _subscription_from(txn: dict) -> dict:
     return sub
 
 
-def pay(txn_id: str) -> list[dict]:
-    """Complete a transaction as a buyer would. Returns the webhook events
+def pay(txn_id: str, country: str = "GB", business: bool = False) -> list[dict]:
+    """Complete a transaction as a buyer in `country` would (a business
+    purchase adds a business with a tax id). Returns the webhook events
     (sent too when WEBHOOK["send"])."""
     txn = STATE["transactions"][txn_id]
+    address = {
+        "id": _id("add"),
+        "customer_id": txn["customer_id"],
+        "country_code": country.upper(),
+        "postal_code": None,
+        "status": "active",
+    }
+    STATE["addresses"][address["id"]] = address
+    txn["address_id"] = address["id"]
+    if business:
+        txn["business_id"] = _id("biz")
     _bill(txn)
     sub = _subscription_from(txn)
     STATE["subscriptions"][sub["id"]] = sub
@@ -487,6 +551,48 @@ def cancel_at_period_end(sub_id: str) -> list[dict]:
     }
     sub["updated_at"] = _ts(_now())
     events = [event("subscription.updated", sub)]
+    _send(events)
+    return events
+
+
+def renew(sub_id: str) -> list[dict]:
+    """Bill the next period now, as Paddle does at a renewal: a completed
+    `subscription_recurring` transaction and the subscription moved one
+    period on. Returns the events (sent too when WEBHOOK["send"])."""
+    sub = STATE["subscriptions"][sub_id]
+    cycle = sub.get("billing_cycle") or {"interval": "month", "frequency": 1}
+    period = sub["current_billing_period"]
+    start = datetime.fromisoformat(period["ends_at"].replace("Z", "+00:00"))
+    end = _add_interval(start, cycle["interval"], cycle.get("frequency", 1))
+    items = [dict(i) for i in sub["items"]]
+    txn = {
+        "id": _id("txn"),
+        "status": "ready",
+        "customer_id": sub["customer_id"],
+        "currency_code": sub["currency_code"],
+        "collection_mode": "automatic",
+        "custom_data": sub.get("custom_data"),
+        "discount_id": None,
+        "items": items,
+        "details": {
+            "totals": _totals(items, sub["currency_code"], None),
+            "line_items": _line_items(items, sub["currency_code"]),
+        },
+        "checkout": None,
+        "subscription_id": sub_id,
+        "billing_period": {"starts_at": _ts(start), "ends_at": _ts(end)},
+        "origin": "subscription_recurring",
+        "address_id": None,
+        "business_id": None,
+        "created_at": _ts(_now()),
+        "updated_at": _ts(_now()),
+    }
+    _bill(txn)
+    STATE["transactions"][txn["id"]] = txn
+    sub["current_billing_period"] = {"starts_at": _ts(start), "ends_at": _ts(end)}
+    sub["next_billed_at"] = _ts(end)
+    sub["updated_at"] = _ts(_now())
+    events = [event("transaction.completed", txn), event("subscription.updated", sub)]
     _send(events)
     return events
 
@@ -566,6 +672,95 @@ async def update_subscription(sub_id: str, request: Request):
     return _ok(sub)
 
 
+@app.post("/subscriptions/{sub_id}/cancel")
+async def cancel_subscription(sub_id: str, request: Request):
+    if (denied := _auth(request)) is not None:
+        return denied
+    sub = STATE["subscriptions"].get(sub_id)
+    if sub is None:
+        return _error(404, "entity_not_found", "subscription not found")
+    if sub["status"] == "canceled":
+        return _error(400, "subscription_locked_canceled", "subscription is canceled")
+    raw = await request.body()
+    body = json.loads(raw) if raw else {}
+    effective = body.get("effective_from") or "next_billing_period"
+    if effective not in ("next_billing_period", "immediately"):
+        return _error(400, "bad_request", "effective_from is invalid")
+    STATE["cancels"].append({"subscription_id": sub_id, "effective_from": effective})
+    if effective == "immediately":
+        cancel_now(sub_id)
+    else:
+        cancel_at_period_end(sub_id)
+    return _ok(sub)
+
+
+@app.post("/adjustments")
+async def create_adjustment(request: Request):
+    if (denied := _auth(request)) is not None:
+        return denied
+    body = await request.json()
+    txn = STATE["transactions"].get(body.get("transaction_id") or "")
+    if txn is None:
+        return _error(404, "entity_not_found", "transaction not found")
+    if body.get("action") != "refund" or not body.get("reason"):
+        return _error(400, "bad_request", "action refund and a reason are required")
+    if txn["status"] not in ("completed", "paid"):
+        return _error(400, "adjustment_transaction_not_completed", "transaction is not completed")
+    kind = body.get("type") or "partial"
+    grand = int(txn["details"]["totals"]["grand_total"])
+    if kind == "full":
+        total = grand
+    else:
+        lines = {li["id"]: li for li in txn["details"].get("line_items") or []}
+        total = 0
+        for item in body.get("items") or []:
+            line = lines.get(item.get("item_id"))
+            if line is None:
+                return _error(400, "adjustment_invalid_item", "unknown transaction item")
+            line_total = int(line["totals"]["total"])
+            amount = line_total if item.get("type") == "full" else int(item.get("amount") or 0)
+            if not 0 < amount <= line_total:
+                return _error(400, "adjustment_amount_above_remaining_allowed", "amount out of range")
+            total += amount
+        if total <= 0:
+            return _error(400, "bad_request", "a partial refund needs items")
+    refunded = sum(a["totals"]["total"] for a in STATE["adjustments"] if a["transaction_id"] == txn["id"])
+    if refunded + total > grand:
+        return _error(400, "adjustment_total_amount_exceeds_transaction_total", "already refunded")
+    adjustment = {
+        "id": _id("adj"),
+        "action": "refund",
+        "type": kind,
+        "transaction_id": txn["id"],
+        "subscription_id": txn.get("subscription_id"),
+        "customer_id": txn["customer_id"],
+        "reason": body["reason"],
+        "currency_code": txn["currency_code"],
+        "status": "pending_approval",
+        "items": body.get("items") or [],
+        "totals": {"total": total, "currency_code": txn["currency_code"]},
+        "created_at": _ts(_now()),
+    }
+    STATE["adjustments"].append(adjustment)
+    _send([event("adjustment.created", adjustment)])
+    return _ok({**adjustment, "totals": {"total": str(total), "currency_code": txn["currency_code"]}}, 201)
+
+
+@app.post("/mock/renew/{sub_id}")
+def renew_now(sub_id: str):
+    """Click-through helper: bill the next period now (sends the webhooks).
+    `latest` renews the newest active subscription."""
+    if sub_id == "latest":
+        active = [s for s in STATE["subscriptions"].values() if s["status"] == "active"]
+        if not active:
+            return _error(404, "entity_not_found", "no active subscription")
+        sub_id = max(active, key=lambda s: s["created_at"])["id"]
+    if sub_id not in STATE["subscriptions"]:
+        return _error(404, "entity_not_found", "subscription not found")
+    renew(sub_id)
+    return _ok(STATE["subscriptions"][sub_id])
+
+
 @app.post("/subscriptions/{sub_id}/charge")
 async def charge(sub_id: str, request: Request):
     if (denied := _auth(request)) is not None:
@@ -605,18 +800,26 @@ def pay_page(txn_id: str):
         f" &middot; discount {_money(totals['discount'], txn['currency_code'])}"
         f" &middot; VAT {VAT_PERCENT}% {_money(totals['tax'], txn['currency_code'])}</p>"
         f"<p><strong>Total {_money(totals['grand_total'], txn['currency_code'])}</strong></p>"
-        f"<form method=post action='/pay/{txn_id}'><button id=pay>Pay with a test card</button></form>"
+        f"<form method=post action='/pay/{txn_id}'>"
+        "<p><label>Country <select name=country id=country>"
+        "<option value=GB>United Kingdom</option><option value=DE>Germany</option>"
+        "<option value=FR>France</option><option value=IE>Ireland</option>"
+        "<option value=US>United States</option></select></label></p>"
+        "<p><label><input type=checkbox name=business value=1 id=business> Business purchase (tax id)</label></p>"
+        "<button id=pay>Pay with a test card</button></form>"
         f"<p><a href='{html.escape(cancel)}'>Cancel</a></p>"
     )
 
 
 @app.post("/pay/{txn_id}")
-def pay_submit(txn_id: str):
+async def pay_submit(txn_id: str, request: Request):
     txn = STATE["transactions"].get(txn_id)
     if txn is None:
         return HTMLResponse("<h1>Unknown transaction</h1>", status_code=404)
+    form = parse_qs((await request.body()).decode())
+    country = (form.get("country") or ["GB"])[0][:2] or "GB"
     if txn["status"] == "ready":
-        pay(txn_id)
+        pay(txn_id, country=country, business=bool(form.get("business")))
     ref = (txn.get("custom_data") or {}).get("reference", "")
     return RedirectResponse(f"{_site(txn)}/dashboard/billing/?checkout=success&ref={ref}", status_code=303)
 

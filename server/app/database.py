@@ -111,6 +111,21 @@ _ADDED_COLUMNS.setdefault("api_keys", []).append(("supplier_id", "VARCHAR(32)"))
 _ADDED_COLUMNS.setdefault("market_order_suppliers", []).extend(
     [("carrier", "VARCHAR(80)"), ("tracking_ref", "VARCHAR(120)")]
 )
+# PF2b (subscription consumer rules), its own block. Every DDL is valid on
+# SQLite and Postgres (PF14: Postgres has no DATETIME).
+_ADDED_COLUMNS["subscriptions"] += [
+    ("renewed_at", "TIMESTAMP WITH TIME ZONE"),
+    ("renewal_charge_id", "VARCHAR(128)"),
+]
+_ADDED_COLUMNS["payments"] += [
+    ("key_info", "VARCHAR(1000)"),
+    ("key_info_version", "VARCHAR(32)"),
+    ("key_info_at", "TIMESTAMP WITH TIME ZONE"),
+    ("business", "BOOLEAN"),
+    ("country", "VARCHAR(2)"),
+    ("provider_subscription_id", "VARCHAR(128)"),
+    ("confirmation_sent_at", "TIMESTAMP WITH TIME ZONE"),
+]
 
 
 def _migrate(bind: Engine) -> None:

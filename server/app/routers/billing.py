@@ -1,5 +1,6 @@
 """Billing endpoints: catalogue, checkout, subscription, seats, plan changes,
-invoices, the customer portal and provider webhooks.
+invoices, the customer portal and provider webhooks; PF2b's easy exit,
+renewal cooling-off refund and EU withdrawal (billing/consumer.py).
 
 The browser names a tier, an interval, a currency and seats; the server picks
 the price (catalogue.json -> provider_prices) and a plan changes only from a
@@ -15,15 +16,14 @@ from datetime import datetime, timezone
 
 import httpx
 import stripe
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request, status
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import RedirectResponse
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from ..billing import pricing, providers, service
+from ..billing import consumer, notices, pricing, providers, service
 from ..billing.base import NotSupported, ProviderError, WebhookError
-from ..billing.consent import CONSENT_VERSION
 from ..billing.pricing import PriceUnavailable
 from ..config import get_settings
 from ..database import get_db
@@ -32,16 +32,20 @@ from ..models import Payment, Subscription, User
 from ..plans import CURRENCIES, PLANS
 from ..schemas import (
     BillingCatalog,
+    CancelRequest,
     ChangeRequest,
     CheckoutRequest,
     CheckoutResponse,
+    ExitOut,
     FoundingOut,
     InvoiceOut,
     PaymentOut,
     PriceOut,
+    RulesOut,
     SeatsRequest,
     SubscriptionOut,
     TierOut,
+    WithdrawRequest,
 )
 
 router = APIRouter(prefix="/billing", tags=["billing"])
@@ -110,6 +114,7 @@ def catalog(db: Session = Depends(get_db)) -> BillingCatalog:
         provider=offered.name if offered else None,
         currencies=list(CURRENCIES),
         providers=providers.enabled_providers(settings),
+        rules=RulesOut(**consumer.rules()),
     )
 
 
@@ -127,6 +132,13 @@ def _subscription_out(db: Session, user: User) -> SubscriptionOut:
         and managed.provider_customer_id
         and providers.get_provider(managed.provider, settings).enabled()
     )
+    # PF2b: what the customer can end from Billing right now.
+    now = datetime.now(timezone.utc)
+    exits = {
+        "can_cancel": consumer.can_cancel(db, managed, now),
+        "cooling_off_until": consumer.cooling_off_until(db, managed, now),
+        "withdrawal_until": consumer.withdrawal_until(db, managed, now),
+    }
     if view is None:
         return SubscriptionOut(
             tier=plan,
@@ -138,6 +150,7 @@ def _subscription_out(db: Session, user: User) -> SubscriptionOut:
             cancel_at_period_end=False,
             founding=False,
             can_manage=can_manage,
+            **exits,
         )
     return SubscriptionOut(
         tier=plan,
@@ -150,6 +163,7 @@ def _subscription_out(db: Session, user: User) -> SubscriptionOut:
         founding=bool(view.founding),
         can_manage=can_manage,
         currency=view.currency,
+        **exits,
     )
 
 
@@ -245,6 +259,22 @@ def payment_history(
     )
 
 
+@router.get("/payments/{reference}", response_model=PaymentOut)
+def payment_detail(
+    reference: str = Path(max_length=64),
+    current: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> Payment:
+    """One checkout: /checkout/ shows its key information beside the pay
+    button (PF2b)."""
+    payment = db.scalar(
+        select(Payment).where(Payment.reference == reference, Payment.user_id == current.id)
+    )
+    if payment is None:
+        raise HTTPException(status_code=404, detail="Payment not found.")
+    return payment
+
+
 def _new_reference() -> str:
     return f"tbx_{secrets.token_hex(12)}"
 
@@ -266,6 +296,7 @@ def _wayl_checkout(payload: CheckoutRequest, current: User, db: Session) -> Chec
         seats=1,
         consent_version=payload.consent.version,
         consent_at=datetime.now(timezone.utc),
+        business=payload.business,
     )
     try:
         url = adapter.create_checkout(db, current, payment, None, 1, None)
@@ -283,8 +314,13 @@ def checkout(
     current: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> CheckoutResponse:
-    if payload.consent.version != CONSENT_VERSION:
+    # Today's placeholder consent, or GD5 7.4's box once the wording is
+    # approved (PF2b), in the QS-17 variant.
+    if payload.consent.version != consumer.consent_version():
         raise _unprocessable("The cancellation terms changed. Reload the page and accept them again.")
+    approved = consumer.wording_approved()
+    if approved and (payload.key_info is None or payload.key_info.version != notices.KEY_INFO.version):
+        raise _unprocessable("Read and acknowledge the key information before you pay.")
     plan = PLANS.get(payload.tier)
     if plan is None or not plan.purchasable:
         raise HTTPException(status_code=400, detail="That plan can't be bought online.")
@@ -347,6 +383,7 @@ def checkout(
         except PriceUnavailable as exc2:
             raise _price_http(exc2)
 
+    now = datetime.now(timezone.utc)
     payment = Payment(
         user_id=current.id,
         provider=adapter.name,
@@ -357,8 +394,17 @@ def checkout(
         interval=payload.interval,
         seats=seats,
         consent_version=payload.consent.version,
-        consent_at=datetime.now(timezone.utc),
+        consent_at=now,
+        business=payload.business,
     )
+    if approved:
+        # The key information for the price the server picked, stored with
+        # the consent (DMCC: acknowledged at the last step).
+        payment.key_info = consumer.key_info_text(
+            plan.id, seats, payload.interval, currency, price.amount_minor * seats, adapter.name
+        )
+        payment.key_info_version = notices.KEY_INFO.version
+        payment.key_info_at = now
     try:
         url = adapter.create_checkout(db, current, payment, price, seats, discount)
     except _PROVIDER_ERRORS:
@@ -368,7 +414,7 @@ def checkout(
         raise _bad_gateway()
     db.add(payment)
     db.commit()
-    return CheckoutResponse(url=url, reference=reference, founding=founding)
+    return CheckoutResponse(url=url, reference=reference, founding=founding, key_info=payment.key_info)
 
 
 @router.post("/payments/{reference}/refresh", response_model=PaymentOut)
@@ -492,6 +538,76 @@ def portal(current: User = Depends(get_current_user), db: Session = Depends(get_
     except _PROVIDER_ERRORS:
         log.exception("portal failed (%s)", sub.provider)
         raise _bad_gateway()
+
+
+# --- Ending a subscription inside Billing (PF2b) -----------------------------------------------
+
+
+def _exit_out(ex) -> ExitOut:
+    return ExitOut(
+        kind=ex.kind,
+        requested_at=ex.requested_at,
+        effective_at=ex.effective_at,
+        refund_minor=ex.refund_minor,
+        currency=ex.currency,
+        status=consumer.exit_status(ex),
+    )
+
+
+def _live_for_exit(db: Session, user: User) -> Subscription:
+    sub = service.managed_subscription(db, user)
+    if sub is None or not service.is_live(sub):
+        raise HTTPException(status_code=404, detail="No subscription to cancel.")
+    if not providers.get_provider(sub.provider, settings).enabled():
+        raise HTTPException(status_code=503, detail="Cancelling isn't available right now. Use Manage instead.")
+    return sub
+
+
+@router.post("/cancel", response_model=ExitOut)
+def cancel(
+    payload: CancelRequest,
+    current: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> ExitOut:
+    """The easy exit: cancel at the end of the period, in one flow, without
+    the provider's portal. With `refund` (the renewal cooling-off, behind
+    SUBSCRIPTION_NOTICES_ENABLED): cancel now and refund the rest of the
+    renewed year. Confirmed by e-mail; the plan changes when the provider's
+    signed webhook arrives."""
+    now = datetime.now(timezone.utc)
+    sub = _live_for_exit(db, current)
+    if consumer.pending_exit(db, sub, now) is not None:
+        raise HTTPException(status_code=409, detail="Your cancellation is already on its way.")
+    if payload.refund:
+        if consumer.cooling_off_until(db, sub, now) is None:
+            raise HTTPException(status_code=409, detail="A refund isn't available for this plan now.")
+        kind = "cooling_off"
+    else:
+        if sub.cancel_at_period_end:
+            raise HTTPException(status_code=409, detail="Your plan is already set to end.")
+        kind = "cancel"
+    return _exit_out(consumer.start_exit(db, current, sub, kind, now))
+
+
+@router.post("/withdraw", response_model=ExitOut)
+def withdraw(
+    payload: WithdrawRequest,
+    current: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> ExitOut:
+    """The EU withdrawal function (Directive 2011/83/EU Art. 11a; behind
+    EU_WITHDRAWAL_ENABLED): an EU consumer inside the withdrawal period ends
+    the contract and is refunded; the acknowledgement, with the date and
+    time, is e-mailed at once."""
+    if not settings.eu_withdrawal_enabled:
+        raise HTTPException(status_code=404, detail="Not found")
+    now = datetime.now(timezone.utc)
+    sub = _live_for_exit(db, current)
+    if consumer.pending_exit(db, sub, now) is not None:
+        raise HTTPException(status_code=409, detail="Your withdrawal is already on its way.")
+    if consumer.withdrawal_until(db, sub, now) is None:
+        raise HTTPException(status_code=409, detail="This purchase can't be withdrawn from here.")
+    return _exit_out(consumer.start_exit(db, current, sub, "withdrawal", now))
 
 
 # --- Webhooks (called by the providers, not the browser) ---------------------------------------

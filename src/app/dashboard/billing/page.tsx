@@ -17,8 +17,10 @@ import { STATIC_CATALOG } from "@/lib/billing-catalog";
 import { fill, foundingCovers, foundingPrice, intervalFor, perMonthOfYear } from "@/lib/catalogue";
 import { BILLING } from "@/lib/constants";
 import {
+  cancelSubscription,
   changePlan,
   changeSeats,
+  fillWording,
   formatMoney,
   getCatalog,
   getSubscription,
@@ -27,6 +29,7 @@ import {
   openBillingPortal,
   refreshPayment,
   startCheckout,
+  withdrawContract,
   type Catalog,
   type Interval,
   type PlanInfo,
@@ -164,18 +167,111 @@ function IntervalToggle({
   );
 }
 
+type ExitStep = "cancel" | "refund" | "withdraw";
+
+/** PF2b: end the plan inside Billing, each with a confirm step. The easy
+ *  exit (cancel at the period end) is always offered for a live plan; the
+ *  renewal cooling-off refund and the EU withdrawal only when the API offers
+ *  them (the withdrawal's labels are GD5 7.4 wording: approved builds only). */
+function ExitActions({ sub, onDone }: { sub: Subscription; onDone: (message: string) => void }) {
+  const [step, setStep] = useState<ExitStep | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const rules = BILLING.rules;
+  const canWithdraw = !!rules && !!sub.withdrawal_until;
+  if (!sub.can_cancel && !sub.cooling_off_until && !canWithdraw) return null;
+
+  async function go(kind: ExitStep) {
+    setBusy(true);
+    setError("");
+    try {
+      const res = kind === "withdraw" ? await withdrawContract() : await cancelSubscription(kind === "refund");
+      setStep(null);
+      onDone(
+        kind === "withdraw" && rules
+          ? rules.withdrawDone
+          : res.status === "processing"
+            ? BILLING.exit.processing
+            : BILLING.exit.sent
+      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Couldn't send the cancellation.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const confirmText =
+    step === "cancel"
+      ? fillWording(BILLING.exit.cancelConfirm, { date: formatDate(sub.current_period_end) })
+      : step === "refund"
+        ? fillWording(BILLING.exit.refundConfirm, { date: formatDate(sub.cooling_off_until) })
+        : step === "withdraw" && rules
+          ? fillWording(rules.withdrawHint, { date: formatDate(sub.withdrawal_until) })
+          : "";
+  const goLabel =
+    step === "cancel"
+      ? BILLING.exit.cancelGo
+      : step === "refund"
+        ? BILLING.exit.refundGo
+        : (rules?.withdrawConfirm ?? "");
+
+  return (
+    <div className="mt-5 border-t border-border pt-4">
+      {step === null ? (
+        <div className="flex flex-wrap gap-2">
+          {sub.can_cancel && (
+            <Button variant="ghost" size="sm" onClick={() => setStep("cancel")}>
+              {BILLING.exit.cancel}
+            </Button>
+          )}
+          {sub.cooling_off_until && (
+            <Button variant="ghost" size="sm" onClick={() => setStep("refund")}>
+              {BILLING.exit.refund}
+            </Button>
+          )}
+          {canWithdraw && rules && (
+            <Button variant="ghost" size="sm" onClick={() => setStep("withdraw")}>
+              {rules.withdrawButton}
+            </Button>
+          )}
+        </div>
+      ) : (
+        <div role="group" aria-label={goLabel} className="space-y-3">
+          <p className="text-sm text-text-secondary">{confirmText}</p>
+          <div className="flex flex-wrap gap-2">
+            <Button size="sm" onClick={() => go(step)} disabled={busy}>
+              {busy ? BILLING.exit.working : goLabel}
+            </Button>
+            <Button variant="secondary" size="sm" onClick={() => setStep(null)} disabled={busy}>
+              {BILLING.exit.keep}
+            </Button>
+          </div>
+        </div>
+      )}
+      {error && (
+        <div className="mt-3">
+          <ErrorNote message={error} />
+        </div>
+      )}
+    </div>
+  );
+}
+
 function CurrentPlan({
   sub,
   cat,
   fallbackPlan,
   busy,
   onManage,
+  children,
 }: {
   sub: Subscription | null;
   cat: Catalog;
   fallbackPlan: string;
   busy: boolean;
   onManage: () => void;
+  children?: React.ReactNode;
 }) {
   const tier = sub?.tier ?? fallbackPlan;
   const name = cat.tiers.find((t) => t.id === tier)?.name ?? tier;
@@ -227,6 +323,7 @@ function CurrentPlan({
           {busy ? BILLING.plan.opening : BILLING.plan.manage}
         </Button>
       )}
+      {children}
     </Panel>
   );
 }
@@ -256,6 +353,10 @@ function BillingInner() {
   );
   const [coupon, setCoupon] = useState(params.get("code") ?? "");
   const [consent, setConsent] = useState(false);
+  // PF2b (approved wording only): the key information acknowledged, and
+  // GD5 7.4's optional business box.
+  const [keyInfoAck, setKeyInfoAck] = useState(false);
+  const [business, setBusiness] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
@@ -315,6 +416,35 @@ function BillingInner() {
   const selectedInterval = tier ? intervalFor(tier, interval, activeCurrency) : interval;
   const selectedUnit = tier ? unitPrice(tier, selectedInterval) : null;
 
+  // PF2b: which cancellation wording checkout carries. The API says whether
+  // GD5 7.4 is approved and which QS-17 variant applies; this build has the
+  // approved texts only when compiled with them (BILLING.rules).
+  const rules = BILLING.rules;
+  const serverRules = catalog.data?.rules;
+  const approved = !!serverRules?.wording_approved;
+  const consentShown = approved
+    ? rules &&
+      (serverRules?.consent_variant === "service"
+        ? { text: rules.consentService, version: rules.consentServiceVersion }
+        : { text: rules.consentDigital, version: rules.consentDigitalVersion })
+    : { text: BILLING.consent.label, version: BILLING.consent.version };
+  const termsMismatch =
+    !!serverRules &&
+    (!consentShown ||
+      consentShown.version !== serverRules.consent_version ||
+      (approved && serverRules.key_info_version !== rules?.draftVersion));
+  const keyInfo =
+    approved && rules && tier && selectedUnit !== null
+      ? fillWording(rules.keyInfo, {
+          plan: tier.per_seat ? `${tier.name}, ${seats} seats` : tier.name,
+          price: formatMoney(selectedUnit * seats, activeCurrency),
+          interval: per(selectedInterval),
+          currency: activeCurrency,
+          seller: cat.provider === "stripe" ? rules.sellerStripe : rules.sellerPaddle,
+        })
+      : null;
+  const ready = consent && (!approved || keyInfoAck);
+
   const current = sub.data;
   const managed = !!current?.provider && MANAGED.has(current.provider);
   const managedActive = managed && current?.status === "active";
@@ -322,7 +452,7 @@ function BillingInner() {
   const showChoose = !managed && (current?.tier ?? user.plan) !== "enterprise";
 
   async function checkout() {
-    if (!tier || !consent) return;
+    if (!tier || !ready || !consentShown) return;
     setBusy("checkout");
     setError("");
     try {
@@ -332,7 +462,10 @@ function BillingInner() {
         currency: activeCurrency,
         seats,
         coupon: coupon.trim() || undefined,
-        consent: { version: BILLING.consent.version, accepted: true },
+        consent: { version: consentShown.version, accepted: true },
+        ...(approved && rules
+          ? { key_info: { version: rules.draftVersion, acknowledged: true as const }, business }
+          : {}),
       });
       window.location.href = url;
     } catch (err) {
@@ -350,6 +483,14 @@ function BillingInner() {
       setError(err instanceof Error ? err.message : "Couldn't open the billing portal.");
       setBusy(null);
     }
+  }
+
+  // After a cancellation: the plan card follows once the provider's webhook
+  // lands, so look again a few times.
+  function exited(message: string) {
+    setNotice(message);
+    void sub.reload();
+    for (const ms of [3000, 8000]) window.setTimeout(() => void sub.reload(), ms);
   }
 
   async function run(label: string, action: () => Promise<Subscription>) {
@@ -390,7 +531,9 @@ function BillingInner() {
           fallbackPlan={user.plan}
           busy={busy === "portal"}
           onManage={manage}
-        />
+        >
+          {managed && current && <ExitActions sub={current} onDone={exited} />}
+        </CurrentPlan>
         {managedActive && current && (
           // Keyed on the subscription so the form resets after a change.
           <ChangePanel
@@ -524,31 +667,68 @@ function BillingInner() {
             </div>
 
             <div className="space-y-4">
-              {selectedUnit !== null && (
-                <p className="text-sm text-text-secondary">
-                  {BILLING.choose.total}:{" "}
-                  <span className="font-semibold tabular-nums text-text-primary">
-                    {formatMoney(selectedUnit * seats, activeCurrency)}
-                  </span>{" "}
-                  / {per(selectedInterval)}
+              {keyInfo && rules ? (
+                // GD5 7.4 "Before payment": the key information beside the button.
+                <div className="rounded-[var(--radius-button)] border border-accent/30 bg-accent/5 px-4 py-3">
+                  <p className="text-xs font-medium uppercase tracking-wide text-text-muted">{rules.keyInfoHeading}</p>
+                  <p className="mt-1 text-sm text-text-primary">{keyInfo}</p>
                   {tier && selectedInterval !== interval && (
                     <span className="mt-1 block text-xs text-text-muted">
                       {fill(BILLING.choose.annualOnly, { tier: tier.name })}
                     </span>
                   )}
-                  <span className="mt-1 block text-xs text-text-muted">{BILLING.choose.tax}</span>
-                </p>
+                </div>
+              ) : (
+                selectedUnit !== null && (
+                  <p className="text-sm text-text-secondary">
+                    {BILLING.choose.total}:{" "}
+                    <span className="font-semibold tabular-nums text-text-primary">
+                      {formatMoney(selectedUnit * seats, activeCurrency)}
+                    </span>{" "}
+                    / {per(selectedInterval)}
+                    {tier && selectedInterval !== interval && (
+                      <span className="mt-1 block text-xs text-text-muted">
+                        {fill(BILLING.choose.annualOnly, { tier: tier.name })}
+                      </span>
+                    )}
+                    <span className="mt-1 block text-xs text-text-muted">{BILLING.choose.tax}</span>
+                  </p>
+                )
               )}
-              <label className="flex items-start gap-3 text-sm text-text-secondary">
-                <input
-                  type="checkbox"
-                  checked={consent}
-                  onChange={(e) => setConsent(e.target.checked)}
-                  className="mt-0.5 h-4 w-4 shrink-0 accent-[var(--color-accent)]"
-                />
-                <span>{BILLING.consent.label}</span>
-              </label>
-              {catalog.data && cat.provider === null ? (
+              {keyInfo && rules && (
+                <label className="flex items-start gap-3 text-sm text-text-secondary">
+                  <input
+                    type="checkbox"
+                    checked={keyInfoAck}
+                    onChange={(e) => setKeyInfoAck(e.target.checked)}
+                    className="mt-0.5 h-4 w-4 shrink-0 accent-[var(--color-accent)]"
+                  />
+                  <span>{rules.keyInfoAck}</span>
+                </label>
+              )}
+              {consentShown && (
+                <label className="flex items-start gap-3 text-sm text-text-secondary">
+                  <input
+                    type="checkbox"
+                    checked={consent}
+                    onChange={(e) => setConsent(e.target.checked)}
+                    className="mt-0.5 h-4 w-4 shrink-0 accent-[var(--color-accent)]"
+                  />
+                  <span>{consentShown.text}</span>
+                </label>
+              )}
+              {approved && rules && (
+                <label className="flex items-start gap-3 text-sm text-text-secondary">
+                  <input
+                    type="checkbox"
+                    checked={business}
+                    onChange={(e) => setBusiness(e.target.checked)}
+                    className="mt-0.5 h-4 w-4 shrink-0 accent-[var(--color-accent)]"
+                  />
+                  <span>{rules.business}</span>
+                </label>
+              )}
+              {catalog.data && (cat.provider === null || termsMismatch) ? (
                 <p className="rounded-[var(--radius-button)] border border-border bg-background px-4 py-3 text-sm text-text-secondary">
                   {BILLING.choose.setupPending}{" "}
                   <Link className="text-accent hover:underline" href="/#contact">
@@ -560,12 +740,16 @@ function BillingInner() {
                 <div>
                   <Button
                     onClick={checkout}
-                    disabled={!consent || busy !== null || selectedUnit === null || !cat.provider}
+                    disabled={!ready || busy !== null || selectedUnit === null || !cat.provider}
                     className="disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {busy === "checkout" ? BILLING.choose.redirecting : BILLING.choose.checkout}
                   </Button>
-                  {!consent && <p className="mt-2 text-xs text-text-muted">{BILLING.consent.reason}</p>}
+                  {!ready && (
+                    <p className="mt-2 text-xs text-text-muted">
+                      {approved && rules ? rules.reasons : BILLING.consent.reason}
+                    </p>
+                  )}
                   {cat.provider && (
                     <p className="mt-3 text-xs text-text-muted">{BILLING.providerNote[cat.provider]}</p>
                   )}

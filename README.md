@@ -251,6 +251,7 @@ These end up in the public JavaScript, so never put secrets in them.
 | `STRIPE_PRICE_PRO` | The original monthly Pro price: existing subscribers keep Pro |
 | `STRIPE_TAX_ENABLED` | `true` turns on Stripe Tax (`automatic_tax`) |
 | `WAYL_ENABLED`, `WAYL_API_KEY`, `WAYL_WEBHOOK_SECRET`, `WAYL_ENV`, `WAYL_PRICE_PRO_IQD` | Dormant rail: off unless `WAYL_ENABLED=true`; never offered on the site |
+| `SUBSCRIPTION_NOTICES_ENABLED`, `SUBSCRIPTION_RULES_FROM`, `EU_WITHDRAWAL_ENABLED`, `LEGAL_WORDING_APPROVED`, `CONSENT_VARIANT` (+ lead times, `COMPANY_ADDRESS`, `EULA_URL`) | Subscription consumer rules (PF2b), all off until the solicitor signs off; see [Billing](#billing-paddle-and-stripe) |
 | `LICENCE_SIGNING_KEY`, `LICENCE_KEY_ID` | The `lic-*` Ed25519 seed that signs entitlements (`scripts/make_signing_key.py --kind lic`). Empty = licensing off (503). |
 | `RELEASE_PUBLIC_KEYS` | Public `rel-*` keys as `kid:key,…` (the seeds never live on the API host) |
 | `SIGNING_KEYS_EXTRA`, `TRIAL_DAYS` | Old `lic-*` public keys during a rotation; trial length (14) |
@@ -320,6 +321,8 @@ Contract endpoints (`/telemetry/*`) answer errors in the shared envelope
 | POST | `/billing/seats` · `/billing/change` | session | Seats, or tier / interval, prorated |
 | GET | `/billing/invoices` | session | Invoices with PDF links |
 | POST | `/billing/portal` | session | The provider's customer portal |
+| POST | `/billing/cancel` · `/billing/withdraw` | session | Cancel in Billing (`{confirm: true, refund?}`) · EU withdrawal (`{confirm: true}`); the plan changes on the provider's webhook |
+| GET | `/billing/payments/{ref}` | session | One checkout with the key information the buyer acknowledged |
 | POST | `/billing/webhooks/paddle` · `/stripe` · `/wayl` | provider | Payment events (`/wayl` only with `WAYL_ENABLED`) |
 | GET | `/v1/ping` · `/v1/account` | **API key** | Developer API (metered) |
 | POST | `/licence/link` · `/licence/link/poll` | — / poll secret | The app starts a browser sign-in and polls for its session |
@@ -672,6 +675,27 @@ without an account (see its docstring): run it on :8098, set
 `PADDLE_API_BASE=http://127.0.0.1:8098` and
 `PADDLE_WEBHOOK_SECRET=pdl_ntfset_mock_secret`, sync prices, and checkout opens
 the mock's pay page instead of Paddle.js.
+
+**Subscription consumer rules (PF2b), switched off.** Built to GD5 §7 and off
+until the solicitor approves the wording (details and the switch table:
+[`docs/roadmap/40/PF2b-subscription-consumer-rules.md`](docs/roadmap/40/PF2b-subscription-consumer-rules.md)):
+- **Always on:** **Cancel subscription** in Billing (cancel at the period
+  end, confirmation e-mail, no portal needed).
+- `SUBSCRIPTION_NOTICES_ENABLED` from `SUBSCRIPTION_RULES_FROM`: renewal
+  reminders and trial-end notices (job `billing.subscription_notices`), and
+  **Cancel and get a refund** within 14 days of an annual renewal.
+- `EU_WITHDRAWAL_ENABLED`: **Withdraw from contract** for EU consumers.
+- `LEGAL_WORDING_APPROVED`, together with a site build with
+  `NEXT_PUBLIC_LEGAL_WORDING_APPROVED=true`: the key information and GD5's
+  consent box at checkout (`CONSENT_VARIANT`), and the order confirmation
+  e-mail.
+
+The wording lives in `server/app/billing/notices.py` and `BILLING` in
+`src/lib/constants.ts`. Cancellations, refunds and withdrawals only ask the
+provider; the plan changes when its signed webhook arrives, and failed provider
+calls are retried by `billing.exits.retry`. To read console mails locally, run
+the API with `--log-config scripts/log-info.json`. Stripe needs `invoice.paid`
+on its webhook endpoint for renewals.
 
 **Wayl (dormant).** The Iraqi payment rail is retired from the site and the
 catalogue. Its code stays behind `WAYL_ENABLED=false` and its tests run with

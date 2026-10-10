@@ -1,4 +1,5 @@
-"""Billing jobs: founding holds and the daily reconcile (server/app/tasks.py)."""
+"""Billing jobs (server/app/tasks.py): founding holds, the daily reconcile, and
+PF2b's subscription notices and exit retries."""
 
 import logging
 from datetime import datetime, timedelta
@@ -8,7 +9,7 @@ from sqlalchemy import or_, select
 from ..database import SessionLocal
 from ..models import Payment, Subscription
 from ..tasks import periodic
-from . import providers, service
+from . import consumer, providers, service
 
 log = logging.getLogger("truebex.billing.jobs")
 
@@ -79,3 +80,29 @@ def reconcile(now: datetime) -> int:
             except Exception:
                 log.exception("reconcile failed (%s)", name)
     return checked
+
+
+# --- PF2b: subscription consumer rules ------------------------------------------------
+
+
+@periodic("billing.subscription_notices", 3600)
+def subscription_notices(now: datetime) -> int:
+    """Renewal reminders before each renewal of a live paid subscription and
+    the trial-end notice, once per period (subscription_notices). A no-op
+    while SUBSCRIPTION_NOTICES_ENABLED is false or before
+    SUBSCRIPTION_RULES_FROM, and (logged) while PF14's app.mail is not merged."""
+    if not consumer.dmcc_active(now):
+        return 0
+    if not consumer.mail_available():
+        log.warning("PF14's app.mail is not merged: billing.subscription_notices does nothing")
+        return 0
+    with SessionLocal() as db:
+        return consumer.send_due_notices(db, now)
+
+
+@periodic("billing.exits.retry", 900)
+def retry_exits(now: datetime) -> int:
+    """Finish cancellations, cooling-off refunds and withdrawals whose
+    provider call failed, so a customer's statement is never lost."""
+    with SessionLocal() as db:
+        return consumer.retry_exits(db, now)

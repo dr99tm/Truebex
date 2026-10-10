@@ -47,6 +47,23 @@ class Invoice:
 
 
 @dataclass(frozen=True)
+class Refund:
+    """A refund the provider accepted (Paddle may still have to approve it)."""
+
+    id: str
+    amount_minor: int
+    currency: str
+
+
+def refund_amount(paid_minor: int, share_ppm: int | None) -> int:
+    """`share_ppm` (parts per million) of a charge, rounded up: any rounding
+    goes the customer's way. None or 1 000 000 is the whole charge."""
+    if share_ppm is None or share_ppm >= 1_000_000:
+        return paid_minor
+    return min(paid_minor, -(-paid_minor * max(0, share_ppm) // 1_000_000))
+
+
+@dataclass(frozen=True)
 class InvoiceLine:
     description: str
     amount_minor: int
@@ -125,6 +142,25 @@ class BillingProvider(ABC):
     ) -> Subscription:
         """Move the provider subscription to `price` x `seats` and mirror the
         provider's answer."""
+
+    def cancel_subscription(self, db: Session, sub: Subscription, *, immediately: bool) -> None:
+        """Ask the provider to cancel at the period end, or now (PF2b). Our
+        state is NOT changed here: the provider's verified webhook does that."""
+        raise NotSupported(f"{self.name} cannot cancel subscriptions")
+
+    def refund(
+        self,
+        db: Session,
+        sub: Subscription,
+        *,
+        charge_id: str | None,
+        share_ppm: int | None,
+        reason: str,
+    ) -> Refund:
+        """Refund `share_ppm` of one charge of the subscription (a provider
+        transaction or invoice id; None = its latest renewal charge). PF2b:
+        the renewal cooling-off and the EU withdrawal."""
+        raise NotSupported(f"{self.name} cannot refund")
 
     @abstractmethod
     def list_invoices(self, db: Session, user: User) -> list[Invoice]:
