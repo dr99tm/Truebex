@@ -54,7 +54,9 @@ def per_month_of_year(amount_minor: int) -> int:
 
 def test_pf2a_catalogue_prices_per_plan():
     tiers = {t["id"]: t for t in CATALOGUE["tiers"]}
-    assert CATALOGUE["prices_final"] is True
+    # The owner's switch: false keeps the public pages at "Price at launch"
+    # until the merchant account exists (3b12c52); the amounts stay pinned.
+    assert isinstance(CATALOGUE["prices_final"], bool)
     assert CATALOGUE["currencies"] == ["GBP", "USD", "EUR"]
     for tier_id, want in PLAN.items():
         got = {(p["interval"], p["currency"]): p["amount_minor"] for p in tiers[tier_id]["prices"]}

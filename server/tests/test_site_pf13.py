@@ -336,8 +336,9 @@ def html_files() -> list[Path]:
 def test_site_pf13_catalogue_placeholder_shape():
     """`server/app/catalogue.json` is the licence contract's §6.3 placeholder
     matrix in PF1's schema plus PF2's price fields. PF2a set the owner's
-    prices, so `prices_final` is true and every purchasable tier is priced in
-    each currency (tests/test_pf2a_prices.py pins the amounts)."""
+    prices, so every purchasable tier is priced in each currency
+    (tests/test_pf2a_prices.py pins the amounts); `prices_final` is the
+    owner's switch that shows them (false until the merchant account exists)."""
     cat = json.loads(CATALOGUE.read_text(encoding="utf-8"))
     tiers = cat["tiers"]
     assert [t["id"] for t in tiers] == TIER_IDS
@@ -354,7 +355,7 @@ def test_site_pf13_catalogue_placeholder_shape():
         assert t["features"] == sorted(set(free["features"]) | gates), t["id"]
         assert t["limits"] == {**free["limits"], "storeys": None}, t["id"]
         assert t["features"] == sorted(set(t["features"]))
-    assert cat["prices_final"] is True, "the owner's prices (PF2a)"
+    assert isinstance(cat["prices_final"], bool), "the owner's switch (PF2a)"
     for t in tiers:
         assert isinstance(t["prices"], list)
         assert isinstance(t["per_seat"], bool) and t["min_seats"] >= 1
@@ -555,6 +556,9 @@ def pf2a_allowed(currency: str | None = None) -> set[tuple[str, int]]:
 def pf2a_build(built) -> None:
     if os.environ.get("TRUEBEX_CATALOGUE_FILE"):
         pytest.skip("out/ was built from another catalogue")
+    if json.loads(CATALOGUE.read_text(encoding="utf-8")).get("prices_final") is False:
+        # test_site_pf13_placeholder_prices_stay_private checks such a build.
+        pytest.skip("the owner keeps prices at 'Price at launch' (prices_final false)")
 
 
 def test_site_pf2a_pricing_amounts_exact(built):
@@ -640,13 +644,18 @@ def test_site_pf2a_teasers_and_developers(built):
         assert any(r.startswith(name) for r in rows), name
 
 
-def test_site_pf2a_every_interval_and_currency():
+def test_site_pf2a_every_interval_and_currency(tmp_path):
     """Each price block, rendered for both intervals and all three
     currencies: Team always shows its annual charge / 12 billed annually and
     the charge; Pro and Studio show their monthly price beside the annual
     one, or the annual price with what it comes to per month. No block
-    prints any other amount (twelve monthly payments, a Team month)."""
-    r = render()
+    prints any other amount (twelve monthly payments, a Team month).
+    Rendered from the committed catalogue with `prices_final` on, as the
+    pages will show it once the owner flips the switch."""
+    final = tmp_path / "catalogue-final.json"
+    final.write_text(json.dumps({**json.loads(CATALOGUE.read_text(encoding="utf-8")), "prices_final": True}),
+                     encoding="utf-8")
+    r = render(str(final))
     cards = Doc(r["cards"])
     founding = {(e["attrs"]["data-tier"], e["attrs"]["data-currency"], int(e["attrs"]["data-founding-minor"]))
                 for e in cards.all(data_founding_minor=True)}
