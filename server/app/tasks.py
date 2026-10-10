@@ -65,6 +65,7 @@ def _load_jobs() -> None:
     from . import idempotency  # noqa: F401  (idempotency.expire)
     from .projects import jobs as _projects  # noqa: F401  (PF4)
     from .uploads import jobs as _uploads  # noqa: F401
+    from .render import jobs as _render  # noqa: F401  (PF6: render.*)
 
 
 def jobs() -> dict[str, Job]:

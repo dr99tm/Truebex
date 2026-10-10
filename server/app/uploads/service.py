@@ -35,6 +35,8 @@ MAX_FILE_BYTES = 512 * 1024 * 1024
 SESSION_LIFETIME = timedelta(hours=24)
 ORPHAN_AFTER = timedelta(days=7)
 PURPOSES = ("share", "snapshot", "job-input", "job-output")
+# A render's tiles arrive in batches of MAX_FILES into one session (PF6).
+MAX_JOB_OUTPUT_FILES = 20_000
 # Content types a share bundle carries (§6.1); other purposes take any.
 SHARE_TYPES = ("image/jpeg", "image/png", "application/pdf")
 _OTHER_TOTAL = 8 * 1024 * 1024 * 1024
@@ -165,6 +167,42 @@ def open_session(db: Session, caller: UploadCaller, *, purpose: str, files: list
     db.add(session)
     db.commit()
     return session
+
+
+def add_files(db: Session, caller: UploadCaller, upload_id: str, *, purpose: str, files: list[dict]) -> dict:
+    """5.1 with `upload_id` (PF6, a MINOR proposal): add files to the
+    caller's open `job-output` session (the one a render claim opened, whose
+    outputs are only known after the render). At most 500 files a call; the
+    answer lists this call's files."""
+    session = get_session(db, caller, upload_id)
+    if purpose != "job-output" or session.purpose != "job-output":
+        raise ContractError(
+            "validation_failed", 422, "upload_id: only a job-output session takes more files.",
+            {"fields": [{"field": "upload_id", "in": "body", "message": "a job-output session"}]},
+        )
+    declared = _validate_files(files, purpose)
+    have = {f["sha256"]: f for f in session.files}
+    for f in declared:
+        old = have.get(f["sha256"])
+        if old is not None and old["bytes"] != f["bytes"]:
+            raise ContractError("validation_failed", 422, "A file was declared before with another size.", {"sha256": f["sha256"]})
+        have.setdefault(f["sha256"], f)
+    if len(have) > MAX_JOB_OUTPUT_FILES:
+        raise ContractError(
+            "validation_failed", 422, f"A job-output session holds at most {MAX_JOB_OUTPUT_FILES} files.",
+            {"limit": MAX_JOB_OUTPUT_FILES},
+        )
+    session.files = list(have.values())
+    db.commit()
+    batch = UploadSession(upload_id=session.upload_id, account_id=session.account_id, files=declared)
+    states = [{**s, "state": "present" if s["state"] == "complete" else s["state"]} for s in file_states(db, batch)]
+    return {
+        "upload_id": session.upload_id,
+        "purpose": session.purpose,
+        "part_bytes": PART_BYTES,
+        "expires_at": clock.rfc3339(session.expires_at),
+        "files": states,
+    }
 
 
 def get_session(db: Session, caller: UploadCaller, upload_id: str, *, now: datetime | None = None) -> UploadSession:

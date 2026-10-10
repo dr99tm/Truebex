@@ -1,0 +1,10 @@
+{
+  "schema": "truebex-render-estimates/1",
+  "source": "Placeholders until guides/GD3 measures W_full, W_partial and W_pack on the first workers (PF6). Seconds of wall time on gpu-std per unit: a view for panorama and tiles, an item for pack. The rolling median of the last 50 succeeded jobs of a kind and quality replaces a seed once 50 have run.",
+  "window": 50,
+  "seconds_per_unit": {
+    "panorama": {"draft": 45, "standard": 90, "high": 240},
+    "tiles": {"draft": 10, "standard": 20, "high": 60},
+    "pack": {"draft": 60, "standard": 120, "high": 300}
+  }
+}

@@ -92,6 +92,7 @@ install -d -m 0700 /opt/truebex/secrets
 install -m 0644 infra/host/compose.yaml infra/host/Caddyfile /opt/truebex/
 install -m 0644 infra/host/postgres/Dockerfile infra/host/postgres/restore-into.sh /opt/truebex/postgres/
 install -m 0755 infra/host/bin/*.sh /opt/truebex/bin/
+install -m 0755 infra/host/bin/queue-depth /opt/truebex/bin/
 install -m 0600 secrets/* /opt/truebex/secrets/
 install -m 0600 caddy.env /opt/truebex/caddy.env
 install -m 0600 compose.env /opt/truebex/.env

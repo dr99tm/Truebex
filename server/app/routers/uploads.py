@@ -27,12 +27,18 @@ class UploadFileIn(BaseModel):
 class OpenUploadIn(BaseModel):
     purpose: str = Field(max_length=16)
     files: list[UploadFileIn] = Field(max_length=service.MAX_FILES)
+    # PF6: add these files to an open job-output session (a render claim's).
+    upload_id: str | None = Field(default=None, max_length=32)
 
 
 @router.post("", status_code=201)
 def open_upload(
     body: OpenUploadIn, caller: UploadCaller = Depends(get_upload_caller), db: Session = Depends(get_db)
 ) -> dict:
+    if body.upload_id is not None:
+        return service.add_files(
+            db, caller, body.upload_id, purpose=body.purpose, files=[f.model_dump() for f in body.files]
+        )
     session = service.open_session(db, caller, purpose=body.purpose, files=[f.model_dump() for f in body.files])
     return service.opened_json(db, session)
 
