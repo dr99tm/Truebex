@@ -328,6 +328,16 @@ def list_discounts(request: Request, code: str = "", status: str = ""):
 def _items(raw: list[dict]) -> list[dict] | JSONResponse:
     items = []
     for item in raw:
+        if isinstance(item.get("price"), dict) and not item.get("price_id"):
+            # A non-catalogue price for this transaction alone (one-off items, PF11).
+            inline = item["price"]
+            price = {
+                "id": _id("pri"), "description": inline.get("description"), "name": inline.get("name"),
+                "unit_price": inline["unit_price"], "product": inline.get("product"), "billing_cycle": None,
+                "one_time": True,
+            }
+            items.append({"price": price, "price_id": price["id"], "quantity": int(item.get("quantity") or 1), "status": "active"})
+            continue
         price = STATE["prices"].get(item.get("price_id"))
         if price is None:
             return _error(400, "transaction_price_not_found", f"price {item.get('price_id')} not found")
@@ -470,6 +480,10 @@ def pay(txn_id: str) -> list[dict]:
     (sent too when WEBHOOK["send"])."""
     txn = STATE["transactions"][txn_id]
     _bill(txn)
+    if all(i["price"].get("one_time") for i in txn["items"]):
+        events = [event("transaction.completed", txn)]  # a one-off purchase: no subscription
+        _send(events)
+        return events
     sub = _subscription_from(txn)
     STATE["subscriptions"][sub["id"]] = sub
     txn["subscription_id"] = sub["id"]

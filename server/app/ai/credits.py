@@ -142,7 +142,9 @@ def remaining(row: AiBalance) -> int:
 
 def _lock(db: Session, account_id: int) -> AiBalance | None:
     """Begin the write transaction with the account's row locked (SQLite takes
-    its single write lock here; Postgres the row lock)."""
+    its single write lock here; Postgres the row lock). Pending changes are
+    flushed first: the fresh read below must not overwrite them."""
+    db.flush()
     db.execute(
         update(AiBalance)
         .where(AiBalance.account_kind == ACCOUNT_KIND, AiBalance.account_id == account_id)
