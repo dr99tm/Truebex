@@ -4,7 +4,15 @@
 
 ## Status
 
-No analysis runner, AI proxy, credits or hosted model exists (`00-contract.md` P.1). What this builds on, verified with Grep on 2026-10-09:
+**Built 2026-10-10** on `ap/t14-pf11-analysis-and-ai-services` (base: PF6's branch): the AI proxy, credits and
+top-ups in `server/app/ai/` and `server/app/routers/{ai,ai_account}.py`; the analysis kinds, estimates, §6.3
+validation and the weather library in `server/app/analysis/` (hooked into PF6's `render/service.py` and `queue.py`)
+and `server/app/routers/analysis.py`; the solver runners in `server/app/analysis/runners/`, their images in
+`infra/worker/analysis/`, the wrapper's `--mode container`; the gpu-ai inference server in `infra/worker/ai/`; the
+Cloud page's AI section and the render admin's AI panel. Waiting on others: the app sides (AN2-AN4 exports, AI3's
+panel), GD2's validation cases, GD3's gpu-ai class, GD7's credit rates, allowances and packs. See As-built.
+
+Before this task, no analysis runner, AI proxy, credits or hosted model existed (`00-contract.md` P.1). What this builds on, verified with Grep on 2026-10-09:
 
 | Area | Where | Today |
 |---|---|---|
@@ -122,11 +130,11 @@ Contract changes this feature needs (written in the app repo's contracts first b
 
 ## Deliverables
 
-- [ ] `server/app/analysis/` (kind registry, estimates, result validation, `weather.py`), the runner images under `infra/worker/analysis/`, PF6's wrapper container mode
-- [ ] `server/app/ai/` (`aliases.json`, `adapters/anthropic.py`, `adapters/selfhosted.py`, `credits.py`, `proxy.py`), `server/app/routers/ai.py`; `anthropic` pinned in `server/requirements.txt`; `ANTHROPIC_API_KEY` and `SELFHOSTED_*` in `.env.example`
-- [ ] `server/tests/fakes/fake_provider.py` (serves the contract's `.sse` fixtures as an upstream), `server/tests/fakes/stub_solver/` (returns `wind-result.json` and its arrays)
-- [ ] `server/tests/contracts/ai-proxy/` and the analysis files of `server/tests/contracts/render-jobs/` copied from the app repo (copied, never edited)
-- [ ] dashboard additions; contract §11 rows and the two render-jobs MINOR proposals recorded in As-built
+- [x] `server/app/analysis/` (kind registry, estimates, result validation, `weather.py`), the runner images under `infra/worker/analysis/`, PF6's wrapper container mode
+- [x] `server/app/ai/` (`aliases.json`, `adapters/anthropic.py`, `adapters/selfhosted.py`, `credits.py`, `proxy.py`), `server/app/routers/ai.py`; `anthropic` pinned in `server/requirements.txt`; `ANTHROPIC_API_KEY` and `SELFHOSTED_*` in `.env.example`
+- [x] `server/tests/fakes/fake_provider.py` (serves the contract's `.sse` fixtures as an upstream), `server/tests/fakes/stub_solver/` (returns `wind-result.json` and its arrays)
+- [x] `server/tests/contracts/ai-proxy/` and the analysis files of `server/tests/contracts/render-jobs/` copied from the app repo (copied, never edited)
+- [x] dashboard additions; contract §11 rows and the two render-jobs MINOR proposals recorded in As-built
 
 ## Tests
 
@@ -178,9 +186,95 @@ The first ten names are the `ai-proxy.md` §10 platform tests.
 
 ## As-built
 
-* Date, branch, commits:
-* Counts (pytest before → after); measured wall time and cu per kind on the first workers:
-* Deviations from Design and why:
-* GD2 / GD3 / GD7 inputs adopted (cases, classes, credit rates):
-* Contract §11 rows for the owner to set to "PF11: done" in `contracts/ai-proxy.md` and `contracts/render-jobs.md`; the MINOR proposals (`acoustics`, `texture`):
-* Carry-over → which feature:
+* **Date, branch, commits:** 2026-10-10, `ap/t14-pf11-analysis-and-ai-services` (base: PF6's branch
+  `ap/t11-pf6-cloud-render-orchestration` at b6a15f4): `07d38d9` (server: proxy, credits, analysis kinds), `2739f75`
+  (ai-proxy fixtures, fake provider, §10 tests), `a61c048` (grant, top-ups, self-hosted; a balance-lock fix), `6c33f9e`
+  (wrapper container mode, stub solver), `f0dc31c` (analysis tests), `cc10939` (two PF6 assertions), `d83f657` (README,
+  env keys, SDK pin, weather loader, inference server), `8866107` (site, demo scripts), `3589c66` (runners), `7ba94bf`
+  and `b4fff37` (images), and the docs commit ticking this row.
+* **Counts:** pytest 257 → 292 collected. New: `tests/test_ai_proxy.py` 12 (the ten §10 tests, 5.1 / 5.2 / 5.4,
+  duplicates and limits), `tests/test_ai_credits.py` 5 (grant without roll-over, top-ups through Paddle and Stripe,
+  the self-hosted adapter and its fallback, the dashboard and admin views), `tests/test_analysis.py` 7 (feature and
+  inputs, the stub-solver round trip through the wrapper, §6.3 validation, weather and energy, acoustics, texture
+  behind its flag, the admin's cpu-8 class), `tests/test_analysis_runners.py` 8 (the EnergyPlus SQL parser, the wind
+  case and sampling, the ray tracer against Eyring, every runner result through the platform's §6.3 check, the
+  images), `tests/test_site_pf11.py` 3 build checks; two PF6 assertions updated for GD3's `gpu-ai` weight and the
+  `cpu-8` pool class. **Live run** (uvicorn on SQLite, the fake provider as the upstream, the demo scripts, the
+  wrapper with the docker stand-in): the window conversation streamed in three turns (find, place, end_turn; 29 + 9
+  + 5 credits off a Pro trial's 2000), `GET /ai/models`, `/ai/balance`, `/ai/messages/count` (185 max credits), a wind
+  job estimated at 7.8 cu, claimed by a `cpu-8` worker, completed in 0.8 s for 0.1 cu, its `truebex-analysis/1`
+  output served with three signed URLs; `/account/ai` and `/admin/ai` showed the turns and the spend; no table held
+  any text of the conversation. The acoustics tracer gives T30 0.683 s against Eyring's 0.646 s for a 10 × 8 × 3 m
+  room at α 0.2 (3000 rays) and a level within 1 dB of the diffuse-field estimate. **Measured wall time and cu per
+  kind on real workers: none yet**: Docker, OpenFOAM and EnergyPlus are not on this PC, so no image was built or run
+  here; the estimates are GD3's worked examples.
+* **Deviations from Design and why:**
+  1. *Fixtures authored here.* The app repo has no `Docs/roadmap/fixtures/contracts/ai-proxy/` (AI3 makes it), so
+     `server/scripts/make_ai_proxy_fixtures.py` wrote the §9 set to the letter of §5, §6.2, §7 (models, two balances,
+     the three window turns whose `truebex_credits` follow from their usage at the 5.1 rates, a refusal, the 403, the
+     503; README in the folder). The proxy's output for the three turns is byte for byte the fixtures.
+  2. *Request-side byte equality.* Responses are relayed line by line (byte-equal); a request is parsed and sent
+     through the SDK, so a `tool_result` reaches the provider value-equal, and byte-equal when the app sends compact
+     JSON (what the test asserts). The proxy adds `cache_control` only to copies of the last tool and system block,
+     plus automatic caching of the append-only history (cheaper multi-turn loops; three breakpoints of four).
+  3. *Additive fields:* the `truebex_credits` event and 5.2 add `served_by` / `allowance_remaining`; a turn that fails
+     after output began gets a `truebex_credits` event before its in-band `error`; non-streamed answers carry
+     `model` = the alias (a streamed `message_start` keeps the provider's model: relayed untouched). `fallback` and
+     `redacted_thinking` blocks are accepted in the history (the app echoes what the stream gave it).
+  4. *Idempotency-Key:* recorded only when a turn starts, and given back when the provider fails before output, so
+     §8's retries are not refused as duplicates; a repeat within 10 minutes of a started turn is 409.
+  5. *Credits:* an overrun lands on the allowance and is written off at the reset (an `expire` row with a positive
+     delta); a plan that rises mid-month gets the difference granted once (`<month>:<plan>`); `credits_exhausted` is
+     also answered by 5.4. The charge uses the top-level `usage` of the answering model; per-attempt billing of a
+     mid-stream refusal fallback (`usage.iterations`) is carry-over.
+  6. *Top-ups:* PF2 had no one-off checkout, so `BillingProvider.create_one_time_checkout` was added (Paddle: a
+     non-catalogue price on the transaction; Stripe: Checkout in payment mode) with `billing.service.PAID_HOOKS`
+     crediting the pack when the payment is verified (webhook or refresh); the Paddle mock learned one-off items.
+     The checkout page returns to `/dashboard/cloud/` for a pack (`back=dashboard-cloud`).
+  7. *Analysis jobs may name no project* (their inputs are self-contained); with one, `at_seq` is checked as for
+     renders. AN3's proposal is taken: optional `inputs.files.entities`, `surroundings`, `terrain`; a `speed_ratio`
+     grid beside `comfort_lawson`. A field on faces must have one value per uploaded triangle (the STL is read at
+     submission). Energy's weather file reaches the worker as `inputs.files.weather`; every claim of an analysis job
+     carries `job.profile` (solver profile, terrain roughness, Lawson classes: `server/app/analysis/profiles.json`).
+  8. *Results:* fields and grids may say `dtype` and `components`; spaces may carry `keys`; 5.5 adds `urls` (one signed
+     URL per file) and `urls_expire_at`; `truebex-texture/1` is the texture output.
+  9. *Worker tokens* may only hold kinds of their class (a `cpu-8` token cannot claim renders). The wrapper's container
+     mode names each container and stops it with `docker kill` on cancel or a lost lease.
+  10. *Acoustics* is our own stochastic ray tracer (standard library Python) rather than a third-party library: no
+      licence question, deterministic for a seed; GD2 tunes rays and receivers. It is slow for large rooms (a numpy
+      or native port is carry-over).
+  11. *The self-hosted alias* `truebex-open` ships switched off (`enabled: false`) with placeholder rates; probing
+      (`GET /v1/models`) decides warm or cold and `ai.servers.scale` records the gpu-ai machines wanted in PF6's pool
+      (`DESIRED["gpu-ai"]`); there is no cloud pool adapter yet (GD3).
+  12. *Shared edits (one line or one block each):* `render/quotas.py` (`CONTRACT_KINDS`, `KIND_CLASSES`),
+      `render/service.py` (submit and output hand analysis kinds over), `render/queue.py` (claim inputs, the profile,
+      completion), `render/workers.py` (class check), `routers/admin_render.py` (8 kinds), `config.py`
+      (`CU_CLASS_WEIGHTS` default gains `gpu-ai:0.85`, GD3), `billing/{base,paddle_provider,stripe_provider,service}.py`,
+      `tasks.py`, `database.py`, `main.py`, the checkout page.
+* **GD2 / GD3 / GD7 inputs adopted:** GD3: class weights `gpu-std` 1.00, `cpu-8` 0.25, `gpu-ai` 0.85; the wind
+  estimate (t_mesh 300 s + cells × iterations × 2.8 µs / 4 cores + t_post 120 s; about 2 M cells × 1000 iterations
+  give 1820 s, 7.6 cu on a two-storey house) and the energy one (150 s for 10 zones at 15-minute steps) in
+  `server/app/analysis/estimates.json`. GD2: none yet (iteration cap 1000 and residual 1e-4 are placeholders in
+  `profiles.json`; terrain roughness from EN 1991-1-4; Lawson thresholds 2.5 / 4 / 6 / 8 m/s). GD7: unwritten, so
+  placeholders in `server/app/ai/credits.json` (allowances Pro 2000, Studio and Team 5000, Enterprise 20 000; packs
+  of 5000 credits at £6 / $7.50 / €7 and 20 000 credits at £22 / $28 / €26) and `aliases.json` (the contract's 5.1
+  rates: input 4000, output 20 000, cache read 400, cache write 5000 credits per million tokens, about the default
+  model's list price at 0.001 USD a credit).
+* **Contract §11 rows for the owner:** `contracts/ai-proxy.md`: all four endpoint rows "PF11: done (2026-10-10,
+  `ap/t14-pf11-analysis-and-ai-services`)". `contracts/render-jobs.md`: `POST /jobs` "PF11 for analyses: done",
+  `GET /jobs/{job_id}/output` "PF11: done". **MINOR proposals:** render-jobs §5.1 kind `acoustics` (cpu-8; inputs
+  `inputs.files.rooms` = `truebex-acoustics-rooms/1`; params `sources` [{position_m, power_db}], `bands`, `rays`,
+  `receiver_grid_m`, `receiver_height_m`; result: fields `t30_<band>`, `edt_<band>` on spaces, grid `spl_dba`); kind
+  `texture` (gpu-ai; params `prompt`, `size` 512 / 1024 / 2048, `seamless`, `maps`; output `truebex-texture/1` with one
+  PNG per map); AN3's wind additions as built (deviation 7); §6.3 `dtype`, `components`, `keys`, 5.5 `urls`; the
+  claim's `job.profile`; energy's `inputs.files.weather`; `GET /analysis/catalogue`. ai-proxy: the additive fields
+  of deviation 3 and the key rule of deviation 4.
+* **Carry-over → which feature:** **AN2 / AN3 / AN4**: exports and submissions (the demo scripts stand in:
+  `server/scripts/demo_analysis.py`), the first real runs and measured seconds per kind. **AI3**: the app's panel
+  against the proxy (`server/scripts/demo_ai.py` plays the window example); the fixtures into the app repo. **GD2**:
+  validation cases, residual targets, ray counts; no public number before they pass. **GD3**: the gpu-ai class and a
+  cloud pool adapter for cpu-8 and gpu-ai; registry and image builds per release. **GD7**: credit rates, allowances,
+  packs and prices into `credits.json`, `aliases.json` and `catalogue.json`. **The owner**: the §11 rows and proposals
+  above; `ANTHROPIC_API_KEY` in `server/.env`; the energy image's `ENERGYPLUS_SHA256`; a texture model whose licence
+  allows commercial hosting before `AI_TEXTURE_ENABLED`; weather files with their source and licence
+  (`server/scripts/load_weather.py`). **Later:** per-attempt charging of mid-stream fallbacks; a faster acoustics core.
