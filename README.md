@@ -928,7 +928,8 @@ and `server/app/ai/`, the routes `server/app/routers/analysis_ai.py` (one router
 - **Credits:** integer credits per account, the plan's monthly allowance first (reset on the 1st, no roll-over;
   placeholders in `server/app/ai/credits.json` until GD7: Pro 2000, Studio and Team 5000, Enterprise 20 000),
   then packs bought on `/dashboard/cloud/#ai-credits` through the billing provider's one-off checkout, credited
-  when the payment is verified. Every change is a row of the append-only `ai_credit_ledger`.
+  when the payment is verified. Every change is a row of the append-only `ai_credit_ledger`. A pack is a one-off
+  item (`billing.service.ONE_OFF_ITEMS`): no subscription, and no PF2b order confirmation (the provider's receipt).
 - **Self-hosted models:** a second alias, `truebex-open`, reaches an OpenAI-compatible inference server on
   `gpu-ai` workers (`infra/worker/ai/`); it is off until GD3 and GD7, and falls back to `truebex-assist` while
   no server is warm.

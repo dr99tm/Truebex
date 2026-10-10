@@ -10,7 +10,9 @@ validation and the weather library in `server/app/analysis/` (hooked into PF6's 
 and `server/app/routers/analysis.py`; the solver runners in `server/app/analysis/runners/`, their images in
 `infra/worker/analysis/`, the wrapper's `--mode container`; the gpu-ai inference server in `infra/worker/ai/`; the
 Cloud page's AI section and the render admin's AI panel. Waiting on others: the app sides (AN2-AN4 exports, AI3's
-panel), GD2's validation cases, GD3's gpu-ai class, GD7's credit rates, allowances and packs. See As-built.
+panel), GD2's validation cases, GD3's gpu-ai class, GD7's credit rates, allowances and packs.
+Merged with master (PF2a, PF2b, PF3, PF3a, PF5, PF7, PF8, PF14a) on 2026-10-11 (Autopilot T31): credit packs are
+one-off items on PF2b's consumer rules (no subscription order confirmation). See As-built.
 
 Before this task, no analysis runner, AI proxy, credits or hosted model existed (`00-contract.md` P.1). What this builds on, verified with Grep on 2026-10-09:
 
@@ -278,3 +280,50 @@ The first ten names are the `ai-proxy.md` §10 platform tests.
   above; `ANTHROPIC_API_KEY` in `server/.env`; the energy image's `ENERGYPLUS_SHA256`; a texture model whose licence
   allows commercial hosting before `AI_TEXTURE_ENABLED`; weather files with their source and licence
   (`server/scripts/load_weather.py`). **Later:** per-attempt charging of mid-stream fallbacks; a faster acoustics core.
+  **QS-17 (the owner, GD5 §7.1 / §7.4)**: how AI credit packs are classified for cancellation, and whether the
+  provider's receipt is enough as their durable medium. Packs keep today's placeholder consent (`BILLING.consent`
+  version, the Cloud page's own box: "I lose my 14-day right to cancel this purchase once they are added") and get no
+  PF2b order confirmation (T31 merge, below). Under reg. 37 / Art. 16(m) that waiver needs a confirmation on a durable
+  medium, so if QS-17 says the receipt is not enough, packs need their own one-off confirmation (no renewal or cancel
+  text, quoting the pack's consent and the credits) and their own consent version. **Stripe packs**: the one-off
+  checkout sets no `customer_update` (PF2's subscription checkout does), so with `STRIPE_TAX_ENABLED` and an existing
+  Stripe customer without an address Stripe may refuse the session; Paddle, the default provider, is unaffected.
+* **Merged with master: PF2a, PF2b, PF3, PF3a, PF5, PF7, PF8, PF14a, and master's T29 / T30 merges of PF4 and PF6
+  (2026-10-11, Autopilot T31, `ap/t31-merge-t14-pf11-analysis-and-ai-s`):** verify green (lint, build, pytest
+  468 collected, 463 passed and the 5 Postgres-only skips: master's 429, this feature's 35 and the merge's 4). A
+  live run against one real API process (fresh SQLite, `tests/mock_paddle.py` on :8098 sending signed webhooks,
+  every price synced, `LEGAL_WORDING_APPROVED=true`, console mail): a Pro checkout with GD5's consent and
+  key information mailed one order confirmation ("Truebex Pro, billed every month: £28.80 (tax £4.80)"); then a
+  5000-credit pack (£6 + VAT) paid from Germany on the mock's pay page returned to
+  `/dashboard/cloud/?topup=success&ref=…`, was credited once (one `top_up` ledger row; the refresh after it changed
+  nothing), recorded `country` DE, no subscription id and no organisation, left one subscription (the Pro one) and
+  mailed nothing.
+  * Conflicts: `README.md` (master's last PF6 line, then this feature's section); `server/requirements.txt` (master's
+    PF3 / PF5 / PF7 / PF8 packages, then `anthropic==1.13.0`); `src/app/checkout/CheckoutClient.tsx` (master's PF3a
+    organisation return and PF2b inline key information, plus this feature's `back=dashboard-cloud` return to the
+    Cloud page and its words); `src/lib/constants.ts` (master's `SHARE_LIVE`, then `CLOUD_AI` and `ADMIN_AI`). The
+    other files both sides changed merged cleanly and were read: `billing/{base,paddle_provider,stripe_provider,
+    service}.py` keep PF2b's paid path (Paddle renewals from `origin: subscription_recurring`, country and business,
+    PF3a's attachment, `consumer.payment_paid`) beside `PAID_HOOKS` and both `create_one_time_checkout`s;
+    `config.py`, both env templates, `main.py`, `database.py`, `tasks.py` and `mock_paddle.py` keep each side's lines.
+  * The billing seam (decision: **skip the mail for packs**): `billing.service.ONE_OFF_ITEMS` (beside `PAID_HOOKS`;
+    `ai/topups.py` registers `ai_credits`). `consumer.payment_paid` skips one-off items, so with the wording approved
+    a pack no longer gets "Truebex Ai_Credits, billed every month" with renewal and cancel terms; the provider's
+    receipt stays its record until QS-17 (carry-over above). Giving packs their own line was rejected here: it is new
+    customer-facing wording whose content depends on QS-17. `consumer.checkout_payment`'s fallback for payments from
+    before PF2b no longer takes a later pack for a subscription's checkout (an EU withdrawal refunded the pack's
+    transaction instead of the plan's). A pack makes no subscription, renewal or organisation attachment by
+    construction (no subscription id, so no fetch and no PF3a link; Paddle origin `api`, Stripe invoice
+    `billing_reason` `manual`), now tested: `tests/test_ai_topup_billing.py` 4 (Paddle and Stripe in payment mode with
+    every PF2b switch on, the checkout payment, the mock's pay page).
+  * Fixed on the way: PF14a's `test_deploy_skill_names_every_vm_secret` failed on `ANTHROPIC_API_KEY` and
+    `SELFHOSTED_API_KEY`: the deploy skill's secrets table has a PF11 row (and PF6's `CU_CLASS_WEIGHTS` its `gpu-ai`
+    weight). PF14's cutover (`scripts/sqlite_to_postgres.py`) now imports `app.ai.models`, so it copies the seven `ai_*`
+    tables and `analysis_weather` (credits are money; `test_ops.py` lists them). Master's Paddle mock ran `pay()` on
+    its event loop while PF2b's handler calls back for the buyer's address, so each click-through payment stalled
+    until the timeouts: it now pays in the thread pool, and its pay page honours `back=dashboard-cloud` as
+    `/checkout/` does. `npm run sync:roadmap` with both trackers: the PF11 tick moves "assistant" from planned to in
+    progress (`--check` clean afterwards).
+  * Left as found: master's `main.py` registers `uploads.router` twice (T8 / PF12 removes it with a test);
+    master's `stripe_provider.py` defines `_invoice_subscription` twice (same behaviour); the Billing page's payment
+    history names a pack by its plan id `ai_credits`.
