@@ -271,3 +271,34 @@ def test_acoustics_decay_and_inputs(tmp_path):
     _job(tmp_path, "acoustics", params, inputs={"rooms": json.dumps(bad).encode()})
     assert common.main(acoustics.run, [str(tmp_path)]) == 2
     assert "absorption" in json.loads((tmp_path / "out" / "error.json").read_text())["message"]
+
+
+# --- the images ------------------------------------------------------------------------------------
+
+ROOT = Path(__file__).resolve().parents[2]
+IMAGES = ROOT / "infra" / "worker" / "analysis"
+
+
+def test_analysis_images_are_non_root_and_run_their_runner():
+    import shutil
+    import subprocess
+
+    for kind in ("wind", "energy", "acoustics", "texture"):
+        text = (IMAGES / kind / "Dockerfile").read_text("utf-8")
+        assert "COPY runners /opt/truebex/runners" in text and "COPY run.sh /opt/truebex/run.sh" in text, kind
+        assert "USER 1000" in text and f'ENTRYPOINT ["/opt/truebex/run.sh", "{kind}"]' in text, kind
+        assert f"-Kind {kind}" in (IMAGES / kind / "build.ps1").read_text("utf-8")
+        # The profile names the image the wrapper runs by default.
+        assert kinds.profile(kind)["image"] == f"truebex-analysis-{kind}:1"
+    assert "opencfd/openfoam-default:2406" in (IMAGES / "wind" / "Dockerfile").read_text("utf-8")
+    assert "sha256sum -c" in (IMAGES / "energy" / "Dockerfile").read_text("utf-8")
+    run_sh = (IMAGES / "run.sh").read_bytes()
+    assert b"python3 -m \"runners.$KIND\"" in run_sh
+    if shutil.which("powershell"):
+        for script in [IMAGES / "build.ps1", *[IMAGES / k / "build.ps1" for k in ("wind", "energy", "acoustics", "texture")]]:
+            cmd = (
+                "$e=$null; [void][System.Management.Automation.Language.Parser]::ParseFile("
+                f"'{script}', [ref]$null, [ref]$e); if ($e.Count) {{ $e | % {{ $_.Message }}; exit 1 }}"
+            )
+            res = subprocess.run(["powershell", "-NoProfile", "-Command", cmd], capture_output=True, text=True, timeout=60)
+            assert res.returncode == 0, (script, res.stdout, res.stderr)
