@@ -1,7 +1,7 @@
 {
   "schema": "truebex-catalogue/1",
   "source": "Tiers, features and limits: contracts/licence-api.md v1.0.0 section 6.3 placeholder matrix (2026-10-09; PF1 copies the GD7 matrix here). Prices, the founding offer and per-seat rules: the owner's pricing plan (PF2a, 2026-10-09). Team is per seat and annual only; founding prices are the annual prices at discount_percent off.",
-  "prices_final": true,
+  "prices_final": false,
   "currencies": ["GBP", "USD", "EUR"],
   "founding": {
     "total": 300,
