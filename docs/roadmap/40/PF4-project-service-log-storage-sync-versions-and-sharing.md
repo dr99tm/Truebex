@@ -4,7 +4,15 @@
 
 ## Status
 
-No project storage exists (`00-contract.md` P.1; the contract's §11 lists all eighteen endpoints as "PF4: not yet"). What this builds on, verified with Grep on 2026-10-09:
+**Done 2026-10-10** on `ap/t10-pf4-project-service-log-storage` (Autopilot T10): all eighteen endpoints of
+`project-log.md` v1.0.0 plus `POST /projects/invites/accept`, the upload protocol its snapshots use (PF5's
+`server/app/uploads/`, taken as is), `Idempotency-Key`, the push hook, the three jobs, the dashboard Projects
+pages and `/invite/project/`, and `server/scripts/demo_replica.py`; verify gate green (lint, build, pytest 211
+passed, 4 Postgres-marked skipped; on Postgres 17 too). Code: `server/app/projects/`,
+`server/app/routers/projects.py`, `src/app/dashboard/projects/`, `src/app/invite/project/`. See As-built.
+
+Before this task no project storage existed (`00-contract.md` P.1; the contract's §11 listed all eighteen
+endpoints as "PF4: not yet"). What it builds on, verified with Grep on 2026-10-09:
 
 | Area | Where | Today |
 |---|---|---|
@@ -114,13 +122,13 @@ Bytes per project = snapshots kept + blobs + offloaded deltas, maintained on wri
 
 ## Deliverables
 
-- [ ] `server/app/projects/` (`service.py`, `ops.py` with the §6.3 rule, `snapshots.py`, `members.py`, `presence.py`, `hooks.py`), `server/app/routers/projects.py`
-- [ ] models and settings; `server/app/uploads/` and `server/app/idempotency.py` if not yet present (PF14 Plumbing, to `share-bundle.md` §5)
-- [ ] mail template `project_invite`
-- [ ] `server/scripts/demo_replica.py`: a scripted replica (create, upload the fixture snapshot, push and pull the fixture operations) for the human test before CL1 lands
-- [ ] `server/tests/contracts/project-log/` copied from the app repo's fixtures (copied, never edited)
-- [ ] dashboard Projects pages, `/invite/project/`, `src/lib/projects.ts`
-- [ ] contract §11 rows and the proposed licence §6.3 limit keys recorded in As-built
+- [x] `server/app/projects/` (`service.py`, `ops.py` with the §6.3 rule, `snapshots.py`, `members.py`, `presence.py`, `hooks.py`), `server/app/routers/projects.py`
+- [x] models and settings; `server/app/uploads/` and `server/app/idempotency.py` if not yet present (PF14 Plumbing, to `share-bundle.md` §5)
+- [x] mail template `project_invite`
+- [x] `server/scripts/demo_replica.py`: a scripted replica (create, upload the fixture snapshot, push and pull the fixture operations) for the human test before CL1 lands
+- [x] `server/tests/contracts/project-log/` copied from the app repo's fixtures (copied, never edited)
+- [x] dashboard Projects pages, `/invite/project/`, `src/lib/projects.ts`
+- [x] contract §11 rows and the proposed licence §6.3 limit keys recorded in As-built
 
 ## Tests
 
@@ -177,8 +185,96 @@ The first twelve names are the contract's §10 platform tests.
 
 ## As-built
 
-* Date, branch, commits:
-* Counts (pytest before → after; Postgres run where):
-* Deviations from Design and why:
-* Contract §11 rows for the owner to set to "PF4: done" in `contracts/project-log.md`; the licence §6.3 MINOR proposal (`cloud_projects`, `cloud_bytes`, `project_members`):
-* Carry-over → which feature:
+* **Date, branch, commits:** 2026-10-10, `ap/t10-pf4-project-service-log-storage` (base `master` at 4758ae1):
+  `ada2092` (server: the service, uploads, idempotency, jobs, fixtures, tests), `528c296` (site: Projects
+  pages, invitation page, `demo_replica.py`), `0dc976d` (README, production presence backend, polish), the
+  docs commit ticking this row and the review-fixes commit after it.
+* **Counts:** pytest 180 → 215 collected (177 → 211 passed on SQLite; the Postgres-marked 3 → 4 skip there):
+  `tests/test_projects.py` 31 (the contract's twelve §10 names, the doc's eleven PF4 names, a Postgres twin of
+  `test_push_assigns_contiguous_seq`, the presence test on both backends, pull arguments and the wait cap,
+  the 30-day purge, the jobs in the worker, the upload protocol for snapshots, `demo_replica.py` driven
+  through the human-test path, and the review hardening), `tests/test_site_pf4.py` 4 build checks.
+  **Postgres:** a disposable PostgreSQL 17.10 cluster on this PC (`initdb` in the session scratchpad, port
+  55432, removed afterwards): the 4 `postgres`-marked tests pass (`test_push_assigns_contiguous_seq_postgres`:
+  96 operations from 8 threads, 1..96 gap-free under the row lock); `tests/test_projects.py` with
+  `TEST_APP_DATABASE_URL` (the whole app on Postgres): 31 passed; the whole suite on Postgres: 213 passed, 1
+  failed — `test_billing.py::test_wayl_checkout_and_verified_webhook` (PF2's dormant Wayl rail, a 30-day
+  period compared across time zones), which fails the same way on the base commit 4758ae1 with a fresh
+  database, so it is not PF4's (for PF2 / the owner). **Live runs:** uvicorn on SQLite with inline jobs and console mail drove
+  the whole human test with `demo_replica.py` (12 operations, the invite link printed in the API console,
+  accept, pull, the long-poll woken by a's move, the conflict naming operation 13, the snapshot download
+  byte-equal to the fixture, restore → head 14, the CORS preflight from the served origin, 403
+  `session_required` for a device delete); headless Edge over CDP on the served `out/` (built against that
+  API) listed House, showed people, versions, a desktop replica under "Here now", named and restored a
+  version ("Restored. The history now ends at operation 13."), kept Delete disabled until the name was
+  typed, and accepted an invitation as a second account ("You joined House as editor.", then "Shared with
+  me" lists it).
+* **Deviations from Design and why:**
+  1. *Uploads are PF5's code.* `ap/t5-pf5-share-pages` (c1907ce) already had `server/app/uploads/` and
+     `server/app/routers/uploads.py`; they are copied byte for byte so the merge keeps one copy. Only
+     `uploads/jobs.py` differs (master's `@periodic` jobs take `now` and open their own session, PF14), and
+     `config.share_max_bytes` is added (PF5 adds the same setting with its other share settings). Snapshots are
+     copied from the account's blob (`blobs/{account}/{sha256}`) to `projects/{pid}/blobs/{sha256}`.
+  2. *Fixtures authored here.* The app repo had no `Docs/roadmap/fixtures/contracts/project-log/` (CL1 makes it
+     after CL0), so `server/scripts/make_project_log_fixtures.py` wrote the §9 set to the letter of the
+     contract (deterministic; README in the folder): `snapshot-0000.tbxp` is today's `Z0-baseline.tbxp`,
+     deltas are stand-in bytes (`TBXD` + JSON). CL1 copies the folder to the app repo or replaces it.
+  3. *Invitations stay `invited` until accepted*, with `user_id` null, even for an address that has an account
+     (the security rule above wins over the contract's "an invitation without an account" wording). Members
+     carry an extra `invite_id` (32 hex, null once active) and 5.15 / 5.16 accept it in the `{user_id}` path
+     segment, so the owner can change or withdraw a pending invitation. Proposed as a MINOR addition to
+     `project-log.md` §5.13–5.16.
+  4. *A person's operations carry their own `author_id`*: `author_kind: "person"` with another `author` is 422
+     (`ops[i].author`), so nobody can push as someone else; agent session ids are not checked. Proposed as a
+     §6.2 rule (PATCH). `demo_replica.py` rewrites the fixture's `author`; the replay test sets the user's.
+  5. *Additive response keys* (readers ignore unknown keys): records carry `updated_at` (the dashboard's "last
+     change") and `org_id`; a `rejected` result carries `more` (the contract's `data.more`, which a
+     per-operation result has no `data` for). 5.3's `members` is the list, 5.1/5.2/5.4's the count, as written.
+  6. *Plan gates.* Creating a project needs `cloud.sync` from any credential (5.1 lists `plan_required`),
+     inviting needs it on the owner's plan, pushing and registering a snapshot need it only from a device
+     (§4); a light client's session push needs the editor role only.
+  7. *Quotas* live in `server/app/projects/quotas.py` as placeholders, not in `catalogue.json`: the licence
+     fixtures and `test_catalogue` pin today's limits and §6.3 changes first (C.9). A value the owner adds to
+     `catalogue.json` `limits` wins at once. `project_members` counts the owner and pending invitations;
+     `cloud_bytes` counts snapshot blobs and offloaded deltas (inline deltas ≤ 64 KiB are not counted).
+  8. *Idempotency* (`server/app/idempotency.py`, PF14's row): only 2xx answers are kept (an error frees the
+     key, so a retry after an upgrade runs again); a second request while the first runs is 409
+     `idempotency_in_progress` (`retry_after_s` 1). New code: a MINOR proposal for §7 / §8.
+  9. *Limits the contract left open:* past 20 waiting pulls per account (per API process) → 429
+     `rate_limited` (`retry_after_s` 5); a pull and a `winning` list stop at 16 MiB of deltas (`more: true`);
+     version `name` ≤ 120, `note` ≤ 2000; the restore operation's `name` is "Restore <version>".
+  10. *Production* runs two uvicorn processes, so `infra/host/compose.yaml` sets
+      `PROJECTS_PRESENCE_BACKEND=db`; a push on the other process reaches a waiting pull through the 1 s
+      re-check. The console mail backend now also prints the text part to stderr (the invite link shows in
+      the API console).
+  11. *Human test addresses:* sign-up refuses `.test` domains (`email-validator`'s special-use rule), so the
+      human test uses `@example.com`.
+  12. *Review hardening* (an independent review of the server diff): a push gives its pooled connection back
+      while a slow client sends its body (restore reads its body before auth); `bytes` is recounted from the
+      snapshots kept and the offloaded deltas under the project lock, and registering a snapshot and the prune
+      job take that lock, so concurrent writes cannot lose bytes or drop a file a new snapshot names; the
+      invitation mail goes out before the row is stored (503 `unavailable`, `retry_after_s` 60, when the relay
+      fails, so the same Idempotency-Key retries cleanly); a replica id held by another person answers 403
+      `forbidden` (5.18 lists replica ids, so nobody can end or overwrite someone else's presence); `NaN` and
+      `Infinity` are refused in pushes and presence (422) so a stored operation can never break later pulls;
+      a Unicode digit in a member reference is 404.
+* **Contract §11 rows** for the owner to set to "PF4: done" in `contracts/project-log.md`: all eighteen —
+  `POST /projects`, `GET /projects`, `GET /projects/{pid}`, `PATCH /projects/{pid}`, `DELETE /projects/{pid}`,
+  `POST /projects/{pid}/ops`, `GET /projects/{pid}/ops`, `POST /projects/{pid}/snapshots`,
+  `GET /projects/{pid}/snapshots/latest`, `GET /projects/{pid}/versions`, `POST /projects/{pid}/versions`,
+  `POST /projects/{pid}/versions/{vid}/restore`, `GET /projects/{pid}/members`, `POST /projects/{pid}/members`,
+  `PATCH /projects/{pid}/members/{user_id}`, `DELETE /projects/{pid}/members/{user_id}`,
+  `PUT /projects/{pid}/presence`, `GET /projects/{pid}/presence`. `share-bundle.md` §11's `/uploads` rows stay
+  PF5's (served here from PF5's module). **Licence §6.3 MINOR proposal:** limit keys `cloud_projects`
+  (projects owned), `cloud_bytes` (bytes of snapshots and offloaded deltas across them) and `project_members`
+  (people on one project, owner and pending invitations included), integers or null = no limit; placeholders
+  Free 0 / 0 / 1, Pro 50 / 10 GiB / 5, Studio 200 / 50 GiB / 10, Team 500 / 200 GiB / 50, Enterprise null
+  until GD7. **Project-log MINOR / PATCH proposals:** items 3, 4, 5, 8 and 9 above.
+* **Carry-over → which feature:** PF5 merge — keep one `server/app/uploads/` (PF5's files are identical;
+  keep master's `jobs.py` signature) and one `share_max_bytes` setting. PF6 — subscribe
+  `app.projects.hooks.on_ops_accepted` for followed panorama sets. PF12 — mirror these routes under
+  `/v1/projects` with API keys. PF3 — fill `projects.org_id`, count `cloud_bytes` per organisation, and
+  extend `quotas.plan_of` with organisation seats. PF9 / PF10 — write `action` operations through 5.6 with a
+  session. CL1 — the real fixtures (`snapshot-0000.tbxp` with ids, real deltas) and the app's cloud save;
+  CL2 — the visible conflict resolution and presence badges. GD7 — the quota values. The owner — the
+  contract's §11 and the licence §6.3 rows above, and SMTP on the VM so invitations leave the console.
