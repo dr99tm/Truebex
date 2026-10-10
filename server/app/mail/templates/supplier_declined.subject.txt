@@ -1,0 +1,1 @@
+Your supplier application for $supplier_name

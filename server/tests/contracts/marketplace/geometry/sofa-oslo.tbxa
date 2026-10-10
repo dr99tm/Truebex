@@ -1,0 +1,16 @@
+{
+  "assetVersion": 1,
+  "note": "Fixture stand-in for the Oslo sofa's O1 object asset (MK1 replaces it with the real asset; the platform only stores, hashes and serves the file).",
+  "assetDef": {
+    "id": "a056ef970553b8b0c166014ca5907ad0",
+    "name": "Oslo 3-seater",
+    "revision": 3,
+    "kind": "object",
+    "category": "furniture/seating",
+    "bounds_mm": [
+      2100,
+      850,
+      950
+    ]
+  }
+}

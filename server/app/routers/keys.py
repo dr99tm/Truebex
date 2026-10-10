@@ -24,7 +24,8 @@ def list_keys(
     return list(
         db.scalars(
             select(ApiKey)
-            .where(ApiKey.user_id == current.id)
+            # PF8: supplier feed keys are managed in the supplier portal.
+            .where(ApiKey.user_id == current.id, ApiKey.supplier_id.is_(None))
             .order_by(ApiKey.revoked_at.is_not(None), ApiKey.created_at.desc())
         )
     )
@@ -39,7 +40,7 @@ def create_key(
     plan = get_plan(effective_plan(db, current))
     active = db.scalar(
         select(func.count(ApiKey.id)).where(
-            ApiKey.user_id == current.id, ApiKey.revoked_at.is_(None)
+            ApiKey.user_id == current.id, ApiKey.revoked_at.is_(None), ApiKey.supplier_id.is_(None)
         )
     )
     if (active or 0) >= plan.max_api_keys:
@@ -65,7 +66,7 @@ def revoke_key(
     db: Session = Depends(get_db),
 ) -> ApiKey:
     key = db.get(ApiKey, key_id)
-    if key is None or key.user_id != current.id:
+    if key is None or key.user_id != current.id or key.supplier_id is not None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Key not found.")
     if key.revoked_at is None:
         key.revoked_at = datetime.now(timezone.utc)

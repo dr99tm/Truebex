@@ -1,0 +1,4 @@
+# Fixture bytes are hashed by the manifests: never convert line endings.
+*.pdf binary
+*.jpg binary
+*.png binary

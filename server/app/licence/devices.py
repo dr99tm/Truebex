@@ -69,6 +69,10 @@ def deactivate(db: Session, device: Device, reason: str, now: datetime) -> bool:
     device.deactivated_at = now
     device.deactivated_reason = reason
     db.add(device)
+    # PF3: a removed or signed-out device hands its floating seat back.
+    from ..orgs.seats import end_leases
+
+    end_leases(db, device_id=device.device_id, reason="device_removed", now=now)
     if reason != "replaced":  # a replacement is recorded as device.replaced
         events.record(db, "device.revoked", user_id=device.user_id, device_id=device.device_id, at=now, reason=reason)
     return True

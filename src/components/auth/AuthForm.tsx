@@ -6,7 +6,10 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { GoogleButton } from "@/components/auth/GoogleButton";
 import { LogoMark } from "@/components/brand/Logo";
+import { ApiError } from "@/lib/api";
 import { login, register, safeNext } from "@/lib/auth";
+import { SSO_LOGIN } from "@/lib/constants";
+import { ssoStart } from "@/lib/orgs";
 
 type Mode = "login" | "signup";
 
@@ -21,6 +24,10 @@ function AuthFormInner({ mode }: { mode: Mode }) {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  // PF3: single sign-on, and the break-glass field once SSO is required.
+  const [sso, setSso] = useState(false);
+  const [ssoRequired, setSsoRequired] = useState(false);
+  const [breakGlass, setBreakGlass] = useState("");
 
   const isSignup = mode === "signup";
   const done = () => router.push(next);
@@ -33,10 +40,11 @@ function AuthFormInner({ mode }: { mode: Mode }) {
       if (isSignup) {
         await register(email, password);
       } else {
-        await login(email, password);
+        await login(email, password, breakGlass.trim() || undefined);
       }
       done();
     } catch (err) {
+      if (err instanceof ApiError && err.code === "sso_required") setSsoRequired(true);
       setError(err instanceof Error ? err.message : "Something went wrong.");
     } finally {
       setLoading(false);
@@ -66,6 +74,9 @@ function AuthFormInner({ mode }: { mode: Mode }) {
           : "Sign in to your dashboard."}
       </p>
 
+      {sso ? (
+        <SsoPanel next={next} initialEmail={email} onBack={() => setSso(false)} />
+      ) : (
       <div className="mt-8">
         <GoogleButton mode={mode} onSuccess={done} onError={setError} />
 
@@ -94,6 +105,20 @@ function AuthFormInner({ mode }: { mode: Mode }) {
           {isSignup && (
             <p className="text-xs text-text-muted">At least 8 characters.</p>
           )}
+          {ssoRequired && !isSignup && (
+            <div className="space-y-2">
+              <p className="text-xs text-text-muted">{SSO_LOGIN.breakGlassHelp}</p>
+              <input
+                type="text"
+                placeholder={SSO_LOGIN.breakGlassLabel}
+                aria-label={SSO_LOGIN.breakGlassLabel}
+                autoComplete="off"
+                value={breakGlass}
+                onChange={(e) => setBreakGlass(e.target.value)}
+                className={inputClass}
+              />
+            </div>
+          )}
           {error && (
             <p role="alert" className="text-sm text-red-400">
               {error}
@@ -103,7 +128,17 @@ function AuthFormInner({ mode }: { mode: Mode }) {
             {loading ? "Please wait…" : isSignup ? "Create account" : "Log in"}
           </Button>
         </form>
+        <Button
+          type="button"
+          variant={ssoRequired ? "primary" : "ghost"}
+          size="lg"
+          className="mt-3 w-full"
+          onClick={() => setSso(true)}
+        >
+          {SSO_LOGIN.button}
+        </Button>
       </div>
+      )}
 
       <p className="mt-6 text-center text-xs text-text-muted">
         By continuing you agree to the{" "}
@@ -117,6 +152,62 @@ function AuthFormInner({ mode }: { mode: Mode }) {
           {isSignup ? "Log in" : "Sign up"}
         </a>
       </p>
+    </div>
+  );
+}
+
+/** "Continue with SSO": a work e-mail, then the organisation's identity provider. */
+function SsoPanel({ next, initialEmail, onBack }: { next: string; initialEmail: string; onBack: () => void }) {
+  const [email, setEmail] = useState(initialEmail);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    setBusy(true);
+    setError("");
+    try {
+      const { url } = await ssoStart(email.trim(), next);
+      window.location.href = url;
+    } catch (err) {
+      setError(
+        err instanceof ApiError && err.code === "sso_not_found"
+          ? SSO_LOGIN.notFound
+          : err instanceof Error
+            ? err.message
+            : "Something went wrong."
+      );
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="mt-8">
+      <h2 className="text-center font-semibold">{SSO_LOGIN.title}</h2>
+      <p className="mt-2 text-center text-sm text-text-secondary">{SSO_LOGIN.help}</p>
+      <form className="mt-6 space-y-4" onSubmit={submit}>
+        <input
+          type="email"
+          placeholder={SSO_LOGIN.emailPlaceholder}
+          aria-label={SSO_LOGIN.emailLabel}
+          autoComplete="email"
+          required
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          className={inputClass}
+        />
+        {error && (
+          <p role="alert" className="text-sm text-red-400">
+            {error}
+          </p>
+        )}
+        <Button type="submit" size="lg" className="w-full" disabled={busy}>
+          {busy ? SSO_LOGIN.busy : SSO_LOGIN.submit}
+        </Button>
+      </form>
+      <button type="button" onClick={onBack} className="mt-4 w-full text-center text-sm text-accent hover:underline">
+        {SSO_LOGIN.back}
+      </button>
     </div>
   );
 }
