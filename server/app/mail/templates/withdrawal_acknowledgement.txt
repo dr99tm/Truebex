@@ -1,0 +1,10 @@
+$acknowledgement
+
+$statement
+
+$refund
+
+Contract: $contract
+Billing: $billing_url
+
+$footer

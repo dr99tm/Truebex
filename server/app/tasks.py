@@ -61,10 +61,15 @@ def _load_jobs() -> None:
     from . import ops, ratelimit  # noqa: F401
     from .billing import jobs as _billing  # noqa: F401
     from .licence import jobs as _licence  # noqa: F401
+    from .orgs import jobs as _orgs  # noqa: F401
+    from .sso import jobs as _sso  # noqa: F401
     from .telemetry import jobs as _telemetry  # noqa: F401
+    from .shares import jobs as _shares  # noqa: F401  (PF5)
+    from .uploads import jobs as _uploads  # noqa: F401  (PF5)
+    from .market import jobs as _market  # noqa: F401  (PF7)
+    from .supplier import jobs as _supplier  # noqa: F401  (PF8; also its e-mail and count listeners)
     from . import idempotency  # noqa: F401  (idempotency.expire)
     from .projects import jobs as _projects  # noqa: F401  (PF4)
-    from .uploads import jobs as _uploads  # noqa: F401
     from .render import jobs as _render  # noqa: F401  (PF6: render.*)
     from .ai import jobs as _ai  # noqa: F401  (PF11: ai.*)
 

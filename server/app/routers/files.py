@@ -42,7 +42,7 @@ def download(key: str, request: Request, exp: str | None = None, sig: str | None
         store.file_path(key),
         media_type=info.content_type,
         filename=fn or None,
-        headers={"Cache-Control": "private, max-age=0, no-store"},
+        headers={"Cache-Control": "private, max-age=0, no-store", "X-Content-Type-Options": "nosniff"},
     )
 
 

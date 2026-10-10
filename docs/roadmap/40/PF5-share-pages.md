@@ -4,7 +4,9 @@
 
 ## Status
 
-No share pages, uploads or bundles exist (`00-contract.md` P.1; the contract's §11 lists all eleven endpoints as "PF5: not yet"). What this builds on, verified with Grep on 2026-10-09:
+**Done 2026-10-09** on `ap/t5-pf5-share-pages` (Autopilot T5): all eleven endpoints of share-bundle v1.0.0, the share page `/view/{slug}` with its own preview, the viewer bundle, the dashboard's Shares page and the jobs; see As-built. The text below is the state before the work.
+
+Before: no share pages, uploads or bundles existed (`00-contract.md` P.1; the contract's §11 lists all eleven endpoints as "PF5: not yet"). What this builds on, verified with Grep on 2026-10-09:
 
 | Area | Where | Today |
 |---|---|---|
@@ -116,13 +118,13 @@ Storage keys: `blobs/{account_id}/{sha256}`, `shares/{share_id}/derived/{sha256}
 
 ## Deliverables
 
-- [ ] `server/app/uploads/` (`service.py`, `assemble.py`), `server/app/routers/uploads.py`
-- [ ] `server/app/shares/` (`service.py`, `manifest.py` with the §6.1 rules, `derivatives.py`, `card.py`, `page.py` + `templates/view.html`), `server/app/routers/shares.py`; `Pillow` pinned; Open Sans TTF (OFL) and the mark PNG under `server/app/shares/assets/`
-- [ ] models, settings, `.env.example`; `robots.txt` route on the API allowing `/view/`
-- [ ] `src/viewer/`, `scripts/build-viewer.mjs`, `package.json` (`esbuild` devDependency, build script), `src/app/dashboard/shares/`, `src/lib/shares.ts`, copy in `constants.ts`
-- [ ] `server/scripts/demo_share.py` (uploads the contract's fixture bundle with a device token, for the human test before PR4 lands)
-- [ ] `server/tests/contracts/share-bundle/` copied from the app repo's fixtures (copied, never edited)
-- [ ] contract §11 rows and the licence §6.3 MINOR proposal (`share_bytes`, `share_days`) recorded in As-built
+- [x] `server/app/uploads/` (`service.py`, `assemble.py`), `server/app/routers/uploads.py`
+- [x] `server/app/shares/` (`service.py`, `manifest.py` with the §6.1 rules, `derivatives.py`, `card.py`, `page.py` + `templates/view.html`), `server/app/routers/shares.py`; `Pillow` pinned; Open Sans TTF (OFL) and the mark PNG under `server/app/shares/assets/`
+- [x] models, settings, `.env.example`; `robots.txt` route on the API allowing `/view/`
+- [x] `src/viewer/`, `scripts/build-viewer.mjs`, `package.json` (`esbuild` devDependency, build script), `src/app/dashboard/shares/`, `src/lib/shares.ts`, copy in `constants.ts`
+- [x] `server/scripts/demo_share.py` (uploads the contract's fixture bundle with a device token, for the human test before PR4 lands)
+- [x] `server/tests/contracts/share-bundle/` copied from the app repo's fixtures (copied, never edited)
+- [x] contract §11 rows and the licence §6.3 MINOR proposal (`share_bytes`, `share_days`) recorded in As-built
 
 ## Tests
 
@@ -175,8 +177,38 @@ The first nine names are the contract's §10 platform tests.
 
 ## As-built
 
-* Date, branch, commits:
-* Counts (pytest before → after; `viewer.js` size):
-* Deviations from Design and why:
-* Contract §11 rows for the owner to set to "PF5: done" in `contracts/share-bundle.md`; the licence §6.3 MINOR proposal (`share_bytes`, `share_days`):
-* Carry-over → which feature:
+* **Date, branch, commits:** 2026-10-09, `ap/t5-pf5-share-pages` (base `ap/t1-pf1-licence-api-releases-and-dow` at `fa824cf`): `0403ad3` PF1's storage adapter committed, `c1907ce` server (uploads, shares, page, card), `06add42` fixture bytes kept exact (`.gitattributes`), `41a54b3` `demo_share.py`, `0285d9c` site (viewer, dashboard, build step), then the docs commit.
+* **Counts:** pytest 64 passed / 4 skipped before (no out/) → 95 passed, 0 skipped after in the verify gate (out/ built, so the 4 PF1 build checks run too) (`test_uploads.py` 6, `test_shares.py` 17, `test_site_pf5.py` 4 with the build present); `viewer.js` 19.9 KB, `viewer.css` 9.7 KB (budget 250 KB); `out/viewer/pdfjs/` 1.8 MB, fetched only when Drawings opens. Self-tested end to end on this PC: local API + `scripts/serve-out.py` + headless Edge (SwiftShader WebGL): the start view faces the manifest's start bearing (E), the Kitchen hotspot sits in the painted doorway at 132.5° / −8° and walks into the kitchen keeping the bearing, Renders and Drawings (PDF.js under the page's CSP, worker through PDF.js's cross-origin wrapper) render, a 412 px phone viewport shows the motion button, visits count once per visitor and day, revoke gives 410 for the page and the data, and the dashboard's Shares page lists the share with visits by day.
+* **Deviations from Design and why:**
+  1. *PF1's `server/app/storage/` was never committed* (the unanchored `storage/` rule in `server/.gitignore` matched it), so the base did not import. This branch commits PF1's files byte for byte and anchors the rule to `/storage/`, the same fix the PF7 worktree carries, so the merges agree.
+  2. *The panorama viewer is written here* (`src/viewer/pano.ts` + `geometry.ts`, WebGL 1, a textured sphere) instead of an MIT library: no third-party code to license or audit for telemetry, 20 KB for the whole viewer, and the gyroscope and bearing maths are unit-tested under Node (`test_site_pf5_viewer_geometry`). Pannellum (MIT) was the alternative; it ships as a global script with its own UI, not as a module.
+  3. *PDF renderer:* PDF.js 6.4.299 legacy build (Apache-2.0), copied (not bundled) to `out/viewer/pdfjs/` by `build-viewer.mjs` with its LICENSE, imported on first open of Drawings; `isEvalSupported: false`.
+  4. *`og:image` is a stable route* `GET /s/{slug}/card.jpg` (`public, max-age=300`, 410 once ended) rather than a 1-hour signed URL: preview crawlers fetch the image later than the page.
+  5. *Which parts arrived* is read from the part files (`uploads/parts/{upload_id}/{sha256}/{n}`), not kept in `upload_sessions.files`, so four parts in flight never race on one JSON value.
+  6. *Fixtures are made here* by `server/scripts/make_share_fixtures.py` (the app repo has none yet): three distinct 2048 panoramas (`pano-2048.jpg`, `-kitchen`, `-hall`, with N/E/S/W painted at their true bearings and a doorway where each hotspot points) instead of one, so a hotspot visibly changes room; `manifest-invalid.json` holds 14 cases (the contract's three first; "file not listed" adds a render and "duplicate id" is on renders so no rule cascades); `visits.json` holds visits to replay and the 5.7 result.
+  7. *Additive response keys* (MINOR-safe): the share record adds `bundle_id`, `published_at`, `revoked_at`; `visits.by_day[]` adds `unique`; 5.6 adds `limits` (`share_links`, `share_days`, `share_bytes`); 5.10 adds `published_at`, `url` and `panoramas[].derivatives` (`pano-4096`, `pano-1024` with url, width, height); 5.1/5.3 add `purpose` and 5.3 `part_bytes`.
+  8. *Error codes beyond §7's table:* 5.4 with `expires_in_days` past the tier's maximum answers 422 `expiry_too_far` (listed for 5.8 only); 5.2 with a part of the wrong length answers 422 `validation_failed` with `expected_bytes`; a worker opening a non-`job-output` purpose (or a device opening `job-output`) answers 403 `forbidden`; publish re-checks the files' bytes (magic numbers, image sizes) and answers 422 `manifest_invalid` with rule `file_content`.
+  9. *Upload sessions are bound to the credential kind* as well as the account: a website session of the same account cannot add parts to (or read) a device's session; a worker's session is bound to that worker.
+  10. *`pano-4096` never enlarges* a smaller source (a 2048 panorama's "4096" copy is 2048 wide).
+  11. *PATCH on an expired share whose files are still kept* brings it back to `live` (the dashboard's Extend), within the live-share limit; a revoked share stays ended (410).
+  12. *The share page sends* `Content-Security-Policy` (scripts only from `SITE_URL`), `Referrer-Policy: no-referrer` (the slug is the secret) and `frame-ancestors 'none'`; `/files` responses add `X-Content-Type-Options: nosniff`.
+  13. *`scripts/autopilot-serve.ps1`* now serves `out/` through `scripts/serve-out.py`, which adds `Access-Control-Allow-Origin: *` and web MIME types like GitHub Pages; with plain `http.server` a share page on the API's origin cannot load the viewer module.
+  14. *`demo_share.py`* also signs in (`--email/--password`) and activates a "Share demo" device itself, so the human test needs no hand-made device token.
+  15. *`UsageChart`* takes `noun` and `summary` props so the visits-by-day chart reuses it; the viewer accepts `#renders` / `#drawings` to open that tab first.
+  16. *A blob nobody takes a ref on within 7 days* is dropped by `uploads.expire`; PF4 snapshots and PF6 job files must call `uploads.service.add_refs` / `drop_refs`.
+* **Contract §11 rows for the owner to set to "PF5: done" in `contracts/share-bundle.md`:** all eleven: `POST /uploads`, `PUT /uploads/{upload_id}/files/{sha256}/parts/{n}`, `GET /uploads/{upload_id}`, `POST /shares`, `POST /shares/{share_id}/publish`, `GET /shares`, `GET /shares/{share_id}`, `PATCH /shares/{share_id}`, `DELETE /shares/{share_id}`, `GET /s/{slug}`, `POST /s/{slug}/visits`. Also copy `server/tests/contracts/share-bundle/` into the app repo's `Docs/roadmap/fixtures/contracts/share-bundle/` (from then on the master copy). **Licence §6.3 MINOR proposal** (a dated line under its *Changes*): `limits.share_days` (integer days, the longest expiry a share link may have; null = no limit) and `limits.share_bytes` (integer bytes per bundle) join the matrix; until GD7 sets them the server uses `SHARE_MAX_DAYS=30` and `SHARE_MAX_BYTES=1073741824`, and `share.links` stays a gate key the platform does not require (Free has `share_links: 1`).
+* **Carry-over → which feature:**
+  * PF14: the `s3` storage adapter (parts → S3 multipart uploads, presigned file URLs; derivatives are already stored with `immutable` cache headers for a CDN), `share.truebex.com` DNS with `SHARE_BASE_URL`, and Pillow on the API VM (it is in `requirements.txt`).
+  * PF6: install the worker-token lookup with `uploads.credentials.set_worker_resolver` and open `job-output` sessions at claim with `uploads.service.open_session`.
+  * PF4: snapshots upload through `uploads` (purpose `snapshot`) and take refs on their blobs.
+  * PF13 (Arabic): a share title in a script Open Sans lacks is left off the preview card (never drawn as boxes); add Noto with shaping then.
+  * GD7: `share_days` / `share_bytes` per tier in `catalogue.json`.
+  * App PR4: the Share command and Shares panel against these endpoints and fixtures.
+  * Owner: Lighthouse on a phone (≤ 3 s to the first panorama on 4G) and the gyroscope on a real phone (human test steps 5 and 6).
+* **Merged together with PF7, PF8, PF2a, PF2b and master (PF2, PF3, PF13, PF14, PF14a) (2026-10-10, Autopilot T28, `ap/t28-merge-t5-t6-t7-t18-t19`):** verify green (lint, build, pytest 330 passed, 3 Postgres-only skipped); a smoke run against one real API process (demo share, trial catalogue, request for quote, worker running every merged job) passed 23/23.
+  * PF14's `tasks.py` calls a job as `fn(now)`: `shares.expire`, `shares.purge` and `uploads.expire` open their own session. They are listed in `tasks._load_jobs` (the worker) and PF5's tables in `scripts/sqlite_to_postgres.py`; `test_ops` checks both. The share tests run only PF5's jobs.
+  * `storage/__init__.py` is PF14's (the `s3` adapter; `shares/` is one of its CDN prefixes). The `/storage/` ignore fix was master's too.
+  * `UsageChart` is master's (`label`, `unit`): the Shares page passes `unit="visits" label={T.byDay}`.
+  * `npm run build` is `next build`, then PF13's `postbuild-lang.mjs`, then `build-viewer.mjs`.
+  * Deploy skill: the live checks name `/viewer/viewer.js` with `access-control-allow-origin: *`; the secrets table and `infra/secrets/server.env.example` name `SHARE_BASE_URL`, `SHARE_MAX_DAYS` and `SHARE_MAX_BYTES`. Pillow reaches the VM in PF14's image, so the "pip install" note is gone.
+  * Synced with master's PF4 and PF3a (T28, second sync): PF4 had copied `server/app/uploads/` and `routers/uploads.py` byte for byte; one copy is kept (master's `uploads/jobs.py`) and one `share_max_bytes` setting (this feature's block). PF4's Projects sits before Shares in the dashboard's first group.
