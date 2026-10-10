@@ -26,4 +26,5 @@ def test_site_pf7_checkout_noindex():
     for page in ("dashboard/orders", "dashboard/admin/market"):
         assert NOINDEX.search(_html(page)), page
     sitemap = (OUT / "sitemap.xml").read_text(encoding="utf-8")
-    assert "/market/" not in sitemap and "/dashboard/" not in sitemap
+    # (PF12: /developers/market/ is a public docs page; no /market/… page is.)
+    assert not re.search(r"<loc>[^<]*\.com/market/", sitemap) and "/dashboard/" not in sitemap
