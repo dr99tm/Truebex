@@ -2,6 +2,7 @@
 §10 platform tests first, then PF6's per-endpoint tests (happy path, auth
 failure, validation failure on each)."""
 
+import hashlib
 import json
 import threading
 import time
@@ -175,12 +176,12 @@ def test_worker_token_scoped(client, setup):
     submitted(client, rj(a), project_id=setup["pid"], at_seq=setup["head"])
     assert claim(client, tiles_only, worker_id="tiles-only", kinds=["panorama", "tiles"]).status_code == 204
     error_of(claim(client, tiles_only, worker_id="tiles-only", kinds=["panorama"]), 403, "forbidden")
-    # Without a lease, a worker token opens no upload.
+    # Without a lease, a worker token opens no upload (the worker discards, it does not stop).
     res = client.post(
         "/uploads", json={"purpose": "job-output", "files": [{"sha256": "a" * 64, "bytes": 1, "content_type": "image/jpeg"}]},
         headers={"Authorization": f"Bearer {tiles_only}", **UPLOADS},
     )
-    error_of(res, 401, "unauthenticated")
+    error_of(res, 409, "lease_lost")
     assert claim(client, setup["token"]).status_code == 200
 
 
@@ -258,6 +259,23 @@ def test_output_requires_uploaded_files(client, setup):
     broken["views"][0]["faces"]["n"]["tiles"][1] = broken["views"][0]["faces"]["n"]["tiles"][1][:3]
     body = error_of(complete(client, token, c, broken), 422, "output_invalid")
     assert any(e["rule"] == "tiles" and e["path"].endswith("faces.n.tiles[1]") for e in body["data"]["errors"])
+    # A file sent through another session of the account does not count.
+    data = tile_bytes(shas[-1])
+    other = client.post(
+        "/uploads",
+        json={"purpose": "job-output", "files": [{"sha256": shas[-1], "bytes": len(data), "content_type": "image/jpeg"}]},
+        headers={"Authorization": f"Bearer {token}", **UPLOADS},
+    ).json()
+    sent = client.put(
+        f"/uploads/{other['upload_id']}/files/{shas[-1]}/parts/0",
+        content=data,
+        headers={
+            "Authorization": f"Bearer {token}", **UPLOADS, "Content-Type": "application/octet-stream",
+            "X-Part-Sha256": hashlib.sha256(data).hexdigest(),
+        },
+    )
+    assert sent.status_code == 204
+    error_of(complete(client, token, c, m), 422, "output_invalid")
     upload_outputs(client, token, c, shas[-1:])
     assert complete(client, token, c, m).status_code == 200
 
@@ -265,8 +283,13 @@ def test_output_requires_uploaded_files(client, setup):
 def test_cost_units_and_quota(client, setup):
     a, token = setup["a"], setup["token"]
     rec = submitted(client, rj(a), project_id=setup["pid"], at_seq=setup["head"])
-    done = finish(client, token, claimed(client, token), wall_s=84.2)
-    assert done["cost_units"] == 1.5  # 84.2 s = 1.403 cu, rounded up to 0.1
+    c0 = claimed(client, token)
+    m0 = fixture_manifest("manifest-panorama.json", c0)
+    upload_outputs(client, token, c0, rendered_tiles(m0))
+    res = complete(client, token, c0, m0, wall_s=84.2, cls="cpu-8")  # the token's class is charged
+    assert res.status_code == 200, res.text
+    done = res.json()
+    assert done["cost_units"] == 1.5  # 84.2 s = 1.403 cu on gpu-std, rounded up to 0.1
     assert quotas.cost_units(60, "gpu-std") == Decimal("1.0")
     assert quotas.cost_units(61, "gpu-std") == Decimal("1.1")
     assert quotas.cost_units(240, "cpu-8") == Decimal("1.0")
@@ -346,8 +369,18 @@ def test_jobs_submit_validation(client, setup):
     error_of(submit(client, rj(a), kind="pack", project_id=pid, at_seq=head, params={"items": ["movies"]}), 422, "validation_failed")
     error_of(submit(client, rj(a), project_id=pid, at_seq=head, views=[]), 422, "validation_failed")
     error_of(submit(client, rj(a), project_id=pid, at_seq=head, quality="ultra"), 422, "validation_failed")
-    # A tiles job needs a finished base.
+    # A tiles job needs a finished base, from the last 90 days.
     error_of(submit(client, rj(a), kind="tiles", project_id=pid, at_seq=head, base_job_id=rec["job_id"], changed=[]), 422, "validation_failed")
+    finish(client, setup["token"], claimed(client, setup["token"]))
+    with SessionLocal() as db:
+        row = db.get(RenderJob, rec["job_id"])
+        row.finished_at = row.finished_at - timedelta(days=91)
+        db.commit()
+    body = error_of(
+        submit(client, rj(a), kind="tiles", project_id=pid, at_seq=head, base_job_id=rec["job_id"], changed=[]),
+        422, "validation_failed",
+    )
+    assert "90 days" in body["detail"]
     assert submitted(client, rj(a), kind="pack", project_id=pid, at_seq=head, params={"items": ["renders", "boq"]})["cost_units_estimate"] == 4.0
 
 
@@ -563,22 +596,74 @@ def test_jobs_overage_metered_when_allowed(client, setup, monkeypatch):
 
 
 def test_overage_pending_without_a_chargeable_provider(client, setup, monkeypatch):
+    from app.models import Subscription, User
+
     clk = Clock(monkeypatch)
-    a = setup["a"]
+    a, token = setup["a"], setup["token"]
     studio(a.user_id)
     with SessionLocal() as db:
-        from app.models import Subscription
-
         sub = db.scalar(select(Subscription).where(Subscription.user_id == a.user_id, Subscription.plan == "studio"))
         sub.provider = "wayl"  # dormant: cannot charge
-        quotas.set_overage_cap(db, db.get(__import__("app.models", fromlist=["User"]).User, a.user_id), Decimal(20))
-        metering.record(db, "user", a.user_id, "cu", Decimal("605.5"), clk.at.date())
+        quotas.set_overage_cap(db, db.get(User, a.user_id), Decimal(20))
+        metering.record(db, "user", a.user_id, "cu", Decimal("595.0"), clk.at.date())
         db.commit()
+    submitted(client, rj(a), project_id=setup["pid"], at_seq=setup["head"])
+    finish(client, token, claimed(client, token), wall_s=630)  # 10.5 cu: 5.5 past 600
+    # Lowering the cap afterwards does not rewrite the month already used.
+    assert client.put("/jobs/usage/overage", json={"cap_cu": 0}, headers=rj(a.session)).status_code == 200
     clk.at = clk.at.replace(day=1) + timedelta(days=32)
     with SessionLocal() as db:
-        overage.run(db, clk.at)
+        assert overage.run(db, clk.at) == 1
         row = db.scalars(select(OverageCharge)).one()
     assert row.state == "pending" and float(row.cu) == 5.5 and row.amount_minor == 60
+    with SessionLocal() as db:
+        assert overage.run(db, clk.at) == 0  # pending rows wait for the owner
+
+
+def test_follow_set_stops_when_its_account_leaves_the_project(client, setup):
+    from .project_helpers import invite_and_accept
+
+    a, token, pid = setup["a"], setup["token"], setup["pid"]
+    b = Person(client, "b@example.com")
+    invite_and_accept(client, a, pid, b, role="viewer")
+    follow = submitted(client, rj(b), project_id=pid, at_seq=setup["head"], follow=True)
+    finish(client, token, claimed(client, token))
+    push_touch(client, a, pid, [WALL])
+    queued = client.get("/jobs", params={"kind": "tiles", "state": "queued"}, headers=rj(b)).json()["jobs"]
+    assert len(queued) == 1
+    res = client.delete(f"/projects/{pid}/members/{b.user_id}", headers=a.web)
+    assert res.status_code == 204, res.text
+    # The queued update fails at its claim and the set stops; later pushes queue nothing.
+    assert claim(client, token).status_code == 204
+    ended = job(client, rj(b), queued[0]["job_id"])
+    assert ended["state"] == "failed" and ended["error"]["code"] == "bad_input"
+    push_touch(client, a, pid, [WALL])
+    assert client.get("/jobs", params={"kind": "tiles", "state": "queued"}, headers=rj(b)).json()["jobs"] == []
+    assert job(client, rj(b), follow["job_id"])["follow"] is False
+
+
+def test_follow_set_coalesce_keeps_doc_version_and_stale_sets_render_everything(client, setup):
+    a, token, pid = setup["a"], setup["token"], setup["pid"]
+    submitted(client, rj(a), project_id=pid, at_seq=setup["head"], follow=True)
+    finish(client, token, claimed(client, token))
+    push_touch(client, a, pid, [WALL])
+    push_touch(client, a, pid, [hex32()], delta_format="o5/54")
+    queued = client.get("/jobs", params={"kind": "tiles", "state": "queued"}, headers=rj(a)).json()["jobs"]
+    assert len(queued) == 1
+    with SessionLocal() as db:
+        assert db.get(RenderJob, queued[0]["job_id"]).doc_version_needed == 54
+    assert claim(client, token, doc_version_max=38).status_code == 204
+    # It fails for good: the edits it carried went unrendered, so the next update renders every face.
+    c = claimed(client, token, doc_version_max=54)
+    res = client.post(
+        f"/workers/jobs/{c['job']['job_id']}/fail",
+        json={"lease_id": c["lease_id"], "code": "engine_error", "message": "x", "retryable": False},
+        headers=wk(token),
+    )
+    assert res.status_code == 200 and res.json()["state"] == "failed"
+    push_touch(client, a, pid, [WALL])
+    nxt = client.get("/jobs", params={"kind": "tiles", "state": "queued"}, headers=rj(a)).json()["jobs"]
+    assert len(nxt) == 1 and nxt[0]["changed_count"] == 0
 
 
 def test_render_autoscale_static_pool(client, setup, monkeypatch):
@@ -639,9 +724,11 @@ def test_tiles_served_immutable(client, setup):
     # The upload's copies went once the tiles were public.
     from app.uploads.models import Blob
 
+    # The upload's copies wait for uploads.expire (nothing holds them).
     shas = {sha for face in out["views"][0]["faces"].values() for row in face["tiles"] for sha in row}
     with SessionLocal() as db:
-        assert db.query(Blob).filter(Blob.sha256.in_(shas)).count() == 0
+        kept = db.query(Blob).filter(Blob.sha256.in_(shas)).all()
+        assert kept and all(b.refs == 0 for b in kept)
 
 
 # --- PF6 extras: the claim race, gc, the live share, admin, the queue depth ----------------

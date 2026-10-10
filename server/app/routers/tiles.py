@@ -14,12 +14,14 @@ import re
 from fastapi import APIRouter, Depends, Response
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import FileResponse, RedirectResponse
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ..contract_http import ContractError, contract, enveloped
 from ..database import SessionLocal, get_db
 from ..projects import waiters
 from ..render import live, queue, tiles
+from ..render.models import RenderSet
 from ..storage import get_store
 
 router = APIRouter(tags=["tiles"], dependencies=[enveloped()], include_in_schema=False)
@@ -48,9 +50,21 @@ def tile(name: str):
     )
 
 
-def _read(slug: str, panorama: str | None) -> dict:
+def _resolve(slug: str, panorama: str | None) -> tuple[str, int]:
+    """The live share's set and its rev (404 / 410 as the share answers)."""
     with SessionLocal() as db:
-        return live.state(db, live.resolve(db, slug, panorama))
+        row = live.resolve(db, slug, panorama)
+        return row.follow_job_id, row.rev
+
+
+def _rev(set_id: str) -> int:
+    with SessionLocal() as db:
+        return db.scalar(select(RenderSet.rev).where(RenderSet.follow_job_id == set_id)) or 0
+
+
+def _state(set_id: str) -> dict:
+    with SessionLocal() as db:
+        return live.state(db, db.get(RenderSet, set_id))
 
 
 @share_router.get("/s/{slug}/live")
@@ -69,18 +83,20 @@ async def share_live(
         )
     response.headers.update(NO_STORE)
     await run_in_threadpool(db.close)
-    data = await run_in_threadpool(_read, slug, panorama)
-    if wait_s <= 0 or rev is None or data["rev"] > rev:
-        return data
-    waiter = waiters.Waiter(queue.job_key(data["follow_job_id"]))
+    set_id, current = await run_in_threadpool(_resolve, slug, panorama)
+    if wait_s <= 0 or rev is None or current > rev:
+        return await run_in_threadpool(_state, set_id)
+    # Viewers are anonymous and many: the wait re-checks one integer and reads
+    # the manifest once, when it answers.
+    waiter = waiters.Waiter(queue.job_key(set_id))
     loop = asyncio.get_running_loop()
     deadline = loop.time() + wait_s
     try:
         while True:
-            data = await run_in_threadpool(_read, slug, panorama)
+            current = await run_in_threadpool(_rev, set_id)
             remaining = deadline - loop.time()
-            if data["rev"] > rev or remaining <= 0:
-                return data
+            if current > rev or remaining <= 0:
+                return await run_in_threadpool(_state, set_id)
             await waiter.wait(min(waiters.RECHECK_S, remaining))
     finally:
         waiter.close()

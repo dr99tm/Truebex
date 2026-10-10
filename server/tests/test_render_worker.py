@@ -120,6 +120,32 @@ def test_worker_wrapper_failure_and_cancel(client, rig, monkeypatch):
         assert db.get(RenderJob, rec["job_id"]).worker_id is None
 
 
+def test_worker_wrapper_lease_lost_while_uploading(client, rig):
+    """The lease ends between the render and the upload: the wrapper discards
+    the outputs and goes on to the next claim instead of stopping."""
+    from app.render import queue
+
+    a, runner = rig["a"], rig["runner"]
+    rec = submitted(client, rj(a), project_id=rig["pid"], at_seq=rig["head"])
+    inner = runner.api.transport
+
+    class LapseBeforeUpload:
+        fired = False
+
+        def request(self, method, url, headers, body, timeout):
+            if method == "POST" and url.endswith("/uploads") and not self.fired:
+                self.fired = True
+                with SessionLocal() as db:
+                    row = db.get(RenderJob, rec["job_id"])
+                    queue.lapse(db, row.job_id, row.lease_id, force=True)
+            return inner.request(method, url, headers, body, timeout)
+
+    runner.api.transport = LapseBeforeUpload()
+    assert runner.run_once(wait_s=0) == "lost"
+    assert job(client, rj(a), rec["job_id"])["state"] == "queued"
+    assert runner.run_once(wait_s=0) == "succeeded"
+
+
 def test_worker_wrapper_revoked_and_config(client, rig, tmp_path):
     example = W.Config.load(ROOT / "worker" / "worker.toml.example")
     assert example.worker_class == "gpu-std" and example.kinds == ["panorama", "tiles", "pack"] and example.wait_s == 20

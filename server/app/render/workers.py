@@ -140,13 +140,13 @@ def active_job(db: Session, worker_id: str) -> RenderJob | None:
 
 
 def upload_resolver(db: Session, raw: str) -> UploadCaller | None:
-    """share-bundle §4: a worker uploads into the account of the job it holds."""
-    row = find(db, raw)
-    if row is None or row.revoked_at is not None:
-        return None
+    """share-bundle §4: a worker uploads into the account of the job it holds.
+    A valid token without a live lease (cancelled, lapsed) answers 409
+    `lease_lost`, so the worker discards the job instead of stopping."""
+    row = authenticate(db, raw)  # 401 unknown, 401 worker_revoked
     job = active_job(db, row.worker_id)
     if job is None:
-        return None
+        raise ContractError("lease_lost", 409, "This worker holds no live lease. Discard the outputs.", {})
     return UploadCaller(account_id=job.account_id, kind="worker", credential_id=row.worker_id)
 
 

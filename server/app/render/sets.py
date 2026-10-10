@@ -7,14 +7,18 @@ the set's job that is still queued (`changed` united, `at_seq` the highest),
 so a burst of edits costs one render. A restore touches everything (`changed`
 empty = every face). Each finished `tiles` job becomes the set's newest
 manifest, bumps the follow job's `rev` and replaces its output, so a viewer
-long-polls one id. Cancelling the follow job (or it failing) stops the set.
+long-polls one id. Cancelling the follow job (or it failing) stops the set,
+and so does its account leaving the project. A set's queue changes under its
+row lock, so concurrent pushes leave at most one queued `tiles` job. When an
+edit goes unrendered (its job failed, expired or was cancelled, or the
+allowance ran out) the set is `stale` and its next update renders every face.
 """
 
 import logging
 import secrets
 from datetime import datetime
 
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
 from ..contract_http import ContractError
@@ -22,6 +26,8 @@ from ..database import SessionLocal
 from ..licence import clock
 from ..models import User
 from ..projects.hooks import on_ops_accepted
+from ..projects.models import Project
+from ..projects.service import membership
 from . import estimates, quotas, tiles
 from .models import RenderJob, RenderSet
 
@@ -56,6 +62,19 @@ def create(db: Session, job: RenderJob, now: datetime) -> RenderSet:
     return row
 
 
+def lock_set(db: Session, set_id: str) -> RenderSet | None:
+    """Begin the write transaction with the set's row locked; returns it fresh."""
+    db.execute(update(RenderSet).where(RenderSet.follow_job_id == set_id).values(rev=RenderSet.rev))
+    return db.execute(
+        select(RenderSet).where(RenderSet.follow_job_id == set_id).execution_options(populate_existing=True)
+    ).scalar_one_or_none()
+
+
+def has_access(db: Session, account_id: int, project_id: str) -> bool:
+    project = db.get(Project, project_id)
+    return project is not None and project.deleted_at is None and membership(db, project_id, account_id) is not None
+
+
 def queued_job(db: Session, set_id: str) -> RenderJob | None:
     return db.scalar(
         select(RenderJob)
@@ -68,10 +87,13 @@ def queued_job(db: Session, set_id: str) -> RenderJob | None:
 
 def coalesce(db: Session, job: RenderJob, changed: list[str], at_seq: int, now: datetime) -> RenderJob:
     from .queue import bump
+    from .service import doc_version_needed
 
     job.changed = unite(list(job.changed or []), changed)
     if at_seq > job.at_seq:
         job.at_seq = at_seq
+    # The joined operations may need a newer reader (5.7's doc_version_max).
+    job.doc_version_needed = doc_version_needed(db, job.project_id, job.at_seq)
     bump(job, now)
     return job
 
@@ -133,11 +155,18 @@ def stop(db: Session, row: RenderSet, now: datetime, *, reason: str = "") -> Non
 
 
 def on_ended(db: Session, job: RenderJob, now: datetime) -> None:
-    """The follow job failed, was cancelled or expired: the set stops."""
-    if job.set_id and job.set_id == job.job_id:
-        row = db.get(RenderSet, job.job_id)
-        if row is not None and row.active:
-            stop(db, row, now)
+    """A job of a set failed, was cancelled or expired. The follow job: the set
+    stops. A `tiles` job: its edits went unrendered, the set is stale."""
+    if not job.set_id:
+        return
+    row = db.get(RenderSet, job.set_id)
+    if row is None or not row.active:
+        return
+    if job.set_id == job.job_id:
+        stop(db, row, now)
+    else:
+        row.stale = True
+        row.updated_at = now
 
 
 def enqueue(db: Session, row: RenderSet, changed: list[str], at_seq: int, now: datetime) -> RenderJob | None:
@@ -145,13 +174,20 @@ def enqueue(db: Session, row: RenderSet, changed: list[str], at_seq: int, now: d
     account can no longer pay for it (the follow job then says so)."""
     from .queue import bump
 
-    joined = queued_job(db, row.follow_job_id)
-    if joined is not None:
-        return coalesce(db, joined, changed, at_seq, now)
     follow = db.get(RenderJob, row.follow_job_id)
     user = db.get(User, row.account_id)
     if follow is None or user is None:
         return None
+    if not has_access(db, row.account_id, row.project_id):
+        stop(db, row, now, reason="Updates stopped: this account is no longer on the project.")
+        follow.message = "Updates stopped: you are no longer on this project."
+        return None
+    if row.stale:
+        changed = []  # an earlier edit went unrendered: every face
+    joined = queued_job(db, row.follow_job_id)
+    if joined is not None:
+        row.stale = False
+        return coalesce(db, joined, changed, at_seq, now)
     kind = quotas.KINDS["tiles"]
     try:
         plan = quotas.require_feature(db, user, kind)
@@ -164,6 +200,7 @@ def enqueue(db: Session, row: RenderSet, changed: list[str], at_seq: int, now: d
         if follow.message != paused:
             follow.message = paused
             bump(follow, now)
+        row.stale = True
         return None
     job = RenderJob(
         job_id=secrets.token_hex(16),
@@ -195,6 +232,10 @@ def enqueue(db: Session, row: RenderSet, changed: list[str], at_seq: int, now: d
 
     job.doc_version_needed = doc_version_needed(db, row.project_id, at_seq)
     db.add(job)
+    row.stale = False
+    if follow.message.startswith("Updates paused"):
+        follow.message = ""
+        bump(follow, now)
     return job
 
 
@@ -204,8 +245,13 @@ def enqueue_from_push(project_id: str, ops: list[dict]) -> None:
     from .queue import notify_claim, notify_job
 
     with SessionLocal() as db:
-        rows = db.scalars(select(RenderSet).where(RenderSet.project_id == project_id, RenderSet.active.is_(True))).all()
-        if not rows:
+        ids = list(
+            db.scalars(
+                select(RenderSet.follow_job_id).where(RenderSet.project_id == project_id, RenderSet.active.is_(True))
+            )
+        )
+        db.rollback()
+        if not ids:
             return
         everything = any(op.get("kind") == "restore" for op in ops)
         touched: set[str] = set()
@@ -217,9 +263,13 @@ def enqueue_from_push(project_id: str, ops: list[dict]) -> None:
         at_seq = max(int(op.get("server_seq") or 0) for op in ops)
         now = clock.now()
         affected = []
-        for row in rows:
+        for set_id in ids:
+            row = lock_set(db, set_id)
+            if row is None or not row.active:
+                db.rollback()
+                continue
             job = enqueue(db, row, changed, at_seq, now)
-            affected.append(job.job_id if job is not None else row.follow_job_id)
-        db.commit()
+            affected += [set_id] + ([job.job_id] if job is not None else [])
+            db.commit()
     notify_job(*affected)
     notify_claim()

@@ -10,14 +10,17 @@
 | `sets/{follow_job_id}/latest.json` | `{rev, job_id, at_seq}` of a set      | no-cache                               |
 
 A worker uploads the tiles of the faces it rendered (share-bundle §5,
-purpose `job-output`); completing copies each into the public store once and
-drops the upload's copy. Carried faces keep their hashes. `render.tiles.gc`
-deletes tiles no manifest of the last 90 days (and no set's newest) names.
+purpose `job-output`) into the session its claim opened; completing checks
+each against that session, copies it into the public store once (a tile
+stored long ago is written again, so the collector sees it as new) and leaves
+the upload's copy to `uploads.expire`. Carried faces keep the base manifest's
+hashes. `render.tiles.gc` deletes tiles no manifest of the last 90 days, no
+set's newest and no running job's base names.
 """
 
 import json
 import re
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
@@ -25,6 +28,7 @@ from sqlalchemy.orm import Session
 from ..config import get_settings
 from ..storage import get_store
 from ..uploads import service as uploads
+from ..uploads.models import UploadSession
 from .models import RenderJob, RenderSet
 
 FACES = ("n", "e", "s", "w", "u", "d")
@@ -36,6 +40,8 @@ MAX_TILES = 20_000
 MAX_PACK_FILES = 500
 GC_KEEP = timedelta(days=90)
 GC_GRACE = timedelta(days=1)
+# A reused tile older than this is written again so the collector keeps it.
+REFRESH_AFTER = timedelta(days=30)
 _SHA = re.compile(r"^[0-9a-f]{64}$")
 _TILE_KEY = re.compile(r"^tiles/([0-9a-f]{64})\.jpg$")
 
@@ -215,13 +221,20 @@ def check_pack(m: object, job: RenderJob) -> list[dict]:
 # --- storing a completed output ---------------------------------------------------------
 
 
+def declared(db: Session, job: RenderJob) -> set[str]:
+    """The files the worker declared into the claim's job-output session."""
+    session = db.get(UploadSession, job.output_upload_id) if job.output_upload_id else None
+    return {f["sha256"] for f in (session.files if session is not None else [])}
+
+
 def verify_tiles(db: Session, job: RenderJob, m: dict, base: dict | None) -> tuple[list[dict], dict]:
-    """Every rendered tile complete in the job's output upload (or already in
-    the store), every carried face as in the base manifest. Returns (errors,
-    the upload's blobs by SHA-256)."""
+    """Every rendered tile complete in the claim's output upload (or already
+    in the store), every carried face as in the base manifest. Returns
+    (errors, the upload's blobs by SHA-256)."""
     e = _Errors()
     rendered = {sha for _, _, _, face in faces_of(m) if face["rendered"] for row in face["tiles"] for sha in row}
-    blobs = uploads.blobs_by_sha(db, job.account_id, sorted(rendered))
+    sent = declared(db, job)
+    blobs = {sha: b for sha, b in uploads.blobs_by_sha(db, job.account_id, sorted(rendered & sent)).items()}
     store = get_store()
     for sha in sorted(rendered - set(blobs)):
         if store.stat(tile_key(sha)) is None:
@@ -235,24 +248,29 @@ def verify_tiles(db: Session, job: RenderJob, m: dict, base: dict | None) -> tup
     return e.items, blobs
 
 
-def publish_tiles(db: Session, blobs: dict) -> int:
-    """Copy each uploaded tile into the public store once; drop the upload's copy."""
+def publish_tiles(db: Session, blobs: dict, now: datetime) -> int:
+    """Copy each uploaded tile into the public store once (again when the
+    stored copy is old, so a running collector cannot take it)."""
     store = get_store()
     copied = 0
     for sha, blob in blobs.items():
         key = tile_key(sha)
-        if store.stat(key) is None:
+        info = store.stat(key)
+        modified = info.modified_at if info is not None else None
+        if modified is not None and modified.tzinfo is None:
+            modified = modified.replace(tzinfo=timezone.utc)
+        if info is None or (modified is not None and modified < now - REFRESH_AFTER):
             with store.open(blob.storage_key) as fh:
                 store.put(key, fh, content_type="image/jpeg", cache_control=IMMUTABLE)
             copied += 1
-    _drop(db, blobs)
     return copied
 
 
 def verify_pack(db: Session, job: RenderJob, m: dict) -> tuple[list[dict], dict]:
     e = _Errors()
     shas = [f["sha256"] for f in m["files"]]
-    blobs = uploads.blobs_by_sha(db, job.account_id, shas)
+    sent = declared(db, job)
+    blobs = uploads.blobs_by_sha(db, job.account_id, [s for s in shas if s in sent])
     for i, sha in enumerate(shas):
         if sha not in blobs:
             e.add(f"files[{i}]", "file_missing", "This file is not complete in the output upload.", sha256=sha)
@@ -267,16 +285,6 @@ def publish_pack(db: Session, job: RenderJob, m: dict, blobs: dict) -> None:
         f["content_type"] = blob.content_type
         with store.open(blob.storage_key) as fh:
             store.put(pack_file_key(job.job_id, f["sha256"]), fh, content_type=blob.content_type)
-    _drop(db, blobs)
-
-
-def _drop(db: Session, blobs: dict) -> None:
-    """The upload's copies were only for this output: delete those nothing holds."""
-    store = get_store()
-    for blob in blobs.values():
-        if blob.refs <= 0:
-            store.delete(blob.storage_key)
-            db.delete(blob)
 
 
 # --- render.tiles.gc ---------------------------------------------------------------------
@@ -294,6 +302,13 @@ def referenced(db: Session, now: datetime) -> set[str]:
     )
     for latest in db.scalars(select(RenderSet.latest_job_id).where(RenderSet.latest_job_id.is_not(None))):
         keys.add(manifest_key(latest))
+    # The bases of jobs not finished yet: their carried faces must survive.
+    for base in db.scalars(
+        select(RenderJob.base_job_id).where(
+            RenderJob.base_job_id.is_not(None), RenderJob.state.in_(("queued", "claimed", "running"))
+        )
+    ):
+        keys.add(manifest_key(base))
     out: set[str] = set()
     for key in keys:
         m = read_json(key)

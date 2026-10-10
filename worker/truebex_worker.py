@@ -431,22 +431,25 @@ class Runner:
                 self.api.fail(job_id, lease, "engine_error", f"output: {exc}", True, tail)
                 self.log(f"failed {job_id}: {exc}")
                 return "failed"
-            sent = self.api.upload(c["output_upload"]["upload_id"], files, types)
             render_log = None
             try:
                 render_log = json.loads((work / "out" / "render-log.json").read_text(encoding="utf-8"))
             except (OSError, ValueError):
                 pass
             try:
+                sent = self.api.upload(c["output_upload"]["upload_id"], files, types)
                 done = self.api.complete(job_id, lease, manifest, wall, render_log)
             except HttpError as exc:
+                if exc.code == "worker_revoked":
+                    raise
                 if exc.code == "output_invalid":
                     self.api.fail(job_id, lease, "engine_error", f"the platform refused the output: {exc.detail}", False, tail)
                     self.log(f"failed {job_id}: {exc.detail}")
                     return "failed"
-                if exc.code == "lease_lost":
-                    self.log(f"lease lost on {job_id}: outputs discarded")
-                    return "lost"
+                if hb.cancelled or exc.code == "lease_lost" or exc.status in (401, 404, 409, 410):
+                    # Cancelled or the lease ended while uploading: discard, claim the next job.
+                    self.log(f"{'cancelled' if hb.cancelled else 'lease lost on'} {job_id}: outputs discarded")
+                    return "cancelled" if hb.cancelled else "lost"
                 raise
             rendered = manifest.get("faces_rendered", "?")
             self.log(f"complete {job_id}: {rendered} faces rendered, {sent} files sent, {wall:.1f} s, {done.get('cost_units')} cu")
@@ -473,10 +476,14 @@ class Runner:
                 if exc.code == "worker_revoked":
                     self.log("this worker's token was revoked; stopping")
                     return EXIT_REVOKED
-                if exc.status in (401, 403):
+                if exc.status in (401, 403) and exc.code in ("unauthenticated", "forbidden", "validation_failed"):
                     self.log(f"the platform refused this worker: {exc}")
                     return 2
                 self.log(f"error: {exc}; trying again in 10 s")
+                time.sleep(10)
+                continue
+            except Exception as exc:  # noqa: BLE001 - a bad job must not stop the worker
+                self.log(f"error: {exc!r}; trying again in 10 s")
                 time.sleep(10)
                 continue
             if outcome is None:

@@ -204,6 +204,9 @@ def submit(db: Session, caller: ProjectCaller, body: dict) -> tuple[RenderJob, b
             or base.output_key is None
         ):
             raise _invalid("base_job_id", "a finished panorama or tiles job of this project")
+        if base.set_id is None and base.finished_at is not None and clock.aware(base.finished_at) < clock.now() - tiles.GC_KEEP:
+            # Its tiles may be collected: render a new panorama instead.
+            raise _invalid("base_job_id", "a panorama finished within the last 90 days")
         base_views = list(base.views or [])
         views = views or base_views
         if any(v not in base_views for v in views):
@@ -212,14 +215,15 @@ def submit(db: Session, caller: ProjectCaller, body: dict) -> tuple[RenderJob, b
     now = clock.now()
     set_id = (base.set_id or None) if base is not None else None
     if set_id:
-        row = db.get(RenderSet, set_id)
+        row = sets.lock_set(db, set_id)
         joined = sets.queued_job(db, set_id) if row is not None and row.active else None
         if joined is not None:
-            sets.coalesce(db, joined, changed, at_seq, now)
-            joined.doc_version_needed = doc_version_needed(db, project_id, joined.at_seq)
+            sets.coalesce(db, joined, [] if row.stale else changed, at_seq, now)
+            row.stale = False
             db.commit()
             notify_job(joined.job_id)
             return joined, True
+        # Still under the set's lock: the new job below is its only queued one.
     n_units = estimates.units(kind.name, views, params)
     estimate = estimates.estimate(db, kind.name, quality, n_units)
     quotas.check(db, user, plan, estimate)
@@ -389,7 +393,9 @@ def usage(db: Session, user: User) -> dict:
     reserved = quotas.in_flight_cu(db, user.id)
     allowed = quotas.overage_allowed(plan)
     cap = quotas.overage_cap(db, user.id) if allowed else Decimal(0)
-    over = max(Decimal(0), used - Decimal(limit)) if limit is not None else Decimal(0)
+    from .overage import used_this_month
+
+    over = used_this_month(db, user.id)
     currency = _currency(db, user)
     return {
         "period_start": quotas.rfc3339_day(start),

@@ -30,6 +30,7 @@ from ..licence import clock
 from ..projects import waiters
 from ..projects.models import Project, ProjectOp, ProjectSnapshot
 from ..projects.ops import op_json
+from ..projects.service import membership
 from ..projects.snapshots import blob_key as snapshot_blob_key
 from ..storage import get_store
 from ..uploads import service as uploads
@@ -256,7 +257,11 @@ def _snapshot_for(db: Session, job: RenderJob) -> ProjectSnapshot | None:
 
 
 class BadInput(Exception):
-    pass
+    """The job cannot run; `stop_set`: its followed set must stop too."""
+
+    def __init__(self, message: str, *, stop_set: bool = False) -> None:
+        super().__init__(message)
+        self.stop_set = stop_set
 
 
 def claim_inputs(db: Session, job: RenderJob, now: datetime) -> dict:
@@ -265,7 +270,9 @@ def claim_inputs(db: Session, job: RenderJob, now: datetime) -> dict:
     ttl = LEASE_S + URL_EXTRA_S
     project = db.get(Project, job.project_id) if job.project_id else None
     if job.project_id and (project is None or project.deleted_at is not None):
-        raise BadInput("The project was deleted.")
+        raise BadInput("The project was deleted.", stop_set=True)
+    if job.project_id and membership(db, job.project_id, job.account_id) is None:
+        raise BadInput("The account is no longer on this project.", stop_set=True)
     snapshot, after = None, 0
     if project is not None:
         snap = _snapshot_for(db, job)
@@ -313,7 +320,7 @@ def claim_inputs(db: Session, job: RenderJob, now: datetime) -> dict:
 def prepare_claim(db: Session, job_id: str, worker: Worker, now: datetime) -> dict | None:
     """Build 5.7's answer for a job just claimed. A job whose inputs are gone
     fails `bad_input` (None is returned and the worker claims again)."""
-    from . import service
+    from . import service, sets
 
     job = lock_job(db, job_id)
     if job is None or job.state != "claimed" or job.worker_id != worker.worker_id:
@@ -327,6 +334,9 @@ def prepare_claim(db: Session, job_id: str, worker: Worker, now: datetime) -> di
         inputs = claim_inputs(db, job, now)
     except BadInput as exc:
         end_attempt(db, job, retry=False, error={"code": "bad_input", "message": str(exc)}, now=now)
+        follow_set = db.get(RenderSet, job.set_id) if job.set_id else None
+        if exc.stop_set and follow_set is not None and follow_set.active:
+            sets.stop(db, follow_set, now, reason=str(exc))
         db.commit()
         notify_job(job_id)
         return None
@@ -432,11 +442,13 @@ def complete(
 ) -> RenderJob:
     """5.9: verify the output against §6.2 (or the pack shape) and the upload,
     publish it, charge the measured time, move the followed set on."""
-    from . import sets
+    from . import overage, sets
 
     done = db.get(RenderJob, job_id) if isinstance(job_id, str) and len(job_id) == 32 else None
     if done is not None and done.ended_lease_id == lease_id and done.state == "succeeded":
         return done  # a repeat of the same completion (§8)
+    # The overage terms in force now, read before the row lock (a plan lookup may write).
+    terms = overage.terms_for(db, done.account_id) if done is not None else None
     db.rollback()
     job = leased(db, worker, job_id, lease_id, now)
     if job.cancel_requested:
@@ -446,7 +458,9 @@ def complete(
         notify_job(job_id)
         notify_claim()
         raise lease_lost()
-    cost = quotas.cost_units(wall_s, used_class)  # 422 for an unknown class
+    # Charged at the class the worker's token was issued for, whatever it reports.
+    used_class = worker.worker_class
+    cost = quotas.cost_units(wall_s, used_class)
     if job.kind == "pack":
         errors = tiles.check_pack(output, job)
         blobs: dict = {}
@@ -468,7 +482,7 @@ def complete(
     if job.kind == "pack":
         tiles.publish_pack(db, job, manifest, blobs)
     else:
-        tiles.publish_tiles(db, blobs)
+        tiles.publish_tiles(db, blobs, now)
     tiles.put_json(tiles.manifest_key(job_id), manifest)
     if isinstance(render_log, (dict, list)):
         tiles.put_json(tiles.job_file_key(job_id, "render-log.json"), {"log": render_log} if isinstance(render_log, list) else render_log)
@@ -490,6 +504,7 @@ def complete(
     bump(job, now)
     metering.record(db, job.account_kind, job.account_id, quotas.METRIC, cost, metering.utc_day(now))
     metering.record(db, job.account_kind, job.account_id, f"{quotas.METRIC}.{job.kind}", cost, metering.utc_day(now))
+    overage.accrue(db, job.account_id, cost, terms, now)
     follow_id = sets.on_success(db, job, now)
     _worker_idle(db, worker.worker_id, now)
     db.commit()

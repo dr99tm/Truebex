@@ -99,6 +99,9 @@ class RenderSet(Base):
     at_seq: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0)
     rev: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    # An edit was not rendered (its job failed, expired or was cancelled, or the
+    # allowance ran out): the next update renders every face.
+    stale: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow, nullable=False)
 
@@ -129,7 +132,8 @@ class Worker(Base):
 
 
 class OverageCharge(Base):
-    """One row per account and month with cost units beyond the allowance."""
+    """One row per account and month with cost units beyond the allowance,
+    accrued as jobs complete (within the cap in force then)."""
 
     __tablename__ = "overage_charges"
     __table_args__ = (UniqueConstraint("account_kind", "account_id", "month", name="uq_overage_account_month"),)
@@ -143,8 +147,9 @@ class OverageCharge(Base):
     currency: Mapped[str] = mapped_column(String(3), nullable=False, default="GBP")
     provider: Mapped[str | None] = mapped_column(String(16), nullable=True)
     provider_ref: Mapped[str | None] = mapped_column(String(128), nullable=True)
-    # pending (no provider can charge: a trial, a dormant provider; the owner
-    # settles it) | charged | failed (retried by the next run)
+    # open (accruing this month, at completions) | pending (no provider can
+    # charge: a trial, a dormant provider; the owner settles it) | charged |
+    # failed (retried by the next run)
     state: Mapped[str] = mapped_column(String(8), nullable=False, default="pending")
     note: Mapped[str] = mapped_column(String(300), nullable=False, default="")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow, nullable=False)
