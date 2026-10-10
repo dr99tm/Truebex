@@ -27,7 +27,7 @@ A task ticks ONLY its own row, on its own branch.
 | [ ] | [PF3](PF3-organisations-seats-and-sso.md) organisations, seats and SSO | PF1 | 2 | — | |
 | [x] | [PF4](PF4-project-service-log-storage-sync-versions-and-sharing.md) project service: log storage, sync, versions and sharing | PF1 | 2 | `server/app/projects/`, `/dashboard/projects/`, `/invite/project/` | 2026-10-10, Autopilot T10: pytest 177 → 211 passed (+ Postgres 17); uploads are PF5's module (one copy at merge); quotas wait for GD7; §11 rows and MINOR proposals in its As-built |
 | [ ] | [PF5](PF5-share-pages.md) share pages | PF1 | 1 | — | |
-| [ ] | [PF6](PF6-cloud-render-orchestration.md) cloud render orchestration | PF4 | 2 | — | |
+| [x] | [PF6](PF6-cloud-render-orchestration.md) cloud render orchestration | PF4 | 2 | `server/app/render/`, `worker/`, `infra/worker/`, `/dashboard/cloud/`, `/dashboard/admin/render/` | 2026-10-10, Autopilot T11: pytest 215 → 257 collected (252 passed + Postgres 17); the app's `-mwrender` (CL3) and the share viewer's live mode (PF5 merge) pending; GD3 / GD7 placeholders; §11 rows and MINOR proposals in its As-built |
 | [ ] | [PF7](PF7-marketplace-backend.md) marketplace backend | PF1 | 1 | — | |
 | [ ] | [PF8](PF8-supplier-portal-and-app.md) supplier portal and app | PF7 | 1 | — | |
 | [ ] | [PF9](PF9-mobile-web-client-and-webxr.md) mobile web client and WebXR | PF4, PF6 | 2 | — | |
