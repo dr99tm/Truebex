@@ -178,3 +178,28 @@ def test_subscription_checkout_payment_is_never_a_pack(client, paddle, monkeypat
     adjustment = paddle.STATE["adjustments"][-1]
     assert adjustment["transaction_id"] == payment(co["reference"]).provider_ref != pack_txn
 
+
+def test_mock_pay_page_returns_a_pack_to_cloud(client, paddle, monkeypatch):
+    """The click-through (the mock's own pay page, as the human test uses it)
+    returns a pack to the Cloud page as /checkout/ does, and a plan to billing."""
+    from fastapi.testclient import TestClient
+
+    monkeypatch.setitem(paddle.CHECKOUT, "style", "page")
+    p = Person(client, "buyer@example.com")
+    out = _top_up(client, p)
+    url = urlparse(out["url"])
+    assert url.path.startswith("/pay/txn_") and parse_qs(url.query)["back"] == ["dashboard-cloud"]
+    mock = TestClient(paddle.app)
+    page = mock.get(f"{url.path}?{url.query}").text
+    assert f"action='{url.path}?back=dashboard-cloud'" in page
+    assert f"/dashboard/cloud/?topup=canceled&amp;ref={out['reference']}" in page
+    res = mock.post(f"{url.path}?back=dashboard-cloud", data={"country": "GB"}, follow_redirects=False)
+    assert res.status_code == 303
+    assert res.headers["location"].endswith(f"/dashboard/cloud/?topup=success&ref={out['reference']}")
+    assert paddle.STATE["transactions"][url.path.rsplit("/", 1)[1]]["status"] == "completed"
+    for ev in paddle.STATE["sent"]:
+        assert paddle_post(client, ev).status_code == 200
+    assert _top_up_rows(p.user_id) == [("top_up", 5000, out["reference"])]
+    # Any other value of `back` is billing's return, as before.
+    plain = mock.get(f"{url.path}?back=elsewhere").text
+    assert "/dashboard/billing/?checkout=canceled" in plain and "action='" + url.path + "'" in plain
