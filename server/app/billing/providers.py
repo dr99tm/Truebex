@@ -13,12 +13,21 @@ import httpx
 
 from ..config import Settings, get_settings
 from . import paddle_provider, stripe_provider, wayl_provider
-from .base import BillingProvider, Invoice, InvoiceLine, NotSupported, ProviderError, WebhookError
+from .base import (
+    BillingProvider,
+    Invoice,
+    InvoiceLine,
+    InvoiceScope,
+    NotSupported,
+    ProviderError,
+    WebhookError,
+)
 
 __all__ = [
     "BillingProvider",
     "Invoice",
     "InvoiceLine",
+    "InvoiceScope",
     "NotSupported",
     "ProviderError",
     "WebhookError",

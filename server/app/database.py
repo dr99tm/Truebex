@@ -106,6 +106,9 @@ _ADDED_COLUMNS["users"] += [("author_id", "VARCHAR(32)"), ("trial_used_at", _TIM
 # custom_data.org_id. NULL = the user's own (personal) subscription.
 _ADDED_COLUMNS.setdefault("subscriptions", []).append(("organisation_id", "VARCHAR(32)"))
 
+# PF3a (organisation billing): the organisation a checkout buys for.
+_ADDED_COLUMNS.setdefault("payments", []).append(("organisation_id", "VARCHAR(32)"))
+
 
 def _migrate(bind: Engine) -> None:
     insp = inspect(bind)

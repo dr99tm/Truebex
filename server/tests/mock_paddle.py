@@ -473,7 +473,9 @@ def pay(txn_id: str) -> list[dict]:
     sub = _subscription_from(txn)
     STATE["subscriptions"][sub["id"]] = sub
     txn["subscription_id"] = sub["id"]
-    events = [event("transaction.completed", txn), event("subscription.created", sub)]
+    # As Paddle does, subscription.created names its originating transaction.
+    created = {**sub, "transaction_id": txn_id}
+    events = [event("transaction.completed", txn), event("subscription.created", created)]
     _send(events)
     return events
 
@@ -581,6 +583,12 @@ async def charge(sub_id: str, request: Request):
 # --- pages a buyer sees ---------------------------------------------------------------------------
 
 
+def _org_query(txn: dict) -> str:
+    """Back on the organisation's billing page (PF3a) after an organisation checkout."""
+    org = str((txn.get("custom_data") or {}).get("org_id") or "")
+    return f"&org={org}" if org.isalnum() else ""
+
+
 def _money(minor: str | int, currency: str) -> str:
     return f"{int(minor) / 100:,.2f} {currency}"
 
@@ -596,7 +604,7 @@ def pay_page(txn_id: str):
         for i in txn["items"]
     )
     ref = html.escape(str((txn.get("custom_data") or {}).get("reference", "")))
-    cancel = f"{_site(txn)}/dashboard/billing/?checkout=canceled&ref={ref}"
+    cancel = f"{_site(txn)}/dashboard/billing/?checkout=canceled&ref={ref}{_org_query(txn)}"
     return (
         "<!doctype html><title>Mock Paddle checkout</title>"
         "<body style='font-family:sans-serif;max-width:32rem;margin:3rem auto'>"
@@ -618,7 +626,9 @@ def pay_submit(txn_id: str):
     if txn["status"] == "ready":
         pay(txn_id)
     ref = (txn.get("custom_data") or {}).get("reference", "")
-    return RedirectResponse(f"{_site(txn)}/dashboard/billing/?checkout=success&ref={ref}", status_code=303)
+    return RedirectResponse(
+        f"{_site(txn)}/dashboard/billing/?checkout=success&ref={ref}{_org_query(txn)}", status_code=303
+    )
 
 
 @app.get("/portal/{customer_id}", response_class=HTMLResponse)

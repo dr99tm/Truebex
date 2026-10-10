@@ -95,14 +95,16 @@ def effective_plan(db: Session, user: User) -> str:
 
 
 def managed_subscription(db: Session, user: User) -> Subscription | None:
-    """The user's Paddle or Stripe subscription: the live one if any, else the
-    most recently updated (a past-due card still needs the portal)."""
+    """The user's own Paddle or Stripe subscription: the live one if any, else
+    the most recently updated (a past-due card still needs the portal). What
+    they bought for an organisation is managed there (billing.org_billing)."""
     subs = list(
         db.scalars(
             select(Subscription)
             .where(
                 Subscription.user_id == user.id,
                 Subscription.provider.in_(MANAGED_PROVIDERS),
+                Subscription.organisation_id.is_(None),
             )
             .order_by(Subscription.updated_at.desc(), Subscription.id.desc())
         )
@@ -132,9 +134,14 @@ def stripe_customer_id(db: Session, user: User) -> str | None:
 
 
 def seats_assigned(db: Session, sub: Subscription) -> int:
-    """Seats of this subscription given to people. The buyer holds one until
-    PF3's organisations assign the rest."""
-    return 1
+    """Seats of this subscription given to people: 1 for a person's own (the
+    buyer holds it); for an organisation's (PF3a), the named seats assigned
+    plus the floating pool. POST /billing/seats refuses fewer (409)."""
+    if not sub.organisation_id:
+        return 1
+    from .org_billing import seats_assigned as org_seats_assigned
+
+    return org_seats_assigned(db, sub.organisation_id)
 
 
 # --- Payments ------------------------------------------------------------------
@@ -219,10 +226,15 @@ def upsert_subscription(
     provider_price_id: str | None = None,
     founding: bool | None = None,
     event_at: datetime | None = None,
+    organisation_id: str | None = None,
     _retry: bool = True,
 ) -> Subscription | None:
     """Mirror a provider subscription. Returns None (and changes nothing) when
     `event_at` is older than the newest state already applied.
+
+    `organisation_id` (PF3a) comes only from our own checkout payment
+    (billing.org_billing.owner_of): it is set once, on a row without one, and
+    never changed or cleared afterwards.
 
     `updated_at` moves only when the subscription really changed, so a daily
     re-fetch of unchanged state leaves it alone."""
@@ -239,6 +251,7 @@ def upsert_subscription(
             plan=tier,
             provider=provider,
             provider_subscription_id=provider_subscription_id,
+            organisation_id=organisation_id,
         )
     wanted: dict[str, object] = {
         "plan": tier if tier in PLANS else "pro",
@@ -256,6 +269,8 @@ def upsert_subscription(
         wanted["provider_price_id"] = provider_price_id
     if founding is not None:
         wanted["founding"] = founding
+    if organisation_id and not sub.organisation_id:
+        wanted["organisation_id"] = organisation_id
     changed = sub.id is None
     for attr, value in wanted.items():
         if not _same(getattr(sub, attr), value):
@@ -264,7 +279,8 @@ def upsert_subscription(
     if changed:
         sub.last_event_at = event_at
         db.add(sub)
-        if is_live(sub):
+        if is_live(sub) and not sub.organisation_id:
+            # Buying for an organisation leaves the buyer's own trial alone.
             _end_trials(db, user_id)
         try:
             db.commit()
@@ -290,6 +306,7 @@ def upsert_subscription(
                 provider_price_id=provider_price_id,
                 founding=founding,
                 event_at=event_at,
+                organisation_id=organisation_id,
                 _retry=False,
             )
     elif _aware(sub.last_event_at) is None or event_at > _aware(sub.last_event_at):
