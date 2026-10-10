@@ -91,3 +91,4 @@ def on_paid(db: Session, payment: Payment) -> None:
 
 
 billing.PAID_HOOKS.append(on_paid)
+billing.ONE_OFF_ITEMS.add(ITEM)

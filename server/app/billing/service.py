@@ -158,6 +158,10 @@ def seats_assigned(db: Session, sub: Subscription) -> int:
 # Features that sell one-off items (PF11's AI credit packs) deliver them here,
 # in the same transaction as the payment's flip to paid: `hook(db, payment)`.
 PAID_HOOKS: list = []
+# Their `payments.plan` values. Such a payment never starts a subscription, so
+# PF2b neither takes it for a subscription's checkout nor mails it the
+# subscription order confirmation (the provider's receipt is its record).
+ONE_OFF_ITEMS: set[str] = set()
 
 
 def mark_payment_paid(db: Session, payment: Payment) -> bool:
