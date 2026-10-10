@@ -328,7 +328,10 @@ The first ten names are the contract's §10 platform tests.
     `constants.ts` reached PF5's `viewer.js` and threw before the share page started, so every share page was blank;
     `scripts/build-viewer.mjs` now inlines `NEXT_PUBLIC_*` as `next build` does (`@next/env`), and a build check keeps
     `process.` out of the bundle. Master's head (3b12c52) set `prices_final` false while PF2a's tests required true:
-    the tests now follow the owner's switch (amounts still pinned; the `out/` checks skip while it is off).
+    the tests now follow the owner's switch (amounts still pinned; the `out/` checks skip while it is off). Master
+    reverted the switch to true (8206f90), so every price check runs again.
+  * The PF6 tick moves the public roadmap's "On your phone and in a headset" (CL3, CL4, PF6, PF9, PF10) from planned
+    to in progress: `npm run sync:roadmap` with both trackers (`--check` clean afterwards).
   * PF14's SQLite → Postgres cutover (`scripts/sqlite_to_postgres.py`) now imports this feature's models, so it
     copies `render_jobs`, `render_sets`, `workers`, `overage_charges`, `render_overage_caps` and `meter_daily`
     (`test_ops.py` lists them).
