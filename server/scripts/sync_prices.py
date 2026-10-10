@@ -5,13 +5,14 @@
     .venv\\Scripts\\python.exe scripts\\sync_prices.py --provider stripe --env sandbox --dry-run
 
 For every purchasable tier, interval and currency (and the founding price of
-each, `founding.discount_percent` off) it finds or creates the provider's
+each the offer covers, `founding.discount_percent` off: the annual prices of
+`founding.tiers` today) it finds or creates the provider's
 product and price, keyed by a lookup key `truebex_<tier>_<interval>_<cur>_<amount>[_founding]`
 (Paddle: the price's custom_data; Stripe: lookup_key), so a second run creates
 nothing. A changed amount is a new price; the old row stays in provider_prices
 (inactive) so webhooks for existing subscribers still map to their tier.
 
-Run it whenever GD7 changes a price, with the keys of the environment the
+Run it whenever a price changes in catalogue.json, with the keys of the environment the
 API runs against (server/.env). Tax: prices follow the provider account's
 default (inclusive or exclusive), which GD5 decides.
 """
@@ -66,7 +67,7 @@ def targets() -> list[Target]:
             continue
         for price in plan.prices:
             variants = [(price.amount_minor, False)]
-            if plan.id in FOUNDING.tiers and FOUNDING.total and FOUNDING.discount_percent:
+            if FOUNDING.covers(plan.id, price.interval) and FOUNDING.total and FOUNDING.discount_percent:
                 variants.append((FOUNDING.discounted(price.amount_minor), True))
             for amount, founding in variants:
                 out.append(

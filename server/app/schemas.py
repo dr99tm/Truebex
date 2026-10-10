@@ -115,8 +115,9 @@ class FoundingOut(BaseModel):
     remaining: int
     discount_percent: int
     ends_at: datetime | None
-    # The tiers the founding price applies to.
+    # The tiers and billing intervals the founding price applies to.
     tiers: list[str] = []
+    intervals: list[str] = []
 
 
 class BillingCatalog(BaseModel):

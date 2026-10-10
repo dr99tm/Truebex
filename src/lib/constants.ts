@@ -245,7 +245,7 @@ export const FAQS = [
   },
   {
     q: "How can I pay?",
-    a: "Pro and Studio are billed monthly or annually by card, and Team per seat. VAT or sales tax for your country is shown before you pay and on your invoice, and you can cancel renewal at any time. Online payment is rolling out; the pricing page shows every plan and what it includes.",
+    a: "Pro and Studio are billed monthly or annually by card, and Team annually per seat. VAT or sales tax for your country is shown before you pay and on your invoice, and you can cancel renewal at any time. Online payment is rolling out; the pricing page shows every plan and what it includes.",
   },
 ] as const;
 
@@ -337,10 +337,14 @@ export const BILLING = {
     contact: "contact us",
     noPrice: "Price at launch",
     compare: "Compare plans",
+    // A tier with only an annual price (Team) in the Monthly view: the annual
+    // charge / 12, then the charge itself.
+    billedAnnually: "billed annually",
+    annualOnly: "{tier} is billed annually.",
   },
   founding: {
     left: "founding seats left",
-    off: "off for as long as your subscription stays active",
+    off: "off annual plans for as long as your subscription stays active",
     applied: "Founding price",
   },
   change: {
@@ -354,6 +358,7 @@ export const BILLING = {
     seatsHeading: "Seats",
     seatsApply: "Update seats",
     done: "Your subscription was updated.",
+    foundingEnds: "This change ends your founding price, which covers annual billing only.",
   },
   invoices: {
     heading: "Invoices",
@@ -404,7 +409,7 @@ export const CHECKOUT = {
 export const TERMS_PAID_PLANS = [
   {
     title: "Plans",
-    text: "Pro and Studio are for one person; Team is billed per seat. You choose monthly or annual billing, and the price, tax and total are shown before you pay.",
+    text: "Pro and Studio are for one person, billed monthly or annually. Team is billed annually, per seat. The price, tax and total are shown before you pay.",
   },
   {
     title: "Our reseller",
@@ -424,7 +429,7 @@ export const TERMS_PAID_PLANS = [
   },
   {
     title: "Founding seats",
-    text: "A limited number of subscriptions are sold at the founding price. A founding subscription keeps that price for all its seats, including seats added later, for as long as it stays active without a break.",
+    text: "A limited number of annual subscriptions are sold at the founding price. A founding subscription keeps that price for all its seats, including seats added later, for as long as it stays active on annual billing without a break.",
   },
   {
     title: "Prices",
@@ -451,8 +456,13 @@ export const PAYMENT_PROCESSORS = [
 // src/lib/catalogue.ts); this block holds only words. A tier without a price
 // shows `priceAtLaunch`; the founding block stays hidden until the catalogue
 // has its numbers. Prices and the founding offer reach these pages only once
-// the catalogue's `prices_final` is true (src/lib/catalogue.ts publicCatalogue). Tokens: {api} requests per month, {devices} computers per
-// person, {n} seats, {total} founding seats, {pct} discount, {remaining}.
+// the catalogue's `prices_final` is true (src/lib/catalogue.ts
+// publicCatalogue). Every amount shown is a charge or follows from one (PF2a):
+// a tier with only an annual price (Team) shows that price / 12 "per month,
+// billed annually". Tokens: {api} requests per month, {devices} computers per
+// person, {n} or {min} seats, {total} founding seats, {pct} discount,
+// {remaining}, {amount} a price, {list} the founding prices, {tiers} the
+// founding tiers, {ends} the offer's last day, {annualOnly} the annual-only tiers.
 // ---------------------------------------------------------------------------
 
 export type PricingHighlight = string | { text: string; roadmap: true };
@@ -489,7 +499,7 @@ export const PRICING = {
     perMonth: "per month",
     perMonthAnnual: "per month, billed annually",
     perYear: "{amount} a year",
-    perYearMonthly: "{amount} a year, paid monthly",
+    orYear: "or {amount} a year, billed annually",
     perSeat: "per seat",
     fromSeats: "from {n} seats",
     priceAtLaunch: "Price at launch",
@@ -561,9 +571,13 @@ export const PRICING = {
       href: "/#contact",
     },
   } satisfies Record<string, TierCopy>,
+  // The founding offer covers annual billing only (catalogue
+  // `founding.intervals`); the build check ties this wording to it.
   founding: {
     title: "Founding seats",
-    body: "The first {total} paid seats keep {pct} % off for as long as they stay subscribed.",
+    body: "The first {total} founding seats keep {pct} % off annual plans for as long as they stay subscribed.",
+    prices: "A year at the founding price: {list}.",
+    and: "and",
     left: "{remaining} of {total} founding seats left",
     ends: "Offer ends {date}.",
   },
@@ -626,7 +640,8 @@ export const PRICING = {
   faqTitle: "Pricing questions",
   faqSubtitle: "Plans, trials, billing and seats.",
   // `when`: shown only when the catalogue says so ("unpriced" = no paid
-  // price yet; "founding" = the founding offer has its numbers).
+  // price yet; "founding" = the founding offer has its numbers;
+  // "annualOnly" = a paid tier has an annual price and no monthly one).
   faq: [
     {
       q: "Is Truebex free to use?",
@@ -638,7 +653,12 @@ export const PRICING = {
     },
     {
       q: "What is the difference between monthly and annual billing?",
-      a: "It is the same plan, paid every month or once a year. Annual billing costs less per month.",
+      a: "It is the same plan, paid every month or once a year. A year paid at once costs less than twelve monthly payments.",
+    },
+    {
+      q: "Can I pay for {annualOnly} monthly?",
+      a: "No. {annualOnly} is billed once a year, per seat. The monthly figure shown is that annual price divided by twelve.",
+      when: "annualOnly",
     },
     {
       q: "Which currencies can I pay in?",
@@ -646,11 +666,11 @@ export const PRICING = {
     },
     {
       q: "What does per seat mean?",
-      a: "Team is priced per person. Each seat runs Truebex on up to {devices} computers.",
+      a: "Team is priced per person, from {min} seats. Each seat runs Truebex on up to {devices} computers.",
     },
     {
       q: "What are founding seats?",
-      a: "The first {total} paid seats keep a {pct} % discount for as long as their subscription stays active.",
+      a: "The first {total} founding seats on {tiers} keep {pct} % off annual plans for as long as the subscription stays active. The offer ends on {ends}.",
       when: "founding",
     },
     {
@@ -1252,7 +1272,7 @@ export const AR_HOME = {
       perMonth: "شهريًا",
       perMonthAnnual: "شهريًا، يُدفع سنويًا",
       perYear: "{amount} في السنة",
-      perYearMonthly: "{amount} في السنة عند الدفع الشهري",
+      orYear: "أو {amount} في السنة عند الدفع السنوي",
       perSeat: "لكل مقعد",
       fromSeats: "من {n} مقاعد",
       priceAtLaunch: "السعر عند الإطلاق",

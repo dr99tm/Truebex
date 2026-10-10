@@ -146,7 +146,7 @@ def test_billing_checkout_requires_session_and_consent(client, paddle):
     assert client.post("/billing/checkout", json=body, headers=h).status_code == 422
     body["consent"] = {"version": "1999-01-01", "accepted": True}
     assert client.post("/billing/checkout", json=body, headers=h).status_code == 422
-    res = client.post("/billing/checkout", json=checkout_body(tier="team", seats=1), headers=h)
+    res = client.post("/billing/checkout", json=checkout_body(tier="team", interval="year", seats=1), headers=h)
     assert res.status_code == 422
     res = client.post("/billing/checkout", json=checkout_body(tier="pro", seats=2), headers=h)
     assert res.status_code == 422
@@ -172,12 +172,12 @@ def test_billing_checkout_without_provider_or_prices(client, monkeypatch):
 
 def test_billing_checkout_server_picks_price(client, paddle):
     h = signup(client)
-    body = checkout_body(tier="pro", interval="month", currency="GBP")
+    body = checkout_body(tier="pro", interval="year", currency="GBP")
     body.update(amount=1, amount_minor=1, price_id="pri_forged", founding=True)
     co = client.post("/billing/checkout", json=body, headers=h).json()
     txn = paddle.STATE["transactions"][txn_of(co["url"])]
     price = txn["items"][0]["price"]
-    listed = PLANS["pro"].price("month", "GBP").amount_minor
+    listed = PLANS["pro"].price("year", "GBP").amount_minor
     founding_price = service.FOUNDING.discounted(listed)
     assert int(price["unit_price"]["amount"]) == (founding_price if co["founding"] else listed)
     assert price["id"] != "pri_forged"
@@ -191,7 +191,7 @@ def test_billing_checkout_coupon_passed_to_paddle(client, paddle):
     h = signup(client)
     res = client.post("/billing/checkout", json=checkout_body(coupon="NOPE"), headers=h)
     assert res.status_code == 400
-    co = start_checkout(client, h, coupon="launch10")
+    co = start_checkout(client, h, interval="year", coupon="launch10")
     txn = paddle.STATE["transactions"][txn_of(co["url"])]
     assert txn["discount_id"] == "dsc_launch10"
     # One discount per checkout: a coupon replaces the founding price.
@@ -261,7 +261,7 @@ def test_billing_paddle_subscription_lifecycle(client, paddle):
 
 def test_billing_webhook_replay_and_out_of_order(client, paddle):
     h = signup(client)
-    _, events = buy(client, h, paddle, tier="team", seats=2)
+    _, events = buy(client, h, paddle, tier="team", interval="year", seats=2)
     # Replays of the same events are applied once.
     for ev in events:
         assert paddle_post(client, ev).status_code == 200
@@ -363,7 +363,7 @@ def test_billing_stripe_checkout_completed_marks_paid(client, stripe_prices, mon
     uid = me(client, h)["id"]
     co = start_checkout(client, h, tier="pro", currency="USD")
     end = int(time.time()) + 30 * 86400
-    price_id = stripe_prices["truebex_pro_month_usd_9900"]
+    price_id = stripe_prices["truebex_pro_month_usd_2900"]
     sub_obj = stripe_sub_event("x", uid, "active", end, price=price_id, sub_id="sub_c2",
                                meta={"user_id": str(uid), "plan": "pro", "founding": "0"})["data"]["object"]
     monkeypatch.setattr(stripe.Subscription, "retrieve", lambda *a, **k: sub_obj)
@@ -440,14 +440,14 @@ def test_billing_change_interval(client, paddle):
 def test_billing_founding_counts_and_holds(client, paddle, monkeypatch):
     total = service.FOUNDING.total
     h = signup(client)
-    co, _ = buy(client, h, paddle)
+    co, _ = buy(client, h, paddle, interval="year")
     assert co["founding"] is True
     assert client.get("/billing/plans").json()["founding"]["remaining"] == total - 1
     assert client.get("/billing/subscription", headers=h).json()["founding"] is True
 
     # A Team checkout holds one place, whatever its seats.
     h2 = signup(client, email="two@example.com")
-    co2 = start_checkout(client, h2, tier="team", seats=4)
+    co2 = start_checkout(client, h2, tier="team", interval="year", seats=4)
     assert co2["founding"] is True
     assert client.get("/billing/plans").json()["founding"]["remaining"] == total - 2
     # Abandoned for 30 minutes: the hold is released and its checkout cancelled.
@@ -460,16 +460,16 @@ def test_billing_founding_counts_and_holds(client, paddle, monkeypatch):
     monkeypatch.setattr(service, "FOUNDING", dataclasses.replace(service.FOUNDING, total=1))
     cat = client.get("/billing/plans").json()
     assert cat["founding"]["remaining"] == 0 and cat["founding"]["enabled"] is False
-    co3 = start_checkout(client, h2)
+    co3 = start_checkout(client, h2, interval="year")
     assert co3["founding"] is False
     txn = paddle.STATE["transactions"][txn_of(co3["url"])]
-    assert int(txn["items"][0]["price"]["unit_price"]["amount"]) == PLANS["pro"].price("month", "GBP").amount_minor
+    assert int(txn["items"][0]["price"]["unit_price"]["amount"]) == PLANS["pro"].price("year", "GBP").amount_minor
 
 
 def test_billing_founding_seat_changes_keep_one_place(client, paddle):
     total = service.FOUNDING.total
     h = signup(client)
-    buy(client, h, paddle, tier="team", seats=2)
+    buy(client, h, paddle, tier="team", interval="year", seats=2)
     assert client.get("/billing/plans").json()["founding"]["remaining"] == total - 1
     res = client.post("/billing/seats", json={"seats": 40}, headers=h)
     assert res.status_code == 200 and res.json()["seats"] == 40 and res.json()["founding"] is True
@@ -478,7 +478,7 @@ def test_billing_founding_seat_changes_keep_one_place(client, paddle):
 
 def test_billing_founding_paid_after_hold_expired(client, paddle):
     h = signup(client)
-    co = start_checkout(client, h)
+    co = start_checkout(client, h, interval="year")
     jobs.expire_founding(datetime.now(timezone.utc) + timedelta(minutes=31))
     # Paddle completed it anyway (a race with the cancel): the place is counted.
     for ev in paddle.pay(txn_of(co["url"])):
@@ -496,7 +496,7 @@ def test_billing_founding_counted_without_our_checkout(client, paddle):
     founding_price = next(
         p for p in paddle.STATE["prices"].values()
         if p["custom_data"]["tier"] == "pro" and p["custom_data"]["founding"] == "1"
-        and p["billing_cycle"]["interval"] == "month" and p["unit_price"]["currency_code"] == "GBP"
+        and p["billing_cycle"]["interval"] == "year" and p["unit_price"]["currency_code"] == "GBP"
     )
     cust = next(iter(paddle.STATE["customers"]), None) or "ctm_x"
     sub = {
@@ -686,7 +686,7 @@ def _has_route(path: str) -> bool:
 @pytest.mark.skipif(not _has_route("/licence/entitlement"), reason="needs PF1's licence API (merge)")
 def test_billing_entitlement_follows_purchase(client, paddle):
     h = signup(client)
-    buy(client, h, paddle, tier="team", seats=3)
+    buy(client, h, paddle, tier="team", interval="year", seats=3)
     contract = {"X-Truebex-Contract": "licence-api/1.0"}
     fp = "a" * 64
     act = client.post(

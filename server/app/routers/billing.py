@@ -330,7 +330,9 @@ def checkout(
 
     reference = _new_reference()
     # A coupon replaces the founding price; one discount per checkout.
-    founding = discount is None and service.hold_founding(db, current, reference, plan.id)
+    founding = discount is None and service.hold_founding(
+        db, current, reference, plan.id, payload.interval
+    )
     try:
         price = pricing.resolve(db, adapter.name, plan.id, payload.interval, currency, founding)
     except PriceUnavailable as exc:
