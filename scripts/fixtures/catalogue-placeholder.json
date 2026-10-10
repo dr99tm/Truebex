@@ -1,0 +1,111 @@
+{
+  "schema": "truebex-catalogue/1",
+  "source": "PLACEHOLDER prices (PF2's, before the owner's plan) marked prices_final false: the public pages must say Price at launch and hide the founding offer. For the build checks; never deployed.",
+  "prices_final": false,
+  "currencies": ["GBP", "USD", "EUR"],
+  "founding": {
+    "total": 100,
+    "discount_percent": 30,
+    "ends_at": "2027-03-31T23:59:59Z",
+    "tiers": ["pro", "studio", "team"]
+  },
+  "tiers": [
+    {
+      "id": "free",
+      "name": "Free",
+      "rank": 0,
+      "purchasable": false,
+      "per_seat": false,
+      "min_seats": 1,
+      "prices": [],
+      "features": ["export.dxf", "export.pdf", "lighting.full", "render.panorama"],
+      "limits": {"storeys": 1, "devices": 2, "share_links": 1, "cloud_cu_month": 0, "ai_credits_month": 0},
+      "api": {"monthly_requests": 1000, "max_api_keys": 2}
+    },
+    {
+      "id": "pro",
+      "name": "Pro",
+      "rank": 1,
+      "purchasable": true,
+      "per_seat": false,
+      "min_seats": 1,
+      "prices": [
+        {"interval": "month", "currency": "GBP", "amount_minor": 7900},
+        {"interval": "month", "currency": "USD", "amount_minor": 9900},
+        {"interval": "month", "currency": "EUR", "amount_minor": 9500},
+        {"interval": "year", "currency": "GBP", "amount_minor": 79000},
+        {"interval": "year", "currency": "USD", "amount_minor": 99000},
+        {"interval": "year", "currency": "EUR", "amount_minor": 95000}
+      ],
+      "features": [
+        "ai.byok", "ai.metered", "analysis.reports", "assets.library", "cloud.panoramas", "cloud.sync",
+        "collab.live", "export.clean", "export.dwg", "export.dxf", "export.ifc", "export.pdf",
+        "lighting.full", "market.cost", "mep", "render.panorama", "share.links", "vr.pc"
+      ],
+      "limits": {"storeys": null, "devices": 2, "share_links": 1, "cloud_cu_month": 0, "ai_credits_month": 0},
+      "api": {"monthly_requests": 100000, "max_api_keys": 20}
+    },
+    {
+      "id": "studio",
+      "name": "Studio",
+      "rank": 2,
+      "purchasable": true,
+      "per_seat": false,
+      "min_seats": 1,
+      "prices": [
+        {"interval": "month", "currency": "GBP", "amount_minor": 15900},
+        {"interval": "month", "currency": "USD", "amount_minor": 19900},
+        {"interval": "month", "currency": "EUR", "amount_minor": 18900},
+        {"interval": "year", "currency": "GBP", "amount_minor": 159000},
+        {"interval": "year", "currency": "USD", "amount_minor": 199000},
+        {"interval": "year", "currency": "EUR", "amount_minor": 189000}
+      ],
+      "features": [
+        "ai.byok", "ai.metered", "analysis.reports", "assets.library", "cloud.panoramas", "cloud.sync",
+        "collab.live", "export.clean", "export.dwg", "export.dxf", "export.ifc", "export.pdf",
+        "lighting.full", "market.cost", "mep", "render.panorama", "share.links", "vr.pc"
+      ],
+      "limits": {"storeys": null, "devices": 2, "share_links": 1, "cloud_cu_month": 0, "ai_credits_month": 0},
+      "api": {"monthly_requests": 100000, "max_api_keys": 20}
+    },
+    {
+      "id": "team",
+      "name": "Team",
+      "rank": 3,
+      "purchasable": true,
+      "per_seat": true,
+      "min_seats": 2,
+      "prices": [
+        {"interval": "month", "currency": "GBP", "amount_minor": 8900},
+        {"interval": "month", "currency": "USD", "amount_minor": 10900},
+        {"interval": "month", "currency": "EUR", "amount_minor": 10500},
+        {"interval": "year", "currency": "GBP", "amount_minor": 89000},
+        {"interval": "year", "currency": "USD", "amount_minor": 109000},
+        {"interval": "year", "currency": "EUR", "amount_minor": 105000}
+      ],
+      "features": [
+        "ai.byok", "ai.metered", "analysis.reports", "assets.library", "cloud.panoramas", "cloud.sync",
+        "collab.live", "export.clean", "export.dwg", "export.dxf", "export.ifc", "export.pdf",
+        "lighting.full", "market.cost", "mep", "render.panorama", "share.links", "vr.pc"
+      ],
+      "limits": {"storeys": null, "devices": 2, "share_links": 1, "cloud_cu_month": 0, "ai_credits_month": 0},
+      "api": {"monthly_requests": 100000, "max_api_keys": 20}
+    },
+    {
+      "id": "enterprise",
+      "name": "Enterprise",
+      "rank": 4,
+      "purchasable": false,
+      "per_seat": true,
+      "min_seats": 1,
+      "prices": [],
+      "features": [
+        "ai.byok", "ai.metered", "analysis.reports", "assets.library", "cloud.panoramas", "cloud.sync",
+        "collab.live", "export.clean", "export.dwg", "export.dxf", "export.ifc", "export.pdf",
+        "lighting.full", "market.cost", "mep", "render.panorama", "share.links", "vr.pc"
+      ],
+      "limits": {"storeys": null, "devices": 2, "share_links": 1, "cloud_cu_month": 0, "ai_credits_month": 0},
+      "api": {"monthly_requests": 5000000, "max_api_keys": 200}
+    }
+  ]
+}

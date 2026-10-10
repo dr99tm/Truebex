@@ -1,0 +1,10 @@
+Hello,
+
+$product_name ($sku) was not approved for the Truebex catalogue.
+
+Reason: $reason
+
+Edit the product and submit it again:
+$product_url
+
+Truebex

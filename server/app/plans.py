@@ -6,7 +6,7 @@ licence entitlements take `features` and `limits` from it), the website
 imports it at build time (src/lib/catalogue.ts) and
 `server/scripts/sync_prices.py` mirrors its prices to the payment providers.
 Until GD7 is written the matrix is the licence contract's §6.3 placeholder;
-prices and the founding offer are placeholders too.
+the prices and the founding offer are the owner's pricing plan (PF2a).
 """
 
 import json
@@ -68,10 +68,17 @@ class FoundingOffer:
     discount_percent: int
     ends_at: datetime | None
     tiers: tuple[str, ...]
+    # The billing intervals with a founding price (the catalogue's
+    # `founding.intervals`; absent = every interval). PF2a: annual only.
+    intervals: tuple[str, ...] = INTERVALS
 
     def discounted(self, amount_minor: int) -> int:
         """The founding price of a seat that lists at `amount_minor`."""
         return (amount_minor * (100 - self.discount_percent) + 50) // 100
+
+    def covers(self, tier: str, interval: str) -> bool:
+        """Whether `tier` billed every `interval` has a founding price."""
+        return tier in self.tiers and interval in self.intervals
 
 
 def _load(path: Path = CATALOGUE_PATH) -> dict[str, Any]:
@@ -106,6 +113,7 @@ def _founding(raw: dict[str, Any] | None) -> FoundingOffer:
         discount_percent=int(raw.get("discount_percent") or 0),
         ends_at=datetime.fromisoformat(ends.replace("Z", "+00:00")) if ends else None,
         tiers=tuple(raw.get("tiers") or ()),
+        intervals=tuple(raw.get("intervals") or INTERVALS),
     )
 
 

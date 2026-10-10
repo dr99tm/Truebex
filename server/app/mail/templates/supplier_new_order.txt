@@ -1,0 +1,12 @@
+Hello,
+
+$supplier_name has a new order ($payment), for delivery to $delivery.
+
+$lines
+
+Total: $total
+
+Accept it, then mark it shipped and delivered, in the supplier portal:
+$inbox_url
+
+Truebex

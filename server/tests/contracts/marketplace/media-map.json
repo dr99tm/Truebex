@@ -1,0 +1,10 @@
+{
+  "note": "The https URLs the feed files and products.json name, and the fixture file each stands for (tests and the seed script fetch nothing from the internet).",
+  "urls": {
+    "https://cdn.example.com/catalogue/sofa-oslo-3/sofa-oslo.tbxa": "geometry/sofa-oslo.tbxa",
+    "https://cdn.example.com/catalogue/sofa-oslo-3/oat-linen-1.png": "thumbs/sofa-oslo-oat.png",
+    "https://cdn.example.com/catalogue/sofa-oslo-3/charcoal-wool-1.png": "thumbs/sofa-oslo-charcoal.png",
+    "https://cdn.example.com/catalogue/chair-bergen/olive-boucle.glb": "geometry/chair-bergen.glb",
+    "https://cdn.example.com/catalogue/chair-bergen/olive-boucle-1.png": "thumbs/chair-bergen.png"
+  }
+}

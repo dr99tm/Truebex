@@ -2,7 +2,7 @@
 // at build time from the API's own file (server/app/catalogue.json): tier
 // names, prices per interval and currency, and the founding offer. The
 // dashboard refreshes it from the API after load (the founding count and
-// which provider is live). Prices are placeholders until GD7.
+// which provider is live). Prices are the owner's pricing plan (PF2a).
 import raw from "../../server/app/catalogue.json";
 import type { Catalog, Interval, PlanInfo } from "@/lib/developer";
 
@@ -30,6 +30,7 @@ export const STATIC_CATALOG: Catalog = {
     discount_percent: raw.founding.discount_percent,
     ends_at: raw.founding.ends_at,
     tiers: [...raw.founding.tiers],
+    intervals: raw.founding.intervals.map((i) => i as Interval),
   },
   provider: null,
   currencies: [...raw.currencies],

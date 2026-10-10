@@ -48,3 +48,22 @@ def test_site_pf6_viewer_modules_are_framework_free():
     for name in ("cube.ts", "live.ts"):
         text = (ROOT / "src" / "viewer" / name).read_text("utf-8")
         assert "from \"react\"" not in text and "@/" not in text, name
+
+
+def test_site_pf6_share_viewer_has_the_live_mode():
+    # PF5's share viewer mounts the cube-tile view for a panorama naming a
+    # followed set (`live_job_id`) and long-polls GET /s/{slug}/live.
+    main = (ROOT / "src" / "viewer" / "main.ts").read_text("utf-8")
+    assert 'from "./cube"' in main and 'from "./live"' in main and "live_job_id" in main
+    js = (OUT / "viewer" / "viewer.js").read_text("utf-8")
+    constants = (ROOT / "src" / "lib" / "constants.ts").read_text("utf-8")
+    badge = re.search(r'export const SHARE_LIVE = \{\s*badge: "([^"]+)"', constants).group(1)
+    assert badge in js and "/live?" in js
+
+
+def test_site_share_viewer_reads_no_node_globals():
+    # constants.ts is shared with the site and may read process.env.NEXT_PUBLIC_*
+    # at the top level (PF2b's legal switch): build-viewer.mjs inlines those as
+    # `next build` does, or the share page's viewer throws before it starts.
+    js = (OUT / "viewer" / "viewer.js").read_text("utf-8")
+    assert not re.search(r"\bprocess\.", js)

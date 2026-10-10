@@ -102,6 +102,34 @@ _ADDED_COLUMNS: dict[str, list[tuple[str, str]]] = {
 _ADDED_COLUMNS["users"] += [("author_id", "VARCHAR(32)"), ("trial_used_at", _TIMESTAMP)]
 # subscriptions.seats (NULL = 1) is in the PF2 block above: PF2 writes it.
 
+# PF3 (organisations): an organisation's paid tier; PF2 sets it from
+# custom_data.org_id. NULL = the user's own (personal) subscription.
+_ADDED_COLUMNS.setdefault("subscriptions", []).append(("organisation_id", "VARCHAR(32)"))
+# PF8 (supplier portal): keys bound to a supplier; the carrier and reference
+# a supplier gives when it ships its part of an order.
+_ADDED_COLUMNS.setdefault("api_keys", []).append(("supplier_id", "VARCHAR(32)"))
+_ADDED_COLUMNS.setdefault("market_order_suppliers", []).extend(
+    [("carrier", "VARCHAR(80)"), ("tracking_ref", "VARCHAR(120)")]
+)
+# PF2b (subscription consumer rules), its own block. Every DDL is valid on
+# SQLite and Postgres (PF14: Postgres has no DATETIME).
+_ADDED_COLUMNS["subscriptions"] += [
+    ("renewed_at", "TIMESTAMP WITH TIME ZONE"),
+    ("renewal_charge_id", "VARCHAR(128)"),
+]
+_ADDED_COLUMNS["payments"] += [
+    ("key_info", "VARCHAR(1000)"),
+    ("key_info_version", "VARCHAR(32)"),
+    ("key_info_at", "TIMESTAMP WITH TIME ZONE"),
+    ("business", "BOOLEAN"),
+    ("country", "VARCHAR(2)"),
+    ("provider_subscription_id", "VARCHAR(128)"),
+    ("confirmation_sent_at", "TIMESTAMP WITH TIME ZONE"),
+]
+
+# PF3a (organisation billing): the organisation a checkout buys for.
+_ADDED_COLUMNS.setdefault("payments", []).append(("organisation_id", "VARCHAR(32)"))
+
 
 def _migrate(bind: Engine) -> None:
     insp = inspect(bind)
@@ -126,6 +154,17 @@ def _migrate(bind: Engine) -> None:
                 "ON users (author_id)"
             )
         )
+        # PF3
+        conn.execute(
+            text(
+                "CREATE INDEX IF NOT EXISTS ix_subscriptions_organisation_id "
+                "ON subscriptions (organisation_id)"
+            )
+        )
+        # PF8
+        conn.execute(
+            text("CREATE INDEX IF NOT EXISTS ix_api_keys_supplier_id ON api_keys (supplier_id)")
+        )
     # PF2: one row per provider subscription. Files with duplicates from before
     # keep working without the index (logged); billing.service retries on it.
     try:
@@ -140,16 +179,32 @@ def _migrate(bind: Engine) -> None:
         logging.getLogger("truebex.db").exception("could not add uq_subscriptions_provider_sub")
 
 
-def init_db(bind: Engine | None = None) -> None:
+def init_db(bind: Engine | None = None, *, seed: bool = True) -> None:
     """Create tables and apply additive migrations (safe to run repeatedly)."""
     from . import models  # noqa: F401  (ensures models are registered)
     from .licence import models as _licence_models  # noqa: F401  (PF1)
     from .releases import models as _release_models  # noqa: F401  (PF1)
+    from .shares import models as _share_models  # noqa: F401  (PF5)
+    from .uploads import models as _upload_models  # noqa: F401  (PF5)
+    from .orgs import models as _org_models  # noqa: F401  (PF3)
+    from .sso import models as _sso_models  # noqa: F401  (PF3)
+    from .market import models as _market_models  # noqa: F401  (PF7)
+    from .supplier import models as _supplier_models  # noqa: F401  (PF8)
     from . import idempotency as _idempotency  # noqa: F401  (PF14 plumbing, first user PF4)
     from .projects import models as _project_models  # noqa: F401  (PF4)
-    from .uploads import models as _upload_models  # noqa: F401  (PF5's, PF4 landed first)
     from .render import models as _render_models  # noqa: F401  (PF6, and metering's meter_daily)
 
     bind = bind or engine
     Base.metadata.create_all(bind=bind)
     _migrate(bind)
+
+    # PF7: the marketplace's categories (rooted on the app's taxonomy) and
+    # regions. The Postgres copy (scripts/sqlite_to_postgres.py) brings the
+    # source's rows instead, so it passes seed=False.
+    if seed:
+        from sqlalchemy.orm import Session
+
+        from .market import taxonomy as _market_taxonomy
+
+        with Session(bind) as db:
+            _market_taxonomy.seed(db)

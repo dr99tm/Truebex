@@ -1,0 +1,1 @@
+$rejected of $rows catalogue rows were rejected

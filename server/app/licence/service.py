@@ -59,8 +59,12 @@ def _signing_key():
         )
 
 
-def build_document(db: Session, user: User, device: Device, now: datetime) -> tuple[dict, seats.Seat]:
+def build_document(
+    db: Session, user: User, device: Device, now: datetime, *, when_full: str = "raise"
+) -> tuple[dict, seats.Seat]:
     seat = seats.seat_source(db, user)
+    # PF3: a floating seat takes or renews this device's lease (2 h, as the document).
+    seat = seats.claim(db, user, device, seat, now, when_full=when_full)
     tier = get_plan(seat.plan)
     life = durations_for(seat.kind)
     issued = clock.floor_s(now)
@@ -92,11 +96,15 @@ def build_document(db: Session, user: User, device: Device, now: datetime) -> tu
     return doc, seat
 
 
-def issue(db: Session, user: User, device: Device, now: datetime | None = None) -> dict:
-    """A fresh signed envelope for this device (also records its seat)."""
+def issue(
+    db: Session, user: User, device: Device, now: datetime | None = None, *, when_full: str = "raise"
+) -> dict:
+    """A fresh signed envelope for this device (also records its seat).
+    `when_full="free"` (activation) issues the personal seat instead of 409
+    `no_seat_available` when the device's floating pool is full."""
     key = _signing_key()
     now = now or clock.now()
-    doc, seat = build_document(db, user, device, now)
+    doc, seat = build_document(db, user, device, now, when_full=when_full)
     device.seat_kind = seat.kind
     device.org_id = seat.org_id
     device.last_seen_at = now

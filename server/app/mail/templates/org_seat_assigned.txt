@@ -1,0 +1,10 @@
+Hello,
+
+$actor gave you a $seat_name seat in $org_name on Truebex ($plan_name).
+$seat_line
+
+Truebex picks it up the next time it refreshes your licence, or when you
+sign in again. Your organisation and seat are on your dashboard:
+$link
+
+Truebex

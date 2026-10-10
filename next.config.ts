@@ -16,6 +16,13 @@ const nextConfig: NextConfig = {
   images: {
     unoptimized: true,
   },
+  // PF2b: always defined (default "false") so the build inlines it and the
+  // minifier drops the GD5 7.4 draft wording (BILLING.rules) unless the owner
+  // builds with NEXT_PUBLIC_LEGAL_WORDING_APPROVED=true after sign-off.
+  env: {
+    NEXT_PUBLIC_LEGAL_WORDING_APPROVED:
+      process.env.NEXT_PUBLIC_LEGAL_WORDING_APPROVED === "true" ? "true" : "false",
+  },
 };
 
 export default nextConfig;
