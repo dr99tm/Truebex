@@ -105,6 +105,12 @@ _ADDED_COLUMNS["users"] += [("author_id", "VARCHAR(32)"), ("trial_used_at", _TIM
 # PF3 (organisations): an organisation's paid tier; PF2 sets it from
 # custom_data.org_id. NULL = the user's own (personal) subscription.
 _ADDED_COLUMNS.setdefault("subscriptions", []).append(("organisation_id", "VARCHAR(32)"))
+# PF8 (supplier portal): keys bound to a supplier; the carrier and reference
+# a supplier gives when it ships its part of an order.
+_ADDED_COLUMNS.setdefault("api_keys", []).append(("supplier_id", "VARCHAR(32)"))
+_ADDED_COLUMNS.setdefault("market_order_suppliers", []).extend(
+    [("carrier", "VARCHAR(80)"), ("tracking_ref", "VARCHAR(120)")]
+)
 
 
 def _migrate(bind: Engine) -> None:
@@ -137,6 +143,10 @@ def _migrate(bind: Engine) -> None:
                 "ON subscriptions (organisation_id)"
             )
         )
+        # PF8
+        conn.execute(
+            text("CREATE INDEX IF NOT EXISTS ix_api_keys_supplier_id ON api_keys (supplier_id)")
+        )
     # PF2: one row per provider subscription. Files with duplicates from before
     # keep working without the index (logged); billing.service retries on it.
     try:
@@ -161,6 +171,7 @@ def init_db(bind: Engine | None = None, *, seed: bool = True) -> None:
     from .orgs import models as _org_models  # noqa: F401  (PF3)
     from .sso import models as _sso_models  # noqa: F401  (PF3)
     from .market import models as _market_models  # noqa: F401  (PF7)
+    from .supplier import models as _supplier_models  # noqa: F401  (PF8)
 
     bind = bind or engine
     Base.metadata.create_all(bind=bind)

@@ -1,0 +1,11 @@
+Hello,
+
+Thank you for applying to sell $supplier_name on Truebex.
+
+Your application is under review. We check the company details and the
+document you uploaded, then e-mail you the decision.
+
+While you wait you can prepare your catalogue in the supplier portal:
+$portal_url
+
+Truebex

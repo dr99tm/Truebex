@@ -66,6 +66,7 @@ def _load_jobs() -> None:
     from .shares import jobs as _shares  # noqa: F401  (PF5)
     from .uploads import jobs as _uploads  # noqa: F401  (PF5)
     from .market import jobs as _market  # noqa: F401  (PF7)
+    from .supplier import jobs as _supplier  # noqa: F401  (PF8; also its e-mail and count listeners)
 
 
 def jobs() -> dict[str, Job]:

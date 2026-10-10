@@ -345,6 +345,16 @@ def _check(row: Row, categories: dict, regions: dict[str, MarketRegion], warning
         "gtin": gtin or None,
     }
 
+    c.offer = check_offer(row, regions, err)
+    c.product["sku"], c.variant["variant_id"] = sku, variant_id
+    return c
+
+
+def check_offer(row: Row, regions: dict[str, MarketRegion], err) -> dict:
+    """The row columns of §6.4 (region, currency, price, tax, delivery, stock,
+    status, availability) → the offer; `err(column, code)` records a problem.
+    PF8's price grid writes through this, so the grid and a feed refuse the
+    same values with the same codes."""
     region = regions.get(row.get("region"))
     if not row.get("region"):
         err("region", "missing_required")
@@ -402,7 +412,7 @@ def _check(row: Row, categories: dict, regions: dict[str, MarketRegion], warning
         err("availability", "bad_availability")
     elif stated == "made_to_order" and ints["lead_time_days"] is None:
         err("availability", "bad_availability")
-    c.offer = {
+    return {
         "region": row.get("region"),
         "currency": currency,
         "amount": amount,
@@ -414,8 +424,6 @@ def _check(row: Row, categories: dict, regions: dict[str, MarketRegion], warning
         "status": status,
         "availability": derive_availability(status, stated or None, ints["stock"], ints["lead_time_days"]),
     }
-    c.product["sku"], c.variant["variant_id"] = sku, variant_id
-    return c
 
 
 def derive_availability(status: str, stated: str | None, stock: int | None, lead: int | None) -> dict:
@@ -452,6 +460,9 @@ class Report:
     errors: list[dict] = field(default_factory=list)
     warnings: list[dict] = field(default_factory=list)
     error_count: int = 0
+    # New products and variants (the portal's dry run shows them beside the row counts).
+    new_products: int = 0
+    new_variants: int = 0
 
     def error(self, row: Row, column: str, code: str) -> None:
         self.error_count += 1
@@ -480,14 +491,19 @@ def import_rows(
     dry_run: bool = False,
     warnings: list[dict] | None = None,
     includes: dict[str, list] | None = None,
+    new_status: str | None = None,
 ) -> Report:
     """Apply §6.4 rows for one supplier. Commits, or rolls back when dry_run
-    (nothing fetched, nothing stored)."""
+    (nothing fetched, nothing stored). New products start in `new_status`:
+    by default `pending_review` for a verified supplier and `draft` for one
+    still under review (PF8: unverified suppliers prepare, never publish)."""
+    if new_status is None:
+        new_status = "pending_review" if supplier.status == "verified" else "draft"
     if mode not in ("upsert", "replace"):
         raise FeedInvalid("mode is upsert or replace")
     at = now()
     store = store or get_store()
-    fetcher = fetcher or media.HttpFetcher()
+    fetcher = fetcher or media.default_fetcher()
     report = Report(rows=len(rows), warnings=list(warnings or []))
     categories = active_categories(db)
     regions = active_regions(db)
@@ -613,13 +629,14 @@ def import_rows(
                 product_id=new_id(),
                 supplier_id=supplier.supplier_id,
                 sku=sku,
-                status="pending_review",
+                status=new_status,
                 images=[],
                 includes=[],
                 created_at=at,
             )
             existing_products[sku] = product
             product_changed = True
+            report.new_products += 1
         for col in PRODUCT_COLUMNS:
             if not _same(getattr(product, col), head.product[col]):
                 setattr(product, col, head.product[col] if col != "description" else (head.product[col] or ""))
@@ -654,6 +671,7 @@ def import_rows(
             if v is None:
                 v = ProductVariant(product_id=product.product_id, variant_id=vid, sort=sort_next, options={}, materials=[], images=[])
                 sort_next += 1
+                report.new_variants += 1
                 existing_variants[(product.product_id, vid)] = v
                 variants_of[product.product_id].append(v)
                 changed = True
@@ -850,6 +868,8 @@ def execute(db: Session, feed_id: str, *, fetcher: media.Fetcher | None = None, 
         report = import_rows(
             db, supplier, rows, mode=run.mode, fetcher=fetcher, store=store, feed_id=run.feed_id,
             warnings=warnings, includes=includes,
+            # An admin's import goes to the review queue whatever the supplier's state.
+            new_status="pending_review" if run.source == "admin" else None,
         )  # fmt: skip
     except (FeedInvalid, FeedTooLarge) as exc:
         db.rollback()
@@ -889,6 +909,12 @@ def run_feed(db: Session, supplier: Supplier, data: bytes, fmt: str, mode: str, 
 def dry_run(db: Session, supplier: Supplier, data: bytes, fmt: str, mode: str) -> dict:
     """What a run would do, without fetching, storing or writing (PF8's preview)."""
     rows, warnings, includes = parse(data, fmt)
+    return dry_run_rows(db, supplier, rows, mode, warnings, includes)
+
+
+def dry_run_rows(
+    db: Session, supplier: Supplier, rows: list[Row], mode: str, warnings: list[dict] | None = None, includes: dict | None = None
+) -> dict:
     report = import_rows(db, supplier, rows, mode=mode, dry_run=True, warnings=warnings, includes=includes)
     return {
         "state": "dry_run",
@@ -900,6 +926,8 @@ def dry_run(db: Session, supplier: Supplier, data: bytes, fmt: str, mode: str) -
         "hidden": report.hidden,
         "errors": report.errors,
         "warnings": report.warnings[:MAX_ERRORS],
+        "new_products": report.new_products,
+        "new_variants": report.new_variants,
     }
 
 

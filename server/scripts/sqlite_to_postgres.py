@@ -70,7 +70,7 @@ class Report:
 
 def _models() -> list[Table]:
     # Every module with tables (the same set init_db creates), so a fresh
-    # process sees PF1's devices and releases, PF3's organisations, PF5's shares and PF7's marketplace too.
+    # process sees PF1's devices and releases, PF3's organisations, PF5's shares and PF7's and PF8's marketplace too.
     from app import models  # noqa: F401
     from app.licence import models as _licence  # noqa: F401
     from app.orgs import models as _orgs  # noqa: F401
@@ -79,6 +79,7 @@ def _models() -> list[Table]:
     from app.shares import models as _shares  # noqa: F401  (PF5)
     from app.uploads import models as _uploads  # noqa: F401  (PF5)
     from app.market import models as _market  # noqa: F401  (PF7)
+    from app.supplier import models as _supplier  # noqa: F401  (PF8)
 
     return list(Base.metadata.sorted_tables)  # parents before children
 

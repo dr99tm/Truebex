@@ -1,0 +1,8 @@
+Hello,
+
+$product_name ($sku) is approved and listed in the Truebex catalogue.
+
+See it in the supplier portal:
+$product_url
+
+Truebex

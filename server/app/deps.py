@@ -106,6 +106,11 @@ def api_key_auth(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or revoked API key.",
         )
+    if key.supplier_id:  # PF8: a supplier key feeds its catalogue only
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="This is a supplier feed key; create a developer key under Dashboard → API keys.",
+        )
     user = db.get(User, key.user_id)
     if user is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)

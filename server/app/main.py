@@ -27,7 +27,9 @@ from .routers import admin, admin_telemetry, files, licence, releases, telemetry
 from .routers import orgs, sso
 from .sso import jobs as _sso_jobs  # noqa: F401  (PF3: registers the SSO jobs)
 from .market import jobs as _market_jobs  # noqa: F401  (PF7: registers the marketplace jobs)
+from .supplier import jobs as _supplier_jobs  # noqa: F401  (PF8: supplier jobs, e-mails, analytics)
 from .routers import market, market_admin
+from .routers import supplier
 from .routers import auth, billing, keys, usage, v1
 from .routers import growth as growth_router
 from .telemetry.service import record_server_exception
@@ -131,6 +133,11 @@ app.include_router(shares.public)
 app.include_router(market.router)
 app.include_router(market.internal)
 app.include_router(market_admin.router)
+
+# PF8: the supplier portal, the feed endpoints 5.11-5.13, the admin's view of applications
+app.include_router(supplier.router)
+app.include_router(supplier.feeds_router)
+app.include_router(supplier.admin)
 
 app.include_router(auth.router)
 app.include_router(keys.router)

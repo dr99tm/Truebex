@@ -169,6 +169,14 @@ class Settings(BaseSettings):
     embedding_model: str = ""
     embedding_dir: str = "./models"
 
+    # --- Supplier portal (PF8) --------------------------------------------------
+    # The daily pull of registered feed URLs (contract 5.12), hour in UTC.
+    feed_pull_hour_utc: int = 2
+    # Local trials only: a fixture folder whose media-map.json serves the
+    # feed's picture and 3D URLs from files (tests/contracts/marketplace), so
+    # the contract's feed imports without the internet. Empty in production.
+    market_media_fixtures: str = ""
+
     @property
     def cors_origin_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]

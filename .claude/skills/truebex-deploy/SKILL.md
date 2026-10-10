@@ -177,6 +177,7 @@ reads the switches at runtime through `/config` and `/billing/plans`, with no si
 | Organisations, SSO (PF3) | `SSO_SECRET_KEY` (a Fernet key sealing each organisation's SSO client secret: set it once and keep it), `SAML_SP_ENTITY_ID`, `AUDIT_RETENTION_DAYS` (730) | no `SSO_SECRET_KEY` = derived from `SECRET_KEY`, so a new `SECRET_KEY` makes every organisation re-enter its SSO secret; no entity id = each organisation's metadata URL |
 | Share pages (PF5) | `SHARE_BASE_URL` (the links' origin), `SHARE_MAX_DAYS` (30), `SHARE_MAX_BYTES` (1 GiB per bundle) | no `SHARE_BASE_URL` = links are `{API_URL}/view/{slug}`; the bundles live in the data bucket with the installers |
 | Marketplace (PF7) | `MARKET_PAYMENTS_ENABLED` (`false` until GD5 signs off the marketplace terms), `STRIPE_CONNECT_WEBHOOK_SECRET` (the `/market/webhooks/stripe` endpoint's; uses `STRIPE_SECRET_KEY`), `MARKET_READS_PER_MINUTE` (120), `EMBEDDING_MODEL`, `EMBEDDING_DIR` | payments off = every supplier takes requests for quote only; no webhook secret = 404; no `EMBEDDING_MODEL` = picture search off (the weights from `scripts/fetch_models.py` are not in the image) |
+| Supplier portal (PF8) | `FEED_PULL_HOUR_UTC` (2: the daily read of registered feed URLs), `MARKET_MEDIA_FIXTURES` (local trials only) | `MARKET_MEDIA_FIXTURES` stays empty on the VM |
 
 `infra/host/compose.yaml` sets `BACKGROUND_TASKS=worker`, `RATELIMIT_BACKEND=db` and (worker) `BACKUP_EXPECTED=true`;
 they are not in the file.

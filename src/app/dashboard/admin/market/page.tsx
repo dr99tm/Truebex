@@ -8,6 +8,7 @@ import { formatDate } from "@/lib/api";
 import { MARKET } from "@/lib/constants";
 import {
   adminMarket,
+  type SupplierApplication,
   formatMoney,
   type AdminProduct,
   type AdminReview,
@@ -84,9 +85,42 @@ function Filter({ value, options, onChange }: { value: string; options: string[]
 
 // --- Suppliers ---------------------------------------------------------------
 
+/** PF8: what the supplier sent when it applied, and its documents. */
+function ApplicationView({ app }: { app: SupplierApplication }) {
+  const f = app.fields;
+  if (!app.state) return <p className="mt-3 text-xs text-text-muted">{A.applicationNone}</p>;
+  const address = f.address ? [f.address.line1, f.address.line2, f.address.city, f.address.postcode, f.address.country].filter(Boolean).join(", ") : "—";
+  return (
+    <div className="mt-3 space-y-2 rounded-[var(--radius-button)] border border-border p-3 text-xs text-text-secondary">
+      <p>
+        {f.legal_name} · {f.company_number}
+        {f.vat_id ? ` · VAT ${f.vat_id}` : ""} · {address}
+      </p>
+      <p>
+        {f.contact?.name} · {f.contact?.email}
+        {f.contact?.phone ? ` · ${f.contact.phone}` : ""} · {(f.regions ?? []).join(", ")}
+        {app.created_at ? ` · ${formatDate(app.created_at)}` : ""}
+      </p>
+      <p className="font-semibold text-text-primary">{A.documents}</p>
+      {app.documents.length === 0 && <p>{A.noDocuments}</p>}
+      <ul>
+        {app.documents.map((d) => (
+          <li key={d.sha256}>
+            <a href={d.url} target="_blank" rel="noopener noreferrer" className="text-accent hover:underline">
+              {d.name}
+            </a>{" "}
+            · {Math.ceil(d.bytes / 1024)} KB
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 function SupplierRow({ s, act, busy }: { s: AdminSupplier; act: (fn: () => Promise<unknown>) => Promise<void>; busy: boolean }) {
   const [bp, setBp] = useState(String(s.commission_bp));
   const [link, setLink] = useState("");
+  const [app, setApp] = useState<SupplierApplication | null>(null);
   return (
     <Panel>
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -145,8 +179,17 @@ function SupplierRow({ s, act, busy }: { s: AdminSupplier; act: (fn: () => Promi
         >
           {A.connect}
         </Button>
+        <Button
+          size="sm"
+          variant="ghost"
+          disabled={busy}
+          onClick={() => act(async () => setApp(app ? null : await adminMarket.application(s.supplier_id)))}
+        >
+          {A.application}
+        </Button>
       </div>
       {link && <p className="mt-2 break-all font-mono text-xs text-accent">{link}</p>}
+      {app && <ApplicationView app={app} />}
     </Panel>
   );
 }
@@ -473,6 +516,7 @@ export default function AdminMarketPage() {
   }
   const Current = PANELS[tab];
   const pending = summary.data?.products?.pending_review ?? 0;
+  const applied = summary.data?.suppliers?.applied ?? 0;
   return (
     <>
       <PageHeader title={A.title} description={A.description} />
@@ -495,6 +539,8 @@ export default function AdminMarketPage() {
           >
             {A.tabs[t]}
             {t === "products" && pending > 0 && <span className="ml-1 text-xs text-warn">({pending})</span>}
+            {/* PF8: supplier applications waiting for a decision. */}
+            {t === "suppliers" && applied > 0 && <span className="ml-1 text-xs text-warn">({applied})</span>}
           </button>
         ))}
       </nav>

@@ -15,9 +15,10 @@ from .models import VariantAvailability
 STALE_AFTER = timedelta(days=7)
 
 
-def _job(name: str, seconds: int) -> Callable:
+def periodic_session(name: str, seconds: int) -> Callable:
     """Register `fn(db, now)` with app.tasks, which calls jobs as `fn(now)`:
-    the job gets its own session and is committed when it returns."""
+    the job gets its own session and is committed when it returns (PF8's
+    supplier jobs use it too)."""
 
     def register(fn: Callable[[Session, datetime], int]) -> Callable[[Session, datetime], int]:
         def run(now: datetime) -> int:
@@ -32,22 +33,22 @@ def _job(name: str, seconds: int) -> Callable:
     return register
 
 
-@_job("market.embeddings", 60)
+@periodic_session("market.embeddings", 60)
 def embed_new_products(db: Session, now: datetime) -> int:
     return embeddings.embed_pending(db)
 
 
-@_job("market.quotes.expire", 24 * 3600)
+@periodic_session("market.quotes.expire", 24 * 3600)
 def expire_quotes(db: Session, now: datetime) -> int:
     return orders.expire_quotes(db, now)
 
 
-@_job("market.orders.unpaid", 3600)
+@periodic_session("market.orders.unpaid", 3600)
 def cancel_unpaid_orders(db: Session, now: datetime) -> int:
     return orders.cancel_unpaid(db, now)
 
 
-@_job("market.transfers", 300)
+@periodic_session("market.transfers", 300)
 def transfer_accepted_parts(db: Session, now: datetime) -> int:
     if not checkout.enabled():
         return 0
@@ -56,12 +57,12 @@ def transfer_accepted_parts(db: Session, now: datetime) -> int:
 
 # Daily, and idempotent: on the 1st (or the first run after it) last month's
 # statements are made; later runs find them made.
-@_job("market.commissions.invoice", 24 * 3600)
+@periodic_session("market.commissions.invoice", 24 * 3600)
 def monthly_statements(db: Session, now: datetime) -> int:
     return len(commissions.run_statements(db, now))
 
 
-@_job("market.availability.stale", 24 * 3600)
+@periodic_session("market.availability.stale", 24 * 3600)
 def mark_stale_availability(db: Session, now: datetime) -> int:
     result = db.execute(
         update(VariantAvailability)

@@ -3,12 +3,14 @@ basket will (contract marketplace-api 5.7), until MK4 exists.
 
     cd server
     .venv\\Scripts\\python.exe scripts\\market_try.py --email you@example.com --password ... [--kind quote|order]
-        [--region AE] [--api http://127.0.0.1:8000]
+        [--region AE] [--api http://127.0.0.1:8000] [--search "Oslo sofa"]
 
 Signs in with the account's e-mail and password, sends the sofa (oat-linen,
 1) and four tins of paint with the prices the server quotes now, and prints
 the answer: the order id, its state and, for an order, the checkout URL to
-open in the browser. Run seed_market.py first.
+open in the browser. Run seed_market.py first, or (PF8) pass --search to send
+the first product a catalogue search finds in the region, from whichever
+supplier sells it (e.g. one that uploaded feed-two-regions.csv in the portal).
 """
 
 import argparse
@@ -30,6 +32,7 @@ def main(argv: list[str]) -> int:
     ap.add_argument("--kind", choices=("quote", "order"), default="quote")
     ap.add_argument("--region", default="AE", choices=("AE", "GB"))
     ap.add_argument("--api", default="http://127.0.0.1:8000")
+    ap.add_argument("--search", help="send the first product this text finds in the region instead (PF8)")
     args = ap.parse_args(argv)
 
     supplier = json.loads((FIXTURES / "products.json").read_text(encoding="utf-8"))["supplier"]["supplier_id"]
@@ -38,6 +41,16 @@ def main(argv: list[str]) -> int:
         {"supplier_id": supplier, "sku": "PAINT-CHALK", "variant_id": "2-5l", "qty": 4},
     ]
     with httpx.Client(base_url=args.api, timeout=30) as api:
+        if args.search:
+            found = api.get("/market/search", params={"q": args.search, "region": args.region}, headers=CONTRACT).json()
+            if not found.get("results"):
+                print(f"nothing found for {args.search!r} in {args.region}")
+                return 1
+            first = found["results"][0]
+            product = api.get(f"/market/products/{first['product_id']}", params={"region": args.region}, headers=CONTRACT).json()
+            variant = first.get("variant_id") or product["variants"][0]["variant_id"]
+            items = [{"supplier_id": product["supplier_id"], "sku": product["sku"], "variant_id": variant, "qty": 1}]
+            print(f"{product['name']} ({product['sku']} / {variant}) from {product['supplier_name']}")
         res = api.post("/auth/login", json={"email": args.email, "password": args.password})
         if res.status_code != 200:
             print(f"sign-in failed: {res.status_code} {res.text}")

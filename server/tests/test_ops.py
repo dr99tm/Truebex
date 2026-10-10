@@ -278,7 +278,7 @@ def test_fresh_process_never_queries_wmi(tmp_path):
 
 
 def test_worker_process_registers_every_feature_job(tmp_path):
-    # The worker imports only app.worker: PF1's, PF2's, PF3's, PF5's and PF7's jobs must still run there.
+    # The worker imports only app.worker: PF1's, PF2's, PF3's, PF5's, PF7's and PF8's jobs must still run there.
     names = set(json.loads(_fresh_python("import json; from app import tasks; print(json.dumps(tasks.registered()))", tmp_path)))
     for job in (
         "telemetry.rollup",
@@ -300,6 +300,10 @@ def test_worker_process_registers_every_feature_job(tmp_path):
         "market.transfers",
         "market.commissions.invoice",
         "market.availability.stale",
+        "market.feeds.run",
+        "market.feeds.pull",
+        "supplier.imports.purge",
+        "supplier.listing.sync",
     ):
         assert job in names, job
 
@@ -500,7 +504,7 @@ def _seed_sqlite(url: str) -> None:
 
 
 def test_sqlite_to_postgres_lists_every_feature_table(tmp_path):
-    # A fresh process (the cutover runs the script on its own): PF1's, PF3's, PF5's and PF7's tables too.
+    # A fresh process (the cutover runs the script on its own): PF1's, PF3's, PF5's, PF7's and PF8's tables too.
     code = "import json; from scripts import sqlite_to_postgres as s; print(json.dumps([t.name for t in s._models()]))"
     tables = json.loads(_fresh_python(code, tmp_path))
     for table in (
@@ -510,6 +514,8 @@ def test_sqlite_to_postgres_lists_every_feature_table(tmp_path):
         "blobs", "upload_sessions", "shares", "share_derivatives", "share_visits",
         "suppliers", "market_categories", "market_regions", "products", "product_variants", "variant_prices",
         "market_orders", "market_order_suppliers", "market_order_lines", "commissions", "product_reviews", "feed_runs",
+        "supplier_applications", "feed_sources", "supplier_imports", "market_events_daily", "supplier_member_invites",
+        "listing_subscriptions",
     ):
         assert table in tables, table
     assert tables.index("users") < tables.index("devices")  # parents first

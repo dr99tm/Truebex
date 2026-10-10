@@ -17,7 +17,7 @@ from ..config import get_settings
 from ..contract_http import CONTRACT_HEADER, ContractError, contract, enveloped
 from ..database import get_db
 from ..deps import LicenceCaller, get_current_user, get_session_or_device
-from ..market import catalogue, checkout, embeddings, orders, reviews, search
+from ..market import catalogue, checkout, embeddings, hooks, media, orders, reviews, search
 from ..market.common import CONTRACT_MAJOR, CONTRACT_MINOR, CONTRACT_NAME, CONTRACT_VERSION, invalid, is_hex32, not_found
 from ..market.prices import MAX_BATCH, batch, region_or_invalid
 from ..market.schemas import OrderRequest, PricesRequest, ReviewIn
@@ -99,7 +99,10 @@ def search_products(
         cursor=cursor or None,
         limit=limit,
     )
-    return search.search(db, params)
+    body = search.search(db, params)
+    # PF8 analytics: one impression per product shown.
+    hooks.emit("search.results", db, product_ids=[r["product_id"] for r in body["results"]], region=params.region)
+    return body
 
 
 @router.get("/products/{product_id}", dependencies=[Reads])
@@ -107,7 +110,9 @@ def product(product_id: str, region: str | None = Query(default=None, max_length
     if not is_hex32(product_id):
         raise not_found("That product")
     r = region_or_invalid(db, region) if region else None
-    return catalogue.public_product(db, product_id, r)
+    body = catalogue.public_product(db, product_id, r)
+    hooks.emit("product.viewed", db, product_id=product_id, region=r.region if r else None)  # PF8 analytics
+    return body
 
 
 @router.post("/prices", dependencies=[Reads])
@@ -277,6 +282,34 @@ def post_review(
 ) -> dict:
     review = reviews.post(db, current, product_id, body.rating, body.text)
     return {**reviews.review_json(review), "status": review.status}
+
+
+@internal.get("/geometry/{product_id}/{variant_id}", dependencies=[Reads], include_in_schema=False)
+def geometry_file(
+    product_id: str, variant_id: str, region: str | None = Query(default=None, max_length=8), db: Session = Depends(get_db)
+):
+    """A published variant's 3D file (contract 5.4 `geometry.url`): counted as
+    a placement for the supplier's analytics (PF8), then a redirect to a
+    signed URL (1 h) served as an attachment."""
+    from sqlalchemy import select
+
+    from ..market.models import Product, ProductVariant, Supplier
+    from ..market.prices import is_public
+    from ..market.taxonomy import active_regions
+
+    product = db.get(Product, product_id) if is_hex32(product_id) else None
+    supplier = db.get(Supplier, product.supplier_id) if product else None
+    if product is None or not is_public(product, supplier):
+        raise not_found("That product")
+    v = db.scalar(
+        select(ProductVariant).where(ProductVariant.product_id == product_id, ProductVariant.variant_id == variant_id)
+    )
+    if v is None or v.status == "hidden" or not v.geometry:
+        raise not_found("That 3D file")
+    code = region.upper() if region and region.upper() in active_regions(db) else None
+    url = media.geometry_url(get_store(), v.geometry, f"{product.sku}-{v.variant_id}")
+    hooks.emit("geometry.downloaded", db, product_id=product_id, region=code)
+    return RedirectResponse(url, status_code=302, headers={"Cache-Control": "private, no-store"})
 
 
 @internal.get("/media/{kind}/{name}", include_in_schema=False)

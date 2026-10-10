@@ -34,6 +34,7 @@ around it on the web:
 - [Organisations, seats and SSO](#organisations-seats-and-sso)
 - [Share links](#share-links)
 - [Marketplace (PF7)](#marketplace-pf7)
+- [Supplier portal (PF8)](#supplier-portal-pf8)
 - [Billing: Paddle and Stripe](#billing-paddle-and-stripe)
 - [Brand, content and SEO](#brand-content-and-seo)
 - [Demo request form](#demo-request-form)
@@ -110,12 +111,15 @@ src/
                            admin/growth/ + admin/telemetry/
     download/              Public Download page (from src/content/releases.json)
     developers/            Public API docs (indexable)
+    supplier/              Supplier portal (noindex): signup/, join/, catalogue/, prices/, imports/,
+                           inbox/, analytics/, billing/, team/
     account/               Redirect to /dashboard/ (old URL)
     sitemap.ts robots.ts manifest.ts icon.svg apple-icon.png favicon.ico
   components/
     brand/Logo.tsx         Lockup / LogoMark / Wordmark from the Figma masters
     sections/              Landing sections (Hero, CoreFeatures, Pricing, FAQ, …)
     dashboard/             Shell (auth guard, nav), UsageChart, UsageMeter
+    supplier/              SupplierShell (auth guard, supplier switcher, nav by role), SignupForm, JoinPanel
     releases/              DownloadPanel, ReleaseNotes
     auth/                  AuthForm, GoogleButton, ProfileMenu
   lib/
@@ -125,6 +129,7 @@ src/
     auth.ts                accounts + Google sign-in
     developer.ts           keys, usage, billing calls
     licence.ts             licence API calls (devices, link approval, release feed)
+    supplier.ts            supplier portal calls (X-Truebex-Supplier header), template download
     plans.ts               plan names and limits from server/app/catalogue.json
     releaseNotes.ts        the release-notes Markdown subset, parsed to a React-rendered tree
     shares.ts              share links (list, visits, extend, end)
@@ -258,6 +263,8 @@ These end up in the public JavaScript, so never put secrets in them.
 | `TELEMETRY_EVENTS_ENABLED`, `TELEMETRY_INGESTION_ENABLED` | The usage-events kill switch; telemetry as a whole (off → 503) |
 | `SSO_SECRET_KEY` | Fernet key sealing organisations' SSO client secrets (empty derives one from `SECRET_KEY`) |
 | `SAML_SP_ENTITY_ID`, `AUDIT_RETENTION_DAYS` | This service's SAML entity id (empty: each organisation's metadata URL); how long the audit log keeps events (730) |
+| `FEED_PULL_HOUR_UTC` | Hour (UTC) the registered supplier feed URLs are read each day (2) |
+| `MARKET_MEDIA_FIXTURES` | Local trials only: serve the contract feed's picture and 3D URLs from `tests/contracts/marketplace` |
 
 On the VM these come from `infra/secrets/*.sops.env` (template: `infra/secrets/server.env.example`).
 
@@ -551,6 +558,38 @@ marketplace-api/1.1` and answer errors in the shared envelope. Code: `server/app
 
   The fixtures in `server/tests/contracts/marketplace/` are made by `scripts\make_market_fixtures.py`
   (`--check` compares them with this server's answers).
+
+---
+
+## Supplier portal (PF8)
+
+Companies that sell furniture, finishes and fittings run their Truebex catalogue at `/supplier/`
+(noindex, every page usable at 375 px). Code: `server/app/supplier/`, `server/app/routers/supplier.py`,
+`src/app/supplier/`, `src/components/supplier/`, `src/lib/supplier.ts`; e-mails in `server/app/mail/`.
+
+- **Sign-up and verification.** `/supplier/signup/`: company, regions and contact, one company PDF
+  (≤ 10 MB, admins read it from Admin → Market → Suppliers → Application). The supplier is `applied` until
+  an admin verifies it; until then it prepares products but cannot submit them.
+- **Roles.** `owner` (everything), `catalogue` (products, prices, imports), `orders` (the inbox),
+  `viewer` (reads). Invitations by e-mail (`/supplier/join/?token=…`, 7 days).
+- **Catalogue, prices, imports.** Products with variants, pictures and checked 3D files (format by its
+  bytes, ≤ 100 MB, ≤ 500 000 triangles, size against `dims_mm`); a price and stock grid per region
+  that refuses what a feed would (`bad_price`, `currency_mismatch`, …); uploads of the XLSX template
+  (`GET /supplier/imports/template.xlsx`), CSV or JSON with a dry run kept 24 h, then Apply.
+- **Feeds for supplier systems (contract 5.11–5.13).** `POST /market/feeds` (202 queued),
+  `PUT /market/feeds/source` (an https URL read daily at 02:00 UTC), `GET /market/feeds/{id}` (the
+  report), with a supplier key from Team → Supplier keys (`Authorization: Bearer tbx_live_…`). Supplier
+  keys work only there; developer keys stay under Dashboard → API keys.
+- **Inbox, analytics, billing.** Requests for quote answered with prices and a message; orders accepted,
+  shipped (carrier, reference) and delivered. Daily counts per product and region (impressions, views,
+  placements, requests, orders, order value; no buyer identities). Listing plans, monthly statements,
+  and the Stripe Connect payout link.
+- **Jobs.** `market.feeds.run` (30 s), `market.feeds.pull` (daily, 02:00 UTC), `supplier.imports.purge`
+  (24 h), `supplier.listing.sync` (10 min).
+- **A local trial** (the API on :8000 with `MAIL_BACKEND=console` and
+  `MARKET_MEDIA_FIXTURES=tests/contracts/marketplace` in `server/.env`; the site built with
+  `NEXT_PUBLIC_AUTH_URL=http://127.0.0.1:8000`): apply at `/supplier/signup/`, verify it as an admin,
+  then upload `server/tests/contracts/marketplace/feed-two-regions.csv` under Imports.
 
 ---
 

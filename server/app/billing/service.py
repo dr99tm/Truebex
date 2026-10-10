@@ -38,6 +38,10 @@ FOUNDING_HOLD = timedelta(minutes=30)
 # Providers whose subscriptions the customer manages (portal, seats, change).
 MANAGED_PROVIDERS = ("paddle", "stripe")
 
+# PF8: a supplier's listing plan is a Stripe subscription on these tables too
+# (tier `listing_<plan>`), but it is never an app plan.
+LISTING_TIER_PREFIX = "listing_"
+
 # Trials are subscriptions rows too (licence contract 5.6).
 TRIAL_PROVIDER = "trial"
 
@@ -68,10 +72,13 @@ def is_live(sub: Subscription, now: datetime | None = None) -> bool:
 
 def live_subscription(db: Session, user: User) -> Subscription | None:
     """The user's own best live subscription. An organisation's subscription
-    (PF3, `organisation_id` set) is never its buyer's personal plan."""
+    (PF3, `organisation_id` set) is never its buyer's personal plan, nor is a
+    supplier's listing plan (PF8)."""
     subs = db.scalars(
         select(Subscription).where(
-            Subscription.user_id == user.id, Subscription.organisation_id.is_(None)
+            Subscription.user_id == user.id,
+            Subscription.organisation_id.is_(None),
+            ~Subscription.plan.startswith(LISTING_TIER_PREFIX, autoescape=True),
         )
     )
     best: Subscription | None = None
@@ -103,6 +110,7 @@ def managed_subscription(db: Session, user: User) -> Subscription | None:
             .where(
                 Subscription.user_id == user.id,
                 Subscription.provider.in_(MANAGED_PROVIDERS),
+                ~Subscription.plan.startswith(LISTING_TIER_PREFIX, autoescape=True),
             )
             .order_by(Subscription.updated_at.desc(), Subscription.id.desc())
         )

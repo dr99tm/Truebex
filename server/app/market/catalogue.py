@@ -10,7 +10,6 @@ from sqlalchemy.orm import Session
 
 from ..contract_http import ContractError
 from ..models import User
-from ..storage import get_store
 from . import media
 from .common import new_id, not_found, now, rfc3339
 from .models import (
@@ -251,14 +250,27 @@ def _asset_kind(product: Product) -> str:
     return "object" if product.kind == "object" else "material"
 
 
-def variant_json(product: Product, v: ProductVariant, offer: Offer | None, *, store=None) -> dict:
+def geometry_link(product: Product, v: ProductVariant, region: str | None) -> str:
+    """PF8: the API's own address for a variant's 3D file. It counts a
+    placement for the supplier's analytics, then redirects to a signed URL
+    (1 h), so a link the app keeps never expires."""
+    from urllib.parse import quote
+
+    from ..config import get_settings
+
+    base = get_settings().api_url.rstrip("/")
+    query = f"?region={quote(region)}" if region else ""
+    return f"{base}/market/geometry/{product.product_id}/{quote(v.variant_id, safe='')}{query}"
+
+
+def variant_json(product: Product, v: ProductVariant, offer: Offer | None, *, region: str | None = None) -> dict:
     geometry = None
     if v.geometry:
         g = v.geometry
         geometry = {
             "asset": g["asset"],
             "format": g["format"],
-            "url": media.geometry_url(store or get_store(), g, f"{product.sku}-{v.variant_id}"),
+            "url": geometry_link(product, v, region),
             "sha256": g["sha256"],
             "bytes": g["bytes"],
         }
@@ -294,7 +306,10 @@ def product_json(db: Session, product: Product, supplier: Supplier, region: Mark
         "images": [media.image_url(sha) for sha in product.images],
         "thumbnail_url": thumbnail_url(product),
         "includes": product.includes or [],
-        "variants": [variant_json(product, v, offs.get((product.product_id, v.variant_id))) for v in variants],
+        "variants": [
+            variant_json(product, v, offs.get((product.product_id, v.variant_id)), region=region.region if region else None)
+            for v in variants
+        ],
         "rating": rating_json(product),
         "orderable": payments_ready(supplier),
     }
