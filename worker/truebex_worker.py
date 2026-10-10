@@ -13,6 +13,15 @@ through the job-output upload the claim opened (share-bundle §5, 8 MiB parts,
 resumable) -> complete with the measured wall time, or fail with the code the
 app wrote in `out_dir/error.json` and the last 64 KiB of its log.
 
+`--mode container` (PF11) runs analysis jobs instead: the job file
+`truebex-analysis-job/1` goes to `<work>/job.json` with the inputs under
+`<work>/inputs/`, and the kind's solver image runs as
+`docker run --rm --network none --cpus <n> --memory <m> --user <uid:gid>
+-v <work>:/job <image>`; the image reads `/job/job.json`, writes
+`/job/out/result.json` (`truebex-analysis/1`, contract §6.3) and its arrays
+named by SHA-256, and the wrapper uploads them and completes with the
+measured wall time (charged at the token's class, `cpu-8`).
+
 Network errors and 408, 429, 500, 502, 503, 504 and 530 are retried with
 backoff 1, 2, 4 ... 60 s (±20 %), honouring Retry-After (§8); a revoked token
 stops the worker. Standard library only (Python 3.12), so the worker image
@@ -63,6 +72,15 @@ class Config:
     tile_px: int = 512
     jpeg_quality: int = 85
     keep_work: bool = False
+    # PF11: "app" (render jobs, the packaged app) or "container" (analysis
+    # jobs, a solver image per kind). `docker` may be a .py stand-in (tests).
+    mode: str = "app"
+    docker: str = "docker"
+    images: dict = field(default_factory=dict)
+    cpus: float = 4.0
+    memory: str = "12g"
+    container_user: str = "1000:1000"
+    pids_limit: int = 512
 
     @classmethod
     def load(cls, path: str | Path, **overrides) -> "Config":
@@ -256,6 +274,8 @@ class Heartbeat(threading.Thread):
         self.cancelled = False
         self.lost = False
         self.proc: subprocess.Popen | None = None
+        # Container mode: stopping the docker client does not stop the container.
+        self.on_kill = None
 
     def progress(self) -> tuple[float, str]:
         try:
@@ -278,6 +298,8 @@ class Heartbeat(threading.Thread):
             self.kill()
 
     def kill(self) -> None:
+        if self.on_kill is not None:
+            self.on_kill()
         if self.proc is not None and self.proc.poll() is None:
             self.proc.kill()
 
@@ -382,6 +404,8 @@ class Runner:
         return manifest, list(dict.fromkeys(files)), types
 
     def run_job(self, c: dict) -> str:
+        if self.cfg.mode == "container":
+            return self.run_container_job(c)
         job, lease = c["job"], c["lease_id"]
         job_id = job["job_id"]
         work = Path(self.cfg.work_dir) / job_id
@@ -460,6 +484,157 @@ class Runner:
             if not self.cfg.keep_work:
                 shutil.rmtree(work, ignore_errors=True)
 
+    # --- container mode (PF11 analysis kinds) ----------------------------------------------
+
+    def analysis_job_file(self, c: dict, inputs: dict) -> dict:
+        job = c["job"]
+        return {
+            "schema": "truebex-analysis-job/1",
+            "job_id": job["job_id"],
+            "kind": job["kind"],
+            "project_id": job.get("project_id"),
+            "at_seq": job.get("at_seq", 0),
+            "params": job.get("params") or {},
+            "profile": job.get("profile") or {},
+            "inputs": {name: f"/job/inputs/{name}" for name in (inputs.get("files") or {})},
+            "out_dir": "/job/out",
+        }
+
+    def container_name(self, job_id: str) -> str:
+        return f"truebex-{job_id}"
+
+    def container_command(self, job: dict, work: Path) -> list[str]:
+        kind = job["kind"]
+        image = self.cfg.images.get(kind) or (job.get("profile") or {}).get("image") or f"truebex-analysis-{kind}:1"
+        args = [
+            "run", "--rm", "--name", self.container_name(job["job_id"]), "--network", "none",
+            "--cpus", str(self.cfg.cpus), "--memory", self.cfg.memory, "--pids-limit", str(self.cfg.pids_limit),
+            "--security-opt", "no-new-privileges", "--cap-drop", "ALL", "--user", self.cfg.container_user,
+            "-v", f"{work.resolve()}:/job", image,
+        ]
+        return self._docker(args)
+
+    def _docker(self, args: list[str]) -> list[str]:
+        docker = self.cfg.docker
+        return [sys.executable, docker, *args] if docker.endswith(".py") else [docker, *args]
+
+    def stop_container(self, job_id: str) -> None:
+        try:
+            subprocess.run(self._docker(["kill", self.container_name(job_id)]), capture_output=True, timeout=30)
+        except (OSError, subprocess.SubprocessError):
+            pass
+
+    def run_container(self, cmd: list[str], work: Path, hb: Heartbeat, job_id: str) -> tuple[int | None, float, str]:
+        log_path = work / "solver.log"
+        flags = getattr(subprocess, "CREATE_NO_WINDOW", 0)
+        started = time.monotonic()
+        hb.on_kill = lambda: self.stop_container(job_id)
+        with log_path.open("wb") as log:
+            proc = subprocess.Popen(cmd, stdout=log, stderr=subprocess.STDOUT, creationflags=flags)
+            hb.proc = proc
+            try:
+                code = proc.wait(timeout=self.cfg.job_timeout_s)
+            except subprocess.TimeoutExpired:
+                self.stop_container(job_id)
+                proc.kill()
+                proc.wait()
+                code = None
+        wall = time.monotonic() - started
+        tail = log_path.read_bytes()[-LOG_TAIL:].decode("utf-8", errors="replace")
+        return code, wall, tail
+
+    @staticmethod
+    def result_files(result: dict, out: Path) -> tuple[list[Path], dict[str, str]]:
+        """The files a result names, from `out/<sha256>`, and their content types."""
+        shas: dict[str, str] = {}
+        for f in result.get("fields") or []:
+            for key in ("values", "entities", "positions"):
+                if f.get(key):
+                    shas.setdefault(f[key], "application/octet-stream")
+        for g in result.get("grids") or []:
+            if g.get("values"):
+                shas.setdefault(g["values"], "application/octet-stream")
+        if result.get("report"):
+            shas[result["report"]] = "application/pdf"
+        for m in result.get("maps") or []:
+            if m.get("sha256"):
+                shas[m["sha256"]] = m.get("content_type") or "image/png"
+        files = [out / sha for sha in shas]
+        missing = [p.name for p in files if not p.is_file()]
+        if missing:
+            raise InputError(f"the solver named {len(missing)} files it did not write, e.g. {missing[0]}")
+        return files, shas
+
+    def run_container_job(self, c: dict) -> str:
+        job, lease = c["job"], c["lease_id"]
+        job_id = job["job_id"]
+        work = Path(self.cfg.work_dir) / job_id
+        shutil.rmtree(work, ignore_errors=True)
+        (work / "out").mkdir(parents=True)
+        self.log(f"claimed {job_id} ({job['kind']}, estimate {job.get('cost_units_estimate')} cu)")
+        hb = Heartbeat(self.api, job_id, lease, work / "out", self.cfg.heartbeat_s)
+        hb.start()
+        try:
+            try:
+                inputs = self.fetch_inputs(c, work)
+            except InputError as exc:
+                self.api.fail(job_id, lease, "bad_input", str(exc), False, "")
+                self.log(f"failed {job_id}: {exc}")
+                return "failed"
+            except HttpError as exc:
+                retry = exc.status not in (403, 404, 410)
+                self.api.fail(job_id, lease, "timeout" if retry else "bad_input", f"input download: {exc}", retry, "")
+                self.log(f"failed {job_id}: {exc}")
+                return "failed"
+            (work / "job.json").write_text(json.dumps(self.analysis_job_file(c, inputs), indent=2), encoding="utf-8")
+            if hb.cancelled or hb.lost:
+                return "cancelled" if hb.cancelled else "lost"
+            cmd = self.container_command(job, work)
+            self.log(f"running the {job['kind']} solver ({cmd[-1]})")
+            code, wall, tail = self.run_container(cmd, work, hb, job_id)
+            if hb.cancelled or hb.lost:
+                self.log(f"{'cancelled' if hb.cancelled else 'lease lost on'} {job_id}: outputs discarded")
+                return "cancelled" if hb.cancelled else "lost"
+            if code != 0:
+                default = "timeout" if code is None else ("out_of_memory" if code == 137 else "engine_error")
+                err = {"code": default, "message": f"exit {code}"}
+                try:
+                    err.update(json.loads((work / "out" / "error.json").read_text(encoding="utf-8")))
+                except (OSError, ValueError):
+                    pass
+                code_name = err.get("code") if err.get("code") in FAIL_CODES else "engine_error"
+                self.api.fail(job_id, lease, code_name, str(err.get("message", "")), code_name not in NOT_RETRYABLE, tail)
+                self.log(f"failed {job_id}: {code_name} {err.get('message', '')}")
+                return "failed"
+            try:
+                result = json.loads((work / "out" / "result.json").read_text(encoding="utf-8"))
+                files, types = self.result_files(result, work / "out")
+            except (InputError, OSError, ValueError) as exc:
+                self.api.fail(job_id, lease, "engine_error", f"output: {exc}", True, tail)
+                self.log(f"failed {job_id}: {exc}")
+                return "failed"
+            try:
+                sent = self.api.upload(c["output_upload"]["upload_id"], files, types)
+                done = self.api.complete(job_id, lease, result, wall, None)
+            except HttpError as exc:
+                if exc.code == "worker_revoked":
+                    raise
+                if exc.code == "output_invalid":
+                    self.api.fail(job_id, lease, "engine_error", f"the platform refused the output: {exc.detail}", False, tail)
+                    self.log(f"failed {job_id}: {exc.detail}")
+                    return "failed"
+                if hb.cancelled or exc.code == "lease_lost" or exc.status in (401, 404, 409, 410):
+                    self.log(f"{'cancelled' if hb.cancelled else 'lease lost on'} {job_id}: outputs discarded")
+                    return "cancelled" if hb.cancelled else "lost"
+                raise
+            self.log(f"complete {job_id}: {len(files)} files ({sent} sent), {wall:.1f} s, {done.get('cost_units')} cu")
+            return "succeeded"
+        finally:
+            hb.stopped.set()
+            hb.join(5)
+            if not self.cfg.keep_work:
+                shutil.rmtree(work, ignore_errors=True)
+
     def run_once(self, wait_s: float | None = None) -> str | None:
         c = self.api.claim(self.cfg.wait_s if wait_s is None else wait_s)
         if c is None:
@@ -467,7 +642,7 @@ class Runner:
         return self.run_job(c)
 
     def loop(self, once: bool = False) -> int:
-        self.log(f"{self.cfg.worker_id}: waiting for jobs ({', '.join(self.cfg.kinds)}) from {self.cfg.api}")
+        self.log(f"{self.cfg.worker_id}: waiting for {self.cfg.mode} jobs ({', '.join(self.cfg.kinds)}) from {self.cfg.api}")
         idle_said = True
         while True:
             try:
@@ -501,8 +676,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--config", default="worker.toml")
     parser.add_argument("--app", help="the app to run (Truebex.exe, or a .py stand-in)")
     parser.add_argument("--once", action="store_true", help="run one job, then exit")
+    parser.add_argument("--mode", choices=("app", "container"), help="app: render jobs; container: analysis jobs (PF11)")
     args = parser.parse_args(argv)
-    cfg = Config.load(args.config, app=args.app)
+    cfg = Config.load(args.config, app=args.app, mode=args.mode)
     if not cfg.token.startswith("tbx_wrk_"):
         print("worker.toml: token must be a worker token (tbx_wrk_…) from Admin → Render", file=sys.stderr)
         return 2
