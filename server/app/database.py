@@ -151,7 +151,7 @@ def _migrate(bind: Engine) -> None:
         logging.getLogger("truebex.db").exception("could not add uq_subscriptions_provider_sub")
 
 
-def init_db(bind: Engine | None = None) -> None:
+def init_db(bind: Engine | None = None, *, seed: bool = True) -> None:
     """Create tables and apply additive migrations (safe to run repeatedly)."""
     from . import models  # noqa: F401  (ensures models are registered)
     from .licence import models as _licence_models  # noqa: F401  (PF1)
@@ -160,7 +160,19 @@ def init_db(bind: Engine | None = None) -> None:
     from .uploads import models as _upload_models  # noqa: F401  (PF5)
     from .orgs import models as _org_models  # noqa: F401  (PF3)
     from .sso import models as _sso_models  # noqa: F401  (PF3)
+    from .market import models as _market_models  # noqa: F401  (PF7)
 
     bind = bind or engine
     Base.metadata.create_all(bind=bind)
     _migrate(bind)
+
+    # PF7: the marketplace's categories (rooted on the app's taxonomy) and
+    # regions. The Postgres copy (scripts/sqlite_to_postgres.py) brings the
+    # source's rows instead, so it passes seed=False.
+    if seed:
+        from sqlalchemy.orm import Session
+
+        from .market import taxonomy as _market_taxonomy
+
+        with Session(bind) as db:
+            _market_taxonomy.seed(db)

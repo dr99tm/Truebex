@@ -70,7 +70,7 @@ class Report:
 
 def _models() -> list[Table]:
     # Every module with tables (the same set init_db creates), so a fresh
-    # process sees PF1's devices and releases, PF3's organisations and PF5's shares too.
+    # process sees PF1's devices and releases, PF3's organisations, PF5's shares and PF7's marketplace too.
     from app import models  # noqa: F401
     from app.licence import models as _licence  # noqa: F401
     from app.orgs import models as _orgs  # noqa: F401
@@ -78,6 +78,7 @@ def _models() -> list[Table]:
     from app.sso import models as _sso  # noqa: F401
     from app.shares import models as _shares  # noqa: F401  (PF5)
     from app.uploads import models as _uploads  # noqa: F401  (PF5)
+    from app.market import models as _market  # noqa: F401  (PF7)
 
     return list(Base.metadata.sorted_tables)  # parents before children
 
@@ -192,7 +193,7 @@ def copy_database(source_url: str, target_url: str, batch: int = 1000) -> Report
     src = create_engine(source_url)
     dst = make_engine(target_url)
     try:
-        init_db(dst)
+        init_db(dst, seed=False)  # the source brings its own seeded rows (PF7 categories)
         source_tables = set(_reflect(src).tables)
         with dst.connect() as conn:
             busy = [t.name for t in _models() if conn.execute(select(func.count()).select_from(t)).scalar()]

@@ -111,6 +111,10 @@ and never offered on the site. A provider is on only when its API key and its we
 - **Stripe webhook:** `https://api.truebex.com/billing/webhooks/stripe` with `checkout.session.completed`,
   `checkout.session.expired` and `customer.subscription.created/updated/deleted/paused/resumed`; its signing secret
   is `STRIPE_WEBHOOK_SECRET`.
+- **Marketplace Stripe webhook (PF7):** `https://api.truebex.com/market/webhooks/stripe` with
+  `checkout.session.completed`, `checkout.session.async_payment_succeeded` and (Connect) `account.updated`; its
+  signing secret(s) are `STRIPE_CONNECT_WEBHOOK_SECRET` (empty = the endpoint answers 404). Orders stay quote-only
+  while `MARKET_PAYMENTS_ENABLED=false`, which it stays until the marketplace terms (GD5) are signed off.
 - **Paddle approval:** the seller account and the domain truebex.com, before production (the pricing, terms and
   privacy pages must be live first). Paddle.js runs only on approved domains: the overlay is on `/checkout/`.
 - When the founding offer closes, archive the founding prices in Paddle and Stripe.
@@ -172,6 +176,7 @@ reads the switches at runtime through `/config` and `/billing/plans`, with no si
 | Alerts, telemetry (PF14) | `ALERT_EMAIL`, `ALERT_PUSH_URL`; `TELEMETRY_EVENTS_ENABLED` (the events kill switch), `TELEMETRY_INGESTION_ENABLED` | ingestion off = 503 |
 | Organisations, SSO (PF3) | `SSO_SECRET_KEY` (a Fernet key sealing each organisation's SSO client secret: set it once and keep it), `SAML_SP_ENTITY_ID`, `AUDIT_RETENTION_DAYS` (730) | no `SSO_SECRET_KEY` = derived from `SECRET_KEY`, so a new `SECRET_KEY` makes every organisation re-enter its SSO secret; no entity id = each organisation's metadata URL |
 | Share pages (PF5) | `SHARE_BASE_URL` (the links' origin), `SHARE_MAX_DAYS` (30), `SHARE_MAX_BYTES` (1 GiB per bundle) | no `SHARE_BASE_URL` = links are `{API_URL}/view/{slug}`; the bundles live in the data bucket with the installers |
+| Marketplace (PF7) | `MARKET_PAYMENTS_ENABLED` (`false` until GD5 signs off the marketplace terms), `STRIPE_CONNECT_WEBHOOK_SECRET` (the `/market/webhooks/stripe` endpoint's; uses `STRIPE_SECRET_KEY`), `MARKET_READS_PER_MINUTE` (120), `EMBEDDING_MODEL`, `EMBEDDING_DIR` | payments off = every supplier takes requests for quote only; no webhook secret = 404; no `EMBEDDING_MODEL` = picture search off (the weights from `scripts/fetch_models.py` are not in the image) |
 
 `infra/host/compose.yaml` sets `BACKGROUND_TASKS=worker`, `RATELIMIT_BACKEND=db` and (worker) `BACKUP_EXPECTED=true`;
 they are not in the file.

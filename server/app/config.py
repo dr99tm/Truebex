@@ -155,6 +155,20 @@ class Settings(BaseSettings):
     def share_base(self) -> str:
         return (self.share_base_url or self.api_url).rstrip("/")
 
+    # --- Marketplace (PF7, contract marketplace-api) --------------------------
+    # Card payments for orders. Off until GD5 signs off the marketplace terms:
+    # every supplier is quote-only while it is off.
+    market_payments_enabled: bool = False
+    # Signing secret(s) of the Stripe endpoint for /market/webhooks/stripe
+    # (checkout and Connect account events), "whsec_a,whsec_b". Empty = 404.
+    stripe_connect_webhook_secret: str = ""
+    # Anonymous catalogue reads (5.1-5.6) per address per minute.
+    market_reads_per_minute: int = 120
+    # Picture search: "" (off), "stub" (tests, local trials) or "clip-vit-b32"
+    # (ONNX files fetched into EMBEDDING_DIR by scripts/fetch_models.py).
+    embedding_model: str = ""
+    embedding_dir: str = "./models"
+
     @property
     def cors_origin_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]

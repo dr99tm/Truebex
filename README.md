@@ -33,6 +33,7 @@ around it on the web:
 - [Licences, releases and downloads](#licences-releases-and-downloads)
 - [Organisations, seats and SSO](#organisations-seats-and-sso)
 - [Share links](#share-links)
+- [Marketplace (PF7)](#marketplace-pf7)
 - [Billing: Paddle and Stripe](#billing-paddle-and-stripe)
 - [Brand, content and SEO](#brand-content-and-seo)
 - [Demo request form](#demo-request-form)
@@ -518,7 +519,41 @@ answering `Access-Control-Allow-Origin: *` (GitHub Pages does).
 
 ---
 
-## Billing: Stripe and Wayl
+## Marketplace (PF7)
+
+The catalogue behind the app's marketplace follows the contract `marketplace-api` v1.1.0 (the Unreal
+project's `Docs/roadmap/40/contracts/marketplace-api.md`); routes echo `X-Truebex-Contract:
+marketplace-api/1.1` and answer errors in the shared envelope. Code: `server/app/market/`,
+`server/app/routers/market.py` and `market_admin.py`; pages `/market/checkout/`, `/dashboard/orders/`,
+`/dashboard/admin/market/`.
+
+- **Catalogue (5.1–5.6).** Categories rooted on the app's taxonomy (`market/taxonomy/categories.json`,
+  a byte copy of the app's file; 5.1 reports its SHA-256), regions GB and AE (`market/regions.json`),
+  search through SQLite FTS5, prices as integer minor units per region. Anonymous reads are limited
+  per address (`MARKET_READS_PER_MINUTE`).
+- **Orders and requests (5.7–5.10).** Every line is priced again on the server; an order is split per
+  supplier and paid on `/market/checkout/` (Stripe Checkout, transfers to each supplier's Stripe
+  Connect account after it accepts, minus the commission). `MARKET_PAYMENTS_ENABLED` stays `false`
+  until the marketplace terms are signed off, so every supplier takes requests for quote only.
+- **Feeds.** `market/importer.py` turns CSV / JSON feeds (contract §6.4) into products, prices and
+  availability with a row-level report; PF8 adds the supplier endpoints and portal. Admins can import a
+  file for a supplier from `POST /admin/market/feeds`.
+- **Picture search.** `POST /market/search/image` (≤ 5 MB) with `EMBEDDING_MODEL=clip-vit-b32` after
+  `scripts\fetch_models.py` (weights stay out of git).
+- **A local trial catalogue:**
+
+  ```powershell
+  cd server
+  .venv\Scripts\python.exe -m pip install -r requirements.txt   # Pillow, numpy, onnxruntime, tokenizers
+  .venv\Scripts\python.exe scripts\seed_market.py --fixture tests\contracts\marketplace [--payments-ready]
+  .venv\Scripts\python.exe scripts\market_try.py --email you@example.com --password ... --kind quote   # or order
+  ```
+
+  The fixtures in `server/tests/contracts/marketplace/` are made by `scripts\make_market_fixtures.py`
+  (`--check` compares them with this server's answers).
+
+---
+
 ## Billing: Paddle and Stripe
 
 Truebex Ltd (the UK company) sells every plan. **Paddle** is the default: it

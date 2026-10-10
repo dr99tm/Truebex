@@ -1,0 +1,27 @@
+{
+  "request": {
+    "method": "GET",
+    "path": "/market/feeds/5917f8a35d4af78b5c087225034cafb3",
+    "note": "feed-two-regions.csv (upsert) into an empty catalogue"
+  },
+  "http_status": 200,
+  "body": {
+    "feed_id": "5917f8a35d4af78b5c087225034cafb3",
+    "state": "done",
+    "rows": 6,
+    "created": 6,
+    "updated": 0,
+    "unchanged": 0,
+    "rejected": 0,
+    "errors": [],
+    "hidden": 0,
+    "warnings": [],
+    "format": "csv",
+    "mode": "upsert",
+    "source": "upload",
+    "detail": null,
+    "supplier_id": "8039e6d2cbae0ba88c300ccba4833412",
+    "created_at": "2026-10-09T10:00:00Z",
+    "finished_at": "2026-10-09T10:00:00Z"
+  }
+}

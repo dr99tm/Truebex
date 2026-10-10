@@ -26,6 +26,8 @@ from .orgs import jobs as _org_jobs  # noqa: F401  (PF3: registers the organisat
 from .routers import admin, admin_telemetry, files, licence, releases, telemetry
 from .routers import orgs, sso
 from .sso import jobs as _sso_jobs  # noqa: F401  (PF3: registers the SSO jobs)
+from .market import jobs as _market_jobs  # noqa: F401  (PF7: registers the marketplace jobs)
+from .routers import market, market_admin
 from .routers import auth, billing, keys, usage, v1
 from .routers import growth as growth_router
 from .telemetry.service import record_server_exception
@@ -71,6 +73,8 @@ app.add_middleware(
         "Content-Disposition",
         contract_http.CONTRACT_HEADER,
         contract_http.REQUEST_ID_HEADER,
+        "ETag",
+        "Idempotency-Replayed",
     ],
 )
 # X-Request-Id on every response; the shared error envelope on contract routes
@@ -122,6 +126,11 @@ app.include_router(sso.router)
 app.include_router(uploads.router)
 app.include_router(shares.router)
 app.include_router(shares.public)
+
+# PF7: marketplace API, its platform routes and admin
+app.include_router(market.router)
+app.include_router(market.internal)
+app.include_router(market_admin.router)
 
 app.include_router(auth.router)
 app.include_router(keys.router)

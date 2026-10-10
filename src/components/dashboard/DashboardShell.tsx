@@ -3,7 +3,7 @@
 import { createContext, useContext, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { CreditCard, Gauge, KeyRound, LayoutGrid, BookOpen, TrendingUp, Link2 } from "lucide-react";
+import { CreditCard, Gauge, KeyRound, LayoutGrid, BookOpen, TrendingUp, Link2, Package, Store } from "lucide-react";
 import {
   Activity,
   Building2,
@@ -37,6 +37,8 @@ const NAV_GROUPS: { label: string | null; items: NavItem[] }[] = [
       { href: "/dashboard/", label: "Overview", icon: LayoutGrid },
       { href: "/dashboard/shares/", label: "Shares", icon: Link2 },
       { href: "/dashboard/billing/", label: "Billing", icon: CreditCard },
+      // PF7: orders and requests for quote sent from the app.
+      { href: "/dashboard/orders/", label: "Orders", icon: Package },
     ],
   },
   {
@@ -74,6 +76,8 @@ const ADMIN_GROUP: { label: string; items: NavItem[] } = {
   items: [
     { href: "/dashboard/admin/growth/", label: "Growth", icon: TrendingUp },
     { href: "/dashboard/admin/telemetry/", label: "Telemetry", icon: Activity },
+    // PF7: the marketplace admin (suppliers, review queue, orders, commissions).
+    { href: "/dashboard/admin/market/", label: "Market", icon: Store },
   ],
 };
 

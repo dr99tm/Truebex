@@ -1,0 +1,8 @@
+{
+  "schema": "truebex-market-regions/1",
+  "note": "The marketplace's regions (contract marketplace-api 5.2), seeded into market_regions at startup. rate_bp is in basis points (2000 = 20 %). Rates are the standard VAT rates on 2026-10-09 (confirm at writing time, GD5).",
+  "regions": [
+    { "region": "GB", "name": "United Kingdom",       "currency": "GBP", "exponent": 2, "tax": { "name": "VAT", "rate_bp": 2000, "prices_include_tax": true } },
+    { "region": "AE", "name": "United Arab Emirates", "currency": "AED", "exponent": 2, "tax": { "name": "VAT", "rate_bp": 500,  "prices_include_tax": true } }
+  ]
+}

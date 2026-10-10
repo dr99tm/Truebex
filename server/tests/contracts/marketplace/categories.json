@@ -1,0 +1,330 @@
+{
+  "request": {
+    "method": "GET",
+    "path": "/market/categories"
+  },
+  "http_status": 200,
+  "body": {
+    "taxonomy_sha256": "7720dcfbd63ceb9f51e6d3e4c9972611e490f75a50dc39553a7264968d9970a9",
+    "categories": [
+      {
+        "path": "structure",
+        "label": "Structure",
+        "app_path": "structure",
+        "products": 0
+      },
+      {
+        "path": "openings",
+        "label": "Openings",
+        "app_path": "openings",
+        "products": 0
+      },
+      {
+        "path": "furniture",
+        "label": "Furniture",
+        "app_path": "furniture",
+        "products": 3
+      },
+      {
+        "path": "furniture/seating",
+        "label": "Seating",
+        "app_path": "furniture/seating",
+        "products": 1
+      },
+      {
+        "path": "furniture/tables",
+        "label": "Tables",
+        "app_path": "furniture/tables",
+        "products": 2
+      },
+      {
+        "path": "furniture/storage",
+        "label": "Storage",
+        "app_path": "furniture/storage",
+        "products": 0
+      },
+      {
+        "path": "furniture/beds",
+        "label": "Beds",
+        "app_path": "furniture/beds",
+        "products": 0
+      },
+      {
+        "path": "kitchen",
+        "label": "Kitchen",
+        "app_path": "kitchen",
+        "products": 0
+      },
+      {
+        "path": "bath",
+        "label": "Bath",
+        "app_path": "bath",
+        "products": 0
+      },
+      {
+        "path": "lighting",
+        "label": "Lighting",
+        "app_path": "lighting",
+        "products": 0
+      },
+      {
+        "path": "lighting/ceiling",
+        "label": "Ceiling",
+        "app_path": "lighting/ceiling",
+        "products": 0
+      },
+      {
+        "path": "lighting/wall",
+        "label": "Wall",
+        "app_path": "lighting/wall",
+        "products": 0
+      },
+      {
+        "path": "lighting/floor",
+        "label": "Floor",
+        "app_path": "lighting/floor",
+        "products": 0
+      },
+      {
+        "path": "lighting/table",
+        "label": "Table",
+        "app_path": "lighting/table",
+        "products": 0
+      },
+      {
+        "path": "appliances",
+        "label": "Appliances",
+        "app_path": "appliances",
+        "products": 0
+      },
+      {
+        "path": "plants",
+        "label": "Plants",
+        "app_path": "plants",
+        "products": 0
+      },
+      {
+        "path": "decoration",
+        "label": "Decoration",
+        "app_path": "decoration",
+        "products": 1
+      },
+      {
+        "path": "mep",
+        "label": "MEP",
+        "app_path": "mep",
+        "products": 0
+      },
+      {
+        "path": "outdoor",
+        "label": "Outdoor",
+        "app_path": "outdoor",
+        "products": 0
+      },
+      {
+        "path": "finishes",
+        "label": "Finishes",
+        "app_path": "finishes",
+        "products": 2
+      },
+      {
+        "path": "finishes/paint",
+        "label": "Paint",
+        "app_path": "finishes/paint",
+        "products": 1
+      },
+      {
+        "path": "finishes/wallpaper",
+        "label": "Wallpaper",
+        "app_path": "finishes/wallpaper",
+        "products": 1
+      },
+      {
+        "path": "finishes/tile",
+        "label": "Tile",
+        "app_path": "finishes/tile",
+        "products": 0
+      },
+      {
+        "path": "sections",
+        "label": "Sections",
+        "app_path": "sections",
+        "products": 0
+      },
+      {
+        "path": "sections/skirting",
+        "label": "Skirting",
+        "app_path": "sections/skirting",
+        "products": 0
+      },
+      {
+        "path": "sections/cornice",
+        "label": "Cornice",
+        "app_path": "sections/cornice",
+        "products": 0
+      },
+      {
+        "path": "sections/architrave",
+        "label": "Architrave",
+        "app_path": "sections/architrave",
+        "products": 0
+      },
+      {
+        "path": "sections/frame",
+        "label": "Frame",
+        "app_path": "sections/frame",
+        "products": 0
+      },
+      {
+        "path": "furniture/seating/sofas",
+        "label": "Sofas",
+        "app_path": "furniture/seating",
+        "products": 1
+      },
+      {
+        "path": "furniture/seating/armchairs",
+        "label": "Armchairs",
+        "app_path": "furniture/seating",
+        "products": 0
+      },
+      {
+        "path": "furniture/seating/dining-chairs",
+        "label": "Dining chairs",
+        "app_path": "furniture/seating",
+        "products": 0
+      },
+      {
+        "path": "furniture/seating/stools",
+        "label": "Stools",
+        "app_path": "furniture/seating",
+        "products": 0
+      },
+      {
+        "path": "furniture/tables/coffee-tables",
+        "label": "Coffee tables",
+        "app_path": "furniture/tables",
+        "products": 2
+      },
+      {
+        "path": "furniture/tables/dining-tables",
+        "label": "Dining tables",
+        "app_path": "furniture/tables",
+        "products": 0
+      },
+      {
+        "path": "furniture/tables/desks",
+        "label": "Desks",
+        "app_path": "furniture/tables",
+        "products": 0
+      },
+      {
+        "path": "furniture/storage/wardrobes",
+        "label": "Wardrobes",
+        "app_path": "furniture/storage",
+        "products": 0
+      },
+      {
+        "path": "furniture/storage/shelving",
+        "label": "Shelving",
+        "app_path": "furniture/storage",
+        "products": 0
+      },
+      {
+        "path": "furniture/storage/sideboards",
+        "label": "Sideboards",
+        "app_path": "furniture/storage",
+        "products": 0
+      },
+      {
+        "path": "furniture/beds/double-beds",
+        "label": "Double beds",
+        "app_path": "furniture/beds",
+        "products": 0
+      },
+      {
+        "path": "furniture/beds/single-beds",
+        "label": "Single beds",
+        "app_path": "furniture/beds",
+        "products": 0
+      },
+      {
+        "path": "kitchen/units",
+        "label": "Kitchen units",
+        "app_path": "kitchen",
+        "products": 0
+      },
+      {
+        "path": "kitchen/worktops",
+        "label": "Worktops",
+        "app_path": "kitchen",
+        "products": 0
+      },
+      {
+        "path": "bath/basins",
+        "label": "Basins",
+        "app_path": "bath",
+        "products": 0
+      },
+      {
+        "path": "bath/showers",
+        "label": "Showers",
+        "app_path": "bath",
+        "products": 0
+      },
+      {
+        "path": "lighting/ceiling/pendants",
+        "label": "Pendants",
+        "app_path": "lighting/ceiling",
+        "products": 0
+      },
+      {
+        "path": "lighting/ceiling/downlights",
+        "label": "Downlights",
+        "app_path": "lighting/ceiling",
+        "products": 0
+      },
+      {
+        "path": "decoration/rugs",
+        "label": "Rugs",
+        "app_path": "decoration",
+        "products": 0
+      },
+      {
+        "path": "decoration/mirrors",
+        "label": "Mirrors",
+        "app_path": "decoration",
+        "products": 0
+      },
+      {
+        "path": "decoration/themes",
+        "label": "Room themes",
+        "app_path": "decoration",
+        "products": 1
+      },
+      {
+        "path": "finishes/paint/interior",
+        "label": "Interior paint",
+        "app_path": "finishes/paint",
+        "products": 1
+      },
+      {
+        "path": "finishes/wallpaper/patterned",
+        "label": "Patterned wallpaper",
+        "app_path": "finishes/wallpaper",
+        "products": 1
+      },
+      {
+        "path": "finishes/tile/floor",
+        "label": "Floor tiles",
+        "app_path": "finishes/tile",
+        "products": 0
+      },
+      {
+        "path": "finishes/tile/wall",
+        "label": "Wall tiles",
+        "app_path": "finishes/tile",
+        "products": 0
+      }
+    ]
+  }
+}

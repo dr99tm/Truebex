@@ -1,0 +1,157 @@
+{
+  "request": {
+    "method": "POST",
+    "path": "/market/prices",
+    "body": {
+      "region": "AE",
+      "items": [
+        {
+          "supplier_id": "f8afe1ba2b0bf97f23ef888f040cf46a",
+          "sku": "SOFA-OSLO-3",
+          "variant_id": "oat-linen",
+          "qty": 1
+        },
+        {
+          "supplier_id": "f8afe1ba2b0bf97f23ef888f040cf46a",
+          "sku": "SOFA-OSLO-3",
+          "variant_id": "charcoal-wool",
+          "qty": 1
+        },
+        {
+          "supplier_id": "f8afe1ba2b0bf97f23ef888f040cf46a",
+          "sku": "TABLE-AKER-CT",
+          "variant_id": "default",
+          "qty": 1
+        },
+        {
+          "supplier_id": "f8afe1ba2b0bf97f23ef888f040cf46a",
+          "sku": "PAINT-CHALK",
+          "variant_id": "2-5l",
+          "qty": 4
+        }
+      ]
+    }
+  },
+  "http_status": 200,
+  "body": {
+    "region": "AE",
+    "at": "2026-10-09T10:00:00Z",
+    "stale_after": "2026-10-10T10:00:00Z",
+    "items": [
+      {
+        "supplier_id": "f8afe1ba2b0bf97f23ef888f040cf46a",
+        "sku": "SOFA-OSLO-3",
+        "variant_id": "oat-linen",
+        "price": {
+          "amount": 129900,
+          "currency": "AED",
+          "exponent": 2,
+          "region": "AE",
+          "includes_tax": true,
+          "tax_rate_bp": 500,
+          "at": "2026-10-09T10:00:00Z"
+        },
+        "availability": {
+          "state": "in_stock",
+          "stock": 4,
+          "lead_time_days": null,
+          "updated_at": "2026-10-09T10:00:00Z"
+        },
+        "substitutes": [],
+        "qty": 1
+      },
+      {
+        "supplier_id": "f8afe1ba2b0bf97f23ef888f040cf46a",
+        "sku": "SOFA-OSLO-3",
+        "variant_id": "charcoal-wool",
+        "price": {
+          "amount": 144900,
+          "currency": "AED",
+          "exponent": 2,
+          "region": "AE",
+          "includes_tax": true,
+          "tax_rate_bp": 500,
+          "at": "2026-10-09T10:00:00Z"
+        },
+        "availability": {
+          "state": "made_to_order",
+          "stock": null,
+          "lead_time_days": 42,
+          "updated_at": "2026-10-09T10:00:00Z"
+        },
+        "substitutes": [],
+        "qty": 1
+      },
+      {
+        "supplier_id": "f8afe1ba2b0bf97f23ef888f040cf46a",
+        "sku": "TABLE-AKER-CT",
+        "variant_id": "default",
+        "price": {
+          "amount": 114900,
+          "currency": "AED",
+          "exponent": 2,
+          "region": "AE",
+          "includes_tax": true,
+          "tax_rate_bp": 500,
+          "at": "2026-10-09T10:00:00Z"
+        },
+        "availability": {
+          "state": "discontinued",
+          "stock": null,
+          "lead_time_days": null,
+          "updated_at": "2026-10-09T10:00:00Z"
+        },
+        "substitutes": [
+          {
+            "product_id": "520a4dc6012477c516f811506f74873a",
+            "supplier_id": "f8afe1ba2b0bf97f23ef888f040cf46a",
+            "supplier_name": "Nord Living",
+            "sku": "TABLE-FJORD-CT",
+            "variant_id": "default",
+            "name": "Fjord coffee table",
+            "category": "furniture/tables/coffee-tables",
+            "thumbnail_url": "https://api.truebex.com/market/media/thumbs/9d002c2d71d385cc3a968329a460a2aa0ce187158d9d190d62b73ca040941c86.jpg",
+            "price": {
+              "amount": 119900,
+              "currency": "AED",
+              "exponent": 2,
+              "region": "AE",
+              "includes_tax": true,
+              "tax_rate_bp": 500,
+              "at": "2026-10-09T10:00:00Z"
+            },
+            "availability": {
+              "state": "in_stock",
+              "stock": 8,
+              "lead_time_days": null,
+              "updated_at": "2026-10-09T10:00:00Z"
+            }
+          }
+        ],
+        "qty": 1
+      },
+      {
+        "supplier_id": "f8afe1ba2b0bf97f23ef888f040cf46a",
+        "sku": "PAINT-CHALK",
+        "variant_id": "2-5l",
+        "price": {
+          "amount": 18900,
+          "currency": "AED",
+          "exponent": 2,
+          "region": "AE",
+          "includes_tax": true,
+          "tax_rate_bp": 500,
+          "at": "2026-10-09T10:00:00Z"
+        },
+        "availability": {
+          "state": "in_stock",
+          "stock": 60,
+          "lead_time_days": null,
+          "updated_at": "2026-10-09T10:00:00Z"
+        },
+        "substitutes": [],
+        "qty": 4
+      }
+    ]
+  }
+}
