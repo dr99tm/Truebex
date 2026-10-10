@@ -8867,5 +8867,99 @@
       "description": "Endpoints that receive signed events (Standard Webhooks): deliveries, re-send, secrets.",
       "name": "webhooks"
     }
-  ]
+  ],
+  "x-truebex-scopes": [
+    {
+      "default": true,
+      "description": "Open projects and read their operations, snapshots, versions, members, presence and jobs.",
+      "scope": "projects:read"
+    },
+    {
+      "default": false,
+      "description": "Create and rename projects, push operations, register snapshots, name and restore versions, invite.",
+      "scope": "projects:write"
+    },
+    {
+      "default": false,
+      "description": "Submit and cancel render jobs, the presentation pack among them.",
+      "scope": "jobs:write"
+    },
+    {
+      "default": false,
+      "description": "Upload bundles and publish, list, change and revoke shares.",
+      "scope": "shares:write"
+    },
+    {
+      "default": true,
+      "description": "Read the catalogue with the key's limits instead of the anonymous ones.",
+      "scope": "market:read"
+    },
+    {
+      "default": false,
+      "description": "Send a supplier's catalogue feed and read its import reports.",
+      "scope": "supplier:feed"
+    },
+    {
+      "default": false,
+      "description": "Register webhook endpoints, read deliveries, re-send them and rotate secrets.",
+      "scope": "webhooks:manage"
+    }
+  ],
+  "x-truebex-webhook-events": [
+    {
+      "description": "Operations were accepted (one event per 30 s per project: first and last numbers, authors).",
+      "type": "project.ops_appended"
+    },
+    {
+      "description": "A version was named.",
+      "type": "project.version_created"
+    },
+    {
+      "description": "Someone was invited to a project.",
+      "type": "project.member_added"
+    },
+    {
+      "description": "A render job of the account succeeded.",
+      "type": "job.succeeded"
+    },
+    {
+      "description": "A render job of the account failed.",
+      "type": "job.failed"
+    },
+    {
+      "description": "A share went live.",
+      "type": "share.published"
+    },
+    {
+      "description": "Yesterday's visits to the account's shares (00:10 UTC).",
+      "type": "share.visits_daily"
+    },
+    {
+      "description": "An order or request for quote of the account changed state.",
+      "type": "market.order.updated"
+    },
+    {
+      "description": "A catalogue feed run of the account's supplier ended.",
+      "type": "market.feed.completed"
+    }
+  ],
+  "x-truebex-webhooks": {
+    "debounce_s": 30,
+    "disable_after_days": 5,
+    "keep_days": 30,
+    "retry_after_s": [
+      0,
+      5,
+      300,
+      1800,
+      7200,
+      18000,
+      36000,
+      50400,
+      72000,
+      86400
+    ],
+    "signature": "Standard Webhooks: webhook-id, webhook-timestamp, webhook-signature (v1, HMAC-SHA256)",
+    "timeout_s": 15
+  }
 }

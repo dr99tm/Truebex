@@ -111,8 +111,11 @@ def build() -> dict:
     _env()
     from pydantic.json_schema import models_json_schema
 
+    from app import scopes
+    from app.config import Settings
     from app.main import app
     from app.routers.v1 import models
+    from app.webhooks import delivery, events
 
     app.openapi_schema = None
     full = copy.deepcopy(app.openapi())
@@ -207,6 +210,19 @@ def build() -> dict:
         },
         "servers": [{"url": BASE_URL}],
         "tags": [{"name": name, "description": text} for name, text in TAG_TEXT.items()],
+        # What the docs pages and SDK readers need beside the operations.
+        "x-truebex-scopes": [
+            {"scope": s, "description": scopes.DESCRIPTIONS[s], "default": s in scopes.READ_SCOPES} for s in scopes.SCOPES
+        ],
+        "x-truebex-webhook-events": [{"type": t, "description": events.DESCRIPTIONS[t]} for t in events.EVENT_TYPES],
+        "x-truebex-webhooks": {
+            "signature": "Standard Webhooks: webhook-id, webhook-timestamp, webhook-signature (v1, HMAC-SHA256)",
+            "retry_after_s": list(delivery.SCHEDULE_S),
+            "timeout_s": int(Settings.model_fields["webhooks_timeout_s"].default),  # the default, not this machine's .env
+            "disable_after_days": delivery.DISABLE_AFTER.days,
+            "keep_days": delivery.KEEP.days,
+            "debounce_s": int(events.OPS_DEBOUNCE.total_seconds()),
+        },
         "paths": _rewrite_refs(paths, mapping),
         "components": {"schemas": _rewrite_refs(components, mapping), "securitySchemes": security},
     }
