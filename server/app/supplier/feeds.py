@@ -85,6 +85,15 @@ def caller_for_key(db: Session, raw: str | None) -> FeedCaller:
                 else "This key's owner is not a catalogue member of a supplier."
             )
             raise ContractError("not_supplier", 403, detail)
+        # PF12: a developer key also needs the supplier:feed scope (keys made
+        # before scopes keep the feed access they had).
+        from ..scopes import is_legacy, of_key
+
+        if not is_legacy(key) and "supplier:feed" not in of_key(key):
+            raise ContractError(
+                "forbidden", 403, "This API key does not have the supplier:feed scope.",
+                {"needed": "supplier:feed", "scopes": of_key(key)},
+            )
         supplier = candidates[0]
     key.last_used_at = now()
     db.add(key)

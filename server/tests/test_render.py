@@ -346,7 +346,10 @@ def test_jobs_submit_requires_feature_and_auth(client, setup):
     b = Person(client, "b@example.com")
     error_of(submit(client, rj(b), project_id=pid, at_seq=head), 404, "not_found")
     # An API key works and is metered like every developer call.
-    key = client.post("/keys", json={"name": "ci"}, headers=setup["a"].session).json()["key"]
+    # (PF12: with the jobs:write scope; a read-only key is refused.)
+    key = client.post("/keys", json={"name": "ci", "scopes": ["projects:read", "jobs:write"]}, headers=setup["a"].session).json()["key"]
+    reader = client.post("/keys", json={"name": "ro"}, headers=setup["a"].session).json()["key"]
+    error_of(submit(client, {"Authorization": f"Bearer {reader}", **RJ}, project_id=pid, at_seq=head), 403, "forbidden")
     res = submit(client, {"Authorization": f"Bearer {key}", **RJ}, project_id=pid, at_seq=head)
     assert res.status_code == 201, res.text
     assert res.headers["X-RateLimit-Remaining"]

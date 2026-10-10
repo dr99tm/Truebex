@@ -157,3 +157,5 @@ app.include_router(telemetry.router)
 app.include_router(admin_telemetry.router)
 # PF6: cloud render orchestration
 app.include_router(render_router.router)
+# PF12: the dashboard's webhook routes (/v1 is registered above with the other routers)
+v1.install(app)

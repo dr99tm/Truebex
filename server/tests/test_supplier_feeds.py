@@ -144,7 +144,10 @@ def test_feed_requires_supplier_key(client, monkeypatch):
     error_of(client.put("/market/feeds/source", json={"url": "https://feeds.example.com/a.csv", "format": "csv"}, headers=key_headers(viewer_key)), 403, "not_supplier")
 
     # The owner's own developer key works while they belong to one supplier only…
-    owner_dev = client.post("/keys", json={"name": "dev"}, headers=h).json()["key"]
+    # (PF12: a developer key made with scopes needs supplier:feed.)
+    no_scope = client.post("/keys", json={"name": "ro"}, headers=h).json()["key"]
+    error_of(post_feed(client, no_scope, FEED_CSV), 403, "forbidden")
+    owner_dev = client.post("/keys", json={"name": "dev", "scopes": ["supplier:feed"]}, headers=h).json()["key"]
     assert post_feed(client, owner_dev, FEED_CSV).status_code == 202
     # …and is ambiguous once they are a catalogue member of a second supplier.
     from app.market.catalogue import add_member, create_supplier

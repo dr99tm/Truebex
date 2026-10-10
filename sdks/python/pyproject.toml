@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "truebex"
+version = "1.0.0"
+description = "The Truebex developer API: projects, exports, shares, the marketplace, supplier feeds and webhooks."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+dependencies = []
+classifiers = ["Programming Language :: Python :: 3", "Typing :: Typed"]
+
+[project.urls]
+Documentation = "https://truebex.com/developers/sdks/"
+
+[tool.setuptools]
+packages = ["truebex"]
+
+[tool.setuptools.package-data]
+truebex = ["py.typed"]

@@ -82,3 +82,6 @@ infra/secrets/*.key
 # PF6: a render worker's settings hold its token; its job folders
 worker/worker.toml
 worker/jobs/
+
+# PF12: the SDK generators (scripts/gen-sdks.ps1)
+.sdk-tools/

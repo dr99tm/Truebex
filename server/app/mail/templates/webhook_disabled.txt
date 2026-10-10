@@ -1,0 +1,13 @@
+Hello,
+
+Deliveries to this webhook endpoint have failed since $since, so it is
+switched off:
+
+$url
+
+Nothing more is sent to it, and the events in between are kept for 30 days.
+Check that the address answers with a 2xx status within 15 seconds, then
+switch it back on and re-send what it missed:
+$webhooks_url
+
+Truebex

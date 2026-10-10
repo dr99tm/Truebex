@@ -130,6 +130,9 @@ _ADDED_COLUMNS["payments"] += [
 # PF3a (organisation billing): the organisation a checkout buys for.
 _ADDED_COLUMNS.setdefault("payments", []).append(("organisation_id", "VARCHAR(32)"))
 
+# PF12 (public API): API key scopes, a JSON list; NULL = every read scope.
+_ADDED_COLUMNS.setdefault("api_keys", []).append(("scopes", "TEXT"))
+
 
 def _migrate(bind: Engine) -> None:
     insp = inspect(bind)
@@ -193,6 +196,7 @@ def init_db(bind: Engine | None = None, *, seed: bool = True) -> None:
     from . import idempotency as _idempotency  # noqa: F401  (PF14 plumbing, first user PF4)
     from .projects import models as _project_models  # noqa: F401  (PF4)
     from .render import models as _render_models  # noqa: F401  (PF6, and metering's meter_daily)
+    from .webhooks import models as _webhook_models  # noqa: F401  (PF12)
 
     bind = bind or engine
     Base.metadata.create_all(bind=bind)

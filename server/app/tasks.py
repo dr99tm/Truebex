@@ -71,6 +71,7 @@ def _load_jobs() -> None:
     from . import idempotency  # noqa: F401  (idempotency.expire)
     from .projects import jobs as _projects  # noqa: F401  (PF4)
     from .render import jobs as _render  # noqa: F401  (PF6: render.*)
+    from .webhooks import jobs as _webhooks  # noqa: F401  (PF12: webhooks.*)
 
 
 def jobs() -> dict[str, Job]:

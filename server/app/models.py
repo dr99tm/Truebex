@@ -88,6 +88,9 @@ class ApiKey(Base):
     # PF8: a supplier key (made in the supplier portal) feeds that supplier's
     # catalogue only (contract marketplace-api 5.11-5.13); None = a developer key.
     supplier_id: Mapped[str | None] = mapped_column(String(32), index=True, nullable=True)
+    # PF12: the key's scopes, a JSON list (app/scopes.py); None = made before
+    # scopes existed, which reads as every `:read` scope.
+    scopes: Mapped[str | None] = mapped_column(Text, nullable=True)
 
 
 class UsageDaily(Base):

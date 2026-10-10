@@ -231,6 +231,20 @@ class Settings(BaseSettings):
     render_pool_warm_hours: str = ""
     render_pool_idle_stop_s: int = 600
 
+    # --- Public API, webhooks (PF12) --------------------------------------------
+    # Per-key burst limit beside the monthly quota: a bucket of API_KEY_BURST
+    # calls refilled at API_KEY_PER_MINUTE (429 `rate_limited` with retry_after_s).
+    api_key_burst: int = 60
+    api_key_per_minute: int = 600
+    # Fernet key sealing webhook signing secrets (they must be readable to sign,
+    # so they are encrypted, not hashed). Empty = derived from SECRET_KEY, so a
+    # new SECRET_KEY means rotating every endpoint's secret.
+    webhook_secret_key: str = ""
+    # Local testing only: let http://127.0.0.1 (and localhost) endpoints through.
+    webhooks_allow_http_local: bool = False
+    # Seconds a delivery may take before it counts as failed.
+    webhooks_timeout_s: float = 15.0
+
     @property
     def cors_origin_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
