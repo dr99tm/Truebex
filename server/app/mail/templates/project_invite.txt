@@ -1,0 +1,14 @@
+Hello,
+
+$inviter ($inviter_email) invited you to the Truebex project "$project" as $role_words.
+
+Accept the invitation here:
+$link
+
+You sign in, or create a free Truebex account, before you accept. The link
+works once, for whoever opens it signed in, so keep it to yourself.
+
+Not expecting this? Ignore this email: nothing changes until the link is used.
+
+Truebex
+https://truebex.com/

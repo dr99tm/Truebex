@@ -10,6 +10,4 @@ from . import service
 @periodic("uploads.expire", 3600)
 def expire_uploads(now: datetime) -> int:
     with SessionLocal() as db:
-        n = service.expire(db, now)
-        db.commit()
-        return n
+        return service.expire(db, now)

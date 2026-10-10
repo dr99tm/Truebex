@@ -97,6 +97,10 @@ export interface Subscription {
   can_cancel: boolean;
   cooling_off_until: string | null;
   withdrawal_until: string | null;
+  /** PF3a: the organisation this is; null for the signed-in person's own plan. */
+  org_id?: string | null;
+  /** Seats given to people: named seats + the floating pool (1 for a person). */
+  seats_assigned?: number | null;
 }
 
 /** A cancellation made in Billing (PF2b). The plan changes once the payment
@@ -128,6 +132,8 @@ export interface Payment {
   key_info?: string | null;
   key_info_at?: string | null;
   business?: boolean | null;
+  /** PF3a: the organisation the payment bought for, if any. */
+  organisation_id?: string | null;
 }
 
 export interface Invoice {
@@ -152,6 +158,8 @@ export interface CheckoutRequest {
   // PF2b, once the wording is approved: the key information was acknowledged.
   key_info?: { version: string; acknowledged: true };
   business?: boolean;
+  /** PF3a: buy for this organisation (its owner and billing roles only). */
+  org_id?: string;
 }
 
 export const listKeys = () => api<ApiKey[]>("/keys");
@@ -162,25 +170,33 @@ export const revokeKey = (id: number) =>
 
 export const getUsage = () => api<UsageSummary>("/usage");
 
+// Every billing call acts for the signed-in person, or (PF3a) for the
+// organisation `orgId` names when they are its owner or billing member.
+const orgQuery = (orgId?: string | null) => (orgId ? `?org_id=${encodeURIComponent(orgId)}` : "");
+const orgBody = (orgId?: string | null) => (orgId ? { org_id: orgId } : {});
+
 export const getCatalog = () => api<Catalog>("/billing/plans", { auth: false });
-export const getSubscription = () => api<Subscription>("/billing/subscription");
-export const listPayments = () => api<Payment[]>("/billing/payments");
-export const listInvoices = () => api<Invoice[]>("/billing/invoices");
+export const getSubscription = (orgId?: string | null) =>
+  api<Subscription>(`/billing/subscription${orgQuery(orgId)}`);
+export const listPayments = (orgId?: string | null) =>
+  api<Payment[]>(`/billing/payments${orgQuery(orgId)}`);
+export const listInvoices = (orgId?: string | null) =>
+  api<Invoice[]>(`/billing/invoices${orgQuery(orgId)}`);
 export const startCheckout = (body: CheckoutRequest) =>
   api<{ url: string; reference: string; founding: boolean }>("/billing/checkout", {
     method: "POST",
     json: body,
   });
-export const changeSeats = (seats: number) =>
-  api<Subscription>("/billing/seats", { method: "POST", json: { seats } });
-export const changePlan = (change: { tier?: string; interval?: Interval }) =>
-  api<Subscription>("/billing/change", { method: "POST", json: change });
+export const changeSeats = (seats: number, orgId?: string | null) =>
+  api<Subscription>("/billing/seats", { method: "POST", json: { seats, ...orgBody(orgId) } });
+export const changePlan = (change: { tier?: string; interval?: Interval }, orgId?: string | null) =>
+  api<Subscription>("/billing/change", { method: "POST", json: { ...change, ...orgBody(orgId) } });
 export const refreshPayment = (reference: string) =>
   api<Payment>(`/billing/payments/${encodeURIComponent(reference)}/refresh`, {
     method: "POST",
   });
-export const openBillingPortal = () =>
-  api<{ url: string }>("/billing/portal", { method: "POST" });
+export const openBillingPortal = (orgId?: string | null) =>
+  api<{ url: string }>("/billing/portal", orgId ? { method: "POST", json: orgBody(orgId) } : { method: "POST" });
 export const getPayment = (reference: string) =>
   api<Payment>(`/billing/payments/${encodeURIComponent(reference)}`);
 /** Cancel at the period end, or (refund) now within the renewal cooling-off. */

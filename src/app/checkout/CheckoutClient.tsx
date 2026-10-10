@@ -43,6 +43,9 @@ export function CheckoutClient() {
   const params = useSearchParams();
   const txn = params.get("_ptxn");
   const ref = params.get("ref") ?? "";
+  // PF3a: an organisation's checkout returns to that organisation's billing page.
+  const org = /^[0-9a-f]{32}$/.test(params.get("org") ?? "") ? params.get("org") : null;
+  const billing = org ? `/dashboard/billing/?org=${org}` : "/dashboard/billing/";
   const [scriptReady, setScriptReady] = useState(false);
   const [state, setState] = useState<State>(txn ? "loading" : "missing");
   const [summary, setSummary] = useState<string | null>(null);
@@ -61,7 +64,7 @@ export function CheckoutClient() {
     if (!txn || !scriptReady || started.current) return;
     started.current = true;
     const back = (outcome: "success" | "canceled") =>
-      `/dashboard/billing/?checkout=${outcome}&ref=${encodeURIComponent(ref)}`;
+      `/dashboard/billing/?checkout=${outcome}&ref=${encodeURIComponent(ref)}${org ? `&org=${org}` : ""}`;
     const keyInfo = ref && getToken() ? getPayment(ref).then((p) => p.key_info ?? null, () => null) : null;
     Promise.all([fetchPublicConfig(), keyInfo])
       .then(([cfg, info]) => {
@@ -101,7 +104,7 @@ export function CheckoutClient() {
         setState("open");
       })
       .catch(() => setState("unavailable"));
-  }, [txn, ref, scriptReady]);
+  }, [txn, ref, org, scriptReady]);
 
   const status = (
     <p role="status" className="max-w-md text-text-secondary">
@@ -147,7 +150,7 @@ export function CheckoutClient() {
           )}
         </>
       )}
-      <Link href="/dashboard/billing/" className="text-sm text-text-muted hover:text-text-primary">
+      <Link href={billing} className="text-sm text-text-muted hover:text-text-primary">
         {CHECKOUT.back}
       </Link>
     </>

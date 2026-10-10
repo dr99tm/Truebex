@@ -13,6 +13,7 @@ records live in infra/tofu).
 
 import html
 import logging
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 from string import Template
@@ -72,8 +73,10 @@ def send_mail(to: str, template: str, data: dict, *, reply_to: str | None = None
     else:
         OUTBOX.append(msg)
         log.info("mail to %s: %s", to, msg.subject)
-        # The console backend is the local stand-in for an inbox (invite links).
-        print(f"\n--- mail to {to}: {msg.subject}\n{msg.text}\n---", flush=True)
+        # The console backend is the local stand-in for an inbox: it prints the
+        # whole text part, so invite links (organisations, projects) can be
+        # followed in local testing.
+        print(f"\n--- mail to {to}: {msg.subject}\n{msg.text}\n--- end of mail", file=sys.stderr, flush=True)
     return msg
 
 

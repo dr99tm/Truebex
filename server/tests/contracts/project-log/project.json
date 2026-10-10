@@ -1,0 +1,47 @@
+{
+  "project_id": "0199c6a2f1007a3c8b5e2d4f6a7b8c9d",
+  "name": "House",
+  "role": "owner",
+  "owner": {
+    "user_id": 42,
+    "name": "Alex"
+  },
+  "org_id": null,
+  "created_at": "2026-10-09T10:00:00Z",
+  "updated_at": "2026-10-09T10:12:00Z",
+  "head_seq": 0,
+  "latest_snapshot": {
+    "snapshot_id": "c0ffee00000000000000000000000001",
+    "at_seq": 0,
+    "doc_version": 38,
+    "created_at": "2026-10-09T10:00:00Z"
+  },
+  "doc_version": 38,
+  "members": [
+    {
+      "user_id": 42,
+      "invite_id": null,
+      "email": "owner@example.test",
+      "name": "Alex",
+      "role": "owner",
+      "state": "active",
+      "invited_at": "2026-10-09T10:00:00Z",
+      "accepted_at": "2026-10-09T10:00:00Z"
+    },
+    {
+      "user_id": 7,
+      "invite_id": null,
+      "email": "editor@example.test",
+      "name": "Sam",
+      "role": "editor",
+      "state": "active",
+      "invited_at": "2026-10-09T10:00:00Z",
+      "accepted_at": "2026-10-09T10:05:00Z"
+    }
+  ],
+  "bytes": 59984,
+  "quota": {
+    "bytes": 10737418240,
+    "bytes_used": 59984
+  }
+}

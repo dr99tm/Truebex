@@ -80,6 +80,8 @@ def _models() -> list[Table]:
     from app.uploads import models as _uploads  # noqa: F401  (PF5)
     from app.market import models as _market  # noqa: F401  (PF7)
     from app.supplier import models as _supplier  # noqa: F401  (PF8)
+    from app import idempotency as _idempotency  # noqa: F401  (PF4)
+    from app.projects import models as _projects  # noqa: F401  (PF4)
 
     return list(Base.metadata.sorted_tables)  # parents before children
 

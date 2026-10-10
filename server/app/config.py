@@ -207,6 +207,13 @@ class Settings(BaseSettings):
     # the contract's feed imports without the internet. Empty in production.
     market_media_fixtures: str = ""
 
+    # --- Project service (PF4, contract project-log) ---------------------------
+    # Presence (5.17): "memory" (one API process) or "db" (the presence table,
+    # several processes; PF14).
+    projects_presence_backend: str = "memory"
+    # Long-poll pulls (5.7) waiting at once per account; more answer 429.
+    projects_max_waiting_pulls: int = 20
+
     @property
     def cors_origin_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]

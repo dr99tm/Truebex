@@ -13,6 +13,7 @@ from datetime import datetime
 from sqlalchemy.orm import Session
 
 from ..billing.service import TRIAL_PROVIDER, effective_plan, live_subscription
+from ..billing.service import seats_assigned as subscription_seats
 from ..models import Subscription, User
 from ..plans import get_plan
 from . import clock
@@ -59,7 +60,7 @@ def personal_seat(db: Session, user: User) -> Seat:
         ends_at=period_end if sub.provider in FIXED_TERM_PROVIDERS else None,
         period_end=period_end,
         seats_total=sub.seats or 1,
-        seats_assigned=1,
+        seats_assigned=subscription_seats(db, sub),
         subscription=sub,
     )
 

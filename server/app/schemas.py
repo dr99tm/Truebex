@@ -1,7 +1,7 @@
 """Pydantic request/response schemas."""
 
 from datetime import date, datetime
-from typing import Literal
+from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
@@ -90,6 +90,8 @@ class UsageSummary(BaseModel):
 
 Provider = Literal["paddle", "stripe"]
 Interval = Literal["month", "year"]
+# PF3a: an organisation's id (licence contract §6.1 `account.org_id`, 32 hex).
+OrgId = Annotated[str, Field(pattern=r"^[0-9a-f]{32}$")]
 
 
 class PriceOut(BaseModel):
@@ -175,6 +177,8 @@ class CheckoutRequest(BaseModel):
     business: bool = False
     # Only "wayl" (dormant, WAYL_ENABLED); otherwise BILLING_PROVIDER decides.
     provider: Literal["wayl"] | None = None
+    # PF3a: buy for this organisation (its owner or billing role only).
+    org_id: OrgId | None = None
 
 
 class CheckoutResponse(BaseModel):
@@ -201,6 +205,10 @@ class SubscriptionOut(BaseModel):
     can_cancel: bool = False
     cooling_off_until: datetime | None = None
     withdrawal_until: datetime | None = None
+    # PF3a: the organisation this is (None = the caller's own plan), and the
+    # seats given to people (named seats + the floating pool; 1 for a person).
+    org_id: str | None = None
+    seats_assigned: int | None = None
 
 
 class CancelRequest(BaseModel):
@@ -230,11 +238,17 @@ class ExitOut(BaseModel):
 
 class SeatsRequest(BaseModel):
     seats: int = Field(ge=1, le=1000)
+    org_id: OrgId | None = None
 
 
 class ChangeRequest(BaseModel):
     tier: str | None = Field(default=None, max_length=32)
     interval: Interval | None = None
+    org_id: OrgId | None = None
+
+
+class PortalRequest(BaseModel):
+    org_id: OrgId | None = None
 
 
 class InvoiceOut(BaseModel):
@@ -267,6 +281,7 @@ class PaymentOut(BaseModel):
     key_info: str | None = None
     key_info_at: datetime | None = None
     business: bool | None = None
+    organisation_id: str | None = None
 
 
 # --- Admin: growth ------------------------------------------------------------

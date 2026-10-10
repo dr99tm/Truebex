@@ -127,6 +127,9 @@ _ADDED_COLUMNS["payments"] += [
     ("confirmation_sent_at", "TIMESTAMP WITH TIME ZONE"),
 ]
 
+# PF3a (organisation billing): the organisation a checkout buys for.
+_ADDED_COLUMNS.setdefault("payments", []).append(("organisation_id", "VARCHAR(32)"))
+
 
 def _migrate(bind: Engine) -> None:
     insp = inspect(bind)
@@ -187,6 +190,8 @@ def init_db(bind: Engine | None = None, *, seed: bool = True) -> None:
     from .sso import models as _sso_models  # noqa: F401  (PF3)
     from .market import models as _market_models  # noqa: F401  (PF7)
     from .supplier import models as _supplier_models  # noqa: F401  (PF8)
+    from . import idempotency as _idempotency  # noqa: F401  (PF14 plumbing, first user PF4)
+    from .projects import models as _project_models  # noqa: F401  (PF4)
 
     bind = bind or engine
     Base.metadata.create_all(bind=bind)
