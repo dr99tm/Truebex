@@ -6,7 +6,7 @@ from datetime import datetime, timedelta, timezone
 from app.billing import service as billing
 from app.database import SessionLocal
 from app.models import Subscription, User
-from app.plans import CATALOGUE_PATH, PLANS, get_plan, plan_rank
+from app.plans import CATALOGUE_PATH, PLANS, get_plan, rank
 
 from .conftest import signup
 
@@ -40,12 +40,14 @@ def test_catalogue_matches_contract_placeholder():
 
 
 def test_catalogue_existing_plans_keep_working(client):
-    assert get_plan("pro").price_usd_cents == 9900 and get_plan("pro").purchasable
+    assert get_plan("pro").price("month", "USD").amount_minor == 9900 and get_plan("pro").purchasable
     assert get_plan("nonsense").id == "free"
     assert (get_plan("free").monthly_requests, get_plan("free").max_api_keys) == (1_000, 2)
     assert (get_plan("pro").monthly_requests, get_plan("pro").max_api_keys) == (100_000, 20)
     assert get_plan("enterprise").monthly_requests == 5_000_000
-    assert [p for p in PLANS.values() if p.purchasable] == [PLANS["pro"]]
+    # Sold online: the tiers PF2 priced (Free and Enterprise are not).
+    assert [p.id for p in PLANS.values() if p.purchasable] == ["pro", "studio", "team"]
+    assert all(p.prices for p in PLANS.values() if p.purchasable)
 
     h = signup(client)
     uid = client.get("/auth/me", headers=h).json()["id"]
@@ -58,7 +60,7 @@ def test_catalogue_existing_plans_keep_working(client):
 
     # Ranks come from the catalogue: a team row outranks pro (the old _RANK
     # read every id it did not know as free).
-    assert plan_rank("team") > plan_rank("studio") > plan_rank("pro") > plan_rank("free")
+    assert rank("team") > rank("studio") > rank("pro") > rank("free")
     with SessionLocal() as db:
         db.add(Subscription(user_id=uid, plan="team", provider="stripe", status="active", current_period_end=soon))
         db.commit()
@@ -75,7 +77,8 @@ def test_catalogue_existing_plans_keep_working(client):
         db.commit()
         assert billing.live_subscription(db, db.get(User, uid)).provider == "stripe"
 
-    # The public catalogue shows the new names, the API limits are unchanged.
-    plans = {p["id"]: p for p in client.get("/billing/plans").json()["plans"]}
-    assert plans["free"]["name"] == "Free" and plans["pro"]["name"] == "Pro"
-    assert plans["free"]["monthly_requests"] == 1000 and plans["free"]["max_api_keys"] == 2
+    # The public catalogue shows the new names (PF2's /billing/plans lists
+    # tiers and prices; the API limits above come from the same catalogue).
+    tiers = {t["id"]: t for t in client.get("/billing/plans").json()["tiers"]}
+    assert tiers["free"]["name"] == "Free" and tiers["pro"]["name"] == "Pro"
+    assert [t["id"] for t in tiers.values() if t["purchasable"]] == ["pro", "studio", "team"]

@@ -5,9 +5,10 @@
                      content_type="application/octet-stream")
     url = store.signed_get_url(info.key, expires_in=900, filename="Truebex-Setup-1.1.0.exe")
 
-Adapters: `local` (files under STORAGE_DIR, URLs served by GET / PUT
-/files/{key}?exp=&sig= with HMAC-SHA256, this module) and `s3` (presigned
-URLs and a CDN for public prefixes, PF14). Swapping is one setting.
+Adapters (STORAGE_BACKEND): `local` (files under STORAGE_DIR, URLs served by
+GET / PUT /files/{key}?exp=&sig= with HMAC-SHA256, local.py) and `s3` (any
+S3-compatible bucket, presigned URLs, CDN_BASE_URL for the public prefixes,
+s3.py). Swapping is one setting.
 """
 
 import re
@@ -16,6 +17,10 @@ from datetime import datetime
 from typing import BinaryIO, Protocol
 
 _SEGMENT = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._+-]{0,199}$")
+
+# Prefixes whose objects are public and cacheable: served from the CDN
+# hostname when one is configured (PF5 shares, PF6 tiles, PF1 releases).
+PUBLIC_PREFIXES = ("tiles/", "shares/", "releases/")
 
 
 class InvalidKey(ValueError):
@@ -40,6 +45,11 @@ class BlobInfo:
     sha256: str
     cache_control: str | None = None
     modified_at: datetime | None = None
+
+    @property
+    def size(self) -> int:
+        """`bytes` under the name PF14's callers use."""
+        return self.bytes
 
 
 class Store(Protocol):
@@ -78,13 +88,16 @@ def get_store() -> Store:
         from ..config import get_settings
 
         s = get_settings()
-        if s.storage_backend != "local":
-            raise RuntimeError(
-                f"STORAGE_BACKEND={s.storage_backend!r} is not available yet (PF14 adds s3)"
-            )
-        from .local import LocalStore
+        if s.storage_backend == "s3":
+            from .s3 import S3Store
 
-        _store = LocalStore.from_settings(s)
+            _store = S3Store.from_settings(s)
+        elif s.storage_backend == "local":
+            from .local import LocalStore
+
+            _store = LocalStore.from_settings(s)
+        else:
+            raise RuntimeError(f"Unknown STORAGE_BACKEND {s.storage_backend!r}")
     return _store
 
 

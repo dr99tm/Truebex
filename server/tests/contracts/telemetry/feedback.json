@@ -1,0 +1,10 @@
+{
+  "schema": "truebex-feedback/1",
+  "feedback_id": "00df7b6d6a3dd1bb3f889015078c9c83",
+  "install_id": "4a1ffea151643db7fe803e815865e053",
+  "kind": "bug",
+  "text": "The section cut flickers when I orbit around the stair.",
+  "reply": false,
+  "app": {"version": "1.1.0", "channel": "stable", "build": "shipping"},
+  "os": "windows 10.0.26200"
+}

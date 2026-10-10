@@ -223,7 +223,7 @@ function ShareCard({ share, days, onChange }: { share: Share; days: number; onCh
           ) : detail.visits.total === 0 ? (
             <p className="text-sm text-text-muted">{T.noVisits}</p>
           ) : (
-            <UsageChart data={fillDays(detail.visits.by_day ?? [])} noun="visits" summary={T.byDay} />
+            <UsageChart data={fillDays(detail.visits.by_day ?? [])} unit="visits" label={T.byDay} />
           )}
         </div>
       )}

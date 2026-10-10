@@ -23,8 +23,8 @@ A task ticks ONLY its own row, on its own branch.
 | Done | Feature | Needs | Prio | Code today | Notes |
 |---|---|---|---|---|---|
 | [x] | [PF1](PF1-licence-api-releases-and-downloads.md) licence API, releases and downloads | — | 1 | `server/app/licence/`, `server/app/releases/`, `/download/`, `/dashboard/link/` | 2026-10-09, Autopilot T1; PF13 merge notes in its As-built |
-| [ ] | [PF2](PF2-billing-through-the-uk-company.md) billing through the UK company | PF1 | 1 | — | |
-| [ ] | [PF3](PF3-organisations-seats-and-sso.md) organisations, seats and SSO | PF1 | 2 | — | |
+| [x] | [PF2](PF2-billing-through-the-uk-company.md) billing through the UK company | PF1 | 1 | `server/app/billing/`, `src/app/checkout/`, `src/app/dashboard/billing/` | built before PF1 merged: one catalogue, one `tasks.py`, one `seats` column at merge (As-built 13) |
+| [x] | [PF3](PF3-organisations-seats-and-sso.md) organisations, seats and SSO | PF1 | 2 | `server/app/orgs/`, `server/app/sso/`, `/dashboard/organisation/`, `/invite/`, `/login/sso/` | 2026-10-09, Autopilot T9; merged with PF1/PF2/PF13/PF14 2026-10-10 (T22, As-built) |
 | [ ] | [PF4](PF4-project-service-log-storage-sync-versions-and-sharing.md) project service: log storage, sync, versions and sharing | PF1 | 2 | — | |
 | [x] | [PF5](PF5-share-pages.md) share pages | PF1 | 1 | `server/app/uploads/`, `server/app/shares/`, `/view/{slug}`, `src/viewer/`, `/dashboard/shares/` | 2026-10-09, Autopilot T5; also commits PF1's `server/app/storage/` (see As-built) |
 | [ ] | [PF6](PF6-cloud-render-orchestration.md) cloud render orchestration | PF4 | 2 | — | |
@@ -34,5 +34,6 @@ A task ticks ONLY its own row, on its own branch.
 | [ ] | [PF10](PF10-android-native-app.md) Android native app | PF9 | 3 | — | |
 | [ ] | [PF11](PF11-analysis-and-ai-services.md) analysis and AI services | PF6 | 3 | — | |
 | [ ] | [PF12](PF12-public-api-sdks-webhooks-and-the-mcp-package.md) public API, SDKs, webhooks and the MCP package | PF4 | 2 | — | |
-| [ ] | [PF13](PF13-website-pricing-features-roadmap-arabic-changelog-analytics.md) website: pricing, features, roadmap, Arabic, changelog, analytics | — | 1 | — | |
-| [ ] | [PF14](PF14-operations-off-the-home-pc-telemetry-and-crash-ingestion.md) operations: off the home PC, telemetry and crash ingestion | — | 1 | — | |
+| [x] | [PF13](PF13-website-pricing-features-roadmap-arabic-changelog-analytics.md) website: pricing, features, roadmap, Arabic, changelog, analytics | — | 1 | `ap/t2-pf13-website-pricing-features-ro` | 2026-10-09, Autopilot T2: pytest 24 → 51; 23 pages, sitemap 14 URLs. Prices, handles and tokens wait for GD7 / GD6 / the owner. Carry-over: PF1 `record_download`, one catalogue / changelog at merge |
+| [x] | [PF14](PF14-operations-off-the-home-pc-telemetry-and-crash-ingestion.md) operations: off the home PC, telemetry and crash ingestion | — | 1 | `server/app/telemetry/`, `infra/` | branch `ap/t3-pf14-operations-off-the-home-pc`; cutover is the owner's (`infra/CUTOVER.md`) |
+| [x] | [PF14a](PF14a-deploy-skill-release-steps.md) deploy skill: roadmap 40 release steps and secrets | PF1, PF2, PF13, PF14 | 1 | `.claude/skills/truebex-deploy/`, `server/tests/test_deploy_skill.py` | 2026-10-10, Autopilot T20: release steps, secrets by file, site config and live checks in the skill; the gate fails on an unnamed step or setting; `publish_release.py --symbols` |

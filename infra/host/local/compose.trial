@@ -1,0 +1,2 @@
+# Compose interpolation for the local trial (compose.local.yaml).
+API_IMAGE=truebex-api:local

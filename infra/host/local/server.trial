@@ -1,0 +1,9 @@
+# Local trial only: never used on the VM (its values come from infra/secrets).
+SECRET_KEY=local-trial-only-not-a-secret-0123456789abcdef
+DATABASE_URL=postgresql+psycopg://truebex:local-trial-only@postgres:5432/truebex
+CORS_ORIGINS=http://127.0.0.1:3103,http://localhost:3103
+SITE_URL=http://127.0.0.1:3103
+API_URL=http://127.0.0.1
+STORAGE_BACKEND=local
+STORAGE_DIR=/tmp/truebex-storage
+MAIL_BACKEND=console

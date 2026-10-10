@@ -9,7 +9,7 @@ around it on the web:
 
 - **Marketing site:** a static Next.js export on GitHub Pages.
 - **Dashboard:** sign in with Google or email, manage API keys, see usage, and handle billing.
-- **API server** (`server/`, FastAPI): accounts, API keys, usage metering, and billing through Stripe and Wayl, served at `api.truebex.com` through a Cloudflare tunnel.
+- **API server** (`server/`, FastAPI): accounts, API keys, usage metering, billing through the UK company (Paddle as reseller by default, Stripe with Stripe Tax as the alternative), licences, devices and the release feed for the desktop app, and its opt-in telemetry, crash reports and feedback, served at `api.truebex.com` from a Linux VM (Docker Compose behind Cloudflare, built from [`infra/`](infra/README.md)).
 - **Demo-request form:** writes to a Google Sheet via Apps Script.
 
 > **Two repos, one GitHub project.** This folder (`X:\Truebex`, branch
@@ -31,8 +31,9 @@ around it on the web:
 - [Google sign-in](#google-sign-in)
 - [API keys and usage](#api-keys-and-usage)
 - [Licences, releases and downloads](#licences-releases-and-downloads)
+- [Organisations, seats and SSO](#organisations-seats-and-sso)
 - [Share links](#share-links)
-- [Billing: Stripe and Wayl](#billing-stripe-and-wayl)
+- [Billing: Paddle and Stripe](#billing-paddle-and-stripe)
 - [Brand, content and SEO](#brand-content-and-seo)
 - [Demo request form](#demo-request-form)
 - [Known issues](#known-issues)
@@ -49,26 +50,37 @@ flowchart LR
         Site["truebex.com<br/>static Next.js export"]
     end
 
-    subgraph PC["Host PC (must be running)"]
-        Tunnel["cloudflared tunnel<br/>start-tunnel.bat"]
-        API["Truebex API (FastAPI)<br/>:8001 · SQLite auth.db"]
-        Tunnel --> API
+    subgraph VM["API VM (infra/, Docker Compose)"]
+        Caddy["Caddy :443<br/>Cloudflare origin certificate"]
+        API["Truebex API (FastAPI)<br/>api + worker"]
+        DB["Postgres 18<br/>WAL archived by wal-g"]
+        Caddy --> API
+        API --> DB
     end
+
+    Bucket["Object storage<br/>files, crash dumps, symbols"]
+    Backups["Backup bucket<br/>(second provider)"]
+    Monitor["Uptime monitor<br/>/health, /health/deep"]
+    App["Truebex desktop app<br/>licence, updates, opt-in telemetry"]
 
     Google["Google Identity Services"]
     Sheets["Google Apps Script<br/>→ Google Sheet"]
+    Paddle["Paddle.js overlay<br/>on /checkout/"]
     Stripe["Stripe Checkout"]
-    Wayl["Wayl links<br/>QiCard · FIB · ZainCash"]
 
     Browser -->|HTML/JS| Site
-    Browser -->|"auth · keys · usage · billing<br/>api.truebex.com"| Tunnel
+    Browser -->|"auth · keys · usage · billing<br/>api.truebex.com via Cloudflare"| Caddy
+    App -->|"licence-api/1.0 · telemetry/1.0"| Caddy
     Browser -->|"Sign in with Google"| Google
     Browser -->|demo request form| Sheets
+    Browser -->|checkout| Paddle
     Browser -->|hosted checkout| Stripe
-    Browser -->|hosted checkout| Wayl
-    Stripe -->|signed webhooks| Tunnel
-    Wayl -->|webhooks| Tunnel
-    API -->|"verify link status"| Wayl
+    Paddle -->|signed webhooks| Caddy
+    Stripe -->|signed webhooks| Caddy
+    API -->|"transactions · prices · portal"| Paddle
+    API --> Bucket
+    DB -->|"WAL + nightly base"| Backups
+    Monitor -->|every 60 s| Caddy
     API -->|"verify ID token"| Google
 ```
 
@@ -86,11 +98,16 @@ restart, not a rebuild.
 src/
   app/
     page.tsx               Landing page (+ SoftwareApplication & FAQPage JSON-LD)
-    layout.tsx             Global metadata, fonts, Organization JSON-LD
+    layout.tsx             Global metadata, fonts, Organization JSON-LD, verification tags
+    pricing/               Plans from server/app/catalogue.json (+ comparison, FAQ)
+    features/[slug]/       One page per search cluster (FEATURE_PAGES)
+    roadmap/ changelog/    Roadmap (src/content/roadmap.json); changelog (milestones + releases, version anchors) + feed.xml
+    ar/                    Arabic landing page (RTL; lang/dir set by scripts/postbuild-lang.mjs)
     login/ signup/         Auth pages (Google + email)
-    dashboard/             Signed-in area: overview (download, licence, devices), shares/,
-                           billing/, link/ (approve a sign-in from the app), keys/ + usage/ (Developer)
-    download/ changelog/   Public Download and Changelog pages (from src/content/releases.json)
+    dashboard/             Signed-in area: overview (download, licence, devices), shares/, billing/,
+                           link/ (approve a sign-in from the app), keys/ + usage/ (Developer),
+                           admin/growth/ + admin/telemetry/
+    download/              Public Download page (from src/content/releases.json)
     developers/            Public API docs (indexable)
     account/               Redirect to /dashboard/ (old URL)
     sitemap.ts robots.ts manifest.ts icon.svg apple-icon.png favicon.ico
@@ -101,45 +118,62 @@ src/
     releases/              DownloadPanel, ReleaseNotes
     auth/                  AuthForm, GoogleButton, ProfileMenu
   lib/
-    constants.ts           ALL site copy: features, roadmap, pricing, FAQ, SITE
+    constants.ts           ALL site copy: features, pricing, feature pages, Arabic, FAQ, SITE
+    catalogue.ts           Plan catalogue types, price formatting, JSON-LD offers
     api.ts                 fetch wrapper, session token, date helpers
     auth.ts                accounts + Google sign-in
     developer.ts           keys, usage, billing calls
     licence.ts             licence API calls (devices, link approval, release feed)
-    catalogue.ts           plan names and limits from server/app/catalogue.json
+    plans.ts               plan names and limits from server/app/catalogue.json
     releaseNotes.ts        the release-notes Markdown subset, parsed to a React-rendered tree
     shares.ts              share links (list, visits, extend, end)
+    telemetryAdmin.ts      admin telemetry dashboard calls
   viewer/                  the share page's viewer (no framework) → out/viewer/viewer.js + .css
-  content/releases.json    the release feed as of the last `npm run sync:releases`
+  content/                 roadmap.json, history.json; releases.json + releases-beta.json (the release
+                           feed as of the last `npm run sync:releases`)
 public/
   brand/                   SVG media kit (mark + wordmark, grey/white/dark)
   images/product/          In-app captures (generated)
   images/og-image.jpg      1200×630 social card (generated)
 scripts/make_web_assets.py Regenerates brand assets from the Unreal project
-scripts/sync-releases.mjs  `npm run sync:releases`: release feed → src/content/releases.json
+scripts/sync-releases.mjs  `npm run sync:releases`: release feed → src/content/releases.json (+ releases-beta.json)
+scripts/postbuild-lang.mjs <html lang="ar" dir="rtl"> for out/ar/ (part of npm run build)
 scripts/build-viewer.mjs   runs after `next build`: src/viewer → out/viewer (+ PDF.js)
+scripts/sync-roadmap.mjs   Roadmap statuses from the two trackers (owner, before a deploy)
+scripts/indexnow.mjs       Ping IndexNow with changed URLs (owner, after a deploy)
 scripts/serve-out.py       serves out/ with CORS like GitHub Pages (autopilot-serve.ps1)
 server/
   app/
     main.py                App + routers
     routers/               auth, keys, usage, billing, v1 (developer API), licence, releases, admin, files,
-                           uploads, shares (+ /view/{slug}, /robots.txt)
-    billing/               service.py (plan state) · providers.py (Stripe, Wayl)
+                           growth, telemetry, admin_telemetry, uploads, shares (+ /view/{slug}, /robots.txt)
+    billing/               service.py (plan state) · base.py (BillingProvider) · paddle_, stripe_, wayl_provider.py · jobs.py
     licence/               devices, link codes, seats, signed entitlements (Ed25519 over RFC 8785 JSON)
     releases/              signed release manifests, feed, download links
+    telemetry/             contracts/telemetry.md: service, privacy scanner, symbolication, jobs
     uploads/               resumable content-addressed uploads (8 MiB hashed parts)
     shares/                share records, manifest rules, derivatives, preview card, the page's HTML
-    contract_http.py       contract header + shared error envelope · ratelimit.py · tasks.py · storage/
-    models.py database.py  SQLAlchemy models + additive SQLite migrations
-    catalogue.json plans.py Plan catalogue: tiers, entitlement matrix, request quotas, key limits
-  scripts/                 make_signing_key.py · publish_release.py · make_licence_fixtures.py ·
+    storage/ mail/         blob storage (local, s3) · mail (console, smtp) with templates
+    tasks.py worker.py     periodic jobs (@periodic), inline or in the worker process
+    ratelimit.py contract_http.py health.py ops.py   shared plumbing (PF14): limits, contract header and
+                           error envelope, /health/deep, backup checks and alerts
+    models.py database.py  SQLAlchemy models + additive migrations (SQLite and Postgres)
+    catalogue.json         Tiers, entitlement matrix, prices per interval and currency, founding offer (read by the site at build time)
+    plans.py               Reads catalogue.json: prices, entitlement matrix, request quotas, key limits
+    growth/                Admin growth counts (sign-ups, downloads, trials, checkouts)
+  scripts/                 sync_prices.py (catalogue prices → Paddle or Stripe) · make_signing_key.py · publish_release.py ·
+                           make_licence_fixtures.py · sqlite_to_postgres.py · upload_symbols.py · make_admin.py ·
                            make_share_fixtures.py · demo_share.py
-  tests/                   pytest suite (+ mock_wayl.py; contracts/licence/, contracts/share-bundle/)
+  tests/                   pytest suite (+ mock_paddle.py, mock_wayl.py for click-through tests; contracts/licence/ and
+                           contracts/telemetry/, contracts/share-bundle/ = contract fixtures)
+  Dockerfile               the API image (api and worker services)
+infra/                     the API host: OpenTofu, cloud-init, Compose, Caddy, backups,
+                           monitoring, deploy.ps1, restore-test.ps1, CUTOVER.md
 .claude/skills/            truebex-brand-voice · truebex-seo · truebex-deploy
 google-apps-script/        Code.gs for the demo-request sheet
 deploy-to-server.bat       Build → copy into the deploy repo → commit → push
-start-server.bat           API on 127.0.0.1:8001 (creates the venv on first run)
-start-tunnel.bat           cloudflared: api.truebex.com → :8001
+start-server.bat           Local use only: API on 127.0.0.1:8001 (production is the VM)
+start-tunnel.bat           Local use only: cloudflared (no longer serves api.truebex.com)
 ```
 
 ---
@@ -200,18 +234,31 @@ These end up in the public JavaScript, so never put secrets in them.
 |---|---|
 | `SECRET_KEY` | Signs session JWTs. Long random string. |
 | `ACCESS_TOKEN_EXPIRE_MINUTES` | Session lifetime (default 1440 = 24 h) |
-| `DATABASE_URL` | SQLite file (default `sqlite:///./auth.db`) |
+| `DATABASE_URL` | SQLite locally (default `sqlite:///./auth.db`); `postgresql+psycopg://…` on the VM |
 | `CORS_ORIGINS` | Must include `https://truebex.com,https://www.truebex.com` |
 | `SITE_URL`, `API_URL` | Public URLs used in checkout redirects and webhook URLs |
 | `GOOGLE_CLIENT_ID` | OAuth Web client ID. Empty hides the Google button. |
-| `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_PRO` | All three enable Stripe |
-| `WAYL_API_KEY`, `WAYL_WEBHOOK_SECRET` | Both enable Wayl |
-| `WAYL_ENV`, `WAYL_PRICE_PRO_IQD` | `live`/`test`; IQD price per 30 days (default 130,000) |
+| `BILLING_PROVIDER` | `paddle` (default) or `stripe`: the provider checkout uses |
+| `PADDLE_ENV`, `PADDLE_API_KEY`, `PADDLE_WEBHOOK_SECRET`, `PADDLE_CLIENT_TOKEN` | `sandbox`/`production`; key and webhook secret enable Paddle; the client token (public) is served by `/config` for Paddle.js |
+| `PADDLE_API_BASE` | Optional override of Paddle's API host (the local mock) |
+| `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` | Both enable Stripe |
+| `STRIPE_PRICE_PRO` | The original monthly Pro price: existing subscribers keep Pro |
+| `STRIPE_TAX_ENABLED` | `true` turns on Stripe Tax (`automatic_tax`) |
+| `WAYL_ENABLED`, `WAYL_API_KEY`, `WAYL_WEBHOOK_SECRET`, `WAYL_ENV`, `WAYL_PRICE_PRO_IQD` | Dormant rail: off unless `WAYL_ENABLED=true`; never offered on the site |
 | `LICENCE_SIGNING_KEY`, `LICENCE_KEY_ID` | The `lic-*` Ed25519 seed that signs entitlements (`scripts/make_signing_key.py --kind lic`). Empty = licensing off (503). |
 | `RELEASE_PUBLIC_KEYS` | Public `rel-*` keys as `kid:key,…` (the seeds never live on the API host) |
 | `SIGNING_KEYS_EXTRA`, `TRIAL_DAYS` | Old `lic-*` public keys during a rotation; trial length (14) |
-| `STORAGE_BACKEND`, `STORAGE_DIR`, `STORAGE_URL_SECRET` | `local` files under `./storage`, served by signed `/files` URLs on `API_URL` |
-| `BACKGROUND_TASKS` | `inline` (jobs run in the API process: link purge, 90-day device lapse) or `off` |
+| `STORAGE_BACKEND`, `STORAGE_DIR`, `STORAGE_URL_SECRET` | `local` files under `./storage`, served by signed `/files` URLs on `API_URL`, or `s3` |
+| `S3_*`, `CDN_BASE_URL` | The S3-compatible bucket (`STORAGE_BACKEND=s3`) and the CDN for its public prefixes |
+| `MAIL_BACKEND`, `MAIL_FROM`, `SUPPORT_EMAIL`, `SMTP_*` | Mail: `console` locally, `smtp` on the VM |
+| `BACKGROUND_TASKS` | `inline` (default), `worker` (the VM's worker process) or `off` (tests): telemetry rollup and retention, symbolication, link purge, 90-day device lapse, founding holds, billing reconcile, backup checks, floating-seat lease and invite expiry, SSO request and audit purges |
+| `RATELIMIT_BACKEND` | `memory` (one process) or `db` (the VM's two API processes) |
+| `ALERT_EMAIL`, `ALERT_PUSH_URL`, `BACKUP_EXPECTED` | Alerts from the server's own backup check |
+| `TELEMETRY_EVENTS_ENABLED`, `TELEMETRY_INGESTION_ENABLED` | The usage-events kill switch; telemetry as a whole (off → 503) |
+| `SSO_SECRET_KEY` | Fernet key sealing organisations' SSO client secrets (empty derives one from `SECRET_KEY`) |
+| `SAML_SP_ENTITY_ID`, `AUDIT_RETENTION_DAYS` | This service's SAML entity id (empty: each organisation's metadata URL); how long the audit log keeps events (730) |
+
+On the VM these come from `infra/secrets/*.sops.env` (template: `infra/secrets/server.env.example`).
 
 ---
 
@@ -240,26 +287,32 @@ The full checklist, including how to verify the live site, is in
 
 ## API server (`server/`)
 
-FastAPI + SQLAlchemy + SQLite. Passwords use bcrypt, and sessions are JWTs kept
-in `localStorage`. New columns are added on startup by
-`database._ADDED_COLUMNS`. These migrations are additive only, so back up
-`auth.db` first. Interactive API docs are served at `https://api.truebex.com/docs`.
+FastAPI + SQLAlchemy on Postgres in production and SQLite locally; every model
+and query runs on both (`database.dialect_insert` is the one place a dialect is
+named). Passwords use bcrypt, and sessions are JWTs kept in `localStorage`. New
+columns are added on startup by `database._ADDED_COLUMNS`; these migrations are
+additive only. Interactive API docs are served at `https://api.truebex.com/docs`.
+Contract endpoints (`/telemetry/*`) answer errors in the shared envelope
+`{detail, code, status, request_id, retry_after_s, data}`.
 
 | Method | Path | Auth | Purpose |
 |---|---|---|---|
 | GET | `/health` | — | Liveness → `{"status":"ok"}` |
+| GET | `/health/deep` | — (rate-limited) | Database, storage round trip, worker heartbeat → 200 or 503 |
 | GET | `/config` | — | Public feature flags (Google client ID) |
 | POST | `/auth/register` · `/auth/login` | — | Email/password → session token |
 | POST | `/auth/google` | — | Google ID token → session token (signs up, signs in, or links) |
 | GET | `/auth/me` | session | Current user |
 | GET / POST / DELETE | `/keys`, `/keys/{id}` | session | List, create (key shown once), revoke |
 | GET | `/usage` | session | This month: total, limit, daily, by endpoint, by key |
-| GET | `/billing/plans` | — | Plans and enabled payment providers |
-| GET | `/billing/subscription` · `/billing/payments` | session | Current plan, history |
-| POST | `/billing/checkout` | session | `{plan, provider}` → hosted checkout URL |
+| GET | `/billing/plans` | — | Tiers, prices per interval and currency, founding offer, checkout provider |
+| GET | `/billing/subscription` · `/billing/payments` | session | Tier, interval, seats, renewal; payment history |
+| POST | `/billing/checkout` | session | `{tier, interval, currency, seats, coupon?, consent}` → checkout URL |
 | POST | `/billing/payments/{ref}/refresh` | session | Re-check a payment with its provider |
-| POST | `/billing/portal` | session | Stripe customer portal URL |
-| POST | `/billing/webhooks/stripe` · `/wayl` | provider | Payment events |
+| POST | `/billing/seats` · `/billing/change` | session | Seats, or tier / interval, prorated |
+| GET | `/billing/invoices` | session | Invoices with PDF links |
+| POST | `/billing/portal` | session | The provider's customer portal |
+| POST | `/billing/webhooks/paddle` · `/stripe` · `/wayl` | provider | Payment events (`/wayl` only with `WAYL_ENABLED`) |
 | GET | `/v1/ping` · `/v1/account` | **API key** | Developer API (metered) |
 | POST | `/licence/link` · `/licence/link/poll` | — / poll secret | The app starts a browser sign-in and polls for its session |
 | POST | `/licence/link/approve` · GET `/licence/link/{code}` | session | The website shows the device and approves or denies |
@@ -270,7 +323,24 @@ in `localStorage`. New columns are added on startup by
 | GET | `/licence/keys` | — | Published public keys (`lic-*`, `rel-*`) |
 | GET | `/releases/feed` · `/releases/{version}/download` | — | Signed release manifests · a 15-minute download link |
 | GET / POST / PATCH | `/admin/releases`, `/admin/releases/{version}` | admin | Upload (≤ 90 MB, signed off-host), withdraw, new notes |
-| GET / PUT | `/files/{key}` | signed URL | Local storage downloads and uploads (HMAC, expiring) |
+| GET | `/admin/growth?from=&to=` | session, admin | Sign-ups, downloads, trials, checkouts, paid per UTC day (counts only) |
+| GET | `/telemetry/config` | — | Event allow-list, sampling, kill switch (`X-Truebex-Contract: telemetry/1.0`) |
+| POST | `/telemetry/events` · `/crashes` · `/feedback` · `/delete` | — (device token for a feedback reply; install secret for delete) | Opt-in usage events, crash reports, feedback, deletion |
+| GET / PATCH / POST | `/admin/telemetry/*` · `/admin/feedback/*` · `/admin/symbols` | **admin** | Telemetry dashboard, crash groups, feedback inbox and replies, symbols |
+| GET / PUT | `/files/{key}?exp=&sig=` | signed URL | Local storage downloads and uploads (HMAC, expiring) |
+| POST | `/licence/release` | **device** | Hand a floating seat back at exit (contract 5.11) |
+| POST / GET | `/orgs` | session | Create an organisation (you become owner) · your organisations |
+| GET / PATCH / DELETE | `/orgs/{id}` | member / admin / owner | Details · rename · delete (409 with a live subscription) |
+| GET · PATCH / DELETE | `/orgs/{id}/members` · `/orgs/{id}/members/{user_id}` | member · admin (or self) | Members · change role, remove, leave (409 `last_owner`) |
+| POST / GET / DELETE | `/orgs/{id}/invites`, `…/{invite_id}`, `…/{invite_id}/resend` | admin | Invite by e-mail (7-day link), list, revoke, resend |
+| POST | `/invites/preview` · `/invites/accept` | — · session | What `/invite/` shows · accept with the invited address |
+| GET · PUT | `/orgs/{id}/seats` · `/seats/settings` · `/seats/{user_id}` | admin | Seats and leases · how many float · give a named / floating seat |
+| GET | `/orgs/{id}/usage?month=` · `/orgs/{id}/audit?kind=&cursor=&format=csv` | admin | Usage per member · the audit log (JSON or CSV) |
+| GET / PUT / DELETE | `/orgs/{id}/sso` · POST `/orgs/{id}/sso/break-glass` | owner | OIDC or SAML connection (secrets write-only) · a new break-glass code |
+| POST / GET / DELETE | `/orgs/{id}/domains`, `…/{domain}/verify` | owner | E-mail domains, verified by a DNS TXT record |
+| GET | `/auth/sso/start?email=&next=` | — | 302 to the organisation's identity provider (`format=json` → `{url}`) |
+| GET · POST | `/auth/sso/oidc/callback` · `/auth/sso/saml/{slug}/acs` | `state` · signed assertion | Finish SSO → `/login/sso/#token=…` |
+| GET | `/auth/sso/saml/{slug}/metadata` | — | SP metadata XML |
 | POST · PUT · GET | `/uploads`, `/uploads/{id}/files/{sha256}/parts/{n}`, `/uploads/{id}` | device, session, worker | Resumable upload: open, send a part, what arrived |
 | POST | `/shares` · `/shares/{id}/publish` | **device** | Create a share from a bundle manifest · publish once every file arrived |
 | GET / PATCH / DELETE | `/shares`, `/shares/{id}` | session or device | List with visits · change title or expiry · end the link |
@@ -279,16 +349,30 @@ in `localStorage`. New columns are added on startup by
 
 ### Running in production
 
-The API runs **on the host PC**:
+The API runs on **one Linux VM** with Docker Compose: Caddy (443, Cloudflare
+origin certificate, only Cloudflare's ranges allowed in), two uvicorn processes,
+a worker for background jobs, and Postgres 18 whose WAL is archived continuously
+(nightly base backups, 30 days, at a second provider; a weekly restore test).
+Everything is rebuilt from [`infra/`](infra/README.md); the one-time move off the
+home PC is [`infra/CUTOVER.md`](infra/CUTOVER.md) (RPO 5 minutes, RTO 2 hours).
 
-1. `start-server.bat` serves the API on `127.0.0.1:8001`.
-2. `start-tunnel.bat` runs the cloudflared tunnel `win-tunnel`
-   (`%USERPROFILE%\.cloudflared\config.yml`), which routes `api.truebex.com → localhost:8001`.
+- **Deploy:** `powershell -NoProfile -ExecutionPolicy Bypass -File infra\deploy.ps1 -VmHost truebex@<vm>`
+  (committed HEAD, secrets decrypted with sops only for the copy, waits for `/health/deep`).
+- **Health:** `https://api.truebex.com/health` (liveness) and `/health/deep`
+  (`{"db":"ok","storage":"ok","worker_heartbeat_s":…}`, 503 when anything is down).
+- **Alerts:** a hosted monitor checks both every 60 s from several regions and
+  alerts by e-mail and phone push; the host checks disk, memory, load,
+  containers, the 5xx rate and the certificate every minute; the worker alerts
+  on stale backups. Details: [`infra/README.md`](infra/README.md#alerts).
+- **Backups:** `infra\restore-test.ps1 -VmHost truebex@<vm>` → `restore OK`.
+- **Admins:** `cd server; .venv\Scripts\python.exe -m scripts.make_admin <email>`
+  (on the VM: `docker compose exec api python -m scripts.make_admin <email>`).
 
-If either one stops, `https://api.truebex.com/health` returns **HTTP 530 /
-Cloudflare error 1033**. Login and the dashboard then stop working, but the rest
-of the site is unaffected. The dashboard shows a "can't reach the server"
-message rather than logging people out.
+`start-server.bat` and `start-tunnel.bat` are for local use only. An API left
+running on the PC with its own `auth.db` would accept writes nobody sees, so the
+tunnel no longer routes `api.truebex.com`. While the site cannot reach the API
+(Cloudflare 52x), the dashboard shows a "can't reach the server" message rather
+than logging people out.
 
 ---
 
@@ -360,13 +444,53 @@ retry_after_s, data}`.
   cd server
   .venv\Scripts\python.exe scripts\make_signing_key.py --kind rel --out D:\keys\rel-2026-10.json   # once; keep it off the API host
   .venv\Scripts\python.exe scripts\publish_release.py --version 1.1.0 --channel stable --platform win64 `
-      --file D:\builds\Truebex-Setup-1.1.0.exe --notes notes.md --key-file D:\keys\rel-2026-10.json
+      --file D:\builds\Truebex-Setup-1.1.0.exe --notes notes.md --key-file D:\keys\rel-2026-10.json `
+      --symbols D:\builds\1.1.0\Symbols   # the build's .pdb / .sym files, for crash symbolication
   cd ..; npm run sync:releases   # then build and deploy the site
   ```
 
   The feed (`/releases/feed`) serves the manifests exactly as signed; downloads
   get a 15-minute signed URL and need no account. Check any envelope or
   manifest with `python -m app.licence.signing verify <file> [--keys <url>]`.
+
+## Organisations, seats and SSO
+
+A practice buys seats once and runs them itself at `/dashboard/organisation/`
+(the Workspace switcher above the dashboard navigation picks Personal or an
+organisation). Roles: owner, admin, billing, member; at least one owner always.
+
+- **Seats.** The organisation's tier and seat count come from a
+  `subscriptions` row with `organisation_id` set (PF2 sets it from checkout;
+  until then, and for Enterprise, by hand). Of those seats, the Seats tab
+  decides how many float; the rest are named. `seat_source(user)` picks the
+  best of the person's own plan and their organisation seats by tier rank;
+  an organisation's tier never reaches `users.plan`.
+- **Floating seats.** A floating member's device takes a lease with its
+  entitlement (`refresh_after` 30 min, `expires_at` 2 h) and renews it at each
+  refresh; `POST /licence/release` hands it back at exit; a lease not renewed
+  lapses after 2 h (`licence.leases.expire`). A full pool answers 409
+  `no_seat_available`. Leases are taken under the organisation row's lock, so
+  two devices never get the last seat.
+- **Audit log.** Organisation events plus the members' licence events, kept 24
+  months (`AUDIT_RETENTION_DAYS`), exportable as CSV.
+- **SSO (Enterprise).** OIDC (code + PKCE) or SAML 2.0 (signed assertions,
+  checked with `signxml`), one connection per organisation; only verified
+  domains (DNS TXT `_truebex-verification.<domain>`) route sign-in, and people
+  join as members just in time. "Require SSO" refuses password and Google
+  sign-in for those domains; owners keep a one-time break-glass code. The
+  session returns to `/login/sso/` in the URL fragment.
+- **Hand tools** (in `server/`):
+
+  ```powershell
+  .venv\Scripts\python.exe scripts\grant_org_seats.py --org studio-north --tier team --seats 2 [--until 2027-10-31]
+  .venv\Scripts\python.exe scripts\verify_org_domain.py --org studio-north --domain example.com   # local tests only
+  .venv\Scripts\python.exe scripts\try_device.py --email b@example.com --password … --name "Test PC 2" --refresh   # act as the app
+  .venv\Scripts\python.exe -m uvicorn tests.mock_oidc:app --port 8098       # mock OIDC provider (tests)
+  .venv\Scripts\python.exe -m uvicorn tests.mock_saml_idp:app --port 8099   # mock SAML IdP (tests)
+  ```
+
+  With `MAIL_BACKEND=console` (the default) invitation e-mails print in the API
+  console.
 
 ---
 
@@ -395,40 +519,84 @@ answering `Access-Control-Allow-Origin: *` (GitHub Pages does).
 ---
 
 ## Billing: Stripe and Wayl
+## Billing: Paddle and Stripe
 
-Both providers are built in. Each turns on as soon as its keys are in
-`server/.env`, and stays hidden until then.
+Truebex Ltd (the UK company) sells every plan. **Paddle** is the default: it
+is the reseller and Merchant of Record, so it charges VAT or sales tax for the
+buyer's country, files it, issues the invoice and handles chargebacks.
+**Stripe** stays behind the same interface with Stripe Tax for business
+invoices (Enterprise, marketplace fees) and as a one-setting switch
+(`BILLING_PROVIDER=stripe`). Each provider turns on when its keys are in
+`server/.env`; the site says "being set up" until `/billing/plans` names a
+`provider`.
 
-**The rule:** a plan only changes from an event the server verified itself. The
-browser can never grant a plan.
+**The rule:** a plan, a seat count or a founding price changes only from a
+provider event or provider state the server verified itself (signed webhooks,
+API fetches). The browser names a tier, an interval, a currency and seats; the
+server picks the price.
 
-**Stripe** (international cards, recurring):
-- Uses Checkout in `mode=subscription`.
-- Signed webhooks (`checkout.session.completed`,
-  `customer.subscription.created/updated/deleted`) keep a `subscriptions` row in sync.
-- The customer portal handles card changes and cancellation.
+**Catalogue.** `server/app/catalogue.json` holds the tiers (Free, Pro, Studio,
+Team per seat, Enterprise), monthly and annual prices in GBP, USD and EUR, and
+the founding offer (placeholders until the pricing guide GD7). The site imports
+it at build time (`src/lib/catalogue.ts`); the API serves it at `/billing/plans`.
+`server/scripts/sync_prices.py` mirrors every price, and each tier's founding
+price, to the provider and records the ids in `provider_prices`. Run it after
+any price change:
 
-To set it up:
-1. Create a recurring monthly Price.
-2. Add a webhook endpoint at `https://api.truebex.com/billing/webhooks/stripe` for those events.
-3. Set `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` and `STRIPE_PRICE_PRO`.
+```
+cd server
+.venv\Scripts\python.exe scripts\sync_prices.py --provider paddle --env sandbox
+```
 
-**Wayl** (Iraq: QiCard, FIB, ZainCash, IQD only):
-- Wayl has payment links, not subscriptions, so each paid link buys a **30-day
-  period**. Paying again stacks a further 30 days.
-- Wayl doesn't document a webhook signature. The server therefore treats a
-  webhook only as a hint, then fetches the link's real status from Wayl's API
-  using the merchant key. It also re-checks when the customer returns to
-  `/dashboard/billing/`, which covers webhooks missed while the PC was off.
+**Checkout.** The billing page asks for the cancellation consent (versioned in
+`src/lib/constants.ts` `BILLING.consent` and `server/app/billing/consent.py`;
+stored on the payment), then `POST /billing/checkout`. Paddle: the server opens
+a transaction with `custom_data` naming the user and returns
+`/checkout/?_ptxn=…`, where Paddle.js shows the overlay. Stripe: hosted
+Checkout with `automatic_tax`, tax-ID and address collection, and its own
+consent box. Coupons (`?code=` on billing links) are the provider's own codes.
 
-To set it up:
-1. Get a merchant key from the Wayl dashboard or `jisr@wayl.io`.
-2. Set `WAYL_API_KEY`.
-3. Set `WAYL_WEBHOOK_SECRET` to any random string of 10–255 characters.
-4. Optionally set `WAYL_PRICE_PRO_IQD`.
+**Founding seats.** A checkout holds founding seats for 30 minutes; a paid one
+keeps them for good and the subscription keeps the founding price. The count
+left is on `/billing/plans` and the billing page.
 
-`server/tests/mock_wayl.py` is a local stand-in for Wayl's API, for clicking
-through the whole checkout without real money.
+**Webhooks and jobs.** Paddle: `https://api.truebex.com/billing/webhooks/paddle`
+(subscription.* and transaction.* events; HMAC over `ts:body`, 300 s window).
+Stripe: `/billing/webhooks/stripe` (`checkout.session.completed`/`expired`,
+`customer.subscription.*`). Both are de-duplicated by event id
+(`billing_events`) and an older event never overwrites newer state. Jobs in
+`server/app/billing/jobs.py`: `billing.founding.expire` (5 min) and
+`billing.reconcile` (daily, and at start: re-fetches pending checkouts and live
+subscriptions, covering webhooks missed while the PC was off). The billing page
+also re-checks a payment when the buyer returns.
+
+To set up Paddle (sandbox first):
+1. Create the account at sandbox-vendors.paddle.com; set a default payment link
+   and approve the checkout domain (`truebex.com`; localhost works in sandbox).
+2. Developer tools → Authentication: an API key and a client-side token.
+3. Notifications: a destination at `<API_URL>/billing/webhooks/paddle` for
+   `subscription.*` and `transaction.*`; copy its secret key.
+4. `server/.env`: `BILLING_PROVIDER=paddle`, `PADDLE_ENV=sandbox`,
+   `PADDLE_API_KEY`, `PADDLE_WEBHOOK_SECRET`, `PADDLE_CLIENT_TOKEN`; then run
+   `sync_prices.py --provider paddle --env sandbox` and restart the API.
+5. Production needs Paddle's seller and domain approval, which checks the live
+   pricing, terms, refund and privacy pages.
+
+To set up Stripe: keys in `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`; a
+terms-of-service URL in the Stripe dashboard (Checkout's consent box needs it);
+Stripe Tax registrations if `STRIPE_TAX_ENABLED=true`; then
+`sync_prices.py --provider stripe --env sandbox`.
+
+`server/tests/mock_paddle.py` stands in for Paddle's API for a click-through
+without an account (see its docstring): run it on :8098, set
+`PADDLE_API_BASE=http://127.0.0.1:8098` and
+`PADDLE_WEBHOOK_SECRET=pdl_ntfset_mock_secret`, sync prices, and checkout opens
+the mock's pay page instead of Paddle.js.
+
+**Wayl (dormant).** The Iraqi payment rail is retired from the site and the
+catalogue. Its code stays behind `WAYL_ENABLED=false` and its tests run with
+the flag on; setting `WAYL_ENABLED=true` with its keys brings back
+`/billing/webhooks/wayl` and an IQD price on `/billing/plans` (API only).
 
 ---
 
@@ -441,9 +609,19 @@ through the whole checkout without real money.
 - **Regenerating assets:** `py -3.12 scripts/make_web_assets.py` rebuilds the
   icons, OG card, SVG media kit and product captures.
 - **Site copy:** all of it lives in `src/lib/constants.ts`. Only shipped features go in
-  `FEATURES`; planned ones go in `ROADMAP`. Public copy never names the
-  engine or other software, and leads with distinctive features only (see
-  `truebex-brand-voice`).
+  `FEATURES`; planned ones go in `src/content/roadmap.json` (words by hand,
+  statuses from `npm run sync:roadmap -- <app README> <platform README>`).
+  Public copy never names the engine or other software, and leads with
+  distinctive features only (see `truebex-brand-voice`).
+- **Prices:** `server/app/catalogue.json` is the one source; a tier without a
+  price shows "Price at launch". Try the pricing page with sample prices by
+  building with `TRUEBEX_CATALOGUE_FILE=scripts/fixtures/catalogue-sample.json`
+  (never for a release).
+- **Analytics and search engines:** `ANALYTICS.cloudflareToken` (Cloudflare Web
+  Analytics, cookieless, public pages only), `VERIFICATION` (Search Console and
+  Bing tags) and `SOCIAL` in `constants.ts`; empty values switch each off. The
+  IndexNow key is `public/<32 hex>.txt`; run `npm run indexnow -- --sitemap`
+  after a deploy.
 - **Product image:** the site shows a single clean capture (daylight through
   a doorway). Add more only if they have no HUD or labels.
 - **Project skills** (Claude Code picks these up automatically in this repo):
@@ -464,7 +642,8 @@ a Google Sheet. See [`google-apps-script/README.md`](google-apps-script/README.m
 
 | Issue | Impact | Where |
 |---|---|---|
-| API depends on the host PC + tunnel being up | Sign-in, dashboard and billing stop when the PC is off | `start-server.bat`, `start-tunnel.bat` |
+| One API VM is a single point of failure | RPO 5 minutes, RTO 2 hours (rebuilt from `infra/`) | `infra/CUTOVER.md` |
+| Provider names are placeholders | VM, buckets, mail relay and uptime monitor wait for GD3 | `infra/README.md` |
 | Payment providers need merchant keys | Billing shows "being set up" until keys are added | `server/.env` |
 | Desktop app doesn't read the plan yet | The licence API is live, but the app's sign-in and gates (LC1, LC3) are not shipped | Unreal project |
 | Installers are served from this PC | Downloads go through the home tunnel until PF14 adds object storage and a CDN | `server/storage/` |

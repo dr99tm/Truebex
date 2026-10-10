@@ -1,0 +1,5 @@
+$subject
+
+$body
+
+Sent by the Truebex API's own checks. Runbook: infra/README.md (Alerts).

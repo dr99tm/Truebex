@@ -30,13 +30,40 @@ class Settings(BaseSettings):
     # Empty disables POST /auth/google.
     google_client_id: str = ""
 
-    # Stripe (card subscriptions). Empty secret key disables Stripe.
+    # --- Billing (PF2) ---------------------------------------------------------
+    # The provider offered at checkout: "paddle" (merchant of record, the
+    # default) or "stripe". Prices come from catalogue.json, mirrored to the
+    # provider by scripts/sync_prices.py into the provider_prices table.
+    billing_provider: str = "paddle"
+
+    # Paddle Billing. Empty API key disables Paddle.
+    # "sandbox" or "production".
+    paddle_env: str = "sandbox"
+    paddle_api_key: str = ""
+    # The notification destination's secret key (pdl_ntfset_...).
+    paddle_webhook_secret: str = ""
+    # Client-side token for Paddle.js on /checkout/. Public by design.
+    paddle_client_token: str = ""
+    # Override the API host (tests, server/tests/mock_paddle.py). Empty means
+    # Paddle's host for paddle_env.
+    paddle_api_base: str = ""
+
+    # Stripe (card subscriptions, business invoices). Empty secret key
+    # disables Stripe.
     stripe_secret_key: str = ""
     stripe_webhook_secret: str = ""
-    # Stripe Price id (price_...) of the recurring monthly Pro price.
+    # Price id (price_...) of the original monthly Pro price. New checkouts
+    # use provider_prices; this stays so existing subscribers keep Pro.
     stripe_price_pro: str = ""
+    # Stripe Tax: automatic_tax on Checkout and invoices.
+    stripe_tax_enabled: bool = False
 
-    # Wayl (Iraq: QiCard, FIB, ZainCash). Empty key disables Wayl.
+    # Background jobs (server/app/tasks.py): inline | worker | off.
+    background_tasks: str = "inline"
+
+    # Wayl (Iraq: QiCard, FIB, ZainCash). Dormant: off unless WAYL_ENABLED
+    # is true AND its keys are set. Never offered on the website.
+    wayl_enabled: bool = False
     wayl_api_key: str = ""
     wayl_api_base: str = "https://api.thewayl.com"
     # "live" or "test".
@@ -59,16 +86,61 @@ class Settings(BaseSettings):
     signing_keys_extra: str = ""
     trial_days: int = 14
 
-    # --- Shared plumbing (PF14 owns the production adapters) -----------------
-    # "local": files under storage_dir, served by /files with HMAC-signed URLs.
+    # --- Operations and shared plumbing (PF14) --------------------------------
+    # Blob storage: "local" (files under storage_dir, served by /files with
+    # HMAC-signed URLs) or "s3" (any S3-compatible bucket, presigned URLs).
     storage_backend: str = "local"
     storage_dir: str = "./storage"
     # HMAC key for local signed URLs; empty derives one from secret_key.
     storage_url_secret: str = ""
-    # inline (an asyncio loop in the API process) | worker | off (tests).
-    background_tasks: str = "inline"
-    # memory (in-process token buckets).
+    s3_endpoint: str = ""
+    s3_region: str = "auto"
+    s3_bucket: str = ""
+    s3_access_key_id: str = ""
+    s3_secret_access_key: str = ""
+    # CDN hostname in front of the public, cacheable prefixes (tiles/, shares/,
+    # releases/). Empty = presigned URLs for everything.
+    cdn_base_url: str = ""
+
+    # Mail: "console" (kept in app.mail.OUTBOX and logged) or "smtp".
+    mail_backend: str = "console"
+    mail_from: str = "Truebex <hello@truebex.com>"
+    support_email: str = "hello@truebex.com"
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_user: str = ""
+    smtp_password: str = ""
+
+    # background_tasks (inline | worker | off) is under Billing above:
+    # "inline" runs the asyncio loop inside the API process, "worker" the
+    # separate `python -m app.worker` process.
+    # "memory" (one API process) or "db" (shared buckets in the database).
     ratelimit_backend: str = "memory"
+
+    # Alerts from the server's own checks (backups); uptime alerts come from
+    # the hosted monitor. alert_push_url: an ntfy-style topic URL (phone push).
+    alert_email: str = ""
+    alert_push_url: str = ""
+    # True on the production host: a missing backup marker is then an alert.
+    backup_expected: bool = False
+
+    # Telemetry ingestion (contracts/telemetry.md). The kill switch stops
+    # usage events (5.1 `enabled: false`); ingestion off answers 503.
+    telemetry_events_enabled: bool = True
+    telemetry_ingestion_enabled: bool = True
+    # rust-minidump's stackwalker; absent = symbolicate the sent callstack only.
+    minidump_stackwalk: str = "minidump-stackwalk"
+
+    # --- Organisations, seats and SSO (PF3) -------------------------------------
+    # Fernet key sealing SSO client secrets (python -c "from cryptography.fernet
+    # import Fernet; print(Fernet.generate_key().decode())"). Empty derives one
+    # from SECRET_KEY.
+    sso_secret_key: str = ""
+    # The SAML entity id of this service provider. Empty: each organisation's
+    # own SP metadata URL ({API_URL}/auth/sso/saml/<slug>/metadata).
+    saml_sp_entity_id: str = ""
+    # Audit events are kept this long (24 months until GD5 says otherwise).
+    audit_retention_days: int = 730
 
     # --- Share pages (PF5, contract share-bundle) ------------------------------
     # Share links are ${SHARE_BASE_URL}/view/{slug}; empty = API_URL (PF14 later
@@ -86,6 +158,14 @@ class Settings(BaseSettings):
     @property
     def cors_origin_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
+
+    @property
+    def paddle_api_url(self) -> str:
+        if self.paddle_api_base:
+            return self.paddle_api_base.rstrip("/")
+        if self.paddle_env == "production":
+            return "https://api.paddle.com"
+        return "https://sandbox-api.paddle.com"
 
 
 @lru_cache

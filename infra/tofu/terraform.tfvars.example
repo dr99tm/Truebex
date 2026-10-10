@@ -1,0 +1,28 @@
+# Copy to terraform.tfvars (gitignored) and fill in. Secrets can come from the
+# environment instead: TF_VAR_cloudflare_api_token, TF_VAR_hcloud_token, ...
+# Values marked GD3 are placeholders until guides/GD3 decides them.
+
+zone_name   = "truebex.com"
+api_target  = "tunnel" # "vm" at the cutover (CUTOVER.md step 4)
+tunnel_cname = "<tunnel id>.cfargotunnel.com"
+
+server_type    = "cpx31" # GD3: 4 vCPU / 8 GB / 160 GB
+location       = "nbg1"  # GD3: EU
+ssh_public_key = "ssh-ed25519 AAAA... owner@truebex"
+
+# Data bucket (GD3): the VM provider's object storage, versioned.
+data_s3_endpoint = "https://fsn1.your-objectstorage.com"
+data_s3_region   = "fsn1"
+data_bucket      = "truebex-data"
+
+# Backup bucket at a SECOND provider (GD3).
+backup_s3_endpoint    = "https://s3.eu-central-003.backblazeb2.com"
+backup_s3_region      = "eu-central-003"
+backup_bucket         = "truebex-db-backups"
+backup_retention_days = 30
+
+# share_target = ""      # PF5
+# cdn_target   = ""      # PF6: the data bucket's public endpoint
+
+manage_mail_records = false # import the existing SPF / DMARC records first
+alert_email         = "hello@truebex.com"

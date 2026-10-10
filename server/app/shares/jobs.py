@@ -2,17 +2,22 @@
 
 from datetime import datetime
 
-from sqlalchemy.orm import Session
-
+from ..database import SessionLocal
 from ..tasks import periodic
 from . import service
 
 
 @periodic("shares.expire", 300)
-def expire_shares(db: Session, now: datetime) -> int:
-    return service.expire(db, now)
+def expire_shares(now: datetime) -> int:
+    with SessionLocal() as db:
+        n = service.expire(db, now)
+        db.commit()
+        return n
 
 
 @periodic("shares.purge", 3600)
-def purge_shares(db: Session, now: datetime) -> int:
-    return service.purge(db, now)
+def purge_shares(now: datetime) -> int:
+    with SessionLocal() as db:
+        n = service.purge(db, now)
+        db.commit()
+        return n

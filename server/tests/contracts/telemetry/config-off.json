@@ -1,0 +1,19 @@
+{
+  "enabled": false,
+  "events_version": 1,
+  "allowed": {
+    "app.start": ["cold_start_ms", "first_lit_hitch_ms"],
+    "app.exit": ["session_s", "clean"],
+    "command.run": ["command", "ms"],
+    "tool.open": ["tool"],
+    "export.run": ["kind", "ms", "pages"],
+    "feature.gated": ["feature", "plan"],
+    "perf.frame": ["p50_ms", "p95_ms", "mode"],
+    "error.logged": ["category", "verbosity", "count"],
+    "update.result": ["from", "to", "ok"],
+    "licence.state": ["plan", "seat_kind", "offline_days"]
+  },
+  "sample": {"perf.frame": 0.1},
+  "max_batch": 500,
+  "flush_s": 900
+}

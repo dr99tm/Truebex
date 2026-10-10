@@ -2,12 +2,14 @@
 
 from datetime import datetime
 
-from sqlalchemy.orm import Session
-
+from ..database import SessionLocal
 from ..tasks import periodic
 from . import service
 
 
 @periodic("uploads.expire", 3600)
-def expire_uploads(db: Session, now: datetime) -> int:
-    return service.expire(db, now)
+def expire_uploads(now: datetime) -> int:
+    with SessionLocal() as db:
+        n = service.expire(db, now)
+        db.commit()
+        return n

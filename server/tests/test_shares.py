@@ -37,6 +37,8 @@ from .share_helpers import (
 )
 
 BUNDLE_2 = "5" * 32
+# The share and upload jobs (the other features' jobs are their tests' business).
+PF5_JOBS = ["shares.expire", "shares.purge", "uploads.expire"]
 
 
 def _rel(url: str) -> str:
@@ -381,9 +383,9 @@ def test_shares_files_purged_after_seven_days(client, monkeypatch):
     assert refs[pano_sha] == 2 and refs[pdf_sha] == 1
     assert keys and all(store.stat(k) is not None for k in keys + [card_key])
 
-    tasks.run_due(clk.advance(days=6), force=True)
+    tasks.run_due(clk.advance(days=6), only=PF5_JOBS, force=True)
     assert store.stat(card_key) is not None
-    tasks.run_due(clk.advance(days=1, seconds=1), force=True)
+    tasks.run_due(clk.advance(days=1, seconds=1), only=PF5_JOBS, force=True)
     assert all(store.stat(k) is None for k in keys + [card_key])
     with SessionLocal() as db:
         blobs = {b.sha256: b for b in db.scalars(select(Blob))}
@@ -404,14 +406,14 @@ def test_shares_expire_job_marks_and_frees(client, monkeypatch):
     share = published(client, token)
     stale = create(client, token, house(BUNDLE_2))  # over the limit while live
     assert stale.status_code == 403
-    tasks.run_due(clk.advance(days=30, seconds=1), force=True)
+    tasks.run_due(clk.advance(days=30, seconds=1), only=PF5_JOBS, force=True)
     with SessionLocal() as db:
         row = db.get(Share, share["share_id"])
         assert row.state == "expired"
         assert clock.aware(row.purge_after) == ts(share["expires_at"]) + timedelta(days=7)
     # An upload abandoned for 7 days ends too.
     abandoned = create(client, token, house(BUNDLE_2)).json()["share"]
-    tasks.run_due(clk.advance(days=7, seconds=1), force=True)
+    tasks.run_due(clk.advance(days=7, seconds=1), only=PF5_JOBS, force=True)
     with SessionLocal() as db:
         assert db.get(Share, abandoned["share_id"]).state == "expired"
 

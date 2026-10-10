@@ -1,12 +1,15 @@
 """Generate the website's brand assets from the Truebex brand masters.
 
     py -3.12 scripts/make_web_assets.py
+    py -3.12 scripts/make_web_assets.py --features     (only the feature-page crops)
 
 Sources (the Unreal project owns the brand; this script only reads it):
     T:/unreal5_7_4_projects/truebex_compact/Brand/Truebex/logo/figma_original/*.svg
     T:/unreal5_7_4_projects/truebex_compact/Content/Brand/{Logo,Lockup}.png
     T:/unreal5_7_4_projects/truebex_compact/Content/Fonts/Segoe/*.ttf   (raster text only)
     T:/unreal5_7_4_projects/MultiWindow/Saved/CadTool/face8F.png        (the in-app capture)
+    T:/unreal5_7_4_projects/truebex_compact/Brand/Truebex/captures/<page>.png
+                                        clean frames for the feature pages (optional)
 
 Writes (all committed):
     public/brand/*.svg                  mark / wordmark in brand grey and white (media kit)
@@ -16,6 +19,8 @@ Writes (all committed):
     public/icon-192.png, icon-512.png   web app manifest icons
     public/images/og-image.jpg          1200x630 social card
     public/images/product/*.jpg         cropped in-app captures (debug HUD removed)
+    public/images/features/<page>.jpg   1600x1000 crops for /features/<page>/, only
+                                        from clean frames (see feature_shots)
 
 Segoe UI is only rendered into images here; it is never shipped as a web font.
 """
@@ -134,6 +139,49 @@ def product_shots() -> dict[str, Image.Image]:
     return shots
 
 
+# Feature pages (/features/<slug>/) and the clean frame each one wants. A
+# frame must be clean before it goes in the captures folder: no HUD, labels,
+# selection outlines or debug overlays (brand rule 3). The marketplace page is
+# roadmap and has no capture. The site picks a crop up automatically
+# (src/lib/site-routes.ts featureCapture); update the page's capture alt and
+# caption in FEATURE_PAGES (src/lib/constants.ts) to describe the new frame.
+CLEAN_FRAMES = f"{UE}/Brand/Truebex/captures"
+FEATURE_FRAMES = {
+    "daylight": "daylight.png",  # light through windows and doors, rooms lit through rooms
+    "surfaces": "surfaces.png",  # a panelled wall with a fill re-flowed around an opening
+    "assets": "assets.png",      # one wall-face asset placed across several rooms
+    "sheets": "sheets.png",      # a generated sheet (plan or section) as exported
+}
+FEATURE_SIZE = (1600, 1000)  # src/lib/site-routes.ts FEATURE_CAPTURE
+
+
+def feature_shots() -> None:
+    """Crop each feature page's clean frame to 16:10 at 1600x1000.
+
+    A page whose clean frame does not exist yet is skipped: it keeps the
+    shared doorway capture, never a frame with a HUD.
+    """
+    w, h = FEATURE_SIZE
+    for slug, name in FEATURE_FRAMES.items():
+        src = os.path.join(CLEAN_FRAMES, name)
+        if not os.path.exists(src):
+            print(f"feature {slug}: no clean frame at {src}; the page keeps the shared capture")
+            continue
+        im = Image.open(src).convert("RGB")
+        # Centre crop to 16:10, then scale.
+        target = w / h
+        if im.width / im.height > target:
+            cw = round(im.height * target)
+            box = ((im.width - cw) // 2, 0, (im.width - cw) // 2 + cw, im.height)
+        else:
+            ch = round(im.width / target)
+            box = (0, (im.height - ch) // 2, im.width, (im.height - ch) // 2 + ch)
+        im.crop(box).resize(FEATURE_SIZE, Image.LANCZOS).save(
+            out("public", "images", "features", f"{slug}.jpg"), quality=86, optimize=True, progressive=True
+        )
+        print(f"feature {slug}: public/images/features/{slug}.jpg")
+
+
 def og_image(shots: dict[str, Image.Image]) -> None:
     W, H = 1200, 630
     img = Image.new("RGBA", (W, H), PAGE + (255,))
@@ -174,7 +222,13 @@ def og_image(shots: dict[str, Image.Image]) -> None:
 
 
 if __name__ == "__main__":
+    import sys
+
+    if "--features" in sys.argv:
+        feature_shots()
+        sys.exit(0)
     media_kit()
     icons()
     og_image(product_shots())
+    feature_shots()
     print("brand assets written")

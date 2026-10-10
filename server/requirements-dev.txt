@@ -1,2 +1,5 @@
 -r requirements.txt
 pytest==8.3.4
+# PF14: in-process S3 for the storage adapter test; the Compose file test
+moto[s3]==5.0.26
+PyYAML==6.0.2

@@ -5,11 +5,13 @@ import importlib.util
 import json
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from types import SimpleNamespace
 from urllib.parse import parse_qs, urlencode, urlsplit
 
 import pytest
 from sqlalchemy import select
 
+from app.config import get_settings
 from app.database import SessionLocal
 from app.licence import signing
 from app.models import DownloadEvent, User
@@ -102,7 +104,8 @@ def test_download_url_expires(client, tmp_path, monkeypatch):
     res = client.get("/releases/1.1.0/download?platform=win64", headers=CONTRACT, follow_redirects=False)
     assert res.status_code == 302 and res.headers["X-Truebex-Contract"] == "licence-api/1.0"
     url = res.headers["location"]
-    assert url.startswith("https://api.truebex.com/files/releases/1.1.0/win64/Truebex-Setup-1.1.0.exe?")
+    # A signed /files URL on the API's own host (API_URL; tests: http://testserver).
+    assert url.startswith(f"{get_settings().api_url}/files/releases/1.1.0/win64/Truebex-Setup-1.1.0.exe?")
     query = parse_qs(urlsplit(url).query)
     assert int(query["exp"][0]) - datetime.now(timezone.utc).timestamp() == pytest.approx(900, abs=5)
 
@@ -244,6 +247,96 @@ def test_publish_release_script_registers_row(client, tmp_path, capsys):
         "--version", "1.1.0", "--channel", "stable", "--file", str(installer), "--notes", str(notes),
         "--key-file", str(key_file),
     ]) == 1
+
+
+def _publish_args(tmp_path: Path, version: str, *extra: str) -> list[str]:
+    installer = tmp_path / f"Truebex-Setup-{version}.exe"
+    installer.write_bytes(f"installer {version}\n".encode() * 50)
+    notes = tmp_path / "notes.md"
+    notes.write_text(f"### {version}\n* Notes.\n", encoding="utf-8")
+    key_file = tmp_path / "rel.json"
+    key_file.write_text(json.dumps({"kid": REL_KID, "private_key": REL_SEED}), encoding="utf-8")
+    return [
+        "--version", version, "--channel", "stable", "--file", str(installer), "--notes", str(notes),
+        "--key-file", str(key_file), *extra,
+    ]
+
+
+def _release(version: str):
+    with SessionLocal() as db:
+        return db.scalar(select(Release).where(Release.version == version))
+
+
+def test_publish_release_script_uploads_symbols(client, tmp_path, capsys, monkeypatch):
+    """PF14's carry-over: --symbols <dir> hands the folder to upload_symbols.upload()
+    after the release is published (the upload itself is test_telemetry's)."""
+    from scripts import upload_symbols
+
+    folder = tmp_path / "Shipping"
+    folder.mkdir()
+    (folder / "Truebex-CadCore.sym").write_text("MODULE windows x86_64 0 Truebex-CadCore.pdb\n", encoding="utf-8")
+    calls = []
+
+    def fake_upload(paths, version, dump_syms=None):
+        calls.append((paths, version, dump_syms, _release(version) is not None))
+        return [SimpleNamespace(module="Truebex-CadCore.pdb", debug_id="ABC1", key="symbols/Truebex-CadCore.pdb/ABC1/Truebex-CadCore.sym")]
+
+    monkeypatch.setattr(upload_symbols, "upload", fake_upload)
+    script = _script("publish_release")
+    assert script.main(_publish_args(tmp_path, "1.1.0", "--symbols", str(folder))) == 0
+    assert calls == [([folder], "1.1.0", None, True)]  # the release row existed first
+    assert "symbols/Truebex-CadCore.pdb/ABC1/Truebex-CadCore.sym" in capsys.readouterr().out
+
+    # --dump-syms is passed through for .pdb files.
+    calls.clear()
+    (folder / "Truebex.pdb").write_bytes(b"MSF")
+    dump = tmp_path / "dump_syms.exe"
+    dump.write_bytes(b"")
+    assert script.main(_publish_args(tmp_path, "1.1.1", "--symbols", str(folder), "--dump-syms", str(dump))) == 0
+    assert calls == [([folder], "1.1.1", str(dump), True)]
+
+    # Without the flag nothing is uploaded.
+    calls.clear()
+    assert script.main(_publish_args(tmp_path, "1.1.2")) == 0
+    assert calls == [] and _release("1.1.2") is not None
+
+
+def test_publish_release_symbols_checked_before_publishing(client, tmp_path, capsys, monkeypatch):
+    import shutil
+
+    from scripts import upload_symbols
+
+    calls = []
+    monkeypatch.setattr(upload_symbols, "upload", lambda *a, **kw: calls.append(a) or [])
+    monkeypatch.setattr(shutil, "which", lambda *_a, **_kw: None)  # no dump_syms on PATH
+    script = _script("publish_release")
+    empty = tmp_path / "empty"
+    empty.mkdir()
+    pdb_only = tmp_path / "pdb"
+    pdb_only.mkdir()
+    (pdb_only / "Truebex.pdb").write_bytes(b"MSF")
+    for i, folder in enumerate([tmp_path / "missing", empty, pdb_only]):
+        version = f"1.2.{i}"
+        with pytest.raises(SystemExit) as exc:  # argparse error: nothing published
+            script.main(_publish_args(tmp_path, version, "--symbols", str(folder)))
+        assert exc.value.code == 2
+        assert _release(version) is None
+    assert calls == []
+    err = capsys.readouterr().err
+    assert "is not a folder" in err and "no .sym or .pdb" in err and "dump_syms" in err
+
+    # The upload failing after the release went out: exit 1, the release stays, the retry is printed.
+    def broken(paths, version, dump_syms=None):
+        raise RuntimeError("storage unreachable")
+
+    monkeypatch.setattr(upload_symbols, "upload", broken)
+    sym = tmp_path / "sym"
+    sym.mkdir()
+    (sym / "a.sym").write_text("MODULE windows x86_64 0 a.pdb\n", encoding="utf-8")
+    assert script.main(_publish_args(tmp_path, "1.3.0", "--symbols", str(sym))) == 1
+    assert _release("1.3.0") is not None
+    err = capsys.readouterr().err
+    assert "storage unreachable" in err and f"scripts.upload_symbols --version 1.3.0 {sym}" in err
 
 
 def test_make_signing_key_script(tmp_path, capsys):

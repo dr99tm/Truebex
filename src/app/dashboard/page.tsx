@@ -99,7 +99,7 @@ function DownloadCard() {
 function LicenceCard() {
   const user = useDashboardUser();
   const sub = useApiData(getSubscription);
-  const plan = sub.data?.plan ?? user.plan;
+  const plan = sub.data?.tier ?? user.plan;
   const trial = sub.data?.provider === "trial";
   const end = sub.data?.current_period_end ?? null;
   const paid = plan !== "free" && !trial;
@@ -108,8 +108,8 @@ function LicenceCard() {
   if (trial && end) {
     const days = daysUntil(end);
     detail = `${days} ${days === 1 ? "day" : "days"} left · ends ${formatDate(end)}`;
-  } else if (paid && sub.data?.provider === "stripe" && end) {
-    detail = `Renews ${formatDate(end)}`;
+  } else if (paid && (sub.data?.provider === "paddle" || sub.data?.provider === "stripe") && end) {
+    detail = `${sub.data.cancel_at_period_end ? "Ends" : "Renews"} ${formatDate(end)}`;
   } else if (paid && sub.data?.provider === "wayl" && end) {
     detail = `Paid through ${formatDate(end)}`;
   } else if (paid) {

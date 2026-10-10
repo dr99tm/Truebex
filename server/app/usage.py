@@ -3,9 +3,9 @@
 from datetime import date, datetime, timezone
 
 from sqlalchemy import func, select
-from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlalchemy.orm import Session
 
+from .database import dialect_insert
 from .models import UsageDaily
 
 
@@ -36,8 +36,9 @@ def used_this_month(db: Session, user_id: int, today: date | None = None) -> int
 
 
 def record(db: Session, user_id: int, api_key_id: int, endpoint: str) -> None:
-    """Add one request to today's counter (an atomic upsert)."""
-    stmt = sqlite_insert(UsageDaily).values(
+    """Add one request to today's counter (an atomic upsert on SQLite and
+    Postgres alike)."""
+    stmt = dialect_insert(db, UsageDaily).values(
         user_id=user_id,
         api_key_id=api_key_id,
         day=utc_today(),

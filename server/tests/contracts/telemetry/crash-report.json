@@ -1,0 +1,21 @@
+{
+  "schema": "truebex-crash/1",
+  "crash_id": "a0250db5839871a54a393875fd84c8ac",
+  "install_id": "4a1ffea151643db7fe803e815865e053",
+  "app": {"version": "1.1.0", "channel": "stable", "build": "shipping"},
+  "os": "windows 10.0.26200",
+  "hw": {"gpu": "NVIDIA GeForce RTX 4070", "vram_gb": 12, "ram_gb": 32, "cpu_threads": 16, "displays": 2},
+  "at": "2026-10-09T12:34:56Z",
+  "kind": "crash",
+  "exception": {"code": "0xC0000005", "module": "Truebex-CadCore.dll", "offset": "0x1a2b3c"},
+  "callstack": [
+    "Truebex-CadCore.dll+0x1a2b3c",
+    "Truebex-CadCore.dll+0x1a0f10",
+    "Truebex-CadCore.dll+0xc4410",
+    "Truebex.exe!GuardedMain+0x1c",
+    "kernel32.dll!BaseThreadInitThunk+0x14",
+    "ntdll.dll!RtlUserThreadStart+0x21"
+  ],
+  "uptime_s": 1834,
+  "gpu_driver": "566.36"
+}

@@ -14,4 +14,5 @@ def user_out(user: User) -> UserOut:
         avatar_url=user.avatar_url,
         has_password=bool(user.hashed_password),
         google_linked=user.google_sub is not None,
+        is_admin=bool(user.is_admin),
     )
