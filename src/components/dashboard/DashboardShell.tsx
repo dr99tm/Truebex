@@ -3,7 +3,7 @@
 import { createContext, useContext, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Cloud, CreditCard, Cpu, FolderOpen, Gauge, KeyRound, LayoutGrid, BookOpen, TrendingUp, Link2, Package, Store } from "lucide-react";
+import { Cloud, CreditCard, Cpu, FolderOpen, Gauge, KeyRound, LayoutGrid, BookOpen, TrendingUp, Link2, Package, Store, Webhook } from "lucide-react";
 import {
   Activity,
   Building2,
@@ -48,6 +48,7 @@ const NAV_GROUPS: { label: string | null; items: NavItem[] }[] = [
     items: [
       { href: "/dashboard/keys/", label: "API keys", icon: KeyRound },
       { href: "/dashboard/usage/", label: "Usage", icon: Gauge },
+      { href: "/dashboard/webhooks/", label: "Webhooks", icon: Webhook },
       { href: "/developers/", label: "API docs", icon: BookOpen },
     ],
   },

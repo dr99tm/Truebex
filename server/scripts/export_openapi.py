@@ -214,6 +214,10 @@ def build() -> dict:
         "x-truebex-scopes": [
             {"scope": s, "description": scopes.DESCRIPTIONS[s], "default": s in scopes.READ_SCOPES} for s in scopes.SCOPES
         ],
+        "x-truebex-limits": {
+            "burst": int(Settings.model_fields["api_key_burst"].default),
+            "per_minute": int(Settings.model_fields["api_key_per_minute"].default),
+        },
         "x-truebex-webhook-events": [{"type": t, "description": events.DESCRIPTIONS[t]} for t in events.EVENT_TYPES],
         "x-truebex-webhooks": {
             "signature": "Standard Webhooks: webhook-id, webhook-timestamp, webhook-signature (v1, HMAC-SHA256)",

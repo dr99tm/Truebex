@@ -8868,6 +8868,10 @@
       "name": "webhooks"
     }
   ],
+  "x-truebex-limits": {
+    "burst": 60,
+    "per_minute": 600
+  },
   "x-truebex-scopes": [
     {
       "default": true,
