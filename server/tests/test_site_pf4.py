@@ -35,6 +35,13 @@ def test_site_pf4_invite_page_static_text_and_one_h1():
     assert "The link works once" in html
 
 
+def test_site_pf4_invite_titles_keep_the_site_suffix():
+    # /invite/project/ sits under PF3's /invite/ layout: that layout must pass
+    # the root "%s · Truebex" template on, not end it with a plain title.
+    for route, title in (("invite", "Join an organisation"), ("invite/project", "Join a shared project")):
+        assert f"<title>{title} · Truebex</title>" in _page(route), route
+
+
 def test_site_pf4_pages_not_in_sitemap_and_nav_has_projects():
     sitemap = (OUT / "sitemap.xml").read_text("utf-8")
     assert "/dashboard/projects" not in sitemap and "/invite/" not in sitemap
