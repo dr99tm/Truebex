@@ -66,6 +66,7 @@ def _load_jobs() -> None:
     from .projects import jobs as _projects  # noqa: F401  (PF4)
     from .uploads import jobs as _uploads  # noqa: F401
     from .render import jobs as _render  # noqa: F401  (PF6: render.*)
+    from .ai import jobs as _ai  # noqa: F401  (PF11: ai.*)
 
 
 def jobs() -> dict[str, Job]:

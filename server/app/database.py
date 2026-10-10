@@ -149,6 +149,7 @@ def init_db(bind: Engine | None = None) -> None:
     from .projects import models as _project_models  # noqa: F401  (PF4)
     from .uploads import models as _upload_models  # noqa: F401  (PF5's, PF4 landed first)
     from .render import models as _render_models  # noqa: F401  (PF6, and metering's meter_daily)
+    from .ai import models as _ai_models  # noqa: F401  (PF11: ai_*, and analysis_weather)
 
     bind = bind or engine
     Base.metadata.create_all(bind=bind)

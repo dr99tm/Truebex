@@ -314,6 +314,12 @@ def claim_inputs(db: Session, job: RenderJob, now: datetime) -> dict:
         if blob is None:
             raise BadInput(f"The input file {name} is no longer stored.")
         files[name] = {"sha256": sha, "bytes": blob.bytes, "url": _signed(blob.storage_key, ttl)}
+    from ..analysis import results as analysis_results  # PF11: the energy job's weather file
+
+    for name, entry in analysis_results.platform_inputs(db, job, ttl).items():
+        if entry is None:
+            raise BadInput(f"The platform's {name} file for this job is no longer stored.")
+        files[name] = entry
     return {"snapshot": snapshot, "ops_url": ops_url, "base_manifest_url": base_url, "files": files}
 
 
@@ -356,10 +362,15 @@ def prepare_claim(db: Session, job_id: str, worker: Worker, now: datetime) -> di
     worker.last_heartbeat_at = now
     db.commit()
     notify_job(job_id)
+    from ..analysis import kinds as analysis_kinds  # PF11: the solver profile an analysis runs with
+
+    record = {**service.record_json(job), "changed": list(job.changed or []), "params": dict(job.params or {})}
+    if analysis_kinds.is_analysis(job.kind):
+        record["profile"] = analysis_kinds.profile(job.kind)
     return {
         # The worker writes the job file (§6.1) from these: the record plus
         # the changed ids and the kind's params.
-        "job": {**service.record_json(job), "changed": list(job.changed or []), "params": dict(job.params or {})},
+        "job": record,
         "lease_id": job.lease_id,
         "lease_expires_at": clock.rfc3339(job.lease_expires_at),
         "inputs": inputs,
@@ -461,11 +472,19 @@ def complete(
     # Charged at the class the worker's token was issued for, whatever it reports.
     used_class = worker.worker_class
     cost = quotas.cost_units(wall_s, used_class)
+    from ..analysis import kinds as analysis_kinds, results as analysis_results  # PF11
+
+    analysis = analysis_kinds.is_analysis(job.kind)
     if job.kind == "pack":
         errors = tiles.check_pack(output, job)
         blobs: dict = {}
         if not errors:
             errors, blobs = tiles.verify_pack(db, job, output)
+    elif analysis:
+        errors = analysis_results.check(output, job)
+        blobs = {}
+        if not errors:
+            errors, blobs = analysis_results.verify(db, job, output)
     else:
         errors = tiles.check_manifest(output, job)
         blobs = {}
@@ -481,6 +500,8 @@ def complete(
     manifest.pop("tiles_base", None)
     if job.kind == "pack":
         tiles.publish_pack(db, job, manifest, blobs)
+    elif analysis:
+        analysis_results.publish(db, job, manifest, blobs)
     else:
         tiles.publish_tiles(db, blobs, now)
     tiles.put_json(tiles.manifest_key(job_id), manifest)

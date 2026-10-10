@@ -30,6 +30,7 @@ from .projects import jobs as _project_jobs  # noqa: F401  (PF4: projects.*)
 from .uploads import jobs as _upload_jobs  # noqa: F401  (uploads.expire)
 from .routers import projects, uploads  # PF4 (uploads: share-bundle §5, PF5's)
 from .routers import render as render_router  # PF6: jobs, workers, tiles, render admin
+from .routers import analysis_ai as analysis_ai_router  # PF11: AI proxy, credits, analysis catalogue
 from .telemetry.service import record_server_exception
 
 settings = get_settings()
@@ -128,3 +129,5 @@ app.include_router(telemetry.router)
 app.include_router(admin_telemetry.router)
 # PF6: cloud render orchestration
 app.include_router(render_router.router)
+# PF11: analysis and AI services
+app.include_router(analysis_ai_router.router)

@@ -134,6 +134,11 @@ def seats_assigned(db: Session, sub: Subscription) -> int:
 # --- Payments ------------------------------------------------------------------
 
 
+# Features that sell one-off items (PF11's AI credit packs) deliver them here,
+# in the same transaction as the payment's flip to paid: `hook(db, payment)`.
+PAID_HOOKS: list = []
+
+
 def mark_payment_paid(db: Session, payment: Payment) -> bool:
     """Flip a payment to paid. Returns False if it already was (idempotent)."""
     if payment.status == "paid":
@@ -141,6 +146,8 @@ def mark_payment_paid(db: Session, payment: Payment) -> bool:
     payment.status = "paid"
     payment.paid_at = _now()
     db.add(payment)
+    for hook in PAID_HOOKS:
+        hook(db, payment)
     return True
 
 

@@ -1,0 +1,55 @@
+{
+  "schema": "truebex-analysis-profiles/1",
+  "source": "Solver profiles sent with every analysis job (the claim's job.profile). Placeholders until guides/GD2 sets the residual targets, iteration caps and validation cases; terrain roughness lengths are the EN 1991-1-4 Table 4.1 values for terrain categories 0 to IV (confirm at writing time).",
+  "wind": {
+    "image": "truebex-analysis-wind:1",
+    "solver": "steady-rans-kepsilon",
+    "iterations_max": 1000,
+    "residual_target": 0.0001,
+    "domain_h": {"upstream": 5, "downstream": 15, "sides": 5, "top": 5},
+    "cells_per_h": 10,
+    "refinement_levels": [2, 3],
+    "sample_height_m": 1.5,
+    "grid_cell_mm": 500,
+    "grid_extent_h": 3,
+    "air_density_kg_m3": 1.225,
+    "terrain": {
+      "sea": {"z0_m": 0.003, "category": "0"},
+      "open": {"z0_m": 0.01, "category": "I"},
+      "country": {"z0_m": 0.05, "category": "II"},
+      "suburban": {"z0_m": 0.3, "category": "III"},
+      "urban": {"z0_m": 1.0, "category": "IV"}
+    },
+    "lawson": {
+      "unit": "class",
+      "source": "Lawson comfort classes as the City of London's wind microclimate guidelines use them; the instantaneous class per direction, the annual combination with the weather file is the app's (AN3)",
+      "classes": [
+        {"class": 0, "name": "frequent_sitting", "max_ms": 2.5},
+        {"class": 1, "name": "occasional_sitting", "max_ms": 4.0},
+        {"class": 2, "name": "standing", "max_ms": 6.0},
+        {"class": 3, "name": "walking", "max_ms": 8.0},
+        {"class": 4, "name": "uncomfortable", "max_ms": null}
+      ]
+    }
+  },
+  "energy": {
+    "image": "truebex-analysis-energy:1",
+    "timesteps_per_hour_default": 6,
+    "hours": 8760
+  },
+  "acoustics": {
+    "image": "truebex-analysis-acoustics:1",
+    "bands_hz": [63, 125, 250, 500, 1000, 2000, 4000, 8000],
+    "bands_default": [125, 250, 500, 1000, 2000, 4000],
+    "rays_default": 20000,
+    "rays_max": 200000,
+    "max_reflections": 60,
+    "receiver_radius_m": 0.3,
+    "speed_of_sound_ms": 343.0
+  },
+  "texture": {
+    "image": "truebex-analysis-texture:1",
+    "sizes": [512, 1024, 2048],
+    "maps": ["albedo", "normal", "roughness"]
+  }
+}

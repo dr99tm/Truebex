@@ -151,6 +151,47 @@ class StripeProvider(BillingProvider):
         payment.provider_ref = session["id"]
         return session["url"]
 
+    def create_one_time_checkout(
+        self,
+        db: Session,
+        user: User,
+        payment: Payment,
+        description: str,
+        return_path: str,
+    ) -> str:
+        s = self.settings
+        back = f"{s.site_url}/{return_path.strip('/')}/"
+        params: dict[str, Any] = {
+            "mode": "payment",
+            "line_items": [
+                {
+                    "quantity": 1,
+                    "price_data": {
+                        "currency": payment.currency.lower(),
+                        "unit_amount": int(payment.amount),
+                        "product_data": {"name": description},
+                    },
+                }
+            ],
+            "client_reference_id": payment.reference,
+            "success_url": f"{back}?topup=success&ref={payment.reference}",
+            "cancel_url": f"{back}?topup=canceled&ref={payment.reference}",
+            "metadata": {"user_id": str(user.id), "reference": payment.reference, "item": payment.plan},
+            "automatic_tax": {"enabled": bool(s.stripe_tax_enabled)},
+            "invoice_creation": {"enabled": True},
+        }
+        customer = service.customer_id(db, user, "stripe")
+        if customer:
+            params["customer"] = customer
+        else:
+            params["customer_email"] = user.email
+        try:
+            session = stripe.checkout.Session.create(api_key=self._key, **params)
+        except stripe.StripeError as exc:
+            raise ProviderError(str(exc)) from exc
+        payment.provider_ref = session["id"]
+        return session["url"]
+
     # --- Applying Stripe state --------------------------------------------------------
 
     def _apply_session(self, db: Session, session: Any, event_at: datetime | None) -> None:
