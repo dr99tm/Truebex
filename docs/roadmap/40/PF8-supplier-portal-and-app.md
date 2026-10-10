@@ -260,3 +260,9 @@ The first four names are the contract's §10 feed tests.
   * GD7: listing fees and the commission per plan.
   * GD1: auto-approval for trusted suppliers stays a carry-over; every product is reviewed.
 * **Owner at merge or before deploy:** `pip install -r requirements.txt` (new: `openpyxl`, `et_xmlfile`); set the §11 rows above.
+* **Merged together with PF5, PF7, PF2a, PF2b and master (PF2, PF3, PF13, PF14, PF14a) (2026-10-10, Autopilot T28, `ap/t28-merge-t5-t6-t7-t18-t19`):** verify green (lint, build, pytest 330 passed, 3 Postgres-only skipped); a smoke run against one real API process (demo share, trial catalogue, request for quote, worker running every merged job) passed 23/23.
+  * Done as deviation 2 says: the two import guards in `supplier/listing.py` are gone. `billing.service.live_subscription` and `managed_subscription` (and so `effective_plan`) skip `listing_*` tiers (`LISTING_TIER_PREFIX`). `test_supplier_listing_checkout_via_billing` asserts this; with PF2 in the tree it now expects `interface: true` and `pending` while the listing price is not synced.
+  * Mail: one `app/mail`, PF14's (with PF3's `try_send`, strict templates and the console print). PF8's copy of the `MAIL_*` settings is dropped, and so is `notify.send`'s own print: the console adapter prints each mail once.
+  * PF14's `tasks.py` calls a job as `fn(now)`: the four jobs use PF7's `periodic_session`. They are in `tasks._load_jobs`, so the worker also registers the e-mail and count listeners. The tables are in `scripts/sqlite_to_postgres.py`.
+  * The analytics upsert uses `database.dialect_insert` (`test_no_sqlite_dialect_imports_left`).
+  * `UsageChart`'s `title` is master's `label`. The deploy skill names `FEED_PULL_HOUR_UTC` and `MARKET_MEDIA_FIXTURES`.

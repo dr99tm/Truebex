@@ -205,3 +205,9 @@ The first nine names are the contract's §10 platform tests.
   * GD7: `share_days` / `share_bytes` per tier in `catalogue.json`.
   * App PR4: the Share command and Shares panel against these endpoints and fixtures.
   * Owner: Lighthouse on a phone (≤ 3 s to the first panorama on 4G) and the gyroscope on a real phone (human test steps 5 and 6).
+* **Merged together with PF7, PF8, PF2a, PF2b and master (PF2, PF3, PF13, PF14, PF14a) (2026-10-10, Autopilot T28, `ap/t28-merge-t5-t6-t7-t18-t19`):** verify green (lint, build, pytest 330 passed, 3 Postgres-only skipped); a smoke run against one real API process (demo share, trial catalogue, request for quote, worker running every merged job) passed 23/23.
+  * PF14's `tasks.py` calls a job as `fn(now)`: `shares.expire`, `shares.purge` and `uploads.expire` open their own session. They are listed in `tasks._load_jobs` (the worker) and PF5's tables in `scripts/sqlite_to_postgres.py`; `test_ops` checks both. The share tests run only PF5's jobs.
+  * `storage/__init__.py` is PF14's (the `s3` adapter; `shares/` is one of its CDN prefixes). The `/storage/` ignore fix was master's too.
+  * `UsageChart` is master's (`label`, `unit`): the Shares page passes `unit="visits" label={T.byDay}`.
+  * `npm run build` is `next build`, then PF13's `postbuild-lang.mjs`, then `build-viewer.mjs`.
+  * Deploy skill: the live checks name `/viewer/viewer.js` with `access-control-allow-origin: *`; the secrets table and `infra/secrets/server.env.example` name `SHARE_BASE_URL`, `SHARE_MAX_DAYS` and `SHARE_MAX_BYTES`. Pillow reaches the VM in PF14's image, so the "pip install" note is gone.

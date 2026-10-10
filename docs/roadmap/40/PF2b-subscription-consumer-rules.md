@@ -332,3 +332,8 @@ The easy exit has no switch. The task listed none, it is not GD5 7.4 wording, an
   * **PF3:** organisation-owned checkouts are business purchases; set `business` on them.
   * **PF14 (merged):** after Autopilot merges master here, optionally list the PF2b settings in `infra/secrets/server.env.example` (all default off, so the VM needs nothing until a switch is flipped).
   * **Contract `licence-api.md` §11:** no row changes.
+* **Merged together with PF5, PF7, PF8, PF2a and master (PF2, PF3, PF13, PF14, PF14a) (2026-10-10, Autopilot T28, `ap/t28-merge-t5-t6-t7-t18-t19`):** verify green (lint, build, pytest 330 passed, 3 Postgres-only skipped); a smoke run against one real API process (demo share, trial catalogue, request for quote, worker running every merged job) passed 23/23.
+  * PF14's `app.mail` is in the tree: the six mail tests run and pass (`test_billing_pf2b.py` 16 passed, none skipped).
+  * The billing page combines PF2a's interval (Team annual only) with the key information, which names the interval checkout buys.
+  * `test_renewal_cooling_off_refund_stripe` reads Pro's annual GBP price from the catalogue (PF2a's 240.00, charged 288.00 with VAT).
+  * Carry-over done: the PF2b switches are in `infra/secrets/server.env.example` and the deploy skill's secrets table, and Stripe's event list there gains `invoice.paid`. `billing.subscription_notices` and `billing.exits.retry` are in the worker test.

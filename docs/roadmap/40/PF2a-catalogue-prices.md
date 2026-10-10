@@ -165,3 +165,6 @@ Three PowerShell windows in the worktree. A local API with the mock Paddle, and 
 * **Carry-over → which feature:**
   * **Owner:** run `server\scripts\sync_prices.py --provider paddle --env sandbox` (and `production`, and Stripe if used) before deploying; the old placeholder prices stay inactive in `provider_prices`. Archive the old placeholder prices in the provider dashboards if any were created.
   * **GD7:** when the guide is written, its prices replace these through `catalogue.json` only, and `test_pf2a_prices.py` / the `PF2A_*` tables in `test_site_pf13.py` move with them.
+* **Merged together with PF5, PF7, PF8, PF2b and master (PF2, PF3, PF13, PF14, PF14a) (2026-10-10, Autopilot T28, `ap/t28-merge-t5-t6-t7-t18-t19`):** verify green (lint, build, pytest 330 passed, 3 Postgres-only skipped); a smoke run against one real API process (demo share, trial catalogue, request for quote, worker running every merged job) passed 23/23.
+  * The billing page keeps PF2a's selected interval (Team annual only) next to PF2b's key information: the key information names the interval checkout buys and carries the "billed annually" line too.
+  * PF2b's Stripe renewal test now takes Pro's annual GBP price from the catalogue (it had the placeholder 790.00).
