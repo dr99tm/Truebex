@@ -63,6 +63,8 @@ export function logout(): void {
   clearToken();
   // PF9: the mobile app's offline copy (projects, digests, edits, tiles) goes with the session.
   try {
+    // The service worker forgets its tile index too (it may hold it open).
+    navigator.serviceWorker?.controller?.postMessage({ type: "clear" });
     indexedDB.deleteDatabase("truebex-app");
     indexedDB.deleteDatabase("truebex-tiles");
     void caches.delete("tiles-v1").catch(() => undefined);

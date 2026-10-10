@@ -4,7 +4,16 @@
 
 ## Status
 
-No mobile client exists (`00-contract.md` P.1). What this builds on, verified with Grep on 2026-10-09:
+**Built 2026-10-11** on `ap/t12-pf9-mobile-web-client-and-webxr` (on master after T30 landed PF6 beside PF4, PF5, PF7,
+PF8): the installable app under `/app/` (`src/app/app/`, `src/components/app/`), the light client's modules in
+`src/viewer/` (`actions.ts`, `outbox.ts`, `tilediff.ts`, `cachepolicy.ts`, `orientation.ts`, `xr.ts`, hotspots in
+`cube.ts`), the service worker `src/sw/sw.ts` → `out/sw.js`, and on the server `author_id` on `/auth/me`, the
+snapshot's project digest, members' author ids and members' read of a project's followed sets
+(`server/app/mobile/`, `server/app/routers/mobile.py`). Waiting on others: the kernel writing the digest (CL1, after
+the owner adds it to the contract), applying `action` operations (CL1, CL4), presence badges on the desktop (CL2), a
+real render worker (CL3). See As-built.
+
+Before this task no mobile client existed (`00-contract.md` P.1). What this builds on, verified with Grep on 2026-10-09:
 
 | Area | Where | Today |
 |---|---|---|
@@ -119,12 +128,12 @@ None on the server. On the client: the outbox flushes on reconnect (`online` eve
 
 ## Deliverables
 
-- [ ] `src/app/app/` (list, project), `src/viewer/xr.ts`, `src/viewer/actions.ts` (the action builder), `src/viewer/outbox.ts`, `src/sw/sw.ts`, `src/lib/app.ts`
-- [ ] `src/viewer/selftest.ts` → `out/viewer/selftest.mjs` (bundled by the build): checks the builder against `server/tests/contracts/project-log/action-move.json`, the tile diff and the cache policy
-- [ ] `src/app/manifest.ts` (`id`, `start_url`, `scope`, maskable icon), `src/app/layout.tsx` (`appleWebApp`), a maskable icon from `scripts/make_web_assets.py`
-- [ ] `server/app/schemas.py` and `server/app/users.py`: `author_id` on `/auth/me`
-- [ ] copy in `constants.ts`; `ROADMAP` stays as it is until the tracker row is merged (brand rule)
-- [ ] the two contract MINOR proposals recorded in As-built
+- [x] `src/app/app/` (list, project), `src/viewer/xr.ts`, `src/viewer/actions.ts` (the action builder), `src/viewer/outbox.ts`, `src/sw/sw.ts`, `src/lib/app.ts` — plus `src/components/app/` (the screens, `useProject.ts`), `src/viewer/{tilediff,cachepolicy,orientation}.ts` and hotspots / `look()` in `src/viewer/cube.ts`
+- [x] `src/viewer/selftest.ts` → `out/viewer/selftest.mjs` (bundled by the build, `scripts/build-app.mjs`): checks the builder against `server/tests/contracts/project-log/action-move.json`, the tile diff and the cache policy (and the outbox and the orientation maths: 76 checks)
+- [x] `src/app/manifest.ts` (`id`, `start_url`, `scope`, maskable icon), `src/app/layout.tsx` (`appleWebApp`), a maskable icon from `scripts/make_web_assets.py` (`--icons`, `public/icon-maskable-512.png`)
+- [x] `server/app/schemas.py` and `server/app/users.py`: `author_id` on `/auth/me`
+- [x] copy in `constants.ts` (`APP`); `ROADMAP` stays as it is until the tracker row is merged (brand rule)
+- [x] the two contract MINOR proposals recorded in As-built (and three more the build needed)
 
 ## Tests
 
@@ -161,8 +170,106 @@ None on the server. On the client: the outbox flushes on reconnect (`online` eve
 
 ## As-built
 
-* Date, branch, commits:
-* Counts (pytest before → after; `out/app/` page sizes):
-* Deviations from Design and why:
-* Contract MINOR proposals for the owner (`project-log.md` §6.4 `digest`; `agent-interface.md` §5.7 `replace`) and whether they landed:
-* Carry-over → which feature:
+* **Date, branch, commits:** 2026-10-11, `ap/t12-pf9-mobile-web-client-and-webxr`. The first start ran on PF6's branch
+  tip; the manager stopped it before any commit and queued it behind T30, and Autopilot merged master (PF4, PF5, PF6,
+  PF7, PF8, PF2a, PF2b, PF3, PF3a, PF11) in `bfbb2dd`. Reconciling that combination needed nothing: on the merged tree
+  `npm ci`, the venv's new pins, lint, build and pytest (424 passed, 5 skipped) were green before any PF9 change.
+  Commits: `bd3319b` (server), `cef2186` (site), `4048ec0` (fixes from the live run), and the docs commit ticking this
+  row.
+* **Counts:** pytest 424 → 441 passed (5 skipped, the Postgres-marked ones): `tests/test_mobile.py` 11 (the doc's four
+  names; the digest registered, served, validated and pruned; members' author ids; the members' panorama read, its
+  auth and validation; `demo_mobile.py` through the human-test path) and `tests/test_site_pf9.py` 6 build checks (the
+  doc's four names; the 3D library only in a lazy chunk; the copy and the framework-free modules). The JS self-test:
+  76 checks. Sizes: `out/app/index.html` 20 KB, `out/app/project/index.html` 16 KB, `out/sw.js` 4.9 KB (25 files
+  precached), `out/viewer/selftest.mjs` 32 KB; the project page loads 809 KB of scripts before gzip against the
+  site's 760–769 KB baseline (PF9's own: 63 KB); the 3D library is a 722 KB chunk fetched only when the headset view
+  starts.
+  **Live run** (uvicorn on SQLite with inline jobs, PF6's worker with `fake_truebex.py`, `demo_mobile.py setup`,
+  `seed_market.py`, the site built against that API and served by `scripts/serve-out.py`, headless Edge 154 over CDP
+  at 412×915 with touch): 35 of 35 checks — signed-out prompt; the list shows "House (Owner)" and "First mobile
+  version"; the service worker controls the page; 24 tiles; hotspots Kitchen and Bedroom; drag turns the view; the
+  Kitchen hotspot switches view; rooms by storey with products and "GBP 1,299.00" from `/market/prices`; "Rooms as of
+  operation 12"; Floor finish → Warm sand listed at once, "Saved" in 335 ms, the worker's `tiles` job re-rendered two
+  faces and the panorama swapped them **769 ms after the tap** (set rev 1 → 2); the log holds `fill` by the person's
+  author id; People lists Sam on the desktop app and Sam's `demo_replica.py presence` lists "Alex (web)"; offline
+  reload shows the cached panorama with the Offline banner; a wall finish and a sofa move wait ("Waiting for
+  connection"); Sam's desktop move lands first; back online the wall finish is saved and the move shows "Sam changed
+  this first — your edit was replaced" and never enters the log; caches hold 32 tiles and 25 shell files and no API
+  answer; sign-out empties both. **Headset** (headless Edge has no XR device, so `navigator.xr`, `XRWebGLLayer` and an
+  input source were mocked in the page): "View in headset" appears only when `isSessionSupported("immersive-vr")` is
+  true; the session runs its frame loop; the six faces were composed from 24 tiles; a controller ray on the Kitchen
+  hotspot switched the view; the floating menu's "Warm minimal" wrote `apply_theme` on the kitchen and it was saved.
+  The same 35 checks passed again on the human test's own path: `scripts/try-mobile.ps1` (API on :8000, worker,
+  setup, market seed, build) served by `scripts/autopilot-serve.ps1`. Not run on a real phone or headset (no device
+  here): the owner's human test does.
+* **Deviations from Design and why:**
+  1. *Followed sets are read through the project, not `/jobs`.* 5.2, 5.3 and 5.5 are owner-only (a job belongs to the
+     account that submitted it), so an editor's or viewer's phone could never open the owner's set. New
+     `GET /projects/{pid}/panoramas` (the project's sets of active members, newest first, `mine` marked) and
+     `GET /projects/{pid}/panoramas/{set_id}?rev=&wait_s=` (the state `render.live.state` builds for the live share,
+     long-polled on `rev` like 5.2), viewer role, `Cache-Control: private, no-store`
+     (`server/app/mobile/panoramas.py`, `server/app/routers/mobile.py`, one line in `main.py`).
+  2. *The digest travels as a third snapshot file*, `files.digest` (64 hex) in 5.8, uploaded in the same `snapshot`
+     upload as the `.tbxp`, checked to be JSON of `truebex-project-digest/1` and ≤ 1 MiB (422 `validation_failed` on
+     `files.digest` otherwise), counted in the project's bytes, pruned with its snapshot, and served by 5.9 as
+     `files.digest` with a signed URL like the others (the data bucket's CORS rule already allows GET from any
+     origin). Two nullable columns on `project_snapshots` (PF9 block in `database._ADDED_COLUMNS`). The fixture is
+     `server/tests/contracts/project-digest/digest-house.json` (`scripts/make_digest_fixture.py`, PF4's ids, two
+     products of the marketplace fixture's supplier, region GB) in its own folder so PF4's staged set is untouched.
+  3. *Members carry `author_id`* (5.13, null for an invitation), so the phone names who won a conflict ("Sam changed
+     this first …"); a winner with the person's own id reads "You changed this first on another device …".
+  4. *The head is followed with 5.7 at `limit=1`* (the client never reads deltas; it needs `head_seq` and the wake-up),
+     and the digest is re-read at most every 30 s while the head moves.
+  5. *Background Sync never gives the token to the service worker.* A `sync` event wakes an open app page, which
+     sends its own outbox; with no page open the outbox goes out on the next start or reconnect. The rejected
+     operation stays listed with its winner until dismissed and is never sent again; `not_processed` ones are sent
+     again unchanged (same `op_id`, same `base_seq`), so a stale offline edit of something someone else changed is
+     rejected and shown, never silently applied.
+  6. *Wall finish is per wall.* The digest lists each room's walls with the face that looks into the room; the phone
+     picks one wall and writes one `fill` with that face (`agent-interface.md` §5.10 has no "every wall of a room"
+     face). Moves are nudges of 50 / 250 mm left, right, away or closer relative to where the person looks
+     (`by_mm`), and doors and windows slide along their wall (`along_mm`).
+  7. *Copy:* the button reads "View in headset", not "Enter VR" (brand voice avoids "VR"); `FEATURES` and `ROADMAP`
+     are untouched. The installed app's manifest keeps the site's name and description.
+  8. *Shared code touched, additively:* `src/viewer/cube.ts` gains hotspots, `look()`, `yawDeg` / `pitchDeg` and an
+     `onTurn` option (the share viewer is unchanged); the site navbar returns nothing under `/app/`; `logout()` also
+     deletes the app's IndexedDB stores and the tile cache; `Member` gains `author_id`; `make_web_assets.py` gains
+     `--icons` and the maskable icon; `package.json` runs `scripts/build-app.mjs` after PF5's viewer step and adds
+     `three` 0.186.1 (MIT) and `@types/three`.
+  9. *Service worker details:* the precache list (the two app pages, the hashed files they reference, the manifest
+     and icons) is written into `sw.js` at build time, so a deploy installs a new worker and drops the old build's
+     files; tiles are fetched with CORS (an opaque response would count megabytes against the quota) and their LRU
+     index is kept in memory per worker life and written in one batch a second later (writing it once per tile
+     starved the page's IndexedDB on a first visit: a tap took 38 s to save; now 0.3 s).
+  10. *A local trial script*, `scripts/try-mobile.ps1` (not in the Design): the API on :8000 with its own SQLite
+      database under `server/try-mobile/` (gitignored, one line at the end of `server/.gitignore`), the contract
+      fixtures' TEST licence key, a worker token issued through the admin route, PF6's worker with `fake_truebex.py`,
+      `demo_mobile.py setup`, `seed_market.py`, and `out/` built against :8000 — so the human test needs no `.env`.
+  11. *Next's segment prefetch* asks for `/app/__next.app.__PAGE__.txt` and gets 404 (the export writes
+      `__next.app/__PAGE__.txt`); Next falls back to the full payload. It happens on every exported page, not only
+      PF9's.
+* **Contract proposals for the owner** (written in the app repo's contracts first, C.9; none has landed yet):
+  * `project-log.md` §6.4 (MINOR): a snapshot may carry `digest` — `truebex-project-digest/1`: storeys; rooms with id,
+    name, storey, `area_m2`, `centroid_mm`, bounding walls (`id`, `name`, `face`), theme and floor finish; saved views
+    with `eye_mm` and `yaw_deg`; placed products with entity id, `FCadProductRef`, category and room; openings with
+    their host; themes; the market `region` — written by the kernel replica that uploads the snapshot, registered as
+    `files.digest` in 5.8 and served in 5.9 (deviation 2).
+  * `agent-interface.md` §5.7 (MINOR): `place` gains `replace` (a placed product's ref) for `kind: "product"`,
+    log-safe; with it the light client sends `room` (the replaced product's room) too, so a 1.0 reader's required
+    `room` or `at_mm` still holds.
+  * `project-log.md` §5.13 (MINOR): members carry `author_id` (deviation 3).
+  * `render-jobs.md` §5 (MINOR): `GET /projects/{pid}/panoramas` and `…/panoramas/{set_id}` for project members
+    (deviation 1).
+  * `/auth/me` (the site's account route, no contract): returns the same `author_id` as licence 5.7, minted on first
+    read.
+  * Contract §11 rows: `project-log.md` lists PF9 as a client only (no endpoint rows); the rows to add are the two
+    reads of deviation 1, "PF9: done".
+* **Carry-over → which feature:** **CL1** — write the digest beside each snapshot and apply `action` operations
+  (`fill`, `apply_theme`, `move`, `place` with `replace`) deterministically; **CL4** — the edit → tiles loop with a real
+  render; **CL2** — show `client: "web"` presence (view with storey, eye and bearing) and the soft-lock badges;
+  **CL3** — the real `-mwrender` (the live run used `fake_truebex.py`, which re-renders the north and east faces on
+  every edit); **PF10** — reuse `src/viewer/actions.ts` and the outbox rules, and the device link flow for a longer
+  credential; the **24 h session** signs phone users out daily (`project-log.md` §4 carry-over row: the device link
+  flow for light clients); **PR2** — the theme catalogue the digest's `themes` list should come from; **PR5** — the
+  native headset target. **The owner** — the proposals above; a real Android phone, iPhone and headset run of the
+  human test (HTTPS or `adb reverse`: service workers, install and WebXR need a secure context).

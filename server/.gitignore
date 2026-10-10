@@ -9,3 +9,5 @@ venv/
 # The local storage adapter's data folder (STORAGE_DIR), not app/storage/.
 /storage/
 /models/
+# PF9: the local trial of scripts/try-mobile.ps1 (database, storage, worker token, logs)
+try-mobile/

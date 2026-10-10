@@ -897,3 +897,43 @@ Known gaps: the app's headless render (CL3) and its Cloud panorama command
 (CL4) are not shipped, so cloud panoramas stay on the roadmap in the public
 copy; `live_job_id` and `/s/{slug}/live` are a share-bundle MINOR proposal until
 the owner writes them into the contract.
+
+## Mobile web client (PF9)
+
+`/app/` is the first mobile version of Truebex: an installable web app (the
+manifest's `id` and `start_url` are `/app/`, with a maskable icon and iOS
+home-screen metadata) that opens the projects a person owns or that are shared
+with them, walks their cloud panoramas and makes light edits. Pages are
+`noindex`; the code is `src/app/app/`, `src/components/app/` and the
+framework-free modules in `src/viewer/`.
+
+- **Panoramas.** A project's followed render sets (PF6) are read by any member
+  through `GET /projects/{pid}/panoramas[/{set_id}]` (long-poll on `rev`) and
+  shown with the shared cube-tile viewer: drag or tilt the phone to look around,
+  tap a label to go to another view; a newer manifest swaps only changed tiles.
+- **Rooms and products** come from the snapshot's project digest
+  (`files.digest`, `truebex-project-digest/1`, a proposal for project-log §6.4),
+  with regional prices from `POST /market/prices` (PF7).
+- **Edits are log operations.** Floor and wall finish (`fill`), room theme
+  (`apply_theme`), move (`move` by 50 / 250 mm) and swap product (`place` with
+  `replace`) are pushed as `action` operations with the person's `author_id`
+  (now on `/auth/me`); each shows Pending, then Saved, or "Sam changed this
+  first — your edit was replaced" when another edit of the same thing won.
+- **Offline.** `out/sw.js` (built by `scripts/build-app.mjs`) caches the app
+  shell and the tiles of the views opened (150 MB, least recently used out);
+  IndexedDB keeps the projects, digests, manifests and the outbox, which is sent
+  on reconnect. No API answer is cached; sign-out clears it all.
+- **Headset.** Where the browser offers an immersive-vr session, "View in
+  headset" shows the current view around the person with controller rays for
+  the labels and a floating theme and floor menu (`src/viewer/xr.ts`; the 3D
+  library loads only then).
+
+Try it locally: `powershell -NoProfile -ExecutionPolicy Bypass -File scripts\try-mobile.ps1`
+starts the API on :8000 with its own database (`server\try-mobile\`, gitignored),
+a render worker with the stand-in app, runs `server\scripts\demo_mobile.py setup`
+(alex@example.com owns a shared House with a digest and a followed panorama set;
+sam@example.com is its editor) and `seed_market.py`, and builds `out/` against
+that API; `scripts\autopilot-serve.ps1` then serves it. Service workers, install
+and the headset view need HTTPS or `localhost` (on an Android phone over USB:
+`adb reverse tcp:3112 tcp:3112` and `adb reverse tcp:8000 tcp:8000`, then open
+`http://localhost:3112/app/`).
