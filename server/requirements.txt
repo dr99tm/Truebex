@@ -18,3 +18,5 @@ httpx==0.28.1
 # PF14: Postgres driver and the S3-compatible storage adapter
 psycopg[binary]==3.2.3
 boto3==1.35.90
+# PF11: the AI proxy (official SDK; relays the provider's stream line by line)
+anthropic==1.13.0

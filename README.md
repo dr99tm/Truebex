@@ -664,3 +664,45 @@ envelope. The code is `server/app/render/`, the routes `server/app/routers/jobs.
 Known gaps: the app's headless render (CL3) and its Cloud panorama command
 (CL4) are not shipped, so cloud panoramas stay on the roadmap in the public
 copy; the share page's live view waits for PF5's share viewer to merge.
+
+## Analysis and AI services
+
+Two contracts (Unreal project, `Docs/roadmap/40/contracts/`; the app side is authoritative): `render-jobs` v1.0.0
+for the analysis kinds and `ai-proxy` v1.0.0 for the metered assistant proxy. The code is `server/app/analysis/`
+and `server/app/ai/`, the routes `server/app/routers/analysis_ai.py` (one router for the feature).
+
+- **Analysis jobs** use PF6's queue (`POST /jobs`, `/workers/*`): `wind` (CFD), `energy` (building energy
+  simulation, `params.weather` from the weather library) and `acoustics` (room acoustics by ray tracing) need the
+  `analysis.reports` feature, run on `cpu-8` workers and upload their inputs as `job-input` files. The answer
+  carries an estimate from GD3's worked examples (cells × iterations, zones × timesteps, rays × sources); the
+  charge is the measured wall time at the `cpu-8` weight (0.25). A worker completes with a `truebex-analysis/1`
+  result (§6.3), checked field by field against its uploaded arrays; `GET /jobs/{id}/output` serves it with
+  signed URLs. `texture` (seamless material maps, `gpu-ai`) stays off until `AI_TEXTURE_ENABLED`.
+- **Workers:** `worker/truebex_worker.py --mode container` runs each job as
+  `docker run --network none --cpus … --memory … --user 1000:1000 -v <job>:/job <image>`; settings in
+  `worker/worker.analysis.toml.example`; images in `infra/worker/analysis/` (build with
+  `infra/worker/analysis/wind/build.ps1` and siblings), runner code in `server/app/analysis/runners/`.
+  Without Docker, the tests' stub solver stands in (`server/tests/fakes/stub_solver/`).
+- **Weather library:** EPW files with their source and licence, added by an admin
+  (`PUT /admin/analysis/weather/{id}` or `server/scripts/load_weather.py`); `GET /analysis/catalogue` lists them
+  with the wind terrain classes.
+- **The AI proxy** (`/ai/models`, `/ai/balance`, `/ai/messages`, `/ai/messages/count`) answers the desktop app's
+  device token when the plan holds `ai.metered`. The alias table `server/app/ai/aliases.json` maps
+  `truebex-assist` to the provider model (re-read when the file changes); the provider key is
+  `ANTHROPIC_API_KEY` in `server/.env` only. Streams are relayed line by line (tool calls byte-equal), with a
+  `ping` at least every 15 s and one `truebex_credits` event before `message_stop`. No message text, tool input
+  or image is stored: `ai_usage` keeps token counts, tool names and credits for 400 days.
+- **Credits:** integer credits per account, the plan's monthly allowance first (reset on the 1st, no roll-over;
+  placeholders in `server/app/ai/credits.json` until GD7: Pro 2000, Studio and Team 5000, Enterprise 20 000),
+  then packs bought on `/dashboard/cloud/#ai-credits` through the billing provider's one-off checkout, credited
+  when the payment is verified. Every change is a row of the append-only `ai_credit_ledger`.
+- **Self-hosted models:** a second alias, `truebex-open`, reaches an OpenAI-compatible inference server on
+  `gpu-ai` workers (`infra/worker/ai/`); it is off until GD3 and GD7, and falls back to `truebex-assist` while
+  no server is warm.
+- **Pages:** `/dashboard/cloud/` gains analysis runs with their cost and the AI section (credits, allowance,
+  reset date, recent turns, Buy credits); `/dashboard/admin/render/` gains the CPU and `gpu-ai` classes, the
+  inference servers and AI spend by alias against provider cost.
+
+Known gaps: results are reports, never certificates, and no number is claimed publicly before GD2's validation
+cases pass; the app sides (AN2–AN4 exporting inputs, AI3's panel) ship separately, so the public copy keeps these
+on the roadmap.
