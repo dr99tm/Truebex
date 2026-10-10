@@ -1,0 +1,12 @@
+Hello,
+
+The daily read of the catalogue feed for $supplier_name failed:
+
+$url
+$error
+
+Your catalogue keeps its last imported prices and stock. Check that the
+address opens without a login, then read it again from the portal:
+$imports_url
+
+Truebex

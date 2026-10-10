@@ -1,0 +1,31 @@
+{
+  "schema": "truebex-market-categories/1",
+  "note": "The marketplace's own refinements of the app's taxonomy (contract marketplace-api §6.2). Every path starts with a path of categories.json beside this file (the app's CAD/taxonomy/categories.json, copied, never edited); the app's rows are categories too, so only deeper segments are listed here. A new row here is a platform change only; a new app path is a MINOR contract change.",
+  "categories": [
+    { "path": "furniture/seating/sofas",           "label": "Sofas" },
+    { "path": "furniture/seating/armchairs",       "label": "Armchairs" },
+    { "path": "furniture/seating/dining-chairs",   "label": "Dining chairs" },
+    { "path": "furniture/seating/stools",          "label": "Stools" },
+    { "path": "furniture/tables/coffee-tables",    "label": "Coffee tables" },
+    { "path": "furniture/tables/dining-tables",    "label": "Dining tables" },
+    { "path": "furniture/tables/desks",            "label": "Desks" },
+    { "path": "furniture/storage/wardrobes",       "label": "Wardrobes" },
+    { "path": "furniture/storage/shelving",        "label": "Shelving" },
+    { "path": "furniture/storage/sideboards",      "label": "Sideboards" },
+    { "path": "furniture/beds/double-beds",        "label": "Double beds" },
+    { "path": "furniture/beds/single-beds",        "label": "Single beds" },
+    { "path": "kitchen/units",                     "label": "Kitchen units" },
+    { "path": "kitchen/worktops",                  "label": "Worktops" },
+    { "path": "bath/basins",                       "label": "Basins" },
+    { "path": "bath/showers",                      "label": "Showers" },
+    { "path": "lighting/ceiling/pendants",         "label": "Pendants" },
+    { "path": "lighting/ceiling/downlights",       "label": "Downlights" },
+    { "path": "decoration/rugs",                   "label": "Rugs" },
+    { "path": "decoration/mirrors",                "label": "Mirrors" },
+    { "path": "decoration/themes",                 "label": "Room themes" },
+    { "path": "finishes/paint/interior",           "label": "Interior paint" },
+    { "path": "finishes/wallpaper/patterned",      "label": "Patterned wallpaper" },
+    { "path": "finishes/tile/floor",               "label": "Floor tiles" },
+    { "path": "finishes/tile/wall",                "label": "Wall tiles" }
+  ]
+}

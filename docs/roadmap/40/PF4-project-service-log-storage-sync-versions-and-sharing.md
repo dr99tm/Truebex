@@ -278,3 +278,23 @@ The first twelve names are the contract's §10 platform tests.
   session. CL1 — the real fixtures (`snapshot-0000.tbxp` with ids, real deltas) and the app's cloud save;
   CL2 — the visible conflict resolution and presence badges. GD7 — the quota values. The owner — the
   contract's §11 and the licence §6.3 rows above, and SMTP on the VM so invitations leave the console.
+* **Merged with PF3, PF3a and PF14a (2026-10-10, Autopilot T29, `ap/t29-merge-t10-pf4-project-service-lo`):**
+  the conflicts were all places where both sides appended. Settings: PF3's block, then PF4's at the end of
+  `config.py` and `.env.example`. `init_db` and `sqlite_to_postgres.py` import both sets of models. `main.py` has
+  both sets of routers and jobs. The README has Organisations, then Cloud projects, plus both sets of env rows.
+  In the dashboard nav, Projects stays in the first group, followed by PF3's Workspace switcher and Organisation
+  group. `constants.ts` has `PROJECTS` and `PROJECT_INVITE`, then PF3a's `ORG_BILLING`. The console mail backend
+  prints each message once, the full text on stderr, so both kinds of invite link show in the API console.
+  The PF3 carry-over "extend `quotas.plan_of` with organisation seats" needed no code: `plan_of` already calls
+  `seats.seat_source`, which PF3 made the best of a person's own seat and their organisation seats.
+  `tests/test_projects_orgs.py` proves it: a named or floating seat opens `cloud.sync` from the site and the
+  app, Team's quotas apply, and losing the seat closes the gate while the log stays. It also shows that an
+  organisation invitation and a project invitation each work only at their own endpoint (404 at the other).
+  One merge regression is fixed. PF3's `/invite/` layout set a plain title, which ended the root
+  "%s · Truebex" template for `/invite/project/`; the layout now passes the template on
+  (`test_site_pf4_invite_titles_keep_the_site_suffix`). Counts: pytest 268 passed, 4 Postgres-marked skipped.
+  On Postgres 17 (`TEST_APP_DATABASE_URL` + `TEST_DATABASE_URL`) everything passes except PF2's
+  `test_wayl_checkout_and_verified_webhook`, which assumes a UTC session, as on both sides before the merge.
+  Still open → PF3 / PF4: `projects.org_id` and organisation-wide `cloud_bytes`. Also, `seat_source` counts a
+  floating seat without a lease, so a device refused a lease (pool full, entitlement Free) can still push.
+  The app follows its Free entitlement and does not try.

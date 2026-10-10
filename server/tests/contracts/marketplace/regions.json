@@ -1,0 +1,33 @@
+{
+  "request": {
+    "method": "GET",
+    "path": "/market/regions"
+  },
+  "http_status": 200,
+  "body": {
+    "regions": [
+      {
+        "region": "GB",
+        "name": "United Kingdom",
+        "currency": "GBP",
+        "exponent": 2,
+        "tax": {
+          "name": "VAT",
+          "rate_bp": 2000,
+          "prices_include_tax": true
+        }
+      },
+      {
+        "region": "AE",
+        "name": "United Arab Emirates",
+        "currency": "AED",
+        "exponent": 2,
+        "tax": {
+          "name": "VAT",
+          "rate_bp": 500,
+          "prices_include_tax": true
+        }
+      }
+    ]
+  }
+}

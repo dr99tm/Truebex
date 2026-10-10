@@ -500,6 +500,8 @@ def test_licence_floating_durations_hook(client, monkeypatch):
         seats, "seat_source",
         lambda db, user: seats.Seat(kind="floating", plan="team", devices_limit=5, org_id=org, org_name="Studio A"),
     )
+    # PF3's lease step (claim) is covered by test_orgs_seats.py; here it keeps the stub's seat.
+    monkeypatch.setattr(seats, "claim", lambda db, user, device, seat, now, **kw: seat)
     doc = refresh(client, dev["device_token"]).json()["entitlement"]["document"]
     issued = ts(doc["issued_at"])
     assert ts(doc["refresh_after"]) - issued == timedelta(minutes=30)

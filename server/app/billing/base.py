@@ -44,6 +44,42 @@ class Invoice:
     status: str
     # A direct URL (Stripe) or None when the PDF is fetched on demand (Paddle).
     pdf_url: str | None
+    # The provider subscription it bills, when it bills one (PF3a scopes).
+    subscription_id: str | None = None
+
+
+@dataclass(frozen=True)
+class InvoiceScope:
+    """Whose invoices (PF3a): the provider customers to list, and of their
+    invoices only those of the `only` subscriptions (an organisation's), or
+    all but the `exclude` subscription and transaction ids (a person's own,
+    without what they bought for organisations)."""
+
+    customers: tuple[str, ...]
+    only: frozenset[str] | None = None
+    exclude: frozenset[str] = frozenset()
+
+    def keeps(self, invoice_id: str, subscription_id: str | None) -> bool:
+        if self.only is not None:
+            return subscription_id is not None and subscription_id in self.only
+        return invoice_id not in self.exclude and (subscription_id or "") not in self.exclude
+
+
+@dataclass(frozen=True)
+class Refund:
+    """A refund the provider accepted (Paddle may still have to approve it)."""
+
+    id: str
+    amount_minor: int
+    currency: str
+
+
+def refund_amount(paid_minor: int, share_ppm: int | None) -> int:
+    """`share_ppm` (parts per million) of a charge, rounded up: any rounding
+    goes the customer's way. None or 1 000 000 is the whole charge."""
+    if share_ppm is None or share_ppm >= 1_000_000:
+        return paid_minor
+    return min(paid_minor, -(-paid_minor * max(0, share_ppm) // 1_000_000))
 
 
 @dataclass(frozen=True)
@@ -110,8 +146,9 @@ class BillingProvider(ABC):
         the subscription was bought at it). Raises PriceUnavailable."""
         tier = tier or sub.plan
         interval = interval or sub.interval or "month"
-        # The founding price follows the subscription to tiers the offer covers.
-        founding = bool(sub.founding) and tier in FOUNDING.tiers
+        # The founding price follows the subscription to the tiers and
+        # intervals the offer covers; a move outside them ends it.
+        founding = bool(sub.founding) and FOUNDING.covers(tier, interval)
         price = pricing.resolve(db, self.name, tier, interval, sub.currency or "USD", founding)
         plan = pricing.plan(tier)
         seats = seats if seats is not None else (sub.seats or 1)
@@ -125,12 +162,37 @@ class BillingProvider(ABC):
         """Move the provider subscription to `price` x `seats` and mirror the
         provider's answer."""
 
-    @abstractmethod
-    def list_invoices(self, db: Session, user: User) -> list[Invoice]:
-        """The customer's invoices, newest first."""
+    def cancel_subscription(self, db: Session, sub: Subscription, *, immediately: bool) -> None:
+        """Ask the provider to cancel at the period end, or now (PF2b). Our
+        state is NOT changed here: the provider's verified webhook does that."""
+        raise NotSupported(f"{self.name} cannot cancel subscriptions")
 
-    def invoice_pdf_url(self, db: Session, user: User, invoice_id: str) -> str:
-        """A fresh URL of one invoice's PDF."""
+    def refund(
+        self,
+        db: Session,
+        sub: Subscription,
+        *,
+        charge_id: str | None,
+        share_ppm: int | None,
+        reason: str,
+    ) -> Refund:
+        """Refund `share_ppm` of one charge of the subscription (a provider
+        transaction or invoice id; None = its latest renewal charge). PF2b:
+        the renewal cooling-off and the EU withdrawal."""
+        raise NotSupported(f"{self.name} cannot refund")
+
+    @abstractmethod
+    def list_invoices(
+        self, db: Session, user: User, scope: InvoiceScope | None = None
+    ) -> list[Invoice]:
+        """The customer's invoices, newest first; with `scope`, the scope's
+        customers and only the invoices it keeps."""
+
+    def invoice_pdf_url(
+        self, db: Session, user: User, invoice_id: str, scope: InvoiceScope | None = None
+    ) -> str:
+        """A fresh URL of one invoice's PDF (of the user's customer, or one
+        the scope keeps)."""
         raise NotSupported(f"{self.name} has no invoice PDFs")
 
     @abstractmethod

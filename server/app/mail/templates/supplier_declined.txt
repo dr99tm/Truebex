@@ -1,0 +1,10 @@
+Hello,
+
+We could not verify $supplier_name as a supplier on Truebex.
+
+Reason: $reason
+
+Reply to this e-mail or write to $support_email if you can send what is
+missing; we will look at the application again.
+
+Truebex

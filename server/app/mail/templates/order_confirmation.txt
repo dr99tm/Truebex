@@ -1,0 +1,20 @@
+Your order
+$order
+
+Price and renewal
+$renewal
+
+Seller
+$seller
+
+What you agreed to at checkout
+$agreed
+
+How to cancel
+$how_to_cancel
+
+Documents in force
+Terms: $terms_url
+Licence (EULA): $eula_url
+
+$footer

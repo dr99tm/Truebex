@@ -8,6 +8,10 @@ without it.
 
 A build made with `TRUEBEX_CATALOGUE_FILE=<json>` (a sample catalogue with
 prices) is checked against that file instead of `server/app/catalogue.json`.
+
+PF2a (the owner's prices) adds the `test_site_pf2a_*` checks: the exact
+amounts /pricing/ may show, and renders of the pricing components through
+`site_render.cjs` (Node) for other catalogues, intervals and currencies.
 """
 
 import json
@@ -75,6 +79,9 @@ DENY_NAMES = [
     "ريفيت", "أوتوكاد", "سكتش أب",
 ]
 PLACEHOLDER_WORDS = re.compile(r"GD7|GD6|TODO|placeholder|lorem ipsum", re.I)
+# A catalogue whose prices are not final yet (PF2's placeholders): the public
+# pages must keep them private.
+PLACEHOLDER_CATALOGUE = "scripts/fixtures/catalogue-placeholder.json"
 VOID = {"area", "base", "br", "col", "embed", "hr", "img", "input", "link",
         "meta", "source", "track", "wbr"}
 
@@ -238,6 +245,36 @@ def priced(cat: dict) -> list[tuple[dict, dict]]:
     return [(t, p) for t in cat["tiers"] for p in (t.get("prices") or [])]
 
 
+# A price as the site prints it: £24, $1,788, €115.83.
+MONEY = re.compile(r"([£$€])(\d{1,3}(?:,\d{3})+|\d+)(?:\.(\d{2}))?(?![\d,])")
+CURRENCY_OF = {sym: cur for cur, sym in SYMBOL.items()}
+
+
+def amounts(text: str) -> set[tuple[str, int]]:
+    """Every price printed in `text`, as (currency, minor units)."""
+    return {
+        (CURRENCY_OF[sym], int(whole.replace(",", "")) * 100 + int(cents or 0))
+        for sym, whole, cents in MONEY.findall(text)
+    }
+
+
+def render(catalogue_file: str | None = None) -> dict:
+    """The pricing components rendered by Node (server/tests/site_render.cjs)
+    from `catalogue_file` (TRUEBEX_CATALOGUE_FILE) or the committed catalogue."""
+    exe = node()
+    if not (ROOT / "node_modules" / "typescript").exists():
+        pytest.skip("node_modules not installed")
+    env = {k: v for k, v in os.environ.items() if k != "TRUEBEX_CATALOGUE_FILE"}
+    if catalogue_file:
+        env["TRUEBEX_CATALOGUE_FILE"] = catalogue_file
+    res = subprocess.run(
+        [exe, str(ROOT / "server" / "tests" / "site_render.cjs")],
+        cwd=ROOT, env=env, capture_output=True, text=True, encoding="utf-8", timeout=180,
+    )
+    assert res.returncode == 0, res.stderr
+    return json.loads(res.stdout)
+
+
 def founding_live(cat: dict) -> bool:
     f = cat.get("founding") or {}
     return bool(f.get("total")) and f.get("discount_percent") is not None
@@ -298,8 +335,9 @@ def html_files() -> list[Path]:
 
 def test_site_pf13_catalogue_placeholder_shape():
     """`server/app/catalogue.json` is the licence contract's §6.3 placeholder
-    in PF1's schema plus PF2's price fields; PF2's prices and founding offer
-    are placeholders marked `prices_final: false` until GD7."""
+    matrix in PF1's schema plus PF2's price fields. PF2a set the owner's
+    prices, so `prices_final` is true and every purchasable tier is priced in
+    each currency (tests/test_pf2a_prices.py pins the amounts)."""
     cat = json.loads(CATALOGUE.read_text(encoding="utf-8"))
     tiers = cat["tiers"]
     assert [t["id"] for t in tiers] == TIER_IDS
@@ -316,11 +354,16 @@ def test_site_pf13_catalogue_placeholder_shape():
         assert t["features"] == sorted(set(free["features"]) | gates), t["id"]
         assert t["limits"] == {**free["limits"], "storeys": None}, t["id"]
         assert t["features"] == sorted(set(t["features"]))
-    assert cat["prices_final"] is False, "prices wait for GD7"
+    assert cat["prices_final"] is True, "the owner's prices (PF2a)"
     for t in tiers:
         assert isinstance(t["prices"], list)
         assert isinstance(t["per_seat"], bool) and t["min_seats"] >= 1
-    assert cat["founding"] is None or {"total", "discount_percent", "ends_at"} <= set(cat["founding"])
+        assert bool(t["prices"]) == t["purchasable"], t["id"]
+        for interval in {p["interval"] for p in t["prices"]}:
+            got = sorted(p["currency"] for p in t["prices"] if p["interval"] == interval)
+            assert got == sorted(cat["currencies"]), (t["id"], interval)
+    assert {"total", "discount_percent", "ends_at", "tiers", "intervals"} <= set(cat["founding"])
+    assert set(cat["founding"]["tiers"]) <= {t["id"] for t in tiers if t["purchasable"]}
     assert [t["purchasable"] for t in tiers] == [False, True, True, True, False]
 
 
@@ -407,10 +450,15 @@ def test_site_pf13_pricing_matches_catalogue(built):
             assert key in table, (rel, key)
             assert int(a["data-amount-minor"]) == table[key], (rel, key)
             assert doc.text(el) == fmt_money(table[key], a["data-currency"]), (rel, key)
-        # Every priced tier shows its default (monthly, GBP) price.
-        for (tid, interval, currency), amount in table.items():
-            if interval == "month" and currency == "GBP" and doc.all("article", data_tier=tid):
-                assert any(e["attrs"]["data-tier"] == tid for e in shown), (rel, tid)
+        # Every priced tier shows its default price: monthly in GBP, or the
+        # annual price of a tier sold only by the year (Team).
+        for tier in cat["tiers"]:
+            gbp = {p["interval"] for p in tier.get("prices") or [] if p["currency"] == "GBP"}
+            if not gbp or not doc.all("article", data_tier=tier["id"]):
+                continue
+            want = "month" if "month" in gbp else "year"
+            assert any(e["attrs"]["data-tier"] == tier["id"] and e["attrs"]["data-interval"] == want
+                       and e["attrs"]["data-currency"] == "GBP" for e in shown), (rel, tier["id"])
         for tier in cat["tiers"]:
             cards = doc.all("article", data_tier=tier["id"])
             if not cards:
@@ -436,14 +484,30 @@ def test_site_pf13_pricing_matches_catalogue(built):
     assert any(o["price"] == "0" for o in app["offers"]), "the Free offer"
 
 
-def test_site_pf13_placeholder_prices_stay_private(built):
-    """PF2's placeholder prices (`prices_final: false`) stay off the public
-    pages: no amounts, no priced JSON-LD offers, no founding block, and every
-    paid tier says "Price at launch". The billing page lists them from the API."""
-    raw = json.loads(catalogue_path().read_text(encoding="utf-8"))
-    if raw.get("prices_final") is not False:
-        pytest.skip("this catalogue's prices are final")
-    assert priced(raw), "PF2's placeholder prices are in the catalogue"
+def test_site_pf13_placeholder_prices_stay_private():
+    """A catalogue whose prices are placeholders (`prices_final: false`) keeps
+    them off the public pages: no amounts, no priced JSON-LD offers, no
+    founding block, and every paid tier says "Price at launch". Rendered from
+    `scripts/fixtures/catalogue-placeholder.json` through TRUEBEX_CATALOGUE_FILE
+    on every run (the committed catalogue is final since PF2a); a build made
+    from such a catalogue is checked in out/ as well."""
+    raw = json.loads((ROOT / PLACEHOLDER_CATALOGUE).read_text(encoding="utf-8"))
+    assert raw["prices_final"] is False and priced(raw) and raw["founding"]
+    r = render(PLACEHOLDER_CATALOGUE)
+    assert all(t["prices"] == [] for t in r["catalogue"]["tiers"]) and r["catalogue"]["founding"] is None
+    cards = Doc(r["cards"])
+    assert not cards.all(data_amount_minor=True) and not cards.all(data_derived=True)
+    assert not cards.all(data_founding=True) and not amounts(cards.visible_text())
+    for tier in raw["tiers"]:
+        card = cards.text(cards.all("article", data_tier=tier["id"])[0])
+        assert ("Price at launch" in card) == tier["purchasable"], tier["id"]
+    assert all(o["price"] == "0" for o in r["offers"]), "no priced JSON-LD offers"
+    assert not any("founding" in f["q"].lower() for f in r["faq"])
+    assert any(f["q"] == "When can I buy a paid plan?" for f in r["faq"])
+
+    built_from = json.loads(catalogue_path().read_text(encoding="utf-8"))
+    if built_from.get("prices_final") is not False or not (OUT / "index.html").exists():
+        return
     for rel in ("pricing/index.html", "index.html", "ar/index.html"):
         doc = page(rel)
         assert not doc.all(data_amount_minor=True), rel
@@ -451,9 +515,169 @@ def test_site_pf13_placeholder_prices_stay_private(built):
         for app in (n for n in doc.json_ld() if n.get("@type") == "SoftwareApplication"):
             assert all(o["price"] == "0" for o in app["offers"]), rel
     doc = page("pricing/index.html")
-    for tier in raw["tiers"]:
+    for tier in built_from["tiers"]:
         if tier["purchasable"]:
             assert "Price at launch" in doc.text(doc.all("article", data_tier=tier["id"])[0]), tier["id"]
+
+
+# --- PF2a: the owner's prices -------------------------------------------------------
+
+# The owner's pricing plan (PF2a), as /pricing/ must show it. Kept apart from
+# the catalogue so a wrong number there cannot pass its own test
+# (tests/test_pf2a_prices.py pins catalogue.json to the same plan).
+PF2A_LIST = {
+    ("pro", "month", "GBP"): 2400, ("pro", "month", "USD"): 2900, ("pro", "month", "EUR"): 2700,
+    ("pro", "year", "GBP"): 24000, ("pro", "year", "USD"): 29000, ("pro", "year", "EUR"): 27000,
+    ("studio", "month", "GBP"): 7900, ("studio", "month", "USD"): 9900, ("studio", "month", "EUR"): 8900,
+    ("studio", "year", "GBP"): 79000, ("studio", "year", "USD"): 99000, ("studio", "year", "EUR"): 89000,
+    ("team", "year", "GBP"): 119000, ("team", "year", "USD"): 178800, ("team", "year", "EUR"): 139000,
+}
+# Team per seat per month: the annual charge / 12, billed annually.
+PF2A_TEAM_PER_MONTH = {"GBP": 9917, "USD": 14900, "EUR": 11583}
+# The annual prices at 30 % off.
+PF2A_FOUNDING = {
+    ("pro", "GBP"): 16800, ("pro", "USD"): 20300, ("pro", "EUR"): 18900,
+    ("studio", "GBP"): 55300, ("studio", "USD"): 69300, ("studio", "EUR"): 62300,
+    ("team", "GBP"): 83300, ("team", "USD"): 125160, ("team", "EUR"): 97300,
+}
+PF2A_NAMES = {"pro": "Pro", "studio": "Studio", "team": "Team"}
+
+
+def pf2a_allowed(currency: str | None = None) -> set[tuple[str, int]]:
+    """The list prices, the derived Team per-month figures and the founding
+    prices: the only amounts /pricing/ may print."""
+    out = {(c, a) for (_, _, c), a in PF2A_LIST.items()}
+    out |= set(PF2A_TEAM_PER_MONTH.items())
+    out |= {(c, a) for (_, c), a in PF2A_FOUNDING.items()}
+    return {x for x in out if currency is None or x[0] == currency}
+
+
+def pf2a_build(built) -> None:
+    if os.environ.get("TRUEBEX_CATALOGUE_FILE"):
+        pytest.skip("out/ was built from another catalogue")
+
+
+def test_site_pf2a_pricing_amounts_exact(built):
+    """out/pricing/index.html shows exactly the owner's amounts: in GBP (the
+    static render) every list price, Team's per-month figure and the
+    founding prices, and no other amount; its data and JSON-LD carry every
+    list price in every currency, and nothing else."""
+    pf2a_build(built)
+    raw = (OUT / "pricing" / "index.html").read_text(encoding="utf-8")
+    doc = Doc(raw)
+    assert amounts(doc.visible_text()) == pf2a_allowed("GBP")
+    # The served HTML (React's payload included) prints no other £ or €
+    # amount ($ also marks the payload's references, so it is read above).
+    assert {a for a in amounts(raw) if a[0] != "USD"} <= pf2a_allowed()
+
+    # Listed amounts are the catalogue's list prices; the derived figure is
+    # Team's; the founding banner holds the founding prices.
+    listed = {
+        (a["data-tier"], a["data-interval"], a["data-currency"], int(a["data-amount-minor"]))
+        for a in (el["attrs"] for el in doc.all(data_amount_minor=True))
+    }
+    assert listed == {(t, i, c, a) for (t, i, c), a in PF2A_LIST.items() if c == "GBP"}
+    assert [doc.text(el) for el in doc.all(data_derived=True)] == [fmt_money(PF2A_TEAM_PER_MONTH["GBP"], "GBP")]
+    founding = {
+        (a["data-tier"], a["data-currency"], int(a["data-founding-minor"]))
+        for a in (el["attrs"] for el in doc.all(data_founding_minor=True))
+    }
+    assert founding == {(t, c, a) for (t, c), a in PF2A_FOUNDING.items() if c == "GBP"}
+
+    # The page's data: every list price in every currency, Team annual only.
+    data = re.findall(
+        r'\\?"interval\\?":\\?"(month|year)\\?",\\?"currency\\?":\\?"(GBP|USD|EUR)\\?",'
+        r'\\?"amount_minor\\?":(\d+)',
+        raw,
+    )
+    assert {(i, c, int(a)) for i, c, a in data} == {(i, c, a) for (_, i, c), a in PF2A_LIST.items()}
+
+    # JSON-LD offers: the list prices in every currency (+ Free at 0).
+    app = next(n for n in doc.json_ld() if n.get("@type") == "SoftwareApplication")
+    got = {(o["name"], o["priceCurrency"], o["price"]) for o in app["offers"]}
+    want = {("Free", "GBP", "0")} | {
+        (f"{PF2A_NAMES[t]} ({'monthly' if i == 'month' else 'annual'})", c, f"{a / 100:.2f}")
+        for (t, i, c), a in PF2A_LIST.items()
+    }
+    assert got == want
+
+    # Team: per seat, the per-month figure billed annually, the annual charge,
+    # and a checkout link for the annual price.
+    team = doc.all("article", data_tier="team")[0]
+    text = doc.text(team)
+    assert "£99.17" in text and "per month, billed annually" in text and "£1,190 a year" in text
+    assert "per seat" in text and "from 2 seats" in text
+    hrefs = {el["attrs"].get("href") for el in doc.all("a")}
+    assert "/dashboard/billing/?tier=team&interval=year&currency=GBP" in hrefs
+    assert not any(h and "tier=team&interval=month" in h for h in hrefs)
+    # The founding banner speaks of annual plans (catalogue founding.intervals).
+    banner = doc.text(doc.all(data_founding=True)[0])
+    for words in ("300 founding seats", "30 % off annual plans", "31 January 2027",
+                  "Pro £168", "Studio £553", "Team £833 per seat"):
+        assert words in banner, words
+    faq = " ".join(doc.faq_visible())
+    assert "Can I pay for Team monthly?" in faq and "Price at launch" not in doc.visible_text()
+
+
+def test_site_pf2a_teasers_and_developers(built):
+    """The home teaser and /ar/ show the same numbers from the catalogue (GBP:
+    Pro monthly with its annual price, Team's per-month figure and annual
+    charge); /developers/ lists the catalogue's plans and no price."""
+    pf2a_build(built)
+    want = {("GBP", PF2A_LIST[("pro", "month", "GBP")]), ("GBP", PF2A_LIST[("pro", "year", "GBP")]),
+            ("GBP", PF2A_LIST[("team", "year", "GBP")]), ("GBP", PF2A_TEAM_PER_MONTH["GBP"])}
+    for rel in ("index.html", "ar/index.html"):
+        doc = page(rel)
+        teaser = " ".join(doc.text(el) for el in doc.all("article", data_tier=True))
+        assert amounts(teaser) == want, rel
+        assert amounts(doc.visible_text()) <= pf2a_allowed("GBP"), rel
+        assert doc.all("a", href="/dashboard/billing/?tier=team&interval=year&currency=GBP"), rel
+    dev = page("developers/index.html")
+    text = dev.visible_text()
+    assert not amounts(text), "no price on /developers/"
+    rows = [dev.text(r) for r in dev.all("tr")]
+    for name in ("Free", "Pro", "Studio", "Team", "Enterprise"):
+        assert any(r.startswith(name) for r in rows), name
+
+
+def test_site_pf2a_every_interval_and_currency():
+    """Each price block, rendered for both intervals and all three
+    currencies: Team always shows its annual charge / 12 billed annually and
+    the charge; Pro and Studio show their monthly price beside the annual
+    one, or the annual price with what it comes to per month. No block
+    prints any other amount (twelve monthly payments, a Team month)."""
+    r = render()
+    cards = Doc(r["cards"])
+    founding = {(e["attrs"]["data-tier"], e["attrs"]["data-currency"], int(e["attrs"]["data-founding-minor"]))
+                for e in cards.all(data_founding_minor=True)}
+    assert founding == {(t, c, a) for (t, c), a in PF2A_FOUNDING.items() if c == "GBP"}
+    for key, html in r["prices"].items():
+        tier, interval, currency = key.split("/")
+        doc = Doc(html)
+        text = doc.text(doc.elements[0])  # the block's text as read
+        printed = amounts(text)
+        listed = {(c, a) for (t, _, c), a in PF2A_LIST.items() if t == tier and c == currency}
+        year = PF2A_LIST.get((tier, "year", currency))
+        if tier in ("free", "enterprise"):
+            assert not printed, key
+            continue
+        if tier == "team" or interval == "year":
+            per_month = (year + 6) // 12  # Math.round(year / 12)
+            if tier == "team":
+                assert per_month == PF2A_TEAM_PER_MONTH[currency]
+            assert printed == {(currency, per_month), (currency, year)}, key
+            assert [doc.text(e) for e in doc.all(data_derived=True)] == [fmt_money(per_month, currency)], key
+            assert "per month, billed annually" in text, key
+            spans = doc.all(data_amount_minor=True)
+            assert [(e["attrs"]["data-interval"], int(e["attrs"]["data-amount-minor"])) for e in spans] == \
+                [("year", year)], key
+        else:
+            month = PF2A_LIST[(tier, "month", currency)]
+            assert printed == {(currency, month), (currency, year)} <= listed, key
+            assert not doc.all(data_derived=True), key
+            assert f"or {fmt_money(year, currency)} a year, billed annually" in text, key
+        if tier == "team":
+            assert "per seat" in text and "from 2 seats" in text, key
 
 
 def test_site_pf13_roadmap_rows_labelled(built):

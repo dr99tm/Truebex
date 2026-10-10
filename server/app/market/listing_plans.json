@@ -1,0 +1,9 @@
+{
+  "schema": "truebex-listing-plans/1",
+  "note": "Supplier listing plans. PLACEHOLDERS until GD7 §4 sets the listing fee L, the commission c and the founding terms N and M (guides/GD1 §4.2; every number: confirm at writing time). commission_bp is the default commission for a supplier on the plan, charged on a paid order's goods value excluding tax and delivery and deducted from the transfer; a supplier's own commission_bp overrides it. monthly_fee maps a currency to a monthly fee in minor units; null means no listing fee is invoiced.",
+  "default_plan": "founding",
+  "plans": [
+    { "id": "founding", "name": "Founding supplier", "monthly_fee": null, "commission_bp": 1000 },
+    { "id": "standard", "name": "Standard",          "monthly_fee": null, "commission_bp": 1000 }
+  ]
+}
