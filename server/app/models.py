@@ -203,6 +203,10 @@ class Payment(Base):
         DateTime(timezone=True), nullable=True
     )
     invoice_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    # PF3a: the organisation this checkout buys for (None = the buyer's own).
+    # The subscription the provider creates from it is attached to that
+    # organisation from this row, never from custom_data.
+    organisation_id: Mapped[str | None] = mapped_column(String(32), nullable=True)
 
 
 class ProviderPrice(Base):

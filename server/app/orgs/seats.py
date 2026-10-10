@@ -21,6 +21,7 @@ from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
 
 from .. import mail
+from ..billing.service import seats_assigned as subscription_seats
 from ..config import get_settings
 from ..contract_http import ContractError
 from ..licence import clock
@@ -303,7 +304,8 @@ def candidates(db: Session, user: User, now: datetime) -> list[Seat]:
                 ends_at=period_end if fixed else None,
                 period_end=period_end,
                 seats_total=p.total,
-                seats_assigned=p.named_assigned + p.floating_in_use,
+                # PF3a: the subscription's seats given to people (named + the floating pool).
+                seats_assigned=subscription_seats(db, sub),
                 subscription=sub,
             )
         )

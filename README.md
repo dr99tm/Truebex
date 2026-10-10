@@ -612,3 +612,33 @@ a Google Sheet. See [`google-apps-script/README.md`](google-apps-script/README.m
 | `npm run dev` exhausts RAM on this PC | Use build + static server for local checks | — |
 | The demo form can't detect failures (`no-cors`) | It always shows "Request received!" | `CTAContact.tsx` |
 | Stale `gh-pages` branch | Confusing; not served | — |
+
+---
+
+## Organisation billing (PF3a)
+
+Organisations buy and change seats through the same billing as people. The
+organisation console's **Billing** link opens `/dashboard/billing/?org=<id>`:
+an owner or a billing member buys there (Team preselected), changes seats,
+plan or interval, opens the provider's portal and downloads the
+organisation's invoices; admins and members see the plan read-only.
+
+- **API.** `POST /billing/checkout`, `GET /billing/subscription`,
+  `POST /billing/seats`, `POST /billing/change`, `POST /billing/portal`,
+  `GET /billing/invoices` and `GET /billing/payments` take an optional
+  `org_id` (32 hex): 403 for admin and member, 404 outside the organisation.
+  One subscription per organisation (409 `live_subscription`); a person's own
+  subscription and their organisations' never block each other.
+- **Attaching.** The checkout's payment row records `organisation_id`, and
+  Paddle `custom_data` / Stripe metadata carry `org_id`, but a subscription
+  becomes the organisation's only from our payment row, matched by the
+  provider's own link (Paddle: the subscription's originating transaction;
+  Stripe: our Checkout Session). `custom_data` alone never attaches one
+  (`server/app/billing/org_billing.py`).
+- **Seats.** `service.seats_assigned` = named seats assigned + the floating
+  pool; fewer seats than that answers 409 `seats_assigned`. Members get the
+  organisation's tier through their named or floating seat; the buyer's own
+  plan never changes. `/licence/account` reports `seats {total, assigned}`.
+- **Locally**, with `tests/mock_paddle.py` as in the billing section: buy
+  Team for an organisation from its billing page, pay on the mock's page, and
+  you return to `/dashboard/billing/?org=<id>`.

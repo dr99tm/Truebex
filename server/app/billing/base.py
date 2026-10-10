@@ -44,6 +44,25 @@ class Invoice:
     status: str
     # A direct URL (Stripe) or None when the PDF is fetched on demand (Paddle).
     pdf_url: str | None
+    # The provider subscription it bills, when it bills one (PF3a scopes).
+    subscription_id: str | None = None
+
+
+@dataclass(frozen=True)
+class InvoiceScope:
+    """Whose invoices (PF3a): the provider customers to list, and of their
+    invoices only those of the `only` subscriptions (an organisation's), or
+    all but the `exclude` subscription and transaction ids (a person's own,
+    without what they bought for organisations)."""
+
+    customers: tuple[str, ...]
+    only: frozenset[str] | None = None
+    exclude: frozenset[str] = frozenset()
+
+    def keeps(self, invoice_id: str, subscription_id: str | None) -> bool:
+        if self.only is not None:
+            return subscription_id is not None and subscription_id in self.only
+        return invoice_id not in self.exclude and (subscription_id or "") not in self.exclude
 
 
 @dataclass(frozen=True)
@@ -126,11 +145,17 @@ class BillingProvider(ABC):
         provider's answer."""
 
     @abstractmethod
-    def list_invoices(self, db: Session, user: User) -> list[Invoice]:
-        """The customer's invoices, newest first."""
+    def list_invoices(
+        self, db: Session, user: User, scope: InvoiceScope | None = None
+    ) -> list[Invoice]:
+        """The customer's invoices, newest first; with `scope`, the scope's
+        customers and only the invoices it keeps."""
 
-    def invoice_pdf_url(self, db: Session, user: User, invoice_id: str) -> str:
-        """A fresh URL of one invoice's PDF."""
+    def invoice_pdf_url(
+        self, db: Session, user: User, invoice_id: str, scope: InvoiceScope | None = None
+    ) -> str:
+        """A fresh URL of one invoice's PDF (of the user's customer, or one
+        the scope keeps)."""
         raise NotSupported(f"{self.name} has no invoice PDFs")
 
     @abstractmethod

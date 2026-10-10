@@ -147,7 +147,7 @@ class WaylProvider(BillingProvider):
     ) -> Subscription:
         raise NotSupported("Wayl periods are prepaid; buy another period instead")
 
-    def list_invoices(self, db: Session, user: User) -> list[Invoice]:
+    def list_invoices(self, db: Session, user: User, scope=None) -> list[Invoice]:
         return []
 
     def charge_usage(
