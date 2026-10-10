@@ -82,6 +82,60 @@ def test_push_assigns_contiguous_seq(client):
     assert log["head_seq"] == 96 and log["more"] is False
 
 
+@pytest.mark.postgres
+def test_push_assigns_contiguous_seq_postgres():
+    """The same rule on Postgres (TEST_DATABASE_URL): the project row lock
+    keeps 1..n gap-free under 8 concurrent pushers."""
+    from sqlalchemy import create_engine, text
+    from sqlalchemy.orm import sessionmaker
+
+    from app.database import init_db
+    from app.models import User
+    from app.projects import ops
+
+    from .conftest import TEST_DATABASE_URL
+
+    engine = create_engine(TEST_DATABASE_URL, pool_size=10, max_overflow=0)
+    with engine.begin() as conn:
+        conn.execute(text("DROP SCHEMA public CASCADE"))
+        conn.execute(text("CREATE SCHEMA public"))
+    init_db(bind=engine)
+    make = sessionmaker(bind=engine)
+    with make() as db:
+        user = User(email="pg@example.com", hashed_password="x")
+        db.add(user)
+        db.flush()
+        project = Project(
+            project_id=hex32(), name="PG", owner_user_id=user.id, doc_version=38, head_seq=0, bytes=0,
+            server_replica_id=hex32(),
+        )
+        db.add(project)
+        db.commit()
+        pid, uid = project.project_id, user.id
+
+    def pusher(replica: str) -> list[int]:
+        seqs = []
+        for _ in range(4):
+            batch = [
+                ops.ParsedOp(
+                    op_id=hex32(), author=hex32(), author_kind="agent", at="2026-10-10T09:00:00.000Z",
+                    touched=[hex32()], kind="delta", name="x", base_seq=0, delta_format="o5/38", delta=b"d", action=None,
+                )
+                for _ in range(3)
+            ]
+            with make() as db:
+                answer, _ = ops.push(db, pid, replica, batch, owner_id=uid, bytes_cap=None)
+            seqs += [r["server_seq"] for r in answer["results"]]
+        return seqs
+
+    try:
+        with ThreadPoolExecutor(max_workers=8) as pool:
+            per_replica = list(pool.map(pusher, [hex32() for _ in range(8)]))
+        assert sorted(s for seqs in per_replica for s in seqs) == list(range(1, 97))
+    finally:
+        engine.dispose()
+
+
 def test_push_duplicate_op_id(client):
     a = Person(client, "a@example.com")
     pid = create(client, a.dev)["project_id"]

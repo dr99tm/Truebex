@@ -134,19 +134,20 @@ export const acceptInvite = (token: string) =>
     headers: CONTRACT,
   });
 
-/** 1 536 → "1.5 KB"; bytes as people read them. */
+/** 1 536 → "1.5 KB", 10 GiB → "10 GB": 1 024-based, as Windows shows sizes. */
 export function formatBytes(bytes: number | null | undefined): string {
   if (bytes == null) return "—";
-  if (bytes < 1000) return `${bytes} B`;
+  if (bytes < 1024) return `${bytes} B`;
   const units = ["KB", "MB", "GB", "TB"];
   let value = bytes;
   let unit = "B";
   for (const u of units) {
-    if (value < 1000) break;
-    value /= 1000;
+    if (value < 1024) break;
+    value /= 1024;
     unit = u;
   }
-  return `${value < 10 ? value.toFixed(1) : Math.round(value)} ${unit}`;
+  const shown = value < 10 ? Math.round(value * 10) / 10 : Math.round(value);
+  return `${shown} ${unit}`;
 }
 
 /** The message to show for a failed call: plan gates in the site's words. */

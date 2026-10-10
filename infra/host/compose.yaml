@@ -59,6 +59,8 @@ services:
     environment:
       BACKGROUND_TASKS: worker
       RATELIMIT_BACKEND: db
+      # PF4: presence shared by the two uvicorn processes (the presence table).
+      PROJECTS_PRESENCE_BACKEND: db
     depends_on:
       postgres:
         condition: service_healthy
@@ -78,6 +80,7 @@ services:
     environment:
       BACKGROUND_TASKS: worker
       RATELIMIT_BACKEND: db
+      PROJECTS_PRESENCE_BACKEND: db
       BACKUP_EXPECTED: "true"
     depends_on:
       postgres:

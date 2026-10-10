@@ -58,7 +58,7 @@ class Api:
 
 def _need_token(api: Api) -> None:
     if not api.token:
-        raise SystemExit("this command needs --token tbx_dev_… (get one with the login command)")
+        raise SystemExit("this command needs --token tbx_dev_... (get one with the login command)")
 
 
 def cmd_login(api: Api, args) -> None:
@@ -154,7 +154,7 @@ def cmd_pull(api: Api, args) -> None:
         for op in page["ops"]:
             total += 1
             what = op["restore"] and f"restore of version {op['restore']['version_id'][:8]}" or op["kind"]
-            print(f"{op['server_seq']:>5}  {op['name'] or '(no name)':<22} {what:<10} author {op['author'][:8]}…  touched {len(op['touched'])}")
+            print(f"{op['server_seq']:>5}  {op['name'] or '(no name)':<22} {what:<10} author {op['author'][:8]}...  touched {len(op['touched'])}")
             after = op["server_seq"]
         if not page["more"]:
             break
@@ -187,7 +187,7 @@ def cmd_move(api: Api, args) -> None:
         print(f"rejected ({result['reason']}): replaced by")
         for w in result["winning"]:
             mine = " (yours)" if w["author"] == author else ""
-            print(f"  {w['server_seq']}  {w['name']}  by author {w['author'][:8]}…{mine}")
+            print(f"  {w['server_seq']}  {w['name']}  by author {w['author'][:8]}...{mine}")
         print(f"head {answer['head_seq']}: pull, re-make the move at the new head, push again")
     else:
         print(json.dumps(result))
@@ -212,7 +212,7 @@ def cmd_presence(api: Api, args) -> None:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="demo_replica.py", description=__doc__.split("\n")[0])
     parser.add_argument("--api", default="http://127.0.0.1:8000")
-    parser.add_argument("--token", help="a device token, tbx_dev_…")
+    parser.add_argument("--token", help="a device token, tbx_dev_...")
     sub = parser.add_subparsers(dest="command", required=True)
     p = sub.add_parser("login", help="sign in, activate a device, print its token")
     p.add_argument("--email", required=True)

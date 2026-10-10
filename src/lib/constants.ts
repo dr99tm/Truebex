@@ -1457,7 +1457,7 @@ export const PROJECTS = {
     snapshot: "Latest snapshot",
     snapshotAt: "at operation {seq}",
     noSnapshot: "None yet",
-    owner: "Owner",
+    sharedBy: "shared by {name}",
     storage: "Your storage",
     storageOf: "{used} of {limit}",
     unlimited: "{used}, no limit",

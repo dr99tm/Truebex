@@ -130,7 +130,11 @@ function ProjectView({ pid }: { pid: string }) {
       <BackLink />
       <PageHeader
         title={project.name}
-        description={`${PROJECTS.roles[project.role]} · ${PROJECTS.summary.owner}: ${project.owner?.name ?? "—"}`}
+        description={
+          isOwner
+            ? PROJECTS.roles.owner
+            : `${PROJECTS.roles[project.role]} · ${fill(PROJECTS.summary.sharedBy, { name: project.owner?.name ?? "—" })}`
+        }
       />
       {error && (
         <div className="mb-6">
