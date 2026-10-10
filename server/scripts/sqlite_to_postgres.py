@@ -70,10 +70,12 @@ class Report:
 
 def _models() -> list[Table]:
     # Every module with tables (the same set init_db creates), so a fresh
-    # process sees PF1's devices and releases too.
+    # process sees PF1's devices and releases and PF3's organisations too.
     from app import models  # noqa: F401
     from app.licence import models as _licence  # noqa: F401
+    from app.orgs import models as _orgs  # noqa: F401
     from app.releases import models as _releases  # noqa: F401
+    from app.sso import models as _sso  # noqa: F401
     from app import idempotency as _idempotency  # noqa: F401  (PF4)
     from app.projects import models as _projects  # noqa: F401  (PF4)
     from app.uploads import models as _uploads  # noqa: F401  (PF4 / PF5)

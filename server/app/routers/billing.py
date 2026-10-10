@@ -4,6 +4,11 @@ invoices, the customer portal and provider webhooks.
 The browser names a tier, an interval, a currency and seats; the server picks
 the price (catalogue.json -> provider_prices) and a plan changes only from a
 provider event or provider state the server verified itself.
+
+PF3a: checkout, subscription, seats, change, portal, invoices and payments
+take an optional `org_id` and then act for that organisation, for its owner
+and billing roles only (403 for admin and member, 404 outside it); see
+billing/org_billing.py for how its subscription is attached.
 """
 
 import hashlib
@@ -21,15 +26,17 @@ from fastapi.responses import RedirectResponse
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from ..billing import pricing, providers, service
+from ..billing import org_billing, pricing, providers, service
 from ..billing.base import NotSupported, ProviderError, WebhookError
 from ..billing.consent import CONSENT_VERSION
 from ..billing.pricing import PriceUnavailable
 from ..config import get_settings
+from ..contract_http import ContractError
 from ..database import get_db
 from ..deps import get_current_user
 from ..models import Payment, Subscription, User
-from ..plans import CURRENCIES, PLANS
+from ..orgs.models import Organisation
+from ..plans import CURRENCIES, PLANS, get_plan
 from ..schemas import (
     BillingCatalog,
     ChangeRequest,
@@ -38,6 +45,7 @@ from ..schemas import (
     FoundingOut,
     InvoiceOut,
     PaymentOut,
+    PortalRequest,
     PriceOut,
     SeatsRequest,
     SubscriptionOut,
@@ -53,6 +61,15 @@ _PROVIDER_ERRORS = (ProviderError, httpx.HTTPError, stripe.StripeError)
 
 # Invoice PDF links stay valid this long (the dashboard is reloaded to renew).
 PDF_LINK_TTL_S = 3600
+
+# PF3a: an organisation's id in a query string (32 hex, licence contract §6.1).
+ORG_ID = r"^[0-9a-f]{32}$"
+
+
+def _org(db: Session, org_id: str | None, user: User) -> Organisation | None:
+    """The organisation a call acts for (its owner or billing role only), or
+    None for the caller's own billing."""
+    return org_billing.require_billing(db, org_id, user) if org_id else None
 
 
 def _unprocessable(detail: str) -> HTTPException:
@@ -138,6 +155,7 @@ def _subscription_out(db: Session, user: User) -> SubscriptionOut:
             cancel_at_period_end=False,
             founding=False,
             can_manage=can_manage,
+            seats_assigned=1,
         )
     return SubscriptionOut(
         tier=plan,
@@ -150,21 +168,91 @@ def _subscription_out(db: Session, user: User) -> SubscriptionOut:
         founding=bool(view.founding),
         can_manage=can_manage,
         currency=view.currency,
+        seats_assigned=1,
     )
+
+
+def _org_subscription_out(db: Session, org: Organisation) -> SubscriptionOut:
+    """PF3a: the organisation's plan: its live subscription (a hand grant
+    included), else a past-due or paused one to fix; seats 0 without one."""
+    live = org_billing.live_subscription(db, org.id)
+    managed = org_billing.managed_subscription(db, org.id)
+    view = live or (managed if managed and managed.status in ("past_due", "paused") else None)
+    can_manage = bool(
+        managed is not None
+        and managed.provider_customer_id
+        and providers.get_provider(managed.provider, settings).enabled()
+    )
+    assigned = org_billing.seats_assigned(db, org.id)
+    if view is None:
+        return SubscriptionOut(
+            tier="free",
+            interval=None,
+            seats=0,
+            status="none",
+            provider=None,
+            current_period_end=None,
+            cancel_at_period_end=False,
+            founding=False,
+            can_manage=can_manage,
+            org_id=org.id,
+            seats_assigned=assigned,
+        )
+    return SubscriptionOut(
+        tier=view.plan,
+        interval=view.interval,
+        seats=view.seats or 1,
+        status=view.status,
+        provider=view.provider,
+        current_period_end=view.current_period_end,
+        cancel_at_period_end=bool(view.cancel_at_period_end),
+        founding=bool(view.founding),
+        can_manage=can_manage,
+        currency=view.currency,
+        org_id=org.id,
+        seats_assigned=assigned,
+    )
+
+
+def _view(db: Session, user: User, org: Organisation | None) -> SubscriptionOut:
+    return _org_subscription_out(db, org) if org is not None else _subscription_out(db, user)
 
 
 @router.get("/subscription", response_model=SubscriptionOut)
 def subscription(
-    current: User = Depends(get_current_user), db: Session = Depends(get_db)
+    org_id: str | None = Query(default=None, pattern=ORG_ID),
+    current: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
 ) -> SubscriptionOut:
-    return _subscription_out(db, current)
+    return _view(db, current, _org(db, org_id, current))
 
 
-def _live_managed(db: Session, user: User) -> Subscription:
-    sub = service.managed_subscription(db, user)
+def _live_managed(db: Session, user: User, org: Organisation | None = None) -> Subscription:
+    if org is not None:
+        sub = org_billing.managed_subscription(db, org.id)
+    else:
+        sub = service.managed_subscription(db, user)
     if sub is None or not service.is_live(sub):
         raise HTTPException(status_code=404, detail="No subscription to change.")
     return sub
+
+
+def _seats_assigned_conflict(db: Session, org: Organisation | None, assigned: int) -> ContractError:
+    if org is None:
+        return ContractError(
+            "seats_assigned",
+            409,
+            f"{assigned} seats are assigned. Remove people before lowering the count.",
+            {"assigned": assigned},
+        )
+    named, floating = org_billing.assigned(db, org.id)
+    return ContractError(
+        "seats_assigned",
+        409,
+        f"{assigned} of {org.name}'s seats are assigned ({named} named, {floating} floating). "
+        "Unassign seats or shrink the floating pool on the Seats tab before lowering the count.",
+        {"assigned": assigned, "named": named, "floating": floating},
+    )
 
 
 @router.post("/seats", response_model=SubscriptionOut)
@@ -173,8 +261,10 @@ def change_seats(
     current: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> SubscriptionOut:
-    """Change the seats of a per-seat subscription, prorated by the provider."""
-    sub = _live_managed(db, current)
+    """Change the seats of a per-seat subscription, prorated by the provider.
+    Never below the seats given to people (409 `seats_assigned`)."""
+    org = _org(db, payload.org_id, current)
+    sub = _live_managed(db, current, org)
     plan = PLANS.get(sub.plan)
     if plan is None or not plan.per_seat:
         raise _unprocessable(f"{plan.name if plan else 'This'} plan has one seat.")
@@ -182,10 +272,7 @@ def change_seats(
         raise _unprocessable(f"{plan.name} needs at least {plan.min_seats} seats.")
     assigned = service.seats_assigned(db, sub)
     if payload.seats < assigned:
-        raise HTTPException(
-            status_code=409,
-            detail=f"{assigned} seats are assigned. Remove people before lowering the count.",
-        )
+        raise _seats_assigned_conflict(db, org, assigned)
     adapter = providers.get_provider(sub.provider, settings)
     if not adapter.enabled():
         raise HTTPException(status_code=503, detail="Billing changes aren't available right now.")
@@ -196,7 +283,7 @@ def change_seats(
     except _PROVIDER_ERRORS:
         log.exception("seat change failed for subscription %s", sub.id)
         raise _bad_gateway()
-    return _subscription_out(db, current)
+    return _view(db, current, org)
 
 
 @router.post("/change", response_model=SubscriptionOut)
@@ -206,15 +293,23 @@ def change_plan(
     db: Session = Depends(get_db),
 ) -> SubscriptionOut:
     """Move the subscription to another tier or interval, prorated."""
+    org = _org(db, payload.org_id, current)
     if payload.tier is None and payload.interval is None:
         raise _unprocessable("Choose a plan or a billing interval.")
-    sub = _live_managed(db, current)
+    sub = _live_managed(db, current, org)
     tier = payload.tier or sub.plan
     interval = payload.interval or sub.interval or "month"
     try:
         pricing.catalogue_price(tier, interval, sub.currency or "USD")
     except PriceUnavailable as exc:
         raise _price_http(exc)
+    if org is not None:
+        # The seats the new plan keeps (as change_subscription computes them).
+        target = PLANS[tier]
+        seats = max(sub.seats or 1, target.min_seats) if target.per_seat else 1
+        assigned = service.seats_assigned(db, sub)
+        if seats < assigned:
+            raise _seats_assigned_conflict(db, org, assigned)
     adapter = providers.get_provider(sub.provider, settings)
     if not adapter.enabled():
         raise HTTPException(status_code=503, detail="Billing changes aren't available right now.")
@@ -225,7 +320,7 @@ def change_plan(
     except _PROVIDER_ERRORS:
         log.exception("plan change failed for subscription %s", sub.id)
         raise _bad_gateway()
-    return _subscription_out(db, current)
+    return _view(db, current, org)
 
 
 # --- Payments and checkout -------------------------------------------------------------
@@ -233,15 +328,18 @@ def change_plan(
 
 @router.get("/payments", response_model=list[PaymentOut])
 def payment_history(
-    current: User = Depends(get_current_user), db: Session = Depends(get_db)
+    org_id: str | None = Query(default=None, pattern=ORG_ID),
+    current: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
 ) -> list[Payment]:
+    """The caller's own payments, or (PF3a) an organisation's, whoever paid."""
+    org = _org(db, org_id, current)
+    if org is not None:
+        mine = Payment.organisation_id == org.id
+    else:
+        mine = (Payment.user_id == current.id) & Payment.organisation_id.is_(None)
     return list(
-        db.scalars(
-            select(Payment)
-            .where(Payment.user_id == current.id)
-            .order_by(Payment.created_at.desc())
-            .limit(50)
-        )
+        db.scalars(select(Payment).where(mine).order_by(Payment.created_at.desc()).limit(50))
     )
 
 
@@ -283,12 +381,16 @@ def checkout(
     current: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> CheckoutResponse:
+    # PF3a: buying for an organisation is for its owner and billing roles.
+    org = _org(db, payload.org_id, current)
     if payload.consent.version != CONSENT_VERSION:
         raise _unprocessable("The cancellation terms changed. Reload the page and accept them again.")
     plan = PLANS.get(payload.tier)
     if plan is None or not plan.purchasable:
         raise HTTPException(status_code=400, detail="That plan can't be bought online.")
     if payload.provider == "wayl":
+        if org is not None:
+            raise HTTPException(status_code=400, detail="That plan can't be bought this way.")
         return _wayl_checkout(payload, current, db)
 
     currency = payload.currency.upper()
@@ -308,14 +410,26 @@ def checkout(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Online payment isn't available yet.",
         )
-    existing = service.managed_subscription(db, current)
-    if existing is not None and (
-        service.is_live(existing) or existing.status in ("past_due", "paused")
-    ):
-        raise HTTPException(
-            status_code=409,
-            detail="You already have a subscription. Change it, or update its card under Manage.",
-        )
+    if org is not None:
+        # One subscription per organisation; the buyer's own never counts.
+        blocking = org_billing.blocking_subscription(db, org.id)
+        if blocking is not None:
+            name = get_plan(blocking.plan).name
+            detail = (
+                f"{org.name} already has a {name} subscription. Change it, or update its card under Manage."
+                if blocking.provider in service.MANAGED_PROVIDERS
+                else f"{org.name}'s {name} seats were set up by hand. Contact us to change them."
+            )
+            raise ContractError("live_subscription", 409, detail, {"plan": blocking.plan})
+    else:
+        existing = service.managed_subscription(db, current)
+        if existing is not None and (
+            service.is_live(existing) or existing.status in ("past_due", "paused")
+        ):
+            raise HTTPException(
+                status_code=409,
+                detail="You already have a subscription. Change it, or update its card under Manage.",
+            )
 
     discount = None
     code = (payload.coupon or "").strip()
@@ -356,6 +470,7 @@ def checkout(
         seats=seats,
         consent_version=payload.consent.version,
         consent_at=datetime.now(timezone.utc),
+        organisation_id=org.id if org is not None else None,
     )
     try:
         url = adapter.create_checkout(db, current, payment, price, seats, discount)
@@ -399,31 +514,47 @@ def refresh_payment(
 # --- Invoices ----------------------------------------------------------------------------
 
 
-def _pdf_signature(user_id: int, provider: str, invoice_id: str, exp: int) -> str:
-    msg = f"invoice-pdf:{user_id}:{provider}:{invoice_id}:{exp}".encode()
-    return hmac.new(settings.secret_key.encode(), msg, hashlib.sha256).hexdigest()
+def _pdf_signature(
+    user_id: int, provider: str, invoice_id: str, exp: int, org_id: str | None = None
+) -> str:
+    msg = f"invoice-pdf:{user_id}:{provider}:{invoice_id}:{exp}"
+    if org_id:
+        msg += f":org:{org_id}"
+    return hmac.new(settings.secret_key.encode(), msg.encode(), hashlib.sha256).hexdigest()
 
 
-def _pdf_link(user_id: int, provider: str, invoice_id: str) -> str:
+def _pdf_link(user_id: int, provider: str, invoice_id: str, org_id: str | None = None) -> str:
     """A link the browser can open without a session header: signed for this
-    user and invoice, valid one hour. Relative to the API's base URL."""
+    user and invoice (and organisation, PF3a), valid one hour. Relative to
+    the API's base URL."""
     exp = int(time.time()) + PDF_LINK_TTL_S
-    sig = _pdf_signature(user_id, provider, invoice_id, exp)
-    return f"/billing/invoices/{invoice_id}/pdf?u={user_id}&p={provider}&exp={exp}&sig={sig}"
+    sig = _pdf_signature(user_id, provider, invoice_id, exp, org_id)
+    org = f"&o={org_id}" if org_id else ""
+    return f"/billing/invoices/{invoice_id}/pdf?u={user_id}&p={provider}{org}&exp={exp}&sig={sig}"
 
 
 @router.get("/invoices", response_model=list[InvoiceOut])
 def invoices(
-    current: User = Depends(get_current_user), db: Session = Depends(get_db)
+    org_id: str | None = Query(default=None, pattern=ORG_ID),
+    current: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
 ) -> list[InvoiceOut]:
-    """VAT invoices from every provider the user has bought through."""
+    """VAT invoices from every provider the user has bought through: their
+    own, or (PF3a) the organisation's, whichever of its people paid them."""
+    org = _org(db, org_id, current)
     out: list[InvoiceOut] = []
     for name in ("paddle", "stripe"):
         adapter = providers.get_provider(name, settings)
-        if not adapter.enabled() or not service.customer_id(db, current, name):
+        if not adapter.enabled():
+            continue
+        if org is not None:
+            scope = org_billing.org_scope(db, org.id, name)
+        else:
+            scope = org_billing.personal_scope(db, current, name)
+        if scope is None:
             continue
         try:
-            rows = adapter.list_invoices(db, current)
+            rows = adapter.list_invoices(db, current, scope)
         except _PROVIDER_ERRORS:
             log.exception("invoice list failed (%s)", name)
             raise _bad_gateway()
@@ -437,7 +568,7 @@ def invoices(
                     tax_minor=inv.tax_minor,
                     currency=inv.currency,
                     status=inv.status,
-                    pdf_url=inv.pdf_url or _pdf_link(current.id, name, inv.id),
+                    pdf_url=inv.pdf_url or _pdf_link(current.id, name, inv.id, org.id if org else None),
                 )
             )
     out.sort(key=lambda i: i.issued_at or datetime.min.replace(tzinfo=timezone.utc), reverse=True)
@@ -449,12 +580,13 @@ def invoice_pdf(
     invoice_id: str,
     u: int = Query(...),
     p: str = Query(..., max_length=16),
+    o: str | None = Query(default=None, pattern=ORG_ID),
     exp: int = Query(...),
     sig: str = Query(..., max_length=128),
     db: Session = Depends(get_db),
 ) -> RedirectResponse:
     """Redirect to a fresh PDF URL from the provider (signed link only)."""
-    if exp < time.time() or not hmac.compare_digest(sig, _pdf_signature(u, p, invoice_id, exp)):
+    if exp < time.time() or not hmac.compare_digest(sig, _pdf_signature(u, p, invoice_id, exp, o)):
         raise HTTPException(status_code=403, detail="This invoice link has expired. Reload the billing page.")
     user = db.get(User, u)
     try:
@@ -463,8 +595,18 @@ def invoice_pdf(
         adapter = None
     if user is None or adapter is None or not adapter.enabled():
         raise HTTPException(status_code=404, detail="Invoice not found.")
+    scope = None
+    if o:
+        # PF3a: still the organisation's owner or billing member, and its invoice.
+        try:
+            org_billing.require_billing(db, o, user)
+        except ContractError:
+            raise HTTPException(status_code=404, detail="Invoice not found.")
+        scope = org_billing.org_scope(db, o, p)
+        if scope is None:
+            raise HTTPException(status_code=404, detail="Invoice not found.")
     try:
-        url = adapter.invoice_pdf_url(db, user, invoice_id)
+        url = adapter.invoice_pdf_url(db, user, invoice_id, scope)
     except NotSupported:
         raise HTTPException(status_code=404, detail="Invoice not found.")
     except _PROVIDER_ERRORS:
@@ -477,9 +619,18 @@ def invoice_pdf(
 
 
 @router.post("/portal")
-def portal(current: User = Depends(get_current_user), db: Session = Depends(get_db)) -> dict:
-    """The provider's own page for cards and cancellation."""
-    sub = service.managed_subscription(db, current)
+def portal(
+    payload: PortalRequest | None = None,
+    current: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    """The provider's own page for cards and cancellation (PF3a: of an
+    organisation's subscription with `{"org_id": …}`)."""
+    org = _org(db, payload.org_id if payload else None, current)
+    if org is not None:
+        sub = org_billing.managed_subscription(db, org.id)
+    else:
+        sub = service.managed_subscription(db, current)
     if sub is None or not sub.provider_customer_id:
         raise HTTPException(status_code=404, detail="No subscription to manage.")
     adapter = providers.get_provider(sub.provider, settings)

@@ -12,6 +12,7 @@ from ..deps import get_current_user
 from ..models import User
 from ..schemas import GoogleLogin, Token, UserCreate, UserLogin, UserOut
 from ..security import create_access_token, hash_password, verify_password
+from ..sso import service as sso  # PF3: the "SSO required" policy
 from ..users import user_out
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -25,6 +26,10 @@ def _token_for(user: User) -> Token:
 @router.post("/register", response_model=Token, status_code=status.HTTP_201_CREATED)
 def register(payload: UserCreate, db: Session = Depends(get_db)) -> Token:
     email = payload.email.lower()
+    # PF3: addresses of an organisation that requires SSO sign up through it.
+    required = sso.required_org(db, email)
+    if required is not None:
+        raise sso.use_sso(required, status.HTTP_403_FORBIDDEN)
     if db.scalar(select(User).where(User.email == email)) is not None:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
@@ -41,6 +46,11 @@ def register(payload: UserCreate, db: Session = Depends(get_db)) -> Token:
 def login(payload: UserLogin, db: Session = Depends(get_db)) -> Token:
     email = payload.email.lower()
     user = db.scalar(select(User).where(User.email == email))
+    # PF3: an organisation that requires SSO refuses passwords for its domains;
+    # its owners keep a one-time break-glass code.
+    required = sso.required_org(db, email)
+    if required is not None and not payload.break_glass_code:
+        raise sso.use_sso(required)
     if user is not None and not user.hashed_password:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -51,6 +61,10 @@ def login(payload: UserLogin, db: Session = Depends(get_db)) -> Token:
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect email or password.",
         )
+    if required is not None:
+        from ..licence import clock
+
+        sso.use_break_glass(db, required, user, payload.break_glass_code, clock.now())
     return _token_for(user)
 
 
@@ -96,6 +110,11 @@ def google_login(payload: GoogleLogin, db: Session = Depends(get_db)) -> Token:
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Your Google account has no verified email address.",
         )
+
+    # PF3: an organisation that requires SSO refuses Google for its domains.
+    required = sso.required_org(db, email)
+    if required is not None:
+        raise sso.use_sso(required)
 
     user = db.scalar(select(User).where(User.google_sub == sub))
     if user is None:

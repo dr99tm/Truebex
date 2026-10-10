@@ -102,6 +102,13 @@ _ADDED_COLUMNS: dict[str, list[tuple[str, str]]] = {
 _ADDED_COLUMNS["users"] += [("author_id", "VARCHAR(32)"), ("trial_used_at", _TIMESTAMP)]
 # subscriptions.seats (NULL = 1) is in the PF2 block above: PF2 writes it.
 
+# PF3 (organisations): an organisation's paid tier; PF2 sets it from
+# custom_data.org_id. NULL = the user's own (personal) subscription.
+_ADDED_COLUMNS.setdefault("subscriptions", []).append(("organisation_id", "VARCHAR(32)"))
+
+# PF3a (organisation billing): the organisation a checkout buys for.
+_ADDED_COLUMNS.setdefault("payments", []).append(("organisation_id", "VARCHAR(32)"))
+
 
 def _migrate(bind: Engine) -> None:
     insp = inspect(bind)
@@ -126,6 +133,13 @@ def _migrate(bind: Engine) -> None:
                 "ON users (author_id)"
             )
         )
+        # PF3
+        conn.execute(
+            text(
+                "CREATE INDEX IF NOT EXISTS ix_subscriptions_organisation_id "
+                "ON subscriptions (organisation_id)"
+            )
+        )
     # PF2: one row per provider subscription. Files with duplicates from before
     # keep working without the index (logged); billing.service retries on it.
     try:
@@ -145,6 +159,8 @@ def init_db(bind: Engine | None = None) -> None:
     from . import models  # noqa: F401  (ensures models are registered)
     from .licence import models as _licence_models  # noqa: F401  (PF1)
     from .releases import models as _release_models  # noqa: F401  (PF1)
+    from .orgs import models as _org_models  # noqa: F401  (PF3)
+    from .sso import models as _sso_models  # noqa: F401  (PF3)
     from . import idempotency as _idempotency  # noqa: F401  (PF14 plumbing, first user PF4)
     from .projects import models as _project_models  # noqa: F401  (PF4)
     from .uploads import models as _upload_models  # noqa: F401  (PF5's, PF4 landed first)

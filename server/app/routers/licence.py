@@ -1,4 +1,4 @@
-"""The licence API (contract licence-api v1.0, endpoints 5.1-5.10 and 5.12).
+"""The licence API (contract licence-api v1.0, endpoints 5.1-5.12).
 
 Every route echoes `X-Truebex-Contract: licence-api/1.0` and answers errors
 with the shared envelope (app/contract_http.py). 5.11 (`POST /licence/release`,
@@ -117,7 +117,9 @@ def activate(
     return {
         "device_id": device.device_id,
         "device_token": token,
-        "entitlement": service.issue(db, current, device, now),
+        # A full floating pool does not stop activation: the device gets its
+        # token and the personal seat; its next 5.5 asks for a lease again.
+        "entitlement": service.issue(db, current, device, now, when_full="free"),
     }
 
 
@@ -201,6 +203,20 @@ def deactivate(caller: DeviceCaller = Depends(get_device_any), db: Session = Dep
     devices.deactivate(db, device, "signed_out", clock.now())
     db.commit()
     return {"device_id": device.device_id, "deactivated_at": clock.rfc3339(device.deactivated_at)}
+
+
+# --- 5.11 floating seats (PF3) -----------------------------------------------------
+
+
+@router.post("/release", status_code=status.HTTP_204_NO_CONTENT, response_class=Response)
+def release(caller: DeviceCaller = Depends(get_device), db: Session = Depends(get_db)) -> None:
+    """5.11: hand this device's floating seat back at exit (repeating it is
+    harmless); 409 `not_floating` when the device's seat does not float."""
+    from ..orgs import seats as org_seats
+
+    if not org_seats.release(db, caller.device, clock.now()):
+        raise ContractError("not_floating", 409, "This device's seat is not a floating seat.")
+    # None: the 204 keeps the X-Truebex-Contract header the router set.
 
 
 # --- 5.12 published keys ----------------------------------------------------------

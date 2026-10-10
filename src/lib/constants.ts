@@ -1011,6 +1011,49 @@ export const CHANGELOG = {
   downloadCta: "Download the latest release",
 } as const;
 
+// PF3: single sign-on on the Log in page, the SSO return page (/login/sso/)
+// and the invitation page (/invite/). Account pages are noindex.
+export const SSO_LOGIN = {
+  button: "Continue with SSO",
+  title: "Sign in with your organisation",
+  help: "Enter your work e-mail. If your organisation uses single sign-on, we send you to its sign-in page.",
+  emailLabel: "Work e-mail",
+  emailPlaceholder: "name@practice.com",
+  submit: "Continue",
+  busy: "Finding your organisation…",
+  notFound: "Single sign-on is not set up for this e-mail domain. Sign in with your password or Google instead.",
+  back: "Back to the other ways to sign in",
+  breakGlassLabel: "Break-glass code (owners only)",
+  breakGlassHelp: "Your organisation requires single sign-on. Owners can sign in once with a password and the break-glass code.",
+} as const;
+
+export const SSO_CALLBACK = {
+  metaTitle: "Signing you in",
+  working: "Signing you in…",
+  retry: "Back to Log in",
+} as const;
+
+export const INVITE_PAGE = {
+  metaTitle: "Join an organisation",
+  h1: "Join an organisation",
+  loading: "Checking your invitation…",
+  missing: "This invitation link is not valid. Ask the person who invited you for a new one.",
+  invited: (org: string, role: string) => `You're invited to join ${org} as ${role}.`,
+  seatNamed: "A named seat is waiting for you.",
+  seatFloating: "You can use the organisation's shared (floating) seats.",
+  signInFirst: (email: string) => `Sign in or create an account with ${email} to accept.`,
+  signIn: "Log in",
+  signUp: "Create an account",
+  wrongAccount: (email: string, invited: string) =>
+    `You're signed in as ${email}, but this invitation is for ${invited}. Sign out and sign in with that address.`,
+  signOut: "Sign out",
+  accept: "Accept invitation",
+  accepting: "Joining…",
+  accepted: (org: string) => `You've joined ${org}.`,
+  open: "Open the organisation",
+  expired: "This invitation has expired, was withdrawn or was already used. Ask for a new one.",
+} as const;
+
 // ---------------------------------------------------------------------------
 // Footer, language switch, social accounts.
 // ---------------------------------------------------------------------------
@@ -1538,4 +1581,25 @@ export const PROJECT_INVITE = {
   unknown: "This invitation is unknown or was already used. Ask the project's owner to invite you again.",
   already: "You're already on this project.",
   privacy: "The link works once, for whoever accepts it signed in. Accepting shares your name and email with the people on the project.",
+} as const;
+
+// PF3a: an organisation's billing page (/dashboard/billing/?org=<id>), opened
+// from the organisation console's Billing link. Owners and billing members
+// buy and change seats there; everyone else in the organisation reads the plan.
+export const ORG_BILLING = {
+  description: "Plan, seats, invoices and payments of",
+  console: "Organisation console",
+  loading: "Loading the organisation…",
+  invalid: "This billing link is incomplete. Open Billing from the organisation console.",
+  noPlan: "No seats yet",
+  noPlanHint: "Buy seats below, then give them to people on the Seats tab.",
+  assigned: "assigned",
+  assignedHint: "Named seats and the floating pool count as given to people. Unassign seats or shrink the pool on the Seats tab before lowering the count.",
+  seatsTab: "Open the Seats tab",
+  readOnly: "Only an owner or a billing member of this organisation can change its plan and see its invoices.",
+  paidUntil: "Paid until",
+  paid: "Payment received. The organisation's seats are active.",
+  yourOrgs: "Organisations you buy for",
+  yourOrgsHint: "Seats for an organisation are bought and changed on its own billing page.",
+  openBilling: "Billing",
 } as const;

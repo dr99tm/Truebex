@@ -13,6 +13,7 @@ from datetime import datetime
 from sqlalchemy.orm import Session
 
 from ..billing.service import TRIAL_PROVIDER, effective_plan, live_subscription
+from ..billing.service import seats_assigned as subscription_seats
 from ..models import Subscription, User
 from ..plans import get_plan
 from . import clock
@@ -39,7 +40,8 @@ class Seat:
     subscription: Subscription | None = None
 
 
-def seat_source(db: Session, user: User) -> Seat:
+def personal_seat(db: Session, user: User) -> Seat:
+    """The user's own seat: their live subscription, the trial, or Free."""
     plan_id = effective_plan(db, user)
     tier = get_plan(plan_id)
     limit = tier.limits.get("devices")
@@ -58,6 +60,28 @@ def seat_source(db: Session, user: User) -> Seat:
         ends_at=period_end if sub.provider in FIXED_TERM_PROVIDERS else None,
         period_end=period_end,
         seats_total=sub.seats or 1,
-        seats_assigned=1,
+        seats_assigned=subscription_seats(db, sub),
         subscription=sub,
     )
+
+
+# --- PF3: named and floating seats from organisations ------------------------------
+
+
+def seat_source(db: Session, user: User) -> Seat:
+    """The best seat the user holds, by tier rank: their own (personal, trial
+    or Free) or a named or floating seat of an organisation they belong to.
+    No lease is taken here; `claim` does that for a device."""
+    from ..orgs import seats as org_seats
+
+    return org_seats.best_seat(db, user, personal_seat(db, user))
+
+
+def claim(db: Session, user: User, device, seat: Seat, now: datetime, *, when_full: str = "raise") -> Seat:
+    """Make `seat` this device's: a floating seat takes or renews a lease
+    (409 `no_seat_available` when the pool is full and nothing else is held,
+    or the personal seat with when_full="free"); any other seat hands back the
+    device's leases."""
+    from ..orgs import seats as org_seats
+
+    return org_seats.claim(db, user, device, seat, now, when_full=when_full)

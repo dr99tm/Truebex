@@ -31,6 +31,7 @@ around it on the web:
 - [Google sign-in](#google-sign-in)
 - [API keys and usage](#api-keys-and-usage)
 - [Licences, releases and downloads](#licences-releases-and-downloads)
+- [Organisations, seats and SSO](#organisations-seats-and-sso)
 - [Cloud projects](#cloud-projects)
 - [Billing: Paddle and Stripe](#billing-paddle-and-stripe)
 - [Brand, content and SEO](#brand-content-and-seo)
@@ -250,10 +251,12 @@ These end up in the public JavaScript, so never put secrets in them.
 | `STORAGE_BACKEND`, `STORAGE_DIR`, `STORAGE_URL_SECRET` | `local` files under `./storage`, served by signed `/files` URLs on `API_URL`, or `s3` |
 | `S3_*`, `CDN_BASE_URL` | The S3-compatible bucket (`STORAGE_BACKEND=s3`) and the CDN for its public prefixes |
 | `MAIL_BACKEND`, `MAIL_FROM`, `SUPPORT_EMAIL`, `SMTP_*` | Mail: `console` locally, `smtp` on the VM |
-| `BACKGROUND_TASKS` | `inline` (default), `worker` (the VM's worker process) or `off` (tests): telemetry rollup and retention, symbolication, link purge, 90-day device lapse, founding holds, billing reconcile, backup checks |
+| `BACKGROUND_TASKS` | `inline` (default), `worker` (the VM's worker process) or `off` (tests): telemetry rollup and retention, symbolication, link purge, 90-day device lapse, founding holds, billing reconcile, backup checks, floating-seat lease and invite expiry, SSO request and audit purges |
 | `RATELIMIT_BACKEND` | `memory` (one process) or `db` (the VM's two API processes) |
 | `ALERT_EMAIL`, `ALERT_PUSH_URL`, `BACKUP_EXPECTED` | Alerts from the server's own backup check |
 | `TELEMETRY_EVENTS_ENABLED`, `TELEMETRY_INGESTION_ENABLED` | The usage-events kill switch; telemetry as a whole (off → 503) |
+| `SSO_SECRET_KEY` | Fernet key sealing organisations' SSO client secrets (empty derives one from `SECRET_KEY`) |
+| `SAML_SP_ENTITY_ID`, `AUDIT_RETENTION_DAYS` | This service's SAML entity id (empty: each organisation's metadata URL); how long the audit log keeps events (730) |
 | `PROJECTS_PRESENCE_BACKEND` | Project presence: `memory` (one process) or `db` (the VM's two API processes) |
 | `PROJECTS_MAX_WAITING_PULLS` | Long-poll pulls one account may hold open at once, per API process (20) |
 | `SHARE_MAX_BYTES` | Ceiling on one share upload's total bytes (the upload protocol; 1 GiB) |
@@ -336,6 +339,19 @@ Contract endpoints (`/telemetry/*`) answer errors in the shared envelope
 | POST | `/projects/invites/accept` | session | Accept an emailed invitation (`/invite/project/?t=`) |
 | POST / PUT / GET | `/uploads`, `/uploads/{id}/files/{sha256}/parts/{n}`, `/uploads/{id}` | session or device | Resumable uploads in 8 MiB parts (`share-bundle/1.0`) |
 | GET / PUT | `/files/{key}?exp=&sig=` | signed URL | Local storage downloads and uploads (HMAC, expiring) |
+| POST | `/licence/release` | **device** | Hand a floating seat back at exit (contract 5.11) |
+| POST / GET | `/orgs` | session | Create an organisation (you become owner) · your organisations |
+| GET / PATCH / DELETE | `/orgs/{id}` | member / admin / owner | Details · rename · delete (409 with a live subscription) |
+| GET · PATCH / DELETE | `/orgs/{id}/members` · `/orgs/{id}/members/{user_id}` | member · admin (or self) | Members · change role, remove, leave (409 `last_owner`) |
+| POST / GET / DELETE | `/orgs/{id}/invites`, `…/{invite_id}`, `…/{invite_id}/resend` | admin | Invite by e-mail (7-day link), list, revoke, resend |
+| POST | `/invites/preview` · `/invites/accept` | — · session | What `/invite/` shows · accept with the invited address |
+| GET · PUT | `/orgs/{id}/seats` · `/seats/settings` · `/seats/{user_id}` | admin | Seats and leases · how many float · give a named / floating seat |
+| GET | `/orgs/{id}/usage?month=` · `/orgs/{id}/audit?kind=&cursor=&format=csv` | admin | Usage per member · the audit log (JSON or CSV) |
+| GET / PUT / DELETE | `/orgs/{id}/sso` · POST `/orgs/{id}/sso/break-glass` | owner | OIDC or SAML connection (secrets write-only) · a new break-glass code |
+| POST / GET / DELETE | `/orgs/{id}/domains`, `…/{domain}/verify` | owner | E-mail domains, verified by a DNS TXT record |
+| GET | `/auth/sso/start?email=&next=` | — | 302 to the organisation's identity provider (`format=json` → `{url}`) |
+| GET · POST | `/auth/sso/oidc/callback` · `/auth/sso/saml/{slug}/acs` | `state` · signed assertion | Finish SSO → `/login/sso/#token=…` |
+| GET | `/auth/sso/saml/{slug}/metadata` | — | SP metadata XML |
 
 ### Running in production
 
@@ -434,13 +450,53 @@ retry_after_s, data}`.
   cd server
   .venv\Scripts\python.exe scripts\make_signing_key.py --kind rel --out D:\keys\rel-2026-10.json   # once; keep it off the API host
   .venv\Scripts\python.exe scripts\publish_release.py --version 1.1.0 --channel stable --platform win64 `
-      --file D:\builds\Truebex-Setup-1.1.0.exe --notes notes.md --key-file D:\keys\rel-2026-10.json
+      --file D:\builds\Truebex-Setup-1.1.0.exe --notes notes.md --key-file D:\keys\rel-2026-10.json `
+      --symbols D:\builds\1.1.0\Symbols   # the build's .pdb / .sym files, for crash symbolication
   cd ..; npm run sync:releases   # then build and deploy the site
   ```
 
   The feed (`/releases/feed`) serves the manifests exactly as signed; downloads
   get a 15-minute signed URL and need no account. Check any envelope or
   manifest with `python -m app.licence.signing verify <file> [--keys <url>]`.
+
+## Organisations, seats and SSO
+
+A practice buys seats once and runs them itself at `/dashboard/organisation/`
+(the Workspace switcher above the dashboard navigation picks Personal or an
+organisation). Roles: owner, admin, billing, member; at least one owner always.
+
+- **Seats.** The organisation's tier and seat count come from a
+  `subscriptions` row with `organisation_id` set (PF2 sets it from checkout;
+  until then, and for Enterprise, by hand). Of those seats, the Seats tab
+  decides how many float; the rest are named. `seat_source(user)` picks the
+  best of the person's own plan and their organisation seats by tier rank;
+  an organisation's tier never reaches `users.plan`.
+- **Floating seats.** A floating member's device takes a lease with its
+  entitlement (`refresh_after` 30 min, `expires_at` 2 h) and renews it at each
+  refresh; `POST /licence/release` hands it back at exit; a lease not renewed
+  lapses after 2 h (`licence.leases.expire`). A full pool answers 409
+  `no_seat_available`. Leases are taken under the organisation row's lock, so
+  two devices never get the last seat.
+- **Audit log.** Organisation events plus the members' licence events, kept 24
+  months (`AUDIT_RETENTION_DAYS`), exportable as CSV.
+- **SSO (Enterprise).** OIDC (code + PKCE) or SAML 2.0 (signed assertions,
+  checked with `signxml`), one connection per organisation; only verified
+  domains (DNS TXT `_truebex-verification.<domain>`) route sign-in, and people
+  join as members just in time. "Require SSO" refuses password and Google
+  sign-in for those domains; owners keep a one-time break-glass code. The
+  session returns to `/login/sso/` in the URL fragment.
+- **Hand tools** (in `server/`):
+
+  ```powershell
+  .venv\Scripts\python.exe scripts\grant_org_seats.py --org studio-north --tier team --seats 2 [--until 2027-10-31]
+  .venv\Scripts\python.exe scripts\verify_org_domain.py --org studio-north --domain example.com   # local tests only
+  .venv\Scripts\python.exe scripts\try_device.py --email b@example.com --password … --name "Test PC 2" --refresh   # act as the app
+  .venv\Scripts\python.exe -m uvicorn tests.mock_oidc:app --port 8098       # mock OIDC provider (tests)
+  .venv\Scripts\python.exe -m uvicorn tests.mock_saml_idp:app --port 8099   # mock SAML IdP (tests)
+  ```
+
+  With `MAIL_BACKEND=console` (the default) invitation e-mails print in the API
+  console.
 
 ---
 
@@ -610,3 +666,33 @@ a Google Sheet. See [`google-apps-script/README.md`](google-apps-script/README.m
 | `npm run dev` exhausts RAM on this PC | Use build + static server for local checks | — |
 | The demo form can't detect failures (`no-cors`) | It always shows "Request received!" | `CTAContact.tsx` |
 | Stale `gh-pages` branch | Confusing; not served | — |
+
+---
+
+## Organisation billing (PF3a)
+
+Organisations buy and change seats through the same billing as people. The
+organisation console's **Billing** link opens `/dashboard/billing/?org=<id>`:
+an owner or a billing member buys there (Team preselected), changes seats,
+plan or interval, opens the provider's portal and downloads the
+organisation's invoices; admins and members see the plan read-only.
+
+- **API.** `POST /billing/checkout`, `GET /billing/subscription`,
+  `POST /billing/seats`, `POST /billing/change`, `POST /billing/portal`,
+  `GET /billing/invoices` and `GET /billing/payments` take an optional
+  `org_id` (32 hex): 403 for admin and member, 404 outside the organisation.
+  One subscription per organisation (409 `live_subscription`); a person's own
+  subscription and their organisations' never block each other.
+- **Attaching.** The checkout's payment row records `organisation_id`, and
+  Paddle `custom_data` / Stripe metadata carry `org_id`, but a subscription
+  becomes the organisation's only from our payment row, matched by the
+  provider's own link (Paddle: the subscription's originating transaction;
+  Stripe: our Checkout Session). `custom_data` alone never attaches one
+  (`server/app/billing/org_billing.py`).
+- **Seats.** `service.seats_assigned` = named seats assigned + the floating
+  pool; fewer seats than that answers 409 `seats_assigned`. Members get the
+  organisation's tier through their named or floating seat; the buyer's own
+  plan never changes. `/licence/account` reports `seats {total, assigned}`.
+- **Locally**, with `tests/mock_paddle.py` as in the billing section: buy
+  Team for an organisation from its billing page, pay on the mock's page, and
+  you return to `/dashboard/billing/?org=<id>`.

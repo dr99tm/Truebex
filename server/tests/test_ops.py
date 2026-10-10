@@ -249,8 +249,32 @@ def _fresh_python(code: str, tmp_path) -> str:
     return out.stdout
 
 
+@pytest.mark.skipif(sys.platform != "win32", reason="WMI exists only on Windows")
+def test_fresh_process_never_queries_wmi(tmp_path):
+    # SQLAlchemy calls platform.machine() at import. Python 3.12 answers it with
+    # a WMI query that times out on a busy machine; the fallback that follows can
+    # kill the process with 0xC000070A (app/__init__.py). No server process may
+    # reach WMI, whatever imported `platform` first.
+    spy = (
+        "import json, _wmi; calls = []; real = _wmi.exec_query; "
+        "_wmi.exec_query = lambda q: calls.append(q) or real(q); "
+    )
+    probe = "; import platform; platform.uname(); platform.processor(); print(json.dumps(calls))"
+    for entry in (
+        "from scripts import sqlite_to_postgres",  # imports SQLAlchemy before app
+        "import platform; from app import tasks",  # platform first, as uvicorn does
+        "import app.main",
+        # PF3's hand scripts, as `python scripts\<name>.py` loads them (scripts/ first on sys.path).
+        "import runpy, sys; sys.path.insert(0, 'scripts'); runpy.run_path('scripts/grant_org_seats.py')",
+        "import runpy, sys; sys.path.insert(0, 'scripts'); runpy.run_path('scripts/verify_org_domain.py')",
+    ):
+        assert json.loads(_fresh_python(spy + entry + probe, tmp_path)) == [], entry
+    machine = json.loads(_fresh_python("import json, app, platform; print(json.dumps(platform.machine()))", tmp_path))
+    assert machine == (os.environ.get("PROCESSOR_ARCHITEW6432") or os.environ["PROCESSOR_ARCHITECTURE"])
+
+
 def test_worker_process_registers_every_feature_job(tmp_path):
-    # The worker imports only app.worker: PF1's and PF2's jobs must still run there.
+    # The worker imports only app.worker: PF1's, PF2's and PF3's jobs must still run there.
     names = set(json.loads(_fresh_python("import json; from app import tasks; print(json.dumps(tasks.registered()))", tmp_path)))
     for job in (
         "telemetry.rollup",
@@ -259,6 +283,10 @@ def test_worker_process_registers_every_feature_job(tmp_path):
         "licence.devices.lapse",
         "billing.founding.expire",
         "billing.reconcile",
+        "licence.leases.expire",
+        "orgs.invites.expire",
+        "audit.purge",
+        "sso.requests.purge",
     ):
         assert job in names, job
 
@@ -459,12 +487,17 @@ def _seed_sqlite(url: str) -> None:
 
 
 def test_sqlite_to_postgres_lists_every_feature_table(tmp_path):
-    # A fresh process (the cutover runs the script on its own): PF1's tables too.
+    # A fresh process (the cutover runs the script on its own): PF1's and PF3's tables too.
     code = "import json; from scripts import sqlite_to_postgres as s; print(json.dumps([t.name for t in s._models()]))"
     tables = json.loads(_fresh_python(code, tmp_path))
-    for table in ("users", "subscriptions", "provider_prices", "devices", "releases", "telemetry_events", "crash_reports"):
+    for table in (
+        "users", "subscriptions", "provider_prices", "devices", "releases", "telemetry_events", "crash_reports",
+        "organisations", "org_members", "org_invites", "seat_assignments", "floating_leases", "org_domains",
+        "audit_events", "sso_connections", "sso_requests", "sso_assertions_seen",
+    ):
         assert table in tables, table
     assert tables.index("users") < tables.index("devices")  # parents first
+    assert tables.index("organisations") < tables.index("org_members")
 
 
 def test_sqlite_to_postgres_on_sqlite_target_and_precheck(tmp_path):

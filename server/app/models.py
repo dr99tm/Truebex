@@ -161,6 +161,10 @@ class Subscription(Base):
     last_event_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    # PF3: set when an organisation owns this subscription (its tier and seats
+    # reach the organisation's members through seat_source, never users.plan);
+    # None = the user's own.
+    organisation_id: Mapped[str | None] = mapped_column(String(32), index=True, nullable=True)
 
 
 class Payment(Base):
@@ -199,6 +203,10 @@ class Payment(Base):
         DateTime(timezone=True), nullable=True
     )
     invoice_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    # PF3a: the organisation this checkout buys for (None = the buyer's own).
+    # The subscription the provider creates from it is attached to that
+    # organisation from this row, never from custom_data.
+    organisation_id: Mapped[str | None] = mapped_column(String(32), nullable=True)
 
 
 class ProviderPrice(Base):

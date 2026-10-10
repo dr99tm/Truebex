@@ -3,16 +3,29 @@
 import { createContext, useContext, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Activity, CreditCard, FolderOpen, Gauge, KeyRound, LayoutGrid, BookOpen, TrendingUp } from "lucide-react";
+import { CreditCard, FolderOpen, Gauge, KeyRound, LayoutGrid, BookOpen, TrendingUp } from "lucide-react";
+import {
+  Activity,
+  Building2,
+  Fingerprint,
+  ScrollText,
+  Armchair,
+  UserPlus,
+  Users,
+} from "lucide-react";
+import { OrgProvider, OrgSwitcher, useOrgs } from "@/components/dashboard/OrgContext";
 import { useCurrentUser } from "@/lib/useAuth";
 import { getToken } from "@/lib/auth";
 import type { User } from "@/lib/auth";
+import { isAdmin, type Role } from "@/lib/orgs";
 import { cn } from "@/lib/utils";
 
 interface NavItem {
   href: string;
   label: string;
   icon: typeof LayoutGrid;
+  /** Active only on this exact path (a section's overview). */
+  exact?: boolean;
 }
 
 // The developer pages keep their URLs (/dashboard/keys/, /dashboard/usage/):
@@ -36,8 +49,27 @@ const NAV_GROUPS: { label: string | null; items: NavItem[] }[] = [
   },
 ];
 
+// PF3: the Organisation group. Everyone reaches the overview (to create or
+// pick one); the console pages follow the role in the selected organisation.
+function orgGroup(role: Role | null): { label: string; items: NavItem[] } {
+  const items: NavItem[] = [
+    { href: "/dashboard/organisation/", label: "Organisation", icon: Building2, exact: true },
+  ];
+  if (role) items.push({ href: "/dashboard/organisation/members/", label: "Members", icon: Users });
+  if (isAdmin(role)) {
+    items.push(
+      { href: "/dashboard/organisation/invites/", label: "Invites", icon: UserPlus },
+      { href: "/dashboard/organisation/seats/", label: "Seats", icon: Armchair },
+      { href: "/dashboard/organisation/usage/", label: "Member usage", icon: Activity },
+      { href: "/dashboard/organisation/audit/", label: "Audit log", icon: ScrollText }
+    );
+  }
+  if (role === "owner") items.push({ href: "/dashboard/organisation/sso/", label: "SSO", icon: Fingerprint });
+  return { label: "Organisation", items };
+}
+
 // Shown to admins only (users.is_admin); the API enforces it either way.
-const ADMIN_GROUP = {
+const ADMIN_GROUP: { label: string; items: NavItem[] } = {
   label: "Admin",
   items: [
     { href: "/dashboard/admin/growth/", label: "Growth", icon: TrendingUp },
@@ -93,19 +125,36 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
     );
   }
 
-  const groups = user.is_admin ? [...NAV_GROUPS, ADMIN_GROUP] : NAV_GROUPS;
-  const nav = groups.flatMap((g) => g.items);
-
-  const isActive = (href: string) =>
-    href === "/dashboard/"
-      ? pathname === "/dashboard" || pathname === "/dashboard/"
-      : pathname.startsWith(href.replace(/\/$/, ""));
-
   return (
     <UserContext.Provider value={user}>
+      <OrgProvider>
+        <ShellLayout pathname={pathname}>{children}</ShellLayout>
+      </OrgProvider>
+    </UserContext.Provider>
+  );
+}
+
+function ShellLayout({ pathname, children }: { pathname: string; children: React.ReactNode }) {
+  const user = useDashboardUser();
+  const { current } = useOrgs();
+  const groups = [
+    NAV_GROUPS[0],
+    orgGroup(current?.role ?? null),
+    ...NAV_GROUPS.slice(1),
+    ...(user.is_admin ? [ADMIN_GROUP] : []),
+  ];
+  const NAV = groups.flatMap((g) => g.items);
+  const trimmed = pathname.replace(/\/$/, "");
+  const isActive = (item: NavItem) =>
+    item.href === "/dashboard/" || item.exact
+      ? trimmed === item.href.replace(/\/$/, "")
+      : pathname.startsWith(item.href.replace(/\/$/, ""));
+
+  return (
       <div className="mx-auto flex min-h-screen max-w-7xl gap-8 px-4 pb-24 pt-24 md:px-8">
         <aside className="hidden w-56 shrink-0 md:block">
           <nav aria-label="Dashboard" className="sticky top-24">
+            <OrgSwitcher className="mb-6" />
             {groups.map((group) => (
               <div key={group.label ?? "main"} className={group.label ? "mt-6" : undefined}>
                 {group.label && (
@@ -114,14 +163,16 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
                   </p>
                 )}
                 <ul className="space-y-1">
-                  {group.items.map(({ href, label, icon: Icon }) => (
+                  {group.items.map((item) => {
+                    const { href, label, icon: Icon } = item;
+                    return (
                     <li key={href}>
                       <Link
                         href={href}
-                        aria-current={isActive(href) ? "page" : undefined}
+                        aria-current={isActive(item) ? "page" : undefined}
                         className={cn(
                           "flex items-center gap-3 rounded-[var(--radius-button)] px-3 py-2 text-sm transition-colors",
-                          isActive(href)
+                          isActive(item)
                             ? "bg-accent/10 text-accent"
                             : "text-text-secondary hover:bg-white/5 hover:text-text-primary"
                         )}
@@ -130,7 +181,8 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
                         {label}
                       </Link>
                     </li>
-                  ))}
+                    );
+                  })}
                 </ul>
               </div>
             ))}
@@ -138,31 +190,31 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
         </aside>
 
         <div className="min-w-0 flex-1">
+          <OrgSwitcher className="mb-4 md:hidden" />
           {/* Mobile tabs */}
           <nav
             aria-label="Dashboard"
             className="-mx-4 mb-6 flex gap-1 overflow-x-auto border-b border-border px-4 md:hidden"
           >
-            {nav.map(({ href, label }) => (
+            {NAV.map((item) => (
               <Link
-                key={href}
-                href={href}
-                aria-current={isActive(href) ? "page" : undefined}
+                key={item.href}
+                href={item.href}
+                aria-current={isActive(item) ? "page" : undefined}
                 className={cn(
                   "whitespace-nowrap border-b-2 px-3 py-2 text-sm",
-                  isActive(href)
+                  isActive(item)
                     ? "border-accent text-accent"
                     : "border-transparent text-text-secondary"
                 )}
               >
-                {label}
+                {item.label}
               </Link>
             ))}
           </nav>
           <main>{children}</main>
         </div>
       </div>
-    </UserContext.Provider>
   );
 }
 

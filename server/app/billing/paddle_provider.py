@@ -13,7 +13,11 @@ Trust: Paddle.js can open a checkout with any of our price ids and any
 `custom_data` using the public client token, so `custom_data` only says which
 account to credit. The tier, interval and founding price always come from
 the price paid (provider_prices); a price we did not sync grants nothing, and
-a payment row is matched only by its own transaction id.
+a payment row is matched only by its own transaction id. An organisation
+(PF3a, `custom_data.org_id`) is attached only from our payment row, matched
+by the subscription's originating transaction (`transaction_id` on
+subscription.created, `subscription_id` on our transaction), never from
+custom_data (billing/org_billing.py).
 """
 
 import hashlib
@@ -31,10 +35,11 @@ from sqlalchemy.orm import Session
 
 from ..config import Settings
 from ..models import Payment, ProviderPrice, Subscription, User
-from . import service
+from . import org_billing, service
 from .base import (
     BillingProvider,
     Invoice,
+    InvoiceScope,
     ProviderError,
     WebhookError,
     parse_time,
@@ -188,19 +193,22 @@ class PaddleProvider(BillingProvider):
     ) -> str:
         if price is None:
             raise ProviderError("Paddle checkout needs a provider price")
+        custom = {
+            "user_id": str(user.id),
+            "reference": payment.reference,
+            "tier": payment.plan,
+            "interval": payment.interval or "",
+            "founding": "1" if service.is_founding_reference(db, payment.reference) else "0",
+        }
+        if payment.organisation_id:
+            # PF3a: shown in Paddle and echoed back; attaching reads our payment row.
+            custom["org_id"] = payment.organisation_id
         body: dict[str, Any] = {
             "items": [{"price_id": price.provider_price_id, "quantity": seats}],
             "customer_id": self._customer_id(db, user),
             "currency_code": payment.currency,
             "collection_mode": "automatic",
-            "custom_data": {
-                "user_id": str(user.id),
-                "reference": payment.reference,
-                "tier": payment.plan,
-                "interval": payment.interval or "",
-                "founding": "1" if service.is_founding_reference(db, payment.reference) else "0",
-                # PF3 adds "org_id" for organisation-owned subscriptions.
-            },
+            "custom_data": custom,
             "checkout": {"url": f"{self.settings.site_url}/checkout/"},
         }
         if discount:
@@ -210,7 +218,9 @@ class PaddleProvider(BillingProvider):
         url = (data.get("checkout") or {}).get("url") or (
             f"{self.settings.site_url}/checkout/?_ptxn={data['id']}"
         )
-        return f"{url}{'&' if '?' in url else '?'}ref={payment.reference}"
+        url = f"{url}{'&' if '?' in url else '?'}ref={payment.reference}"
+        # Back on the organisation's billing page after paying.
+        return f"{url}&org={payment.organisation_id}" if payment.organisation_id else url
 
     # --- Applying Paddle state ------------------------------------------------------
 
@@ -244,20 +254,59 @@ class PaddleProvider(BillingProvider):
             db.commit()
             if any(row.founding for row in self._price_rows(db, txn.get("items") or [])):
                 service.count_founding(db, payment.reference, payment.user_id)
+            self._attach_from_transaction(db, payment, str_or_none(txn.get("subscription_id")))
         elif status == "canceled" and payment.status == "pending":
             payment.status = "canceled"
             db.add(payment)
             db.commit()
 
+    def _attach_from_transaction(
+        self, db: Session, payment: Payment, sub_id: str | None
+    ) -> None:
+        """PF3a: our organisation checkout was paid and Paddle names the
+        subscription it created. Apply it with the organisation now, unless it
+        already is, so a lost or late subscription.created never leaves the
+        organisation without its seats."""
+        if not payment.organisation_id or not sub_id:
+            return
+        local = service.find_subscription(db, "paddle", sub_id)
+        if local is not None and local.organisation_id:
+            return
+        try:
+            self._fetch_subscription(db, sub_id, origin=payment)
+        except ProviderError:
+            # subscription.created, the return-page refresh or the reconcile follows.
+            log.exception("paddle subscription %s of %s not fetched", sub_id, payment.reference)
+
+    def _origin_payment(self, db: Session, sub: dict) -> Payment | None:
+        """Our checkout payment that created this subscription: Paddle names
+        the originating transaction on subscription.created."""
+        txn_id = str_or_none(sub.get("transaction_id"))
+        if txn_id is None:
+            return None
+        return db.scalar(
+            select(Payment).where(Payment.provider == "paddle", Payment.provider_ref == txn_id)
+        )
+
     def _apply_subscription(
-        self, db: Session, sub: dict, event_at: datetime | None
+        self, db: Session, sub: dict, event_at: datetime | None, origin: Payment | None = None
     ) -> Subscription | None:
         custom = sub.get("custom_data") or {}
         existing = service.find_subscription(db, "paddle", sub["id"])
-        try:
-            user_id = existing.user_id if existing else int(custom.get("user_id"))
-        except (TypeError, ValueError):
-            return None  # not created by our checkout
+        owner = org_billing.owner_of(existing, origin or self._origin_payment(db, sub))
+        if owner is not None:
+            user_id, organisation_id = owner
+        else:
+            try:
+                user_id = int(custom.get("user_id"))
+            except (TypeError, ValueError):
+                return None  # not created by our checkout
+            organisation_id = None
+            # Naming one of our organisation checkouts without its transaction
+            # (an event ahead of subscription.created): wait for the link.
+            if not sub.get("transaction_id") and org_billing.awaiting_link(db, "paddle", custom):
+                log.info("paddle subscription %s waits for its organisation checkout", sub["id"])
+                return None
         items = [i for i in sub.get("items") or [] if i.get("status") != "inactive"]
         rows = self._price_rows(db, items)
         if not rows:
@@ -285,6 +334,7 @@ class PaddleProvider(BillingProvider):
             provider_price_id=row.provider_price_id,
             founding=row.founding,
             event_at=event_at,
+            organisation_id=organisation_id,
         )
         if applied is not None and row.founding:
             reference = service.founding_reference(
@@ -293,9 +343,11 @@ class PaddleProvider(BillingProvider):
             service.count_founding(db, reference, applied.user_id)
         return applied
 
-    def _fetch_subscription(self, db: Session, sub_id: str) -> Subscription | None:
+    def _fetch_subscription(
+        self, db: Session, sub_id: str, origin: Payment | None = None
+    ) -> Subscription | None:
         data = self._api("GET", f"/subscriptions/{sub_id}")["data"]
-        return self._apply_subscription(db, data, parse_time(data.get("updated_at")))
+        return self._apply_subscription(db, data, parse_time(data.get("updated_at")), origin)
 
     def verify_payment(self, db: Session, payment: Payment) -> None:
         if not payment.provider_ref:
@@ -303,7 +355,8 @@ class PaddleProvider(BillingProvider):
         txn = self._api("GET", f"/transactions/{payment.provider_ref}")["data"]
         self._apply_transaction(db, txn)
         if txn.get("status") in _PAID and txn.get("subscription_id"):
-            self._fetch_subscription(db, txn["subscription_id"])
+            # Fetched for this payment's own transaction: the link is verified.
+            self._fetch_subscription(db, txn["subscription_id"], origin=payment)
 
     # --- Webhooks --------------------------------------------------------------------
 
@@ -360,43 +413,58 @@ class PaddleProvider(BillingProvider):
         db.refresh(sub)
         return applied or sub
 
-    def list_invoices(self, db: Session, user: User) -> list[Invoice]:
-        customer = service.customer_id(db, user, "paddle")
-        if not customer:
-            return []
-        rows = self._api(
-            "GET",
-            "/transactions",
-            params={
-                "customer_id": customer,
-                "status": "billed,paid,completed",
-                "order_by": "billed_at[DESC]",
-                "per_page": 30,
-            },
-        ).get("data") or []
+    def list_invoices(
+        self, db: Session, user: User, scope: InvoiceScope | None = None
+    ) -> list[Invoice]:
+        if scope is None:
+            customer = service.customer_id(db, user, "paddle")
+            if not customer:
+                return []
+            scope = InvoiceScope(customers=(customer,))
         out = []
-        for txn in rows:
-            if not txn.get("invoice_number"):
-                continue
-            totals = (txn.get("details") or {}).get("totals") or {}
-            out.append(
-                Invoice(
-                    id=txn["id"],
-                    number=txn.get("invoice_number"),
-                    issued_at=parse_time(txn.get("billed_at") or txn.get("created_at")),
-                    total_minor=_minor(totals.get("grand_total")),
-                    tax_minor=_minor(totals.get("tax")),
-                    currency=str(txn.get("currency_code") or "").upper(),
-                    status=str(txn.get("status") or ""),
-                    pdf_url=None,
+        for customer in scope.customers:
+            rows = self._api(
+                "GET",
+                "/transactions",
+                params={
+                    "customer_id": customer,
+                    "status": "billed,paid,completed",
+                    "order_by": "billed_at[DESC]",
+                    "per_page": 30,
+                },
+            ).get("data") or []
+            for txn in rows:
+                sub_id = str_or_none(txn.get("subscription_id"))
+                if not txn.get("invoice_number") or not scope.keeps(txn["id"], sub_id):
+                    continue
+                totals = (txn.get("details") or {}).get("totals") or {}
+                out.append(
+                    Invoice(
+                        id=txn["id"],
+                        number=txn.get("invoice_number"),
+                        issued_at=parse_time(txn.get("billed_at") or txn.get("created_at")),
+                        total_minor=_minor(totals.get("grand_total")),
+                        tax_minor=_minor(totals.get("tax")),
+                        currency=str(txn.get("currency_code") or "").upper(),
+                        status=str(txn.get("status") or ""),
+                        pdf_url=None,
+                        subscription_id=sub_id,
+                    )
                 )
-            )
         return out
 
-    def invoice_pdf_url(self, db: Session, user: User, invoice_id: str) -> str:
-        customer = service.customer_id(db, user, "paddle")
+    def invoice_pdf_url(
+        self, db: Session, user: User, invoice_id: str, scope: InvoiceScope | None = None
+    ) -> str:
         txn = self._api("GET", f"/transactions/{invoice_id}")["data"]
-        if not customer or txn.get("customer_id") != customer:
+        if scope is None:
+            customer = service.customer_id(db, user, "paddle")
+            mine = bool(customer) and txn.get("customer_id") == customer
+        else:
+            mine = txn.get("customer_id") in scope.customers and scope.keeps(
+                invoice_id, str_or_none(txn.get("subscription_id"))
+            )
+        if not mine:
             raise ProviderError("not this customer's invoice")
         return self._api("GET", f"/transactions/{invoice_id}/invoice")["data"]["url"]
 

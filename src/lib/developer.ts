@@ -77,6 +77,10 @@ export interface Subscription {
   founding: boolean;
   can_manage: boolean;
   currency: string | null;
+  /** PF3a: the organisation this is; null for the signed-in person's own plan. */
+  org_id?: string | null;
+  /** Seats given to people: named seats + the floating pool (1 for a person). */
+  seats_assigned?: number | null;
 }
 
 export interface Payment {
@@ -92,6 +96,8 @@ export interface Payment {
   interval: Interval | null;
   seats: number | null;
   tax_minor: number | null;
+  /** PF3a: the organisation the payment bought for, if any. */
+  organisation_id?: string | null;
 }
 
 export interface Invoice {
@@ -113,6 +119,8 @@ export interface CheckoutRequest {
   seats: number;
   coupon?: string;
   consent: { version: string; accepted: true };
+  /** PF3a: buy for this organisation (its owner and billing roles only). */
+  org_id?: string;
 }
 
 export const listKeys = () => api<ApiKey[]>("/keys");
@@ -123,25 +131,33 @@ export const revokeKey = (id: number) =>
 
 export const getUsage = () => api<UsageSummary>("/usage");
 
+// Every billing call acts for the signed-in person, or (PF3a) for the
+// organisation `orgId` names when they are its owner or billing member.
+const orgQuery = (orgId?: string | null) => (orgId ? `?org_id=${encodeURIComponent(orgId)}` : "");
+const orgBody = (orgId?: string | null) => (orgId ? { org_id: orgId } : {});
+
 export const getCatalog = () => api<Catalog>("/billing/plans", { auth: false });
-export const getSubscription = () => api<Subscription>("/billing/subscription");
-export const listPayments = () => api<Payment[]>("/billing/payments");
-export const listInvoices = () => api<Invoice[]>("/billing/invoices");
+export const getSubscription = (orgId?: string | null) =>
+  api<Subscription>(`/billing/subscription${orgQuery(orgId)}`);
+export const listPayments = (orgId?: string | null) =>
+  api<Payment[]>(`/billing/payments${orgQuery(orgId)}`);
+export const listInvoices = (orgId?: string | null) =>
+  api<Invoice[]>(`/billing/invoices${orgQuery(orgId)}`);
 export const startCheckout = (body: CheckoutRequest) =>
   api<{ url: string; reference: string; founding: boolean }>("/billing/checkout", {
     method: "POST",
     json: body,
   });
-export const changeSeats = (seats: number) =>
-  api<Subscription>("/billing/seats", { method: "POST", json: { seats } });
-export const changePlan = (change: { tier?: string; interval?: Interval }) =>
-  api<Subscription>("/billing/change", { method: "POST", json: change });
+export const changeSeats = (seats: number, orgId?: string | null) =>
+  api<Subscription>("/billing/seats", { method: "POST", json: { seats, ...orgBody(orgId) } });
+export const changePlan = (change: { tier?: string; interval?: Interval }, orgId?: string | null) =>
+  api<Subscription>("/billing/change", { method: "POST", json: { ...change, ...orgBody(orgId) } });
 export const refreshPayment = (reference: string) =>
   api<Payment>(`/billing/payments/${encodeURIComponent(reference)}/refresh`, {
     method: "POST",
   });
-export const openBillingPortal = () =>
-  api<{ url: string }>("/billing/portal", { method: "POST" });
+export const openBillingPortal = (orgId?: string | null) =>
+  api<{ url: string }>("/billing/portal", orgId ? { method: "POST", json: orgBody(orgId) } : { method: "POST" });
 
 /** An amount in minor units, with the currency's own decimals (pence, cents;
  *  none for currencies without them). */
