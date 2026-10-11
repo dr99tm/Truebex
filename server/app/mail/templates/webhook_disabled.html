@@ -1,0 +1,10 @@
+<!doctype html>
+<html lang="en">
+  <body style="margin:0;padding:24px;background:#161616;color:#cbcbcb;font-family:'Segoe UI','Open Sans',Arial,sans-serif;font-size:15px;line-height:1.6">
+    <p>Hello,</p>
+    <p>Deliveries to this webhook endpoint have failed since $since, so it is switched off:</p>
+    <pre style="margin:0;padding:12px;border-left:3px solid #a0ceff;color:#cbcbcb;white-space:pre-wrap;font-family:inherit">$url</pre>
+    <p>Nothing more is sent to it, and the events in between are kept for 30 days. Check that the address answers with a 2xx status within 15 seconds, then <a href="$webhooks_url" style="color:#a0ceff">switch it back on and re-send what it missed</a>.</p>
+    <p>Truebex</p>
+  </body>
+</html>

@@ -1,0 +1,1246 @@
+{
+  "version": "1.0.0",
+  "tools": [
+    {
+      "name": "read_state",
+      "title": "Read the model's state",
+      "description": "The open project's state: a short text digest (the default) and, on request, the JSON snapshot of its sections. Read it first to learn what is open, what is selected and what is in view.",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "format": {
+            "enum": [
+              "digest",
+              "json",
+              "both"
+            ],
+            "default": "digest"
+          },
+          "max_bytes": {
+            "type": "integer",
+            "minimum": 1024,
+            "maximum": 65536,
+            "default": 4096
+          },
+          "sections": {
+            "type": "array",
+            "items": {
+              "enum": [
+                "meta",
+                "viewport",
+                "command",
+                "doc",
+                "log",
+                "theme",
+                "annotations",
+                "models",
+                "objects",
+                "stairs",
+                "assets",
+                "sheets",
+                "textures"
+              ]
+            }
+          }
+        }
+      },
+      "outputSchema": {
+        "type": "object",
+        "required": [
+          "schema",
+          "revision",
+          "document_version"
+        ],
+        "properties": {
+          "schema": {
+            "type": "string",
+            "const": "truebex-agent-state/1"
+          },
+          "revision": {
+            "type": "integer"
+          },
+          "document_version": {
+            "type": "integer"
+          },
+          "digest": {
+            "type": "string"
+          },
+          "state": {
+            "type": "object"
+          }
+        }
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      },
+      "_meta": {
+        "com.truebex/permission": "read",
+        "com.truebex/logSafe": false
+      }
+    },
+    {
+      "name": "find",
+      "title": "Find entities",
+      "description": "Entities of the open project by kind, name, room, storey, the compass side a wall faces, category, distance from a point, or the selection. Names match case-insensitively; north is doc +Y.",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "kind": {
+            "enum": [
+              "wall",
+              "door",
+              "window",
+              "opening",
+              "room",
+              "slab",
+              "object",
+              "product",
+              "stair",
+              "sheet",
+              "storey",
+              "view"
+            ]
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 80
+          },
+          "room": {
+            "type": "string",
+            "maxLength": 80
+          },
+          "storey": {
+            "type": "string",
+            "maxLength": 80
+          },
+          "facing": {
+            "enum": [
+              "n",
+              "e",
+              "s",
+              "w"
+            ]
+          },
+          "category": {
+            "type": "string",
+            "maxLength": 120
+          },
+          "near_mm": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            },
+            "minItems": 3,
+            "maxItems": 3
+          },
+          "radius_mm": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1000000
+          },
+          "selected": {
+            "type": "boolean"
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 200,
+            "default": 50
+          }
+        }
+      },
+      "outputSchema": {
+        "type": "object",
+        "required": [
+          "matches",
+          "total",
+          "truncated"
+        ],
+        "properties": {
+          "matches": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "ref",
+                "kind"
+              ],
+              "properties": {
+                "ref": {
+                  "type": "string",
+                  "pattern": "^([0-9a-f]{32}|[a-z_]+#[0-9]+)$"
+                },
+                "kind": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "storey": {
+                  "type": "string"
+                },
+                "room": {
+                  "type": "string"
+                },
+                "summary": {
+                  "type": "string",
+                  "maxLength": 120
+                },
+                "bounds_mm": {
+                  "type": "array",
+                  "items": {
+                    "type": "number"
+                  },
+                  "minItems": 6,
+                  "maxItems": 6
+                }
+              }
+            }
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "truncated": {
+            "type": "boolean"
+          }
+        }
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      },
+      "_meta": {
+        "com.truebex/permission": "read",
+        "com.truebex/logSafe": false
+      }
+    },
+    {
+      "name": "explain",
+      "title": "Explain an entity",
+      "description": "One entity in full: its properties, what it hosts and what hosts it, its room and storey, its finishes and product, and a short description in words.",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "ref"
+        ],
+        "properties": {
+          "ref": {
+            "type": "string",
+            "pattern": "^([0-9a-f]{32}|[a-z_]+#[0-9]+)$"
+          },
+          "depth": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 2,
+            "default": 1
+          }
+        }
+      },
+      "outputSchema": {
+        "type": "object",
+        "required": [
+          "ref",
+          "kind",
+          "text"
+        ],
+        "properties": {
+          "ref": {
+            "type": "string",
+            "pattern": "^([0-9a-f]{32}|[a-z_]+#[0-9]+)$"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "properties": {
+            "type": "object"
+          },
+          "relations": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "rel",
+                "ref"
+              ],
+              "properties": {
+                "rel": {
+                  "enum": [
+                    "hosts",
+                    "hosted_by",
+                    "bounds",
+                    "in_room",
+                    "on_storey",
+                    "references"
+                  ]
+                },
+                "ref": {
+                  "type": "string",
+                  "pattern": "^([0-9a-f]{32}|[a-z_]+#[0-9]+)$"
+                },
+                "name": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "finishes": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "face",
+                "text"
+              ],
+              "properties": {
+                "face": {
+                  "type": "string"
+                },
+                "text": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "product": {
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "text": {
+            "type": "string",
+            "maxLength": 600
+          }
+        }
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      },
+      "_meta": {
+        "com.truebex/permission": "read",
+        "com.truebex/logSafe": false
+      }
+    },
+    {
+      "name": "place",
+      "title": "Place an entity",
+      "description": "Add a wall (start_mm and end_mm), a door, window or opening in a wall (host; offset_mm is its centre along the wall, the middle by default), an object (asset and room or at_mm) or a marketplace product (product and room or at_mm). Omitted sizes take the defaults. One undo step.",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "kind"
+        ],
+        "properties": {
+          "kind": {
+            "enum": [
+              "wall",
+              "door",
+              "window",
+              "opening",
+              "object",
+              "product"
+            ]
+          },
+          "host": {
+            "type": "string",
+            "pattern": "^([0-9a-f]{32}|[a-z_]+#[0-9]+)$"
+          },
+          "offset_mm": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1000000
+          },
+          "width_mm": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1000000
+          },
+          "sill_mm": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1000000
+          },
+          "head_mm": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1000000
+          },
+          "start_mm": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            },
+            "minItems": 3,
+            "maxItems": 3
+          },
+          "end_mm": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            },
+            "minItems": 3,
+            "maxItems": 3
+          },
+          "height_mm": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1000000
+          },
+          "thickness_mm": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1000000
+          },
+          "asset": {
+            "type": "string",
+            "maxLength": 120
+          },
+          "room": {
+            "type": "string",
+            "pattern": "^([0-9a-f]{32}|[a-z_]+#[0-9]+)$"
+          },
+          "at_mm": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            },
+            "minItems": 3,
+            "maxItems": 3
+          },
+          "bearing_deg": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 360
+          },
+          "product": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "supplier_id",
+              "sku",
+              "variant_id"
+            ],
+            "properties": {
+              "supplier_id": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{32}$"
+              },
+              "sku": {
+                "type": "string",
+                "maxLength": 64
+              },
+              "variant_id": {
+                "type": "string",
+                "maxLength": 64
+              }
+            }
+          },
+          "request_id": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{32}$"
+          }
+        }
+      },
+      "outputSchema": {
+        "type": "object",
+        "required": [
+          "ok",
+          "undo_group",
+          "created",
+          "changed",
+          "deleted",
+          "changed_keys",
+          "text",
+          "warnings"
+        ],
+        "properties": {
+          "ok": {
+            "type": "boolean"
+          },
+          "undo_group": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{32}$"
+          },
+          "created": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^([0-9a-f]{32}|[a-z_]+#[0-9]+)$"
+            }
+          },
+          "changed": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^([0-9a-f]{32}|[a-z_]+#[0-9]+)$"
+            }
+          },
+          "deleted": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^([0-9a-f]{32}|[a-z_]+#[0-9]+)$"
+            }
+          },
+          "changed_keys": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "text": {
+            "type": "string"
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "_meta": {
+        "com.truebex/permission": "edit",
+        "com.truebex/logSafe": true
+      }
+    },
+    {
+      "name": "move",
+      "title": "Move entities",
+      "description": "Move entities by a vector (by_mm), one entity to a point (to_mm), slide openings along their wall (along_mm) or rotate about their centre (rotate_deg): exactly one of the four. One undo step.",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "refs"
+        ],
+        "properties": {
+          "refs": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^([0-9a-f]{32}|[a-z_]+#[0-9]+)$"
+            },
+            "minItems": 1,
+            "maxItems": 100
+          },
+          "by_mm": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            },
+            "minItems": 3,
+            "maxItems": 3
+          },
+          "to_mm": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            },
+            "minItems": 3,
+            "maxItems": 3
+          },
+          "along_mm": {
+            "type": "number"
+          },
+          "rotate_deg": {
+            "type": "number",
+            "minimum": -360,
+            "maximum": 360
+          },
+          "request_id": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{32}$"
+          }
+        }
+      },
+      "outputSchema": {
+        "type": "object",
+        "required": [
+          "ok",
+          "undo_group",
+          "created",
+          "changed",
+          "deleted",
+          "changed_keys",
+          "text",
+          "warnings"
+        ],
+        "properties": {
+          "ok": {
+            "type": "boolean"
+          },
+          "undo_group": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{32}$"
+          },
+          "created": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^([0-9a-f]{32}|[a-z_]+#[0-9]+)$"
+            }
+          },
+          "changed": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^([0-9a-f]{32}|[a-z_]+#[0-9]+)$"
+            }
+          },
+          "deleted": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^([0-9a-f]{32}|[a-z_]+#[0-9]+)$"
+            }
+          },
+          "changed_keys": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "text": {
+            "type": "string"
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "_meta": {
+        "com.truebex/permission": "edit",
+        "com.truebex/logSafe": true
+      }
+    },
+    {
+      "name": "resize",
+      "title": "Resize an entity",
+      "description": "Change a wall's height or thickness, an opening's width, sill or head (when it is not a fixed size), an object's dimensions, or scale it about its start, centre or end. One undo step.",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "ref"
+        ],
+        "properties": {
+          "ref": {
+            "type": "string",
+            "pattern": "^([0-9a-f]{32}|[a-z_]+#[0-9]+)$"
+          },
+          "width_mm": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1000000
+          },
+          "height_mm": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1000000
+          },
+          "depth_mm": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1000000
+          },
+          "thickness_mm": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1000000
+          },
+          "sill_mm": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1000000
+          },
+          "head_mm": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1000000
+          },
+          "scale": {
+            "type": "number",
+            "minimum": 0.01,
+            "maximum": 100
+          },
+          "anchor": {
+            "enum": [
+              "start",
+              "centre",
+              "end"
+            ],
+            "default": "centre"
+          },
+          "request_id": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{32}$"
+          }
+        }
+      },
+      "outputSchema": {
+        "type": "object",
+        "required": [
+          "ok",
+          "undo_group",
+          "created",
+          "changed",
+          "deleted",
+          "changed_keys",
+          "text",
+          "warnings"
+        ],
+        "properties": {
+          "ok": {
+            "type": "boolean"
+          },
+          "undo_group": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{32}$"
+          },
+          "created": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^([0-9a-f]{32}|[a-z_]+#[0-9]+)$"
+            }
+          },
+          "changed": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^([0-9a-f]{32}|[a-z_]+#[0-9]+)$"
+            }
+          },
+          "deleted": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^([0-9a-f]{32}|[a-z_]+#[0-9]+)$"
+            }
+          },
+          "changed_keys": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "text": {
+            "type": "string"
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "_meta": {
+        "com.truebex/permission": "edit",
+        "com.truebex/logSafe": true
+      }
+    },
+    {
+      "name": "fill",
+      "title": "Set a finish",
+      "description": "Set a paint, wallpaper or 3D pattern finish (or none) on a wall side, a floor, a ceiling or every face of the target. Out-of-range values are refused, never clamped. One undo step.",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "target",
+          "finish"
+        ],
+        "properties": {
+          "target": {
+            "type": "string",
+            "pattern": "^([0-9a-f]{32}|[a-z_]+#[0-9]+)$"
+          },
+          "face": {
+            "enum": [
+              "left",
+              "right",
+              "both",
+              "floor",
+              "ceiling",
+              "all"
+            ]
+          },
+          "finish": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "kind"
+            ],
+            "properties": {
+              "kind": {
+                "enum": [
+                  "paint",
+                  "wallpaper",
+                  "pattern3d",
+                  "none"
+                ]
+              },
+              "colour": {
+                "type": "string",
+                "pattern": "^#[0-9A-Fa-f]{6}$"
+              },
+              "roughness": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "texture": {
+                "type": "string",
+                "maxLength": 120
+              },
+              "pattern": {
+                "enum": [
+                  "tile",
+                  "brick",
+                  "slat",
+                  "coffer"
+                ]
+              },
+              "tile_mm": {
+                "type": "array",
+                "items": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1000000
+                },
+                "minItems": 2,
+                "maxItems": 2
+              }
+            }
+          },
+          "request_id": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{32}$"
+          }
+        }
+      },
+      "outputSchema": {
+        "type": "object",
+        "required": [
+          "ok",
+          "undo_group",
+          "created",
+          "changed",
+          "deleted",
+          "changed_keys",
+          "text",
+          "warnings"
+        ],
+        "properties": {
+          "ok": {
+            "type": "boolean"
+          },
+          "undo_group": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{32}$"
+          },
+          "created": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^([0-9a-f]{32}|[a-z_]+#[0-9]+)$"
+            }
+          },
+          "changed": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^([0-9a-f]{32}|[a-z_]+#[0-9]+)$"
+            }
+          },
+          "deleted": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^([0-9a-f]{32}|[a-z_]+#[0-9]+)$"
+            }
+          },
+          "changed_keys": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "text": {
+            "type": "string"
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "_meta": {
+        "com.truebex/permission": "edit",
+        "com.truebex/logSafe": true
+      }
+    },
+    {
+      "name": "apply_theme",
+      "title": "Apply a room theme",
+      "description": "Apply a room theme to a room, keeping its geometry (and, by default, the products already in it). One undo step.",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "theme",
+          "target"
+        ],
+        "properties": {
+          "theme": {
+            "type": "string",
+            "maxLength": 120
+          },
+          "target": {
+            "type": "string",
+            "pattern": "^([0-9a-f]{32}|[a-z_]+#[0-9]+)$"
+          },
+          "keep_products": {
+            "type": "boolean",
+            "default": true
+          },
+          "request_id": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{32}$"
+          }
+        }
+      },
+      "outputSchema": {
+        "type": "object",
+        "required": [
+          "ok",
+          "undo_group",
+          "created",
+          "changed",
+          "deleted",
+          "changed_keys",
+          "text",
+          "warnings"
+        ],
+        "properties": {
+          "ok": {
+            "type": "boolean"
+          },
+          "undo_group": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{32}$"
+          },
+          "created": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^([0-9a-f]{32}|[a-z_]+#[0-9]+)$"
+            }
+          },
+          "changed": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^([0-9a-f]{32}|[a-z_]+#[0-9]+)$"
+            }
+          },
+          "deleted": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^([0-9a-f]{32}|[a-z_]+#[0-9]+)$"
+            }
+          },
+          "changed_keys": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "text": {
+            "type": "string"
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "_meta": {
+        "com.truebex/permission": "edit",
+        "com.truebex/logSafe": true
+      }
+    },
+    {
+      "name": "export_pdf",
+      "title": "Export the sheets as a PDF",
+      "description": "Write the project's sheets (or one sheet, by its number) as a PDF in the project's export folder.",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "sheet": {
+            "type": "string",
+            "maxLength": 20
+          },
+          "file_name": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9 _.-]{1,80}\\.pdf$"
+          },
+          "request_id": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{32}$"
+          }
+        }
+      },
+      "outputSchema": {
+        "type": "object",
+        "required": [
+          "ok",
+          "path",
+          "bytes",
+          "watermark"
+        ],
+        "properties": {
+          "ok": {
+            "type": "boolean"
+          },
+          "path": {
+            "type": "string"
+          },
+          "pages": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "bytes": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "watermark": {
+            "type": "boolean"
+          }
+        }
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "_meta": {
+        "com.truebex/permission": "export",
+        "com.truebex/logSafe": false
+      }
+    },
+    {
+      "name": "export_panorama",
+      "title": "Export a panorama",
+      "description": "Write an equirectangular panorama from a saved view, or from a point and bearing, into the project's export folder, 2048, 4096 or 8192 px wide.",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "view": {
+            "type": "string",
+            "maxLength": 80
+          },
+          "at_mm": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            },
+            "minItems": 3,
+            "maxItems": 3
+          },
+          "bearing_deg": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 360
+          },
+          "width_px": {
+            "enum": [
+              2048,
+              4096,
+              8192
+            ],
+            "default": 4096
+          },
+          "format": {
+            "enum": [
+              "jpeg",
+              "png"
+            ],
+            "default": "jpeg"
+          },
+          "file_name": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9 _.-]{1,80}\\.(jpg|png)$"
+          },
+          "request_id": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{32}$"
+          }
+        }
+      },
+      "outputSchema": {
+        "type": "object",
+        "required": [
+          "ok",
+          "path",
+          "bytes",
+          "watermark",
+          "width_px"
+        ],
+        "properties": {
+          "ok": {
+            "type": "boolean"
+          },
+          "path": {
+            "type": "string"
+          },
+          "pages": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "bytes": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "watermark": {
+            "type": "boolean"
+          },
+          "width_px": {
+            "type": "integer"
+          }
+        }
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "_meta": {
+        "com.truebex/permission": "export",
+        "com.truebex/logSafe": false
+      }
+    },
+    {
+      "name": "undo",
+      "title": "Undo this session's steps",
+      "description": "Take back this session's last steps, one at a time; it stops at the first step that is not this session's own.",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "steps": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 20,
+            "default": 1
+          },
+          "request_id": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{32}$"
+          }
+        }
+      },
+      "outputSchema": {
+        "type": "object",
+        "required": [
+          "ok",
+          "undone"
+        ],
+        "properties": {
+          "ok": {
+            "type": "boolean"
+          },
+          "undone": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "undo_group",
+                "name"
+              ],
+              "properties": {
+                "undo_group": {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{32}$"
+                },
+                "name": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "_meta": {
+        "com.truebex/permission": "edit",
+        "com.truebex/logSafe": false
+      }
+    }
+  ]
+}

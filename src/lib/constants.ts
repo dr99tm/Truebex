@@ -2570,3 +2570,308 @@ export const ADMIN_AI = {
   },
   errors: { generic: "Something went wrong." },
 } as const;
+
+// PF12: the developer docs (/developers/ and its sub-pages) and the API keys
+// and webhooks dashboard pages. The reference tables (operations, scopes,
+// events, limits, MCP tools) are generated at build time from openapi/v1.json
+// and src/content/tools.json; only the words around them live here. The
+// SDKs and the MCP package are built but not yet on PyPI and npm: flip
+// `sdksPublished` / `mcpPublished` once the owner has published them.
+export const DEVELOPER_DOCS = {
+  apiBase: "https://api.truebex.com",
+  sdksPublished: false,
+  mcpPublished: false,
+  breadcrumb: "Developers",
+  nav: [
+    { slug: "", label: "Overview" },
+    { slug: "projects", label: "Projects" },
+    { slug: "jobs", label: "Jobs and exports" },
+    { slug: "shares", label: "Shares" },
+    { slug: "market", label: "Marketplace" },
+    { slug: "webhooks", label: "Webhooks" },
+    { slug: "sdks", label: "SDKs" },
+    { slug: "mcp", label: "MCP server" },
+  ],
+  onRoadmap: "On the roadmap",
+  rollingOut: "Rolling out",
+  reference: {
+    title: "Reference",
+    scope: "Scope",
+    anyKey: "any key",
+    optionalKey: "optional: a key lifts the anonymous limit",
+    params: "Parameters",
+    body: "Request body",
+    response: "Response",
+    errors: "Errors",
+    field: "Field",
+    type: "Type",
+    where: "In",
+    required: "Required",
+    description: "Description",
+    yes: "yes",
+    binaryBody: "The part's raw bytes (application/octet-stream), with its SHA-256 in X-Part-Sha256.",
+    multipartBody: "A multipart/form-data upload:",
+    empty: "No content (204).",
+  },
+  overview: {
+    title: "Developer API",
+    description:
+      "Build on Truebex over HTTPS: scoped API keys, share links, the marketplace catalogue and signed webhooks, with projects and exports in preview.",
+    eyebrow: "Developers",
+    h1: "The Truebex API",
+    intro:
+      "Work with Truebex from your own code over HTTPS. Create a key with the scopes it needs, call the API with it, and hear about changes through signed webhooks. Every plan includes a monthly request allowance.",
+    cta: "Get an API key",
+    ctaSecondary: "View usage",
+    quickStartTitle: "Quick start",
+    quickStart: [
+      "Create a free account (Google or email).",
+      "Open Dashboard → API keys, tick the scopes you need and create a key. Copy it: it is shown once.",
+      "Call the API:",
+    ],
+    authTitle: "Authentication",
+    authText:
+      "Send your key on every request, either as a bearer token or in the X-API-Key header. Keys start with tbx_live_.",
+    keyRules: [
+      "Keep keys on your server. Never ship them in browser or app code.",
+      "Use one key per environment, with only the scopes it needs, and revoke a key the moment it leaks.",
+      "We store only a hash of each key, so a lost key cannot be recovered: create a new one.",
+    ],
+    scopesTitle: "Scopes",
+    scopesIntro:
+      "Choose a key's scopes when you create it. A call without the scope it needs answers 403 forbidden, naming the scope in data.needed. Keys made before scopes existed keep every read scope.",
+    scopeColumn: "Scope",
+    allowsColumn: "Lets the key",
+    defaultScope: "read scope",
+    baseUrlTitle: "Base URL",
+    groupsTitle: "What the API covers",
+    limitsTitle: "Usage and limits",
+    limitsText:
+      "Every call with a key counts toward your monthly allowance, across all your keys. Allowances reset on the 1st of each month (UTC). Each response carries your current numbers:",
+    burstText:
+      "Each key also has a burst limit of {burst} calls at once, refilled at {perMinute} a minute. Past it the API answers 429 rate_limited with retry_after_s, before the monthly allowance is touched.",
+    limitsPlan: "Plan",
+    limitsRequests: "Requests / month",
+    limitsKeys: "Active keys",
+    errorsTitle: "Errors",
+    errorsIntro:
+      "Every error has one shape. Show detail to people; branch on code. request_id identifies the call if you write to us.",
+    errorStatus: "Status",
+    errorCode: "Code",
+    errorMeaning: "Meaning",
+    errors: [
+      { status: "400", code: "contract_version", meaning: "The X-Truebex-Contract major version is not served." },
+      { status: "401", code: "unauthenticated", meaning: "Missing, malformed, invalid or revoked API key." },
+      { status: "403", code: "forbidden", meaning: "The key lacks a scope (data.needed) or the account's role is too low." },
+      { status: "404", code: "not_found", meaning: "Unknown, or not visible to the key's account." },
+      { status: "422", code: "validation_failed", meaning: "A field failed its rule (data.fields)." },
+      { status: "429", code: "rate_limited", meaning: "The burst limit or the monthly allowance is reached (retry_after_s)." },
+      { status: "5xx", code: "internal_error", meaning: "Our side. Retry with backoff: 1, 2, 4 … 60 s." },
+    ],
+    contractsTitle: "Versions",
+    contractsText:
+      "Each route group speaks a versioned contract, sent and echoed as X-Truebex-Contract (for example project-log/1.0). Additions never break a version; the SDKs send it for you.",
+  },
+  pages: {
+    projects: {
+      title: "Projects API",
+      description:
+        "Projects over the Truebex API: create and open them, push and pull operations, register snapshots, name and restore versions, and invite people.",
+      h1: "Projects over the API",
+      intro:
+        "A project is its history: operations in server order, snapshots of the full model and named versions. The API reads and writes the same project log the Truebex app syncs.",
+      status:
+        "Opening these projects in the Truebex app arrives with cloud save. Today the API creates, reads and syncs them on the platform.",
+      notesTitle: "How a key writes",
+      notes: [
+        "Operations a key pushes are written as an agent: author_kind agent and the key's own author id (GET /v1/account → key.author). Leave both fields out.",
+        "A push takes up to 200 operations and 16 MiB. A conflict is a per-operation result (rejected, with the winning operations), not an error.",
+        "Pull with wait_s up to 25 to hold the request until the next push.",
+        "Projects are deleted on truebex.com only: a key gets 403 session_required.",
+        "Snapshots are uploaded through /v1/uploads with purpose snapshot, then registered at a sequence number.",
+      ],
+      groups: ["projects"],
+    },
+    jobs: {
+      title: "Jobs and exports API",
+      description:
+        "Submit render jobs and exports through the Truebex API: the presentation pack with the sheet PDF, renders, panoramas and a bill of quantities.",
+      h1: "Jobs and exports over the API",
+      intro:
+        "A job names a project and a sequence number and answers an estimate in cost units. A pack job exports the sheet PDF, renders, panoramas and the bill of quantities; its status long-polls on rev.",
+      status:
+        "Jobs run on cloud workers that render with the Truebex app itself. Today the API accepts, estimates and queues them; they run once cloud rendering opens.",
+      notesTitle: "Good to know",
+      notes: [
+        "Submitting and cancelling need jobs:write; reading needs projects:read.",
+        "Send an Idempotency-Key with each submission, so a retry never makes a second job. The SDKs do this for you.",
+        "A job uses cost units only when it succeeds; failed and cancelled jobs cost nothing.",
+      ],
+      groups: ["jobs"],
+    },
+    shares: {
+      title: "Shares API",
+      description:
+        "Publish share links through the Truebex API: upload a bundle in resumable 8 MiB parts, publish it, read its visits, change the expiry or revoke it.",
+      h1: "Share links over the API",
+      intro:
+        "A share is a bundle of panoramas, renders and the sheet PDF behind one link. Upload its files in parts, create the share from its manifest, publish it and follow its visits.",
+      status: "",
+      notesTitle: "How uploads work",
+      notes: [
+        "Files are content-addressed: list them by SHA-256 and size, send each 8 MiB part with its own SHA-256, and resume from what /v1/uploads/{upload_id} says has arrived.",
+        "Files your account already stored answer present and are not sent again.",
+        "The scope follows the upload's purpose: share needs shares:write, snapshot projects:write, job-input jobs:write.",
+      ],
+      groups: ["uploads", "shares"],
+    },
+    market: {
+      title: "Marketplace API",
+      description:
+        "Read the Truebex marketplace through the API: categories, regions, product search, regional prices and availability, and supplier catalogue feeds.",
+      h1: "The marketplace over the API",
+      intro:
+        "The catalogue answers without a key; a key with market:read lifts the anonymous limit and is metered like any call. Prices are whole minor units with their currency, never fractions.",
+      status:
+        "Placing products and live costs in the Truebex app are on the roadmap. The catalogue API answers today, as suppliers join.",
+      notesTitle: "Supplier feeds",
+      notes: [
+        "Suppliers send their catalogue as CSV or JSON with a key holding supplier:feed: a supplier key from the supplier portal, or a developer key of a catalogue member.",
+        "A feed URL can be registered once and is read every day at 02:00 UTC; each run has an import report.",
+      ],
+      groups: ["market", "feeds"],
+    },
+    webhooks: {
+      title: "Webhooks",
+      description:
+        "Signed Truebex webhooks: register https endpoints, choose events, verify Standard Webhooks signatures, read the delivery log and re-send failed ones.",
+      h1: "Webhooks",
+      intro:
+        "Register an https endpoint and the events it wants; Truebex posts each event as JSON, signed with the endpoint's secret. Manage endpoints with a webhooks:manage key or on Dashboard → Webhooks.",
+      status: "",
+      verifyTitle: "Verify every delivery",
+      verifyText:
+        "Signatures follow the Standard Webhooks specification, so its libraries work as they are. The signed content is webhook-id, webhook-timestamp and the raw body joined by dots; refuse a timestamp more than 5 minutes off.",
+      retriesTitle: "Retries",
+      retriesText:
+        "A 2xx answer within {timeout} s is a success. Anything else is retried after these waits, each with ±10 % jitter. An endpoint failing for {disable} days is switched off and its account is e-mailed; deliveries are kept {keep} days.",
+      attempt: "Attempt",
+      after: "After the previous one",
+      immediately: "at once",
+      eventsTitle: "Events",
+      eventsText:
+        "data is the resource as the API itself shapes it. project.ops_appended is sent once per {debounce} s per project, with the first and last sequence numbers.",
+      event: "Event",
+      when: "When",
+      localTitle: "Testing locally",
+      localText:
+        "Endpoints must be https and resolve to public addresses. For a local receiver, run the API with WEBHOOKS_ALLOW_HTTP_LOCAL=true and register http://127.0.0.1:<port>/.",
+      groups: ["webhooks"],
+    },
+    sdks: {
+      title: "Python and JavaScript SDKs",
+      description:
+        "Truebex SDKs for Python and JavaScript, generated from the API's own description: a typed method for every operation and webhook verification.",
+      h1: "SDKs for Python and JavaScript",
+      intro:
+        "Both SDKs are generated from the same description as this reference, so every operation is a typed method. Writes that take an idempotency key get one, so retries are safe; webhook helpers verify signatures.",
+      status: "The packages are being published to PyPI (truebex) and npm (@truebex/sdk).",
+      installTitle: "Install",
+      pythonTitle: "Python",
+      jsTitle: "JavaScript",
+      methodsTitle: "Every operation as a method",
+      operation: "Operation",
+      python: "Python",
+      javascript: "JavaScript",
+      groups: [],
+    },
+    mcp: {
+      title: "MCP server",
+      description:
+        "The Truebex MCP server lets your AI assistant read and edit the model open in the Truebex app: eleven tools, each one needing your permission.",
+      h1: "The Truebex MCP server",
+      intro:
+        "The MCP server runs on your computer over stdio and passes each tool call to the Truebex app through a private pipe for your user. The app asks before each kind of action, runs every call as one undoable step and lists it.",
+      status:
+        "The Agent panel the server talks to arrives in the Truebex app with the assistant. Until then every tool call answers app_not_running.",
+      installTitle: "Install",
+      publishing: "@truebex/mcp is being published to npm.",
+      installNotes: [
+        {
+          client: "Claude Desktop",
+          text: "Add this to mcpServers in its config file, then restart it. Or point command at the installed truebex-mcp.exe: the Agent panel shows its path.",
+          code: '{\n  "mcpServers": {\n    "truebex": { "command": "npx", "args": ["-y", "@truebex/mcp"] }\n  }\n}',
+        },
+        {
+          client: "Claude Code",
+          text: "Add it once for your user; /mcp then lists truebex with its eleven tools.",
+          code: "claude mcp add --scope user truebex -- npx -y @truebex/mcp",
+        },
+        {
+          client: "Any MCP client",
+          text: "Launch the same command over stdio. Revisions 2026-07-28, 2025-11-25 and 2025-06-18; tools only.",
+          code: "npx -y @truebex/mcp",
+        },
+      ],
+      toolsTitle: "Tools",
+      classesText:
+        "Each tool needs a class of permission: read, edit or export. Edit and export include read. You allow a class once, or always for that client, in the Agent panel.",
+      klass: "Class",
+      logSafe: "Also travels in the project log",
+      argument: "Argument",
+      rules: "Rules",
+      safetyTitle: "What it never does",
+      safety: [
+        "It never sees a Truebex sign-in or API key; it talks only to the app on your computer.",
+        "It cannot delete or overwrite a project, write outside the export folder, change settings or close the app.",
+        "Every call is listed in the Agent panel and in the project's audit file.",
+      ],
+      groups: [],
+    },
+  },
+  keys: {
+    scopesLabel: "Scopes",
+    scopesHelp: "What this key may do. Give it only what it needs.",
+    legacy: "Made before scopes: every read scope",
+    none: "Choose at least one scope.",
+  },
+  webhooksDashboard: {
+    title: "Webhooks",
+    description: "Endpoints that receive signed events from Truebex. Verify each delivery with the endpoint's secret.",
+    urlLabel: "Endpoint URL",
+    urlPlaceholder: "https://example.com/truebex/webhooks",
+    descriptionLabel: "Description",
+    eventsLabel: "Events",
+    create: "Add endpoint",
+    creating: "Adding…",
+    empty: "No endpoints yet. Add one above.",
+    secretTitle: "Signing secret",
+    secretShownOnce: "Copy it now and keep it on your server.",
+    reveal: "Reveal secret",
+    hide: "Hide",
+    rotate: "Rotate secret",
+    confirmRotate: "Rotate? The old secret stops signing at once.",
+    copy: "Copy",
+    copied: "Copied",
+    test: "Send test event",
+    testQueued: "Test event queued.",
+    on: "Switch on",
+    off: "Switch off",
+    remove: "Delete",
+    confirmRemove: "Delete this endpoint and its delivery log?",
+    cancel: "Cancel",
+    active: "Active",
+    disabledOwner: "Switched off",
+    disabledFailing: "Switched off after 5 days of failures",
+    failingSince: "Failing since",
+    deliveries: "Recent deliveries",
+    noDeliveries: "No deliveries yet.",
+    resend: "Re-send",
+    event: "Event",
+    attempt: "Attempt",
+    status: "Status",
+    code: "Code",
+    time: "Time",
+    docs: "How to verify signatures",
+  },
+} as const;

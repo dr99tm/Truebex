@@ -78,6 +78,28 @@ def device_for_token(db: Session, raw: str | None) -> Device | None:
 class ApiCaller:
     user: User
     key: ApiKey
+    # PF12: what the key may do (app/scopes.py).
+    scopes: tuple[str, ...] = ()
+
+
+def _burst(key: ApiKey) -> None:
+    """PF12: the per-key burst limit, checked before the monthly quota."""
+    import math
+
+    from . import ratelimit
+    from .config import get_settings
+
+    s = get_settings()
+    wait = ratelimit.take("apikey.burst", str(key.id), per_minute=float(s.api_key_per_minute), burst=max(1, s.api_key_burst))
+    if wait is not None:
+        retry = max(1, math.ceil(wait))
+        raise ContractError(
+            "rate_limited",
+            429,
+            f"Too many requests with this key at once. Try again in {retry} s.",
+            {"limit": "burst", "burst": s.api_key_burst, "per_minute": s.api_key_per_minute},
+            retry_after_s=retry,
+        )
 
 
 def api_key_auth(
@@ -115,6 +137,7 @@ def api_key_auth(
     if user is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
 
+    _burst(key)
     plan = get_plan(effective_plan(db, user))
     used = usage.used_this_month(db, user.id)
     response.headers["X-RateLimit-Limit"] = str(plan.monthly_requests)
@@ -140,7 +163,27 @@ def api_key_auth(
     response.headers["X-RateLimit-Remaining"] = str(
         max(plan.monthly_requests - used - 1, 0)
     )
-    return ApiCaller(user=user, key=key)
+    from .scopes import of_key
+
+    return ApiCaller(user=user, key=key, scopes=tuple(of_key(key)))
+
+
+def api_key_scope(scope: str):
+    """PF12: `Depends(api_key_scope("projects:write"))` authenticates, meters
+    and answers 403 `forbidden` (`data.needed`) when the key lacks the scope."""
+
+    def dependency(caller: ApiCaller = Depends(api_key_auth)) -> ApiCaller:
+        if scope not in caller.scopes:
+            raise ContractError(
+                "forbidden",
+                403,
+                f"This API key does not have the {scope} scope. Create a key with it under Dashboard → API keys.",
+                {"needed": scope, "scopes": list(caller.scopes)},
+            )
+        return caller
+
+    dependency.__name__ = f"api_key_scope_{scope.replace(':', '_')}"
+    return dependency
 
 
 # --- Licence API credentials (PF1, contract §4) --------------------------------

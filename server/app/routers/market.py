@@ -10,13 +10,15 @@ website). PF8 adds the supplier feed endpoints 5.11–5.13 on top of
 
 from fastapi import APIRouter, Depends, File, Form, Header, Query, Request, Response, UploadFile, status
 from fastapi.responses import FileResponse, RedirectResponse
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
 from .. import ratelimit
 from ..config import get_settings
 from ..contract_http import CONTRACT_HEADER, ContractError, contract, enveloped
 from ..database import get_db
-from ..deps import LicenceCaller, get_current_user, get_session_or_device
+from ..deps import LicenceCaller, api_key_auth, get_current_user, get_session_or_device
+from ..security import API_KEY_PREFIX
 from ..market import catalogue, checkout, embeddings, hooks, media, orders, reviews, search
 from ..market.common import CONTRACT_MAJOR, CONTRACT_MINOR, CONTRACT_NAME, CONTRACT_VERSION, invalid, is_hex32, not_found
 from ..market.prices import MAX_BATCH, batch, region_or_invalid
@@ -24,14 +26,33 @@ from ..market.schemas import OrderRequest, PricesRequest, ReviewIn
 from ..models import User
 from ..storage import InvalidKey, check_key, get_store
 
+_bearer = HTTPBearer(auto_error=False)  # PF12: an optional API key on catalogue reads
+
 router = APIRouter(
     prefix="/market", tags=["market"], dependencies=[contract(CONTRACT_NAME, CONTRACT_MAJOR, CONTRACT_MINOR)]
 )
 internal = APIRouter(prefix="/market", tags=["market"], dependencies=[enveloped()])
 
 
-def anonymous_reads(request: Request) -> None:
-    """Catalogue reads per address (contract §7: 429 `rate_limited`)."""
+def anonymous_reads(
+    request: Request,
+    response: Response,
+    creds: HTTPAuthorizationCredentials | None = Depends(_bearer),
+    x_api_key: str | None = Header(default=None),
+    db: Session = Depends(get_db),
+) -> None:
+    """Catalogue reads per address (contract §7: 429 `rate_limited`). PF12: a
+    developer API key (`market:read`) lifts that limit: the call is metered
+    and held to the key's burst limit and monthly quota instead."""
+    raw = x_api_key or (creds.credentials if creds else "")
+    if raw.startswith(API_KEY_PREFIX):
+        caller = api_key_auth(request, response, creds, x_api_key, db)
+        if "market:read" not in caller.scopes:
+            raise ContractError(
+                "forbidden", 403, "This API key does not have the market:read scope.",
+                {"needed": "market:read", "scopes": list(caller.scopes)},
+            )
+        return
     per_minute = get_settings().market_reads_per_minute
     wait = ratelimit.take(
         "market.reads", ratelimit.client_ip(request), per_minute=float(per_minute), burst=max(1, per_minute)

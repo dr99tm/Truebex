@@ -1,5 +1,5 @@
 import type { MetadataRoute } from "next";
-import { FEATURE_PAGES, SITE } from "@/lib/constants";
+import { DEVELOPER_DOCS, FEATURE_PAGES, SITE } from "@/lib/constants";
 import { HOME_LANGUAGES } from "@/lib/seo";
 
 export const dynamic = "force-static";
@@ -29,6 +29,15 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: `${SITE.url}/roadmap/`, lastModified: now, changeFrequency: "weekly", priority: 0.7 },
     { url: `${SITE.url}/changelog/`, lastModified: now, changeFrequency: "weekly", priority: 0.7 },
     { url: `${SITE.url}/developers/`, lastModified: now, changeFrequency: "monthly", priority: 0.7 },
+    // PF12: the developer docs' sub-pages.
+    ...DEVELOPER_DOCS.nav
+      .filter((n) => n.slug)
+      .map((n) => ({
+        url: `${SITE.url}/developers/${n.slug}/`,
+        lastModified: now,
+        changeFrequency: "monthly" as const,
+        priority: 0.5,
+      })),
     { url: `${SITE.url}/signup/`, lastModified: now, changeFrequency: "yearly", priority: 0.4 },
     { url: `${SITE.url}/privacy/`, lastModified: now, changeFrequency: "yearly", priority: 0.2 },
     { url: `${SITE.url}/terms/`, lastModified: now, changeFrequency: "yearly", priority: 0.2 },

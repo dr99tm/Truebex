@@ -25,7 +25,7 @@ _bearer = HTTPBearer(auto_error=False)
 @dataclass(frozen=True)
 class UploadCaller:
     account_id: int
-    kind: str  # device | session | worker
+    kind: str  # device | session | worker | api_key (PF12: /v1/uploads)
     credential_id: str | None = None  # the device id or the worker id
 
 
