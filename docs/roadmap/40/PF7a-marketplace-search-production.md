@@ -129,7 +129,7 @@ Window 1, in the worktree: `powershell -NoProfile -ExecutionPolicy Bypass -File 
 
 * **Date, branch, commits:** 2026-10-11, `ap/t41-pf7a-marketplace-search-on-the-p` from `master` 0e3b88a (842768e + the autopilot setup fix). `ad934d2` (PgIndex, DDL, `fill_if_empty`, the copy script, Compose volume, Dockerfile, tests), then the commit with the skill, infra docs, README, this doc and the tracker row.
 * **Counts:**
-  * pytest collected 549 → 567 (`test_market_production.py` 17, of which 10 `postgres`-marked; `test_deploy_skill.py` +1). On SQLite (the verify gate) the 10 skip.
+  * pytest collected 549 → 567 (`test_market_production.py` 17, of which 10 `postgres`-marked; `test_deploy_skill.py` +1). The verify gate (lint, build, pytest on SQLite on a built `out/`): green, 552 passed, 15 skipped (the `postgres`-marked tests: these 10 and 5 older ones in `test_ops.py`, `test_projects.py`, `test_render.py`).
   * With `TEST_DATABASE_URL` on a local Postgres 17.10: `pytest -m postgres -k market` → 10 passed.
   * The whole suite with the app on Postgres 17.10 (`TEST_APP_DATABASE_URL` + `TEST_DATABASE_URL`, session time zone Asia/Baghdad on purpose, three groups in parallel on separate databases): **503 passed, 3 failed, 61 skipped** of 567. The skips are the site tests (`out/` not built for this run; they read no database) and the SQLite-only parameter of `test_usage_record_upsert_sqlite_and_postgres`. Every market and supplier test passed except `test_feed_source_daily_pull` (below). The existing market tests went through `PgIndex`.
   * Baseline: the same market and supplier files on Postgres with master's `LikeIndex` forced back in → `test_market.py::test_search_filters_and_region_prices` fails (`q=linen` finds nothing); with `PgIndex` it passes.
