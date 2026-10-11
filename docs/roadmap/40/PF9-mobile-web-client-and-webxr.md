@@ -12,6 +12,8 @@ snapshot's project digest, members' author ids and members' read of a project's 
 (`server/app/mobile/`, `server/app/routers/mobile.py`). Waiting on others: the kernel writing the digest (CL1, after
 the owner adds it to the contract), applying `action` operations (CL1, CL4), presence badges on the desktop (CL2), a
 real render worker (CL3). See As-built.
+Merged with master (PF11, PF12) on 2026-10-11 (Autopilot T33): `/v1` documents the snapshot's `files.digest` and
+members' `author_id`; the panorama routes stay off `/v1` (a PF12 carry-over). See As-built.
 
 Before this task no mobile client existed (`00-contract.md` P.1). What this builds on, verified with Grep on 2026-10-09:
 
@@ -248,6 +250,37 @@ None on the server. On the client: the outbox flushes on reconnect (`online` eve
   11. *Next's segment prefetch* asks for `/app/__next.app.__PAGE__.txt` and gets 404 (the export writes
       `__next.app/__PAGE__.txt`); Next falls back to the full payload. It happens on every exported page, not only
       PF9's.
+* **Merged with master: PF11 and PF12 (2026-10-11, Autopilot T33, `ap/t33-merge-t12-pf9-mobile-web-client`):** verify
+  green (lint, build, pytest 534 passed and the 5 Postgres-only skips: master's 511, this feature's 17 and the
+  merge's 6). Three files conflicted, each where both sides append to the end (`main.py`'s router lines,
+  `constants.ts`, the README section): both sides kept, master's first. `main.py` keeps PF12's single
+  `uploads.router` include and `v1.install(app)` and adds PF9's `mobile_router` once at the end; `schemas.py`
+  (`UserOut.author_id` beside PF12's key scopes) and `database.py` (both `_ADDED_COLUMNS` blocks) merged cleanly.
+  The venv took PF11's pins (`anthropic` 1.13.0); `package.json` and the lock were unchanged on master, so `three`
+  0.186.1, `@types/three` and the `build-app.mjs` step stand. PF11's rule that a worker token claims only kinds of its
+  class keeps `try-mobile.ps1`'s `panorama` + `tiles` on `gpu-std` valid. **One fix where they meet:** PF12's `/v1`
+  mirror passed PF9's `files.digest` and members' `author_id` through at runtime (its response models allow extra
+  fields) but `openapi/v1.json`, the SDK types and the `/developers/` reference did not name them, and the request's
+  `SnapshotFilesIn` already had `digest`, so the drift test failed. `SnapshotFiles` gains
+  `digest: SnapshotFileUrl | None` (required and nullable like `tbxpack`: the server always answers it), `Member`
+  gains `author_id`, and both snapshot-file models a description naming the digest (it shows in the reference's
+  `files` rows); `openapi/v1.json` and both SDKs regenerated with `scripts\gen-sdks.ps1`, `API_VERSION` left at 1.0.0
+  as T32 did (nothing is published yet). `tests/test_pf9_pf12_meet.py` (6): a key's `/v1` snapshot with a digest
+  round-trips (and a bad one is the contract's 422 on `files.digest`); an API key's agent edit beats a phone edit
+  of the same sofa, rejected with the agent's operation as winning (no member's `author_id`, so the phone reads
+  "Someone changed this first …"), and the key pulls the phone's later edit; the document and both SDKs' types name
+  the fields; the Python SDK registers and reads a digest; the panorama routes refuse a key (401) and are not in the
+  document; the built `/developers/projects/` names the digest. **Live run** on the human test's path
+  (`try-mobile.ps1`, out/ served on :3133, headless Edge at 412×915): 25 of 25 — `/v1` and the SDK read the House's
+  digest and members' author ids; the phone lists and opens the House (24 tiles, rooms as of operation 12, a GBP
+  price); a floor finish is saved and the key pulls it through `/v1`; offline, a sofa move waits while the key's
+  agent moves the sofa through `/v1`; back online the phone shows "Someone changed this first — your edit was
+  replaced" and its move never enters the log; with the service worker in control `/developers/projects/` names
+  the digest, Dashboard → API keys lists the key with its scopes, Dashboard → Cloud shows AI credits, the site navbar
+  is back outside `/app/`, and the caches hold app files and 24 tiles but no API answer and no page outside `/app/`.
+  **Carry-over → PF12:** a `/v1` mirror of `GET /projects/{pid}/panoramas[/{set_id}]` (with the `render-jobs.md` §5
+  MINOR proposal); today they take a session or a device token and answer an API key 401. **→ PF9 / PF10:** a winner
+  with `author_kind: "agent"` could read as the assistant rather than "Someone" (new copy, not added here).
 * **Contract proposals for the owner** (written in the app repo's contracts first, C.9; none has landed yet):
   * `project-log.md` §6.4 (MINOR): a snapshot may carry `digest` — `truebex-project-digest/1`: storeys; rooms with id,
     name, storey, `area_m2`, `centroid_mm`, bounding walls (`id`, `name`, `face`), theme and floor finish; saved views
