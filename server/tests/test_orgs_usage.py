@@ -200,7 +200,7 @@ def test_seed_member_usage_script(client, monkeypatch):
     clk = _mid_month(monkeypatch)
     h = signup(client, "owner@example.com")
     org = make_org(client, h)
-    join(client, h, org["id"], "m@example.com")
+    m = join(client, h, org["id"], "m@example.com")
     join(client, h, org["id"], "n@example.com")
     seed = load_script("seed_member_usage")
     with SessionLocal() as db:
@@ -217,6 +217,17 @@ def test_seed_member_usage_script(client, monkeypatch):
         balance = db.get(AiBalance, ("user", rows["m@example.com"]["user_id"]))
         assert balance is not None and balance.allowance_remaining + balance.top_up_remaining >= 0
         assert db.query(AiUsage).filter(AiUsage.account_id == balance.account_id).count() == 2
+    # The member's own pages read the seeded rows: projects, jobs, cost units and AI turns.
+    projects = client.get("/projects", headers={**m, "X-Truebex-Contract": "project-log/1.0"})
+    assert projects.status_code == 200, projects.text
+    assert [p["name"] for p in projects.json()["projects"]] == ["Seeded usage"]
+    rj = {**m, "X-Truebex-Contract": "render-jobs/1.0"}
+    jobs = client.get("/jobs?limit=20", headers=rj)
+    assert jobs.status_code == 200, jobs.text
+    assert [(j["kind"], j["state"]) for j in jobs.json()["jobs"]] == [("panorama", "succeeded")] * 2
+    assert client.get("/jobs/usage", headers=rj).json()["used_cu"] == 0.4
+    ai = client.get("/account/ai", headers=m)
+    assert ai.status_code == 200, ai.text
     # An unknown address is refused.
     with SessionLocal() as db:
         try:

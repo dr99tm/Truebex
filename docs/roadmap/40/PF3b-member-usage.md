@@ -133,7 +133,7 @@ names, prompts or file contents.
 | `test_orgs_usage_no_usage_is_zero` | pytest | a member with nothing gets (0, 0, 0), not null |
 | `test_orgs_usage_plain_member_forbidden` | pytest | 403 `forbidden` for plain members (this month and last), 401 without a session, 422 for `2026-1` |
 | `test_orgs_usage_one_query_per_column` | pytest | one request for three members runs exactly one statement on `projects`, one on `render_jobs` and one on `ai_credit_ledger` |
-| `test_seed_member_usage_script` | pytest | the seed's answer and the endpoint agree (268 435 456, 2, 1250); another member stays (0, 0, 0); last month (null, 0, 0); the balance stays ≥ 0 with two `ai_usage` turns; an unknown address exits naming it |
+| `test_seed_member_usage_script` | pytest | the seed's answer and the endpoint agree (268 435 456, 2, 1250); another member stays (0, 0, 0); last month (null, 0, 0); the balance stays ≥ 0 with two `ai_usage` turns; the member's own `/projects`, `/jobs` (two succeeded panoramas), `/jobs/usage` (0.4 cu) and `/account/ai` read the seeded rows; an unknown address exits naming it |
 | `test_fresh_process_never_queries_wmi` (updated) | pytest | `seed_member_usage.py` loaded as `python scripts\…` does reaches no WMI query |
 | `test_orgs_usage_per_member` (updated) | pytest | PF3's test: the three columns are 0 for members with nothing (were `null`) |
 | `test_site_pf3b_usage_page_source_drops_old_note` | build check | the page source has no "appear here once…" and reads `MEMBER_USAGE` / `formatStorage` |
