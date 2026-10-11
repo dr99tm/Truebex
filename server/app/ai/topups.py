@@ -12,6 +12,7 @@ reference (the ledger is unique per top-up reference).
 import secrets
 from datetime import datetime, timezone
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ..billing import providers, service as billing
@@ -90,5 +91,14 @@ def on_paid(db: Session, payment: Payment) -> None:
     top_up.credited_at = clock.now()
 
 
+def details(db: Session, payments: list[Payment]) -> dict[str, dict]:
+    """billing ONE_OFF_DETAILS: the credits each pack's payment adds, for
+    the payment history (PF2c)."""
+    refs = [p.reference for p in payments]
+    rows = db.scalars(select(AiTopUp).where(AiTopUp.reference.in_(refs))) if refs else []
+    return {t.reference: {"credits": int(t.credits)} for t in rows}
+
+
 billing.PAID_HOOKS.append(on_paid)
 billing.ONE_OFF_ITEMS.add(ITEM)
+billing.ONE_OFF_DETAILS[ITEM] = details

@@ -13,6 +13,7 @@ Rules:
   hand and is never overwritten here.
 """
 
+from collections.abc import Callable
 from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import func, select, update
@@ -162,6 +163,28 @@ PAID_HOOKS: list = []
 # PF2b neither takes it for a subscription's checkout nor mails it the
 # subscription order confirmation (the provider's receipt is its record).
 ONE_OFF_ITEMS: set[str] = set()
+# PF2c: what a one-off item's payments bought, for the payment history:
+# `ONE_OFF_DETAILS[item](db, payments) -> {reference: {field: value}}` with
+# PaymentOut's additive fields (PF11's packs add `credits`).
+ONE_OFF_DETAILS: dict[str, Callable[[Session, list[Payment]], dict[str, dict]]] = {}
+
+
+def one_off_details(db: Session, payments: list[Payment]) -> dict[str, dict]:
+    """reference -> `item` and what its feature adds, for each payment of a
+    one-off item among `payments`; a plan's payment is left out."""
+    out: dict[str, dict] = {}
+    by_item: dict[str, list[Payment]] = {}
+    for p in payments:
+        if p.plan in ONE_OFF_ITEMS:
+            out[p.reference] = {"item": p.plan}
+            by_item.setdefault(p.plan, []).append(p)
+    for item, rows in by_item.items():
+        describe = ONE_OFF_DETAILS.get(item)
+        if describe is not None:
+            for reference, fields in describe(db, rows).items():
+                if reference in out:
+                    out[reference].update(fields)
+    return out
 
 
 def mark_payment_paid(db: Session, payment: Payment) -> bool:
