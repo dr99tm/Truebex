@@ -11,6 +11,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:truebex/actions/actions.dart';
 import 'package:truebex/app.dart';
 import 'package:truebex/l10n/app_localizations.dart';
+import 'package:truebex/project/project_controller.dart';
+import 'package:truebex/screens/panels.dart';
 import 'package:truebex/screens/projects_screen.dart';
 import 'package:truebex/screens/settings_screen.dart';
 import 'package:truebex/screens/sign_in_screen.dart';
@@ -99,6 +101,44 @@ void main() {
     expect(find.textContaining('Synced just now'), findsOneWidget);
     expect(log.ops, hasLength(2));
     await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('the history names a member, an agent (an API key), an unknown person and you', (tester) async {
+    final log = FakeLog(projectId: pid);
+    const keyAuthor = '0199c6a2f0007000a0000000000000aa';
+    const strangerAuthor = '0199c6a2f0007000a0000000000000bb';
+    late Services services;
+    late ProjectController c;
+    await tester.runAsync(() async {
+      services = await testServices(log);
+      await services.auth.signInWithPassword('alex@example.com', 'password123');
+      Map<String, Object?> op(int n, String author, String kind, String name) => {
+            'op_id': 'f${n.toString().padLeft(31, '0')}', 'author': author, 'author_kind': kind,
+            'at': '2026-10-09T11:00:00.000Z', 'touched': ['c0000000000000000000000000000001'], 'kind': 'action', 'name': name,
+            'base_seq': 0,
+          };
+      log.append(op(1, samAuthor, 'person', 'Floor finish'));
+      log.append(op(2, keyAuthor, 'agent', 'Move Oslo 3-seater sofa'));
+      log.append(op(3, strangerAuthor, 'person', 'Room theme'));
+      log.append(op(4, alexAuthor, 'person', 'Wall finish'), replica: 'f1000000000000000000000000000001');
+      await services.engine.syncProject(pid);
+      c = ProjectController(services, pid, connectivity: const Stream.empty());
+      c.me = {'author_id': alexAuthor};
+      c.authorNames = await services.replica.authorNames(pid);
+      c.history = await services.replica.history(pid, me: alexAuthor);
+    });
+    // The history items carry author_kind from the pulled log.
+    expect({for (final h in c.history) h.serverSeq: h.authorKind}, {4: 'person', 3: 'person', 2: 'agent', 1: 'person'});
+    expect(c.history.where((h) => h.mine).map((h) => h.serverSeq), [4]);
+
+    await tester.pumpWidget(app(Scaffold(body: SingleChildScrollView(child: HistoryPanel(controller: c)))));
+    String who(int seq) => tester.widget<Text>(find.descendant(of: find.byKey(Key('op-$seq')), matching: find.byType(Text)).at(1)).data!;
+    expect(who(1), startsWith('Sam · '));
+    expect(who(2), startsWith('An assistant or script · '));
+    expect(who(3), startsWith('Someone · '));
+    expect(who(4), startsWith('you · '));
+    await tester.pumpWidget(const SizedBox());
+    c.dispose();
   });
 
   testWidgets('settings: storage, clear cache, sign out removes everything', (tester) async {

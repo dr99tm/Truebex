@@ -469,7 +469,8 @@ class HistoryPanel extends StatelessWidget {
     final s = S.of(context);
     final items = controller.history;
     if (items.isEmpty) return Text(s.historyEmpty, style: const TextStyle(color: Brand.secondary));
-    String who(HistoryItem h) => h.mine ? s.you : (controller.authorNames[h.author] ?? s.someone);
+    String who(HistoryItem h) =>
+        h.mine ? s.you : authorName(h.author, h.authorKind, controller.authorNames, agent: s.agentAuthor, someone: s.someone);
     return Column(children: [
       for (final h in items)
         if (h.entry != null)

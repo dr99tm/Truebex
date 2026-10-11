@@ -2927,6 +2927,8 @@ export const APP = {
   conflict: "{name} changed this first — your edit was replaced",
   conflictSelf: "You changed this first on another device — your edit was replaced",
   someone: "Someone",
+  // PF9a: who made an agent's edit (the assistant, or an API key through /v1); the Android app says the same.
+  agentAuthor: "An assistant or script",
   dismiss: "Dismiss",
   project: {
     metaTitle: "Project",
