@@ -3,19 +3,22 @@ author ids, a project's followed panorama sets) meets PF12 (API keys, the /v1
 mirror, openapi/v1.json and the SDKs and /developers/ reference generated from
 it): a key registers a snapshot with its digest through /v1 and reads it back;
 the document, both SDKs' types and the reference name `files.digest` and the
-members' `author_id`; the panorama routes stay off /v1 and refuse a key (a
-PF12 carry-over)."""
+members' `author_id`; a key's own edit re-renders a followed set and the key
+reads it through /v1 (PF12a) as the phone does through the session route,
+which still refuses a key."""
 
 import json
 import re
 import sys
+import threading
 
 import pytest
 
 from .licence_helpers import error_of
 from .pf12_helpers import PL, ROOT, SB, kh, make_key, sha
-from .project_helpers import FIXTURES, Person, action_op, create, hex32, pushed
-from .test_mobile import _followed_set, digest_bytes
+from .project_helpers import FIXTURES, Person, action_op, create, delta_op, hex32, invite_and_accept, pushed
+from .render_helpers import WALL, admin, claimed, finish, issue_worker, project, rj, submitted
+from .test_mobile import digest_bytes
 from .test_pf12_openapi_sdks import live_api  # noqa: F401  (the fixture)
 from .test_site_pf13 import OUT, Doc, built  # noqa: F401  (built is a fixture)
 
@@ -191,19 +194,55 @@ def test_python_sdk_registers_a_snapshot_with_a_digest(client, live_api):  # noq
             del sys.modules[name]
 
 
-def test_panoramas_stay_off_v1(client):
-    """PF9's panorama routes take a session or a device token; /v1 has no mirror yet (carry-over)."""
+def test_key_reads_a_followed_set_after_its_own_edit(client):
+    """A key's agent edit through /v1 re-renders the owner's followed set (PF6); the key's /v1 read (PF12a) waits
+    for it and answers what a viewer's phone reads through the session route (PF9)."""
     owner = Person(client, "owner@example.com")
+    sam = Person(client, "sam@example.com", trial=False)
+    pid, head = project(client, owner)
+    invite_and_accept(client, owner, pid, sam, "viewer")
+    token = issue_worker(client, admin(client))
+    set_id = submitted(client, rj(owner), project_id=pid, at_seq=head, follow=True)["job_id"]
+    finish(client, token, claimed(client, token))
     key = make_key(client, owner.session, ["projects:read", "projects:write"])
-    pid = client.post("/v1/projects", json={"name": "API House", "doc_version": 38}, headers=kh(key, **PL)).json()["project_id"]
-    set_id = _followed_set(owner.user_id, pid)
+    url = f"/v1/projects/{pid}/panoramas/{set_id}"
+    assert client.get(url, headers=kh(key, **PL)).json()["rev"] == 1
 
-    sets = client.get(f"/projects/{pid}/panoramas", headers=owner.web)
-    assert sets.status_code == 200 and [s["set_id"] for s in sets.json()["sets"]] == [set_id]
+    # The key moves a wall as an agent: PF6 queues one tiles job for the set, and the key waits on its rev.
+    op = delta_op(owner.author_id, [WALL], base_seq=head)
+    del op["author"], op["author_kind"]
+    res = client.post(f"/v1/projects/{pid}/ops", json={"replica_id": hex32(), "ops": [op]}, headers=kh(key, **PL))
+    assert res.status_code == 200 and res.json()["results"][0]["status"] == "accepted", res.text
+    tiles = claimed(client, token)
+    assert tiles["job"]["kind"] == "tiles" and tiles["job"]["at_seq"] == head + 1
+    got: dict = {}
+
+    def wait() -> None:
+        got["res"] = client.get(url, params={"rev": 1, "wait_s": 10}, headers=kh(key, **PL))
+
+    t = threading.Thread(target=wait)
+    t.start()
+    finish(client, token, tiles, "manifest-tiles.json", wall_s=20)
+    t.join(15)
+    after = got["res"].json()
+    assert got["res"].status_code == 200 and after["rev"] == 2 and after["at_seq"] == head + 1
+    assert after["manifest"]["faces_rendered"] == 2 and after["job_id"] == tiles["job"]["job_id"]
+
+    # A viewer's phone reads the same render through the session route; the viewer's own key lists the same sets.
+    assert client.get(f"/projects/{pid}/panoramas/{set_id}", headers=sam.web).json() == after
+    viewer = make_key(client, sam.session, ["projects:read"])
+    listed = client.get(f"/v1/projects/{pid}/panoramas", headers=kh(viewer, **PL)).json()
+    assert listed == client.get(f"/projects/{pid}/panoramas", headers=sam.web).json()
+    assert [(s["set_id"], s["rev"], s["mine"]) for s in listed["sets"]] == [(set_id, 2, False)]
+
+    # The session routes still take no key (it belongs on /v1), and the document lists the /v1 pair.
     error_of(client.get(f"/projects/{pid}/panoramas", headers=kh(key, **PL)), 401, "unauthenticated")
     error_of(client.get(f"/projects/{pid}/panoramas/{set_id}", headers=kh(key, **PL)), 401, "unauthenticated")
-    assert client.get(f"/v1/projects/{pid}/panoramas", headers=kh(key, **PL)).status_code in (404, 405)
-    assert not [p for p in _doc()["paths"] if "panorama" in p]
+    documented = {p: item["get"]["x-truebex-scope"] for p, item in _doc()["paths"].items() if "panorama" in p}
+    assert documented == {
+        "/v1/projects/{project_id}/panoramas": "projects:read",
+        "/v1/projects/{project_id}/panoramas/{set_id}": "projects:read",
+    }
 
 
 def test_site_reference_names_the_digest(built):  # noqa: F811

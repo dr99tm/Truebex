@@ -24,7 +24,7 @@ import { timeAgo } from "@/lib/time";
 import { cn } from "@/lib/utils";
 import { applyTheme, fillFace, moveBy, nudgeVector, slideAlong, swapProduct, type Nudge } from "@/viewer/actions";
 import type { Look } from "@/viewer/orientation";
-import type { OutboxEntry } from "@/viewer/outbox";
+import { conflictLine, type ConflictText, type OutboxEntry } from "@/viewer/outbox";
 
 export type Selection = { kind: "room" | "product" | "opening"; id: string } | null;
 
@@ -455,7 +455,13 @@ export function EditsList({
   onDismiss: (opId: string) => void;
 }) {
   if (!entries.length) return <p className="text-sm text-text-secondary">{APP.edit.none}</p>;
-  const nameOf = (author: string) => members.find((m) => m.author_id === author)?.name ?? APP.someone;
+  const names = new Map(members.flatMap((m) => (m.author_id && m.name ? [[m.author_id, m.name] as const] : [])));
+  const text: ConflictText = {
+    named: (name) => fill(APP.conflict, { name }),
+    self: APP.conflictSelf,
+    agent: APP.agentAuthor,
+    someone: APP.someone,
+  };
   return (
     <ul className="space-y-2" aria-live="polite">
       {entries.map((e) => {
@@ -468,7 +474,7 @@ export function EditsList({
           state = APP.states.saved;
           tone = "text-accent";
         } else if (e.state === "rejected") {
-          state = e.winner && e.winner.author === meAuthor ? APP.conflictSelf : fill(APP.conflict, { name: e.winner ? nameOf(e.winner.author) : APP.someone });
+          state = conflictLine(e.winner, meAuthor, names, text);
           tone = "text-warn";
         } else {
           state = fill(APP.states.failed, { reason: e.reason ?? APP.errors.generic });

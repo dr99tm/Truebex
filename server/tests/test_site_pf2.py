@@ -114,3 +114,15 @@ def test_site_pf2b_no_draft_wording_in_out():
         if frag in _plain(_text(f))
     ]
     assert hits == []
+
+
+# --- PF2c: one-off items named in the payment history -------------------------------------
+
+
+def test_site_pf2c_billing_history_names_credit_packs():
+    """The Billing page names an AI credit pack in its payment history
+    ("5,000 AI credits · One-off"), never by its plan id `ai_credits`."""
+    page = OUT / "dashboard" / "billing" / "index.html"
+    assert _loads(page, "{credits} AI credits") and _loads(page, "One-off")
+    source = (OUT.parent / "src" / "app" / "dashboard" / "billing" / "page.tsx").read_text(encoding="utf-8")
+    assert "BILLING.history.items" in source and "cat.tiers.find((t) => t.id === p.plan)?.name ?? p.plan" not in source

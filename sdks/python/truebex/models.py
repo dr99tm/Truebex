@@ -269,6 +269,47 @@ class Operation(TypedDict):
     """
 
 
+class PanoramaSet(TypedDict):
+    """
+    A followed panorama set of the project: a `follow: true` panorama job (render-jobs 5.1) that a member's
+    account keeps current from the log.
+    """
+
+    at_seq: int
+    """
+    The log position the newest render shows
+    """
+    following: bool
+    """
+    false once the set stopped following; its last render still shows
+    """
+    mine: bool
+    """
+    true when the key's own account keeps the set
+    """
+    rev: int
+    """
+    Moves each time a render of the set finishes; wait for it with the set's read
+    """
+    set_id: str
+    """
+    32 hex: the follow job's id
+    """
+    updated_at: str
+    views: list[str]
+    """
+    The saved views (32 hex ids) the set renders
+    """
+
+
+class PanoramaSetList(TypedDict):
+    """
+    The sets of the project's active members, those still following first, then the newest first.
+    """
+
+    sets: list[PanoramaSet]
+
+
 class Ping(TypedDict):
     ok: bool
     time: str
@@ -455,6 +496,37 @@ class SupplierProfile(TypedDict):
     supplier_id: str
     verified: bool
     website: str | None
+
+
+class TileFace(TypedDict):
+    """
+    One cube face: `tiles[L]` lists level L's tile hashes row by row from the top-left.
+    """
+
+    reason: str
+    """
+    full, changed or light when this render drew the face; carried when it kept the last one
+    """
+    rendered: bool
+    tiles: list[list[str]]
+
+
+class TileView(TypedDict):
+    """
+    A saved view's cube: faces n, e, s and w look north (+Y), east, south and west from `eye_mm`; u looks up and
+    d down. Level L is `levels[L]` px square, cut into tiles of `tile_px`.
+    """
+
+    eye_mm: list[float]
+    face_px: int
+    faces: dict[str, TileFace]
+    levels: list[int]
+    tile_px: int
+    title: NotRequired[str | None]
+    view: str
+    """
+    The saved view's id (32 hex)
+    """
 
 
 class UploadFileIn(TypedDict):
@@ -750,11 +822,46 @@ class Snapshot(TypedDict):
     snapshot_id: str
 
 
+class TileManifest(TypedDict):
+    """
+    The render's tile manifest (render-jobs §6.2): its `schema` is `truebex-tiles/1` (refuse a major version you
+    do not know). A tile is `<tiles_base>/<sha256>.jpg`: immutable and shared between renders, so a client fetches
+    only the hashes it has not seen.
+    """
+
+    at_seq: int
+    faces_rendered: NotRequired[int | None]
+    faces_reused: NotRequired[int | None]
+    job_id: str
+    project_id: NotRequired[str | None]
+    tiles_base: str
+    views: list[TileView]
+
+
 class Upload(TypedDict):
     expires_at: str
     files: list[UploadFileState]
     part_bytes: NotRequired[int | None]
     upload_id: str
+
+
+class PanoramaSetState(TypedDict):
+    """
+    A set's newest render; `manifest` and `job_id` are null until its first render finishes.
+    """
+
+    at_seq: int
+    follow_job_id: str
+    """
+    The set's id
+    """
+    following: bool
+    job_id: str | None
+    """
+    The job whose output is the newest manifest
+    """
+    manifest: TileManifest | None
+    rev: int
 
 
 class ShareCreated(TypedDict):

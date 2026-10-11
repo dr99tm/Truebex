@@ -633,6 +633,12 @@ abstract class S {
   /// **'Someone'**
   String get someone;
 
+  /// Who made an agent's edit (the assistant, or an API key through the public API), in the history and in "{name} changed this first". The web app says the same (APP.agentAuthor).
+  ///
+  /// In en, this message translates to:
+  /// **'An assistant or script'**
+  String get agentAuthor;
+
   /// No description provided for @dismiss.
   ///
   /// In en, this message translates to:

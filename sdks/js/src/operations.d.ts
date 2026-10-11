@@ -41,6 +41,10 @@ export interface ProjectsApi {
   listMembers(projectId: string, options?: CallOptions): Promise<components["schemas"]["MemberList"]>;
   /** Named versions (5.10). (GET /v1/projects/{project_id}/versions; scope projects:read) */
   listVersions(projectId: string, options?: CallOptions): Promise<components["schemas"]["VersionList"]>;
+  /** A followed set's newest tile manifest; with `rev` and `wait_s` ≤ 25 it waits until the set's `rev` passes `rev`. (GET /v1/projects/{project_id}/panoramas/{set_id}; scope projects:read) */
+  panoramasGet(projectId: string, setId: string, params?: NonNullable<operations["projects_panoramas_get"]["parameters"]["query"]>, options?: CallOptions): Promise<components["schemas"]["PanoramaSetState"]>;
+  /** The project's followed panorama sets, kept current by its members' accounts (any role); never cached. (GET /v1/projects/{project_id}/panoramas; scope projects:read) */
+  panoramasList(projectId: string, options?: CallOptions): Promise<components["schemas"]["PanoramaSetList"]>;
   /** Who is in the project now (5.18). (GET /v1/projects/{project_id}/presence; scope projects:read) */
   presence(projectId: string, options?: CallOptions): Promise<components["schemas"]["PresenceList"]>;
   /** Operations after a sequence number (5.7); `wait_s` ≤ 25 long-polls until the next push. (GET /v1/projects/{project_id}/ops; scope projects:read) */

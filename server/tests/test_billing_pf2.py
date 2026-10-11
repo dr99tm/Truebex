@@ -238,7 +238,8 @@ def test_billing_paddle_subscription_lifecycle(client, paddle):
     assert sub["tier"] == "pro" and sub["seats"] == 1 and sub["interval"] == "month"
     assert sub["provider"] == "paddle" and sub["can_manage"] and not sub["cancel_at_period_end"]
     period_end = datetime.fromisoformat(sub["current_period_end"])
-    assert timedelta(days=27) < period_end.replace(tzinfo=timezone.utc) - datetime.now(timezone.utc) < timedelta(days=32)
+    assert period_end.utcoffset() == timedelta(0)  # UTC with Z (PF2c)
+    assert timedelta(days=27) < period_end - datetime.now(timezone.utc) < timedelta(days=32)
 
     created = next(e for e in events if e["event_type"] == "subscription.created")["data"]
     updated = copy.deepcopy(created)

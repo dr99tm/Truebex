@@ -75,7 +75,7 @@ MARKET_TEXT = {
 RENAME = {"Body_post_feed_market_feeds_post": "FeedUpload", "FeedSourceIn": "FeedSourceRequest"}
 TAG_TEXT = {
     "account": "Check a key: its owner, plan, scopes and usage.",
-    "projects": "Cloud projects: the operation log, snapshots, versions, members and presence (contract project-log).",
+    "projects": "Cloud projects: the operation log, snapshots, versions, members, presence and followed panorama sets (contract project-log).",
     "jobs": "Render jobs and exports (contract render-jobs); `pack` gives the sheet PDF, renders, panoramas and the bill of quantities.",
     "uploads": "Content-addressed uploads in 8 MiB parts, resumable (contract share-bundle §5).",
     "shares": "Share links from a bundle: create, publish, visits, expiry, revoke (contract share-bundle).",

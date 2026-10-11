@@ -334,6 +334,9 @@ class SEn extends S {
   String get someone => 'Someone';
 
   @override
+  String get agentAuthor => 'An assistant or script';
+
+  @override
   String get dismiss => 'Dismiss';
 
   @override

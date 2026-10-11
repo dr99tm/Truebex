@@ -13,6 +13,7 @@ import {
 import { useOrgs } from "@/components/dashboard/OrgContext";
 import { useApiData } from "@/components/dashboard/useApiData";
 import { Button } from "@/components/ui/Button";
+import { formatCredits } from "@/lib/ai";
 import { API_URL, formatDate } from "@/lib/api";
 import { STATIC_CATALOG } from "@/lib/billing-catalog";
 import { fill, foundingCovers, foundingPrice, intervalFor, perMonthOfYear } from "@/lib/catalogue";
@@ -33,6 +34,7 @@ import {
   withdrawContract,
   type Catalog,
   type Interval,
+  type Payment,
   type PlanInfo,
   type Subscription,
 } from "@/lib/developer";
@@ -67,6 +69,17 @@ const MANAGED = new Set(["paddle", "stripe"]);
 function providerLabel(provider: string): string {
   if (MANAGED.has(provider)) return BILLING.history.card;
   return provider.charAt(0).toUpperCase() + provider.slice(1);
+}
+
+type ItemName = { name: string; sized: string };
+
+/** PF2c: a plan's payment shows its tier; a one-off item's (an AI credit
+ *  pack) its own name, with its size when the API knows it. */
+function paymentName(p: Payment, tiers: readonly PlanInfo[]): string {
+  if (!p.item) return tiers.find((t) => t.id === p.plan)?.name ?? p.plan;
+  const named = (BILLING.history.items as Record<string, ItemName | undefined>)[p.item];
+  if (!named) return BILLING.history.otherItem;
+  return p.credits ? fill(named.sized, { credits: formatCredits(p.credits) }) : named.name;
 }
 
 function priceOf(tier: PlanInfo, interval: Interval, currency: string) {
@@ -868,7 +881,8 @@ function BillingManager({ org }: { org: OrgDetail | null }) {
                   <tr key={p.reference} className="border-t border-border">
                     <td className="py-2.5 pr-4 text-text-secondary">{formatDate(p.created_at)}</td>
                     <td className="py-2.5 pr-4 text-text-primary">
-                      {cat.tiers.find((t) => t.id === p.plan)?.name ?? p.plan}
+                      {paymentName(p, cat.tiers)}
+                      {p.item && <span className="text-text-muted"> · {BILLING.history.once}</span>}
                       {p.interval && (
                         <span className="text-text-muted">
                           {" · "}
