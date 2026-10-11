@@ -108,7 +108,7 @@ Set-up, in the worktree (two terminals):
 
 ## As-built
 
-* **Date, branch, commits:** 2026-10-11, `ap/t38-pf13a-sell-on-truebex-page-leadi` from `master` 842768e (Claude Autopilot T38): `fd1e5e3` the page, copy, sitemap, footer, marketplace button and the build checks; then this documentation (the doc, the tracker row, the README section and the `truebex-seo` keyword row).
+* **Date, branch, commits:** 2026-10-11, `ap/t38-pf13a-sell-on-truebex-page-leadi` from `master` 842768e (Claude Autopilot T38): `fd1e5e3` the page, copy, sitemap, footer, marketplace button and the build checks; `abb2d1d` this documentation (the doc, the tracker row, the README section and the `truebex-seo` keyword row); `24a9671` a test fix outside the feature (below).
 * **Counts:** pytest in the verify gate 544 → 550 passed (6 new in `test_site_pf13a.py`), 5 skipped (unchanged). `out/`: 66 → 67 `index.html` pages; sitemap 22 → 23 URLs. Lint, build and `scripts/autopilot-verify.ps1` green.
 * **Tests as named:** every row of the Tests table exists under its name; the build checks were written before the page and ran (not skipped) on the built `out/`.
 * **Self-tests:** headless Edge over CDP on the served `out/`: at 375 px, `scrollWidth` = `clientWidth` = 375 on `/suppliers/` (no element wider than the screen), full-page screenshots at 1280 px and 375 px; the marketplace page's "Sell on Truebex" button → `/suppliers/`; "Apply as a supplier" → `/supplier/signup/`, signed out (the "Create an account / Sign in" panel) and signed in (the three-step form) against a throwaway local API (port 8038, scratch SQLite DB, `CORS_ORIGINS` = the served origin); no page errors.
@@ -117,6 +117,7 @@ Set-up, in the worktree (two terminals):
   * The marketplace page's "For suppliers" section and its FAQ "Can my company list products?" now say that suppliers can apply and prepare their catalogue in the portal (present tense), because the portal ships; the rest of that page stays in the future tense. The button's label changed from "Register supplier interest" to "Sell on Truebex", the page it now opens.
   * The FAQ has no "What does it cost?" or "How long does review take?": they would need a fee or a date, which the task rules out.
   * The page says the first suppliers are "onboarded one by one" and reviewed "by hand" (GD1 §5: scoring, intro call, sample check, signed agreement), without promising the intro call or the sample check to a supplier who applies through the page.
+* **A flaky gate test fixed on the way (not PF13a's code):** `test_pf12_webhooks.py::test_webhooks_market_order_and_feed_events` asserted that an order's two `market.order.updated` deliveries arrive as `submitted` then `cancelled`. Since 6c7ecb6 deliveries go out in parallel (`delivery.PARALLEL`) and the event timestamps tie at whole seconds, so under the full suite they arrived reversed once (the test passed 8/8 alone). It now asserts both states, once each, for that order; delivery order was never promised to receivers.
 * **Arabic:** out of scope, as above; recorded for the Arabic pages after LO1.
 * **OG image:** none added; the shared card serves the page (`truebex-seo` asks for no per-page image).
 * **Contract:** none; nothing to record in the Unreal repo's `contracts/`.
