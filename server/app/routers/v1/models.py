@@ -106,6 +106,7 @@ class Member(_Doc):
     user_id: int | None
     email: str
     name: str | None = None
+    author_id: str | None = Field(default=None, description="The member's author id, as on their operations (PF9); null until they have one")
     role: Literal["viewer", "editor", "owner"]
     state: Literal["active", "invited"]
     invited_at: str | None = None
@@ -195,8 +196,12 @@ class SnapshotFileUrl(_Doc):
 
 
 class SnapshotFiles(_Doc):
+    """The snapshot's files: `tbxp`, `tbxpack` and `digest`, the project digest (`truebex-project-digest/1`: rooms,
+    walls, products, themes, for light clients; PF9). `tbxpack` and `digest` are null when the snapshot has none."""
+
     tbxp: SnapshotFileUrl
     tbxpack: SnapshotFileUrl | None
+    digest: SnapshotFileUrl | None
 
 
 class Snapshot(_Doc):

@@ -7,8 +7,16 @@ to `projects/{pid}/blobs/{sha256}` (a file the project already holds is not
 copied or counted twice) and recounts the project's bytes under the project
 lock. Download URLs are signed for 15 minutes. `prune` keeps the newest five
 and every version's.
+
+PF9 (a MINOR proposal for §6.4): a snapshot may carry `files.digest`, the
+project digest (`truebex-project-digest/1`: storeys, rooms, saved views,
+placed products, themes) the kernel replica writes beside it, so a light
+client that cannot read `.tbxp` can name rooms and offer edits. It is
+uploaded with the snapshot's files, checked to be that schema (≤ 1 MiB) and
+served like them.
 """
 
+import json
 import re
 import secrets
 from datetime import timedelta
@@ -27,6 +35,8 @@ from .service import is_hex32, not_found, touch
 
 URL_TTL_S = 900
 KEEP_NEWEST = 5
+DIGEST_SCHEMA = "truebex-project-digest/1"
+DIGEST_MAX_BYTES = 1024 * 1024
 _SHA = re.compile(r"^[0-9a-f]{64}$")
 _FILENAME_UNSAFE = re.compile(r"[^A-Za-z0-9._ -]+")
 
@@ -58,6 +68,7 @@ def snapshot_json(project: Project, snap: ProjectSnapshot) -> dict:
         "files": {
             "tbxp": _file_json(project, snap.tbxp_sha256, snap.tbxp_bytes, "tbxp"),
             "tbxpack": _file_json(project, snap.tbxpack_sha256, snap.tbxpack_bytes, "tbxpack"),
+            "digest": _file_json(project, snap.digest_sha256, snap.digest_bytes, "digest.json"),
         },
     }
 
@@ -87,6 +98,10 @@ def register(
         raise _bad("files.tbxp", "the .tbxp file's SHA-256 (64 hex)")
     if tbxpack is not None and not _SHA.match(tbxpack):
         raise _bad("files.tbxpack", "the .tbxpack file's SHA-256 (64 hex) or null")
+    digest = files.get("digest")
+    digest = str(digest).lower() if digest else None
+    if digest is not None and not _SHA.match(digest):
+        raise _bad("files.digest", "the project digest's SHA-256 (64 hex) or null")
     if doc_version < 1:
         raise _bad("doc_version", "1 or more")
     if at_seq < 0:
@@ -102,7 +117,7 @@ def register(
     session = uploads.get_session(db, upload_caller, upload_id)
     if session.purpose != "snapshot":
         raise _bad("upload_id", "an upload opened with purpose snapshot")
-    named = [s for s in (tbxp, tbxpack) if s]
+    named = [s for s in (tbxp, tbxpack, digest) if s]
     listed = {f["sha256"]: f for f in session.files}
     have = uploads.blobs_by_sha(db, session.account_id, named)
     missing = [s for s in named if s not in listed or s not in have]
@@ -114,6 +129,8 @@ def register(
             {"missing": missing},
         )
     store = get_store()
+    if digest is not None:
+        _check_digest(store, have[digest])
     pid = project.project_id
     new_bytes = sum(have[s].bytes for s in set(named) if store.stat(blob_key(pid, s)) is None)
     if new_bytes and bytes_cap is not None:
@@ -136,6 +153,8 @@ def register(
             tbxp_bytes=have[tbxp].bytes,
             tbxpack_sha256=tbxpack,
             tbxpack_bytes=have[tbxpack].bytes if tbxpack else None,
+            digest_sha256=digest,
+            digest_bytes=have[digest].bytes if digest else None,
             created_by=user_id,
             created_at=clock.now(),
         )
@@ -151,6 +170,19 @@ def register(
         db.rollback()
         raise
     return answer
+
+
+def _check_digest(store, blob) -> None:
+    """The digest is JSON of its schema (the server reads nothing else in it)."""
+    if blob.bytes > DIGEST_MAX_BYTES:
+        raise _bad("files.digest", "a project digest is at most 1 MiB")
+    try:
+        with store.open(blob.storage_key) as fh:
+            data = json.loads(fh.read(DIGEST_MAX_BYTES + 1).decode("utf-8"))
+    except (ValueError, UnicodeDecodeError):
+        data = None
+    if not isinstance(data, dict) or data.get("schema") != DIGEST_SCHEMA:
+        raise _bad("files.digest", f"a JSON object with schema {DIGEST_SCHEMA}")
 
 
 def _copy_missing(store, project_id: str, shas: set[str], have: dict) -> None:
@@ -171,12 +203,16 @@ def recount_bytes(db: Session, project: Project) -> None:
             ProjectSnapshot.tbxp_bytes,
             ProjectSnapshot.tbxpack_sha256,
             ProjectSnapshot.tbxpack_bytes,
+            ProjectSnapshot.digest_sha256,
+            ProjectSnapshot.digest_bytes,
         ).where(ProjectSnapshot.project_id == project.project_id)
     ).all()
-    for tbxp, tbxp_bytes, pack, pack_bytes in rows:
+    for tbxp, tbxp_bytes, pack, pack_bytes, digest, digest_bytes in rows:
         sizes[tbxp] = int(tbxp_bytes)
         if pack:
             sizes[pack] = int(pack_bytes or 0)
+        if digest:
+            sizes[digest] = int(digest_bytes or 0)
     deltas = db.scalar(
         select(func.coalesce(func.sum(ProjectOp.delta_bytes), 0)).where(
             ProjectOp.project_id == project.project_id, ProjectOp.delta_key.is_not(None)
@@ -207,6 +243,10 @@ def get(db: Session, project: Project, snapshot_id: str) -> ProjectSnapshot:
 # --- projects.snapshots.prune ------------------------------------------------------
 
 
+def _shas(snap: ProjectSnapshot) -> list[str]:
+    return [sha for sha in (snap.tbxp_sha256, snap.tbxpack_sha256, snap.digest_sha256) if sha]
+
+
 def prune_project(db: Session, project_id: str) -> int:
     """Keep the newest five and every version's snapshot; drop the rest and
     the blobs nothing names any more (under the project lock, so a snapshot
@@ -224,9 +264,9 @@ def prune_project(db: Session, project_id: str) -> int:
         if not drop:
             db.rollback()
             return 0
-        kept_shas = {s.tbxp_sha256 for s in keep} | {s.tbxpack_sha256 for s in keep if s.tbxpack_sha256}
+        kept_shas = {sha for s in keep for sha in _shas(s)}
         store = get_store()
-        for sha in {s.tbxp_sha256 for s in drop} | {s.tbxpack_sha256 for s in drop if s.tbxpack_sha256}:
+        for sha in {sha for s in drop for sha in _shas(s)}:
             if sha not in kept_shas:
                 store.delete(blob_key(project_id, sha))
         for snap in drop:

@@ -49,6 +49,9 @@ def member_json(db: Session, m: ProjectMember, users: dict[int, User] | None = N
         "state": m.state,
         "invited_at": clock.rfc3339(m.invited_at),
         "accepted_at": clock.rfc3339(m.accepted_at),
+        # PF9 (a MINOR proposal for 5.13): who wrote an operation, so a light
+        # client names the winner of a conflict; null for an invitation.
+        "author_id": user.author_id if user else None,
     }
 
 

@@ -9,6 +9,10 @@
 // shows one level (the smallest whose pixels cover the face on screen);
 // `update()` swaps only the tiles whose hashes changed, after they load, so an
 // edit re-renders two faces and the viewer fetches only those.
+//
+// PF9 adds what the mobile client needs, all optional: hotspots (buttons at a
+// bearing and pitch that lead to another view), `look()` for device
+// orientation, and `onTurn` when the person turns the view by hand.
 
 export type CubeFace = "n" | "e" | "s" | "w" | "u" | "d";
 
@@ -31,6 +35,16 @@ export interface CubeOptions {
   hfovDeg?: number;
   yawDeg?: number;
   pitchDeg?: number;
+  /** Called after the person turns the view (drag or keys), with the new look. */
+  onTurn?: (yawDeg: number, pitchDeg: number) => void;
+}
+
+/** A button floating at a compass bearing and pitch (up positive), PF9. */
+export interface CubeHotspot {
+  id: string;
+  label: string;
+  yawDeg: number;
+  pitchDeg: number;
 }
 
 const ORDER: CubeFace[] = ["n", "e", "s", "w", "u", "d"];
@@ -70,6 +84,8 @@ export class CubeTileViewer {
   private focal = 500;
   private readonly resize: ResizeObserver | null = null;
   private drag: { x: number; y: number; yaw: number; pitch: number } | null = null;
+  private readonly spots: HTMLDivElement;
+  private hotspots: { spot: CubeHotspot; el: HTMLButtonElement }[] = [];
 
   constructor(
     private readonly host: HTMLElement,
@@ -108,6 +124,9 @@ export class CubeTileViewer {
       this.faces.set(face, el);
       this.cube.append(el);
     }
+    this.spots = document.createElement("div");
+    Object.assign(this.spots.style, { position: "absolute", left: "0", top: "0", transformStyle: "preserve-3d" });
+    this.cube.append(this.spots);
     this.root.append(this.cube);
     host.append(this.root);
     this.root.addEventListener("pointerdown", this.onDown);
@@ -135,6 +154,74 @@ export class CubeTileViewer {
     this.root.remove();
   }
 
+  /** Where the view looks: compass bearing (0 = north) and pitch (up positive). */
+  get yawDeg(): number {
+    return this.yaw;
+  }
+
+  get pitchDeg(): number {
+    return this.pitch;
+  }
+
+  /** Look at a bearing and pitch (device orientation, a saved view's start). */
+  look(yawDeg: number, pitchDeg: number): void {
+    this.yaw = ((yawDeg % 360) + 360) % 360;
+    this.pitch = clamp(pitchDeg, -89, 89);
+    this.orient();
+  }
+
+  /** Replace the hotspots; `onSelect` gets the id of the one tapped. */
+  setHotspots(spots: CubeHotspot[], onSelect: (id: string) => void): void {
+    this.spots.replaceChildren();
+    this.hotspots = spots.map((spot) => {
+      const el = document.createElement("button");
+      el.type = "button";
+      el.textContent = spot.label;
+      el.dataset.hotspot = spot.id;
+      el.className = "tbx-hotspot";
+      Object.assign(el.style, {
+        position: "absolute",
+        left: "0",
+        top: "0",
+        whiteSpace: "nowrap",
+        padding: "8px 14px",
+        borderRadius: "999px",
+        border: "1px solid rgba(160, 206, 255, 0.6)",
+        background: "rgba(22, 22, 22, 0.78)",
+        color: "#ffffff",
+        font: "600 14px/1.2 system-ui, sans-serif",
+        cursor: "pointer",
+        backfaceVisibility: "hidden",
+      });
+      // A tap on the hotspot is not the start of a drag.
+      el.addEventListener("pointerdown", (e) => e.stopPropagation());
+      el.addEventListener("click", (e) => {
+        e.stopPropagation();
+        onSelect(spot.id);
+      });
+      this.spots.append(el);
+      return { spot, el };
+    });
+    this.placeHotspots();
+  }
+
+  private placeHotspots(): void {
+    const r = this.focal * 0.8;
+    for (const { spot, el } of this.hotspots) {
+      el.style.transform = `rotateY(${-spot.yawDeg}deg) rotateX(${-spot.pitchDeg}deg) translateZ(${-r}px) translate(-50%, -50%)`;
+    }
+    this.cullHotspots();
+  }
+
+  // Only those within 100° of where the view looks: one behind the viewer
+  // would be drawn through the projection's back side.
+  private cullHotspots(): void {
+    for (const { spot, el } of this.hotspots) {
+      const d = Math.abs(((spot.yawDeg - this.yaw + 540) % 360) - 180);
+      el.style.visibility = d <= 100 ? "visible" : "hidden";
+    }
+  }
+
   private pickLevel(): number {
     const view = this.view;
     if (!view) return -1;
@@ -159,12 +246,14 @@ export class CubeTileViewer {
       });
     }
     this.orient();
+    this.placeHotspots();
     const level = this.pickLevel();
     if (force || level !== this.level) this.paint(level, level !== this.level);
   }
 
   private orient(): void {
     this.cube.style.transform = `translateZ(${this.focal}px) rotateX(${this.pitch}deg) rotateY(${this.yaw}deg)`;
+    this.cullHotspots();
   }
 
   private paint(level: number, rebuild: boolean): void {
@@ -225,6 +314,7 @@ export class CubeTileViewer {
     this.yaw = (((this.yaw + dYaw) % 360) + 360) % 360;
     this.pitch = clamp(this.pitch + dPitch, -89, 89);
     this.orient();
+    this.options.onTurn?.(this.yaw, this.pitch);
   }
 
   private readonly onDown = (e: PointerEvent) => {

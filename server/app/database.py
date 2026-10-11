@@ -129,6 +129,10 @@ _ADDED_COLUMNS["payments"] += [
 
 # PF3a (organisation billing): the organisation a checkout buys for.
 _ADDED_COLUMNS.setdefault("payments", []).append(("organisation_id", "VARCHAR(32)"))
+# PF9 (mobile web client): a snapshot's project digest file.
+_ADDED_COLUMNS.setdefault("project_snapshots", []).extend(
+    [("digest_sha256", "VARCHAR(64)"), ("digest_bytes", "BIGINT")]
+)
 
 # PF12 (public API): API key scopes, a JSON list; NULL = every read scope.
 _ADDED_COLUMNS.setdefault("api_keys", []).append(("scopes", "TEXT"))

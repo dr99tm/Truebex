@@ -131,6 +131,10 @@ class ProjectSnapshot(Base):
     tbxp_bytes: Mapped[int] = mapped_column(BigInteger, nullable=False)
     tbxpack_sha256: Mapped[str | None] = mapped_column(String(64), nullable=True)
     tbxpack_bytes: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+    # PF9 (a MINOR proposal for §6.4): the project digest the kernel replica
+    # writes beside the snapshot (`truebex-project-digest/1`), for light clients.
+    digest_sha256: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    digest_bytes: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
     created_by: Mapped[int] = mapped_column(Integer, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow, nullable=False)
 

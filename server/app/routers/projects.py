@@ -37,10 +37,14 @@ class RenameIn(BaseModel):
 
 
 class SnapshotFilesIn(BaseModel):
+    """SHA-256s of the snapshot's files in its upload: `tbxp`, optionally `tbxpack` and `digest` (the project digest)."""
+
     model_config = ConfigDict(extra="ignore")
 
     tbxp: str = Field(max_length=64)
     tbxpack: str | None = Field(default=None, max_length=64)
+    # PF9: the project digest (`truebex-project-digest/1`), a MINOR proposal for §6.4.
+    digest: str | None = Field(default=None, max_length=64)
 
 
 class SnapshotIn(BaseModel):

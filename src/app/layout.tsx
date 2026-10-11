@@ -25,6 +25,8 @@ export const metadata: Metadata = {
   },
   description: SITE.description,
   applicationName: "Truebex",
+  // PF9: iOS home-screen metadata (the mobile web client opens full screen).
+  appleWebApp: { capable: true, title: "Truebex", statusBarStyle: "black-translucent" },
   keywords: [
     "Truebex",
     "building design platform",

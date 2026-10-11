@@ -40,6 +40,8 @@ export interface Member {
   state: "active" | "invited";
   invited_at: string | null;
   accepted_at: string | null;
+  /** PF9: who writes this person's operations (null for an invitation). */
+  author_id?: string | null;
 }
 
 export interface OpenProject extends Omit<ProjectRecord, "members"> {

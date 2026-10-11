@@ -135,5 +135,8 @@ def google_login(payload: GoogleLogin, db: Session = Depends(get_db)) -> Token:
 def me(current: User = Depends(get_current_user), db: Session = Depends(get_db)) -> UserOut:
     from ..billing.service import effective_plan
 
+    from ..licence.service import ensure_author_id
+
     effective_plan(db, current)  # expire lapsed plans before reporting
+    ensure_author_id(db, current)  # PF9: the web client's operations carry it
     return user_out(current)
