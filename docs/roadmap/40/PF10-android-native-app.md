@@ -13,6 +13,10 @@ OpenAPI document `openapi/clients.json` with both clients generated from it (`sr
 CL1 / CL4 applying `action` operations on the desktop, CL3's real renders (the screenshots show the stand-in
 renderer), and the owner's GD4 actions (Play account, upload key, Android OAuth client). See As-built.
 
+Merged with master (PF12, T33's PF9) on 2026-10-11 (Autopilot T34): one `export_openapi.py` writes both `--v1` and
+`--clients`; neither document drifted, and an API key's `/v1` edit that beats the phone reads "Someone changed this
+first". See As-built.
+
 Before this task no native client existed (`00-contract.md` P.1). What this builds on, verified with Grep on 2026-10-09:
 
 | Area | Where | Today |
@@ -244,3 +248,35 @@ Retry and backoff follow `project-log.md` §8 (1, 2, 4 … 60 s ± 20 %, `Retry-
   screenshots → CL3; `workmanager_android`'s built-in Kotlin migration → upgrade when the plugin ships it.
   Contracts: PF10 is a client only — no §11 rows and no new proposals (it uses PF9's `digest`, `place.replace`,
   members' `author_id` and the members' panorama read).
+* **Merged with master: PF12 and T33's landing of PF9 (2026-10-11, Autopilot T34,
+  `ap/t34-merge-t13-pf10-android-native-ap`):** verify green (lint, build, pytest 544 passed and the 5 Postgres-only
+  skips: master's 535 and this feature's 9); `scripts/verify-mobile.ps1` green (`flutter analyze` clean, 40 Flutter
+  tests, debug APK). Six files conflicted. `README.md`: master's order (PF11, PF12, then PF9 with T33's
+  `demo_mobile.py` note) and the "Android app" section appended last, its two paths repaired (a BEL and a VT had
+  replaced `\a` and `\v` in `scripts\autopilot-verify.ps1` and `scripts\verify-mobile.ps1`). The tracker: master's
+  rows (PF12 ticked, T33's PF9 note) and this row. `eslint.config.mjs`: PF12's `sdks/**`, `packages/**` and this
+  feature's `mobile/**`. `server/app/main.py`: master's, unchanged (PF10 adds no router; its copy still had the second
+  `uploads` include from before PF12). `constants.ts`: master's (PF11's `CLOUD_AI` / `ADMIN_AI` once, PF12's
+  `DEVELOPER_DOCS`, `APP` last) with `ANDROID_APP_PRIVACY` appended. `server/scripts/export_openapi.py` (add/add):
+  deviation 2 carried out — PF12's file with `build()`, `OUT`, `API_VERSION` and `--v1` as they were, plus
+  `CLIENTS_OUT`, `CLIENTS_VERSION`, `_json`, `build_clients()` and `--clients`, chosen through one `DOCUMENTS`
+  table; `--out` defaults to the chosen document's file. The `warnings` filter around `app.openapi()` is gone:
+  on the merged tree it warns about nothing, since PF12 removed the duplicate `uploads` router that caused the
+  duplicate operation ids. **No drift:** `--v1 --check` and `--clients --check` both pass, and
+  `scripts/gen-clients.ps1` rewrote `src/lib/api-clients.d.ts` and `mobile/android/lib/api/gen/` byte for byte
+  (`SPEC_SHA256` `65a43888…`): `build_clients()` drops header parameters, so PF12's optional `X-API-Key` on the
+  marketplace reads never reaches the clients' document, and `SnapshotFilesIn` is not in it. `gen-sdks.ps1` was not
+  needed. Kept from master: `/v1`'s `digest` and members' `author_id`, `test_pf9_pf12_meet.py`, and `demo_mobile.py
+  move` through `/v1` as an API key. **Where they meet:** with PF12 an API key can win a conflict against the phone.
+  Its operation carries `author_kind: "agent"` and the key's own author id, which is no member's. The generated
+  `Operation` already has `agent`, and the sync engine names an unknown author "Someone", like PF9. A new Flutter test
+  pins this down (`a winner pushed with an API key (an agent through /v1) reads "Someone"`). Live on the emulator
+  (`Medium_Phone_API_36`, headless, read-only), against master's server through `try-mobile.ps1 -NoBuild`: sign-in,
+  House, the panorama, £1,299.00 from `/market/prices`; offline (airplane mode and the relay stopped), Move Oslo
+  3-seater sofa: Away 250 mm read "Waiting for connection"; the app was closed (home, then its process killed);
+  `demo_mobile.py --token tbx_live_… move --entity Oslo` was accepted as operation 13 (`author_kind: agent`). On
+  reconnect the notification "Edit replaced · House — Move Oslo 3-seater sofa: Away 250 mm: Someone changed this first
+  — your edit was replaced" came **24 s** later with the app closed, and the log's head stayed 13. The
+  `try-android.ps1` command (`--token tbx_dev_…`, a 32-hex entity) still works on master's `demo_mobile.py`
+  (accepted as 14). History lists "Move object · Sam · Operation 14" and "Move Oslo 3-seater sofa · Someone ·
+  Operation 13", and the panorama followed to operation 14.
