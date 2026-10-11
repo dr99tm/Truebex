@@ -898,6 +898,110 @@ Known gaps: the app's headless render (CL3) and its Cloud panorama command
 copy; `live_job_id` and `/s/{slug}/live` are a share-bundle MINOR proposal until
 the owner writes them into the contract.
 
+## Analysis and AI services
+
+Two contracts (Unreal project, `Docs/roadmap/40/contracts/`; the app side is authoritative): `render-jobs` v1.0.0
+for the analysis kinds and `ai-proxy` v1.0.0 for the metered assistant proxy. The code is `server/app/analysis/`
+and `server/app/ai/`, the routes `server/app/routers/analysis_ai.py` (one router for the feature).
+
+- **Analysis jobs** use PF6's queue (`POST /jobs`, `/workers/*`): `wind` (CFD), `energy` (building energy
+  simulation, `params.weather` from the weather library) and `acoustics` (room acoustics by ray tracing) need the
+  `analysis.reports` feature, run on `cpu-8` workers and upload their inputs as `job-input` files. The answer
+  carries an estimate from GD3's worked examples (cells × iterations, zones × timesteps, rays × sources); the
+  charge is the measured wall time at the `cpu-8` weight (0.25). A worker completes with a `truebex-analysis/1`
+  result (§6.3), checked field by field against its uploaded arrays; `GET /jobs/{id}/output` serves it with
+  signed URLs. `texture` (seamless material maps, `gpu-ai`) stays off until `AI_TEXTURE_ENABLED`.
+- **Workers:** `worker/truebex_worker.py --mode container` runs each job as
+  `docker run --network none --cpus … --memory … --user 1000:1000 -v <job>:/job <image>`; settings in
+  `worker/worker.analysis.toml.example`; images in `infra/worker/analysis/` (build with
+  `infra/worker/analysis/wind/build.ps1` and siblings), runner code in `server/app/analysis/runners/`.
+  Without Docker, the tests' stub solver stands in (`server/tests/fakes/stub_solver/`).
+- **Weather library:** EPW files with their source and licence, added by an admin
+  (`PUT /admin/analysis/weather/{id}` or `server/scripts/load_weather.py`); `GET /analysis/catalogue` lists them
+  with the wind terrain classes.
+- **The AI proxy** (`/ai/models`, `/ai/balance`, `/ai/messages`, `/ai/messages/count`) answers the desktop app's
+  device token when the plan holds `ai.metered`. The alias table `server/app/ai/aliases.json` maps
+  `truebex-assist` to the provider model (re-read when the file changes); the provider key is
+  `ANTHROPIC_API_KEY` in `server/.env` only. Streams are relayed line by line (tool calls byte-equal), with a
+  `ping` at least every 15 s and one `truebex_credits` event before `message_stop`. No message text, tool input
+  or image is stored: `ai_usage` keeps token counts, tool names and credits for 400 days.
+- **Credits:** integer credits per account, the plan's monthly allowance first (reset on the 1st, no roll-over;
+  placeholders in `server/app/ai/credits.json` until GD7: Pro 2000, Studio and Team 5000, Enterprise 20 000),
+  then packs bought on `/dashboard/cloud/#ai-credits` through the billing provider's one-off checkout, credited
+  when the payment is verified. Every change is a row of the append-only `ai_credit_ledger`. A pack is a one-off
+  item (`billing.service.ONE_OFF_ITEMS`): no subscription, and no PF2b order confirmation (the provider's receipt).
+- **Self-hosted models:** a second alias, `truebex-open`, reaches an OpenAI-compatible inference server on
+  `gpu-ai` workers (`infra/worker/ai/`); it is off until GD3 and GD7, and falls back to `truebex-assist` while
+  no server is warm.
+- **Pages:** `/dashboard/cloud/` gains analysis runs with their cost and the AI section (credits, allowance,
+  reset date, recent turns, Buy credits); `/dashboard/admin/render/` gains the CPU and `gpu-ai` classes, the
+  inference servers and AI spend by alias against provider cost.
+
+- **Trying it without the app:** `server/scripts/demo_ai.py --token tbx_dev_… window` plays the assistant's
+  "window on the north wall" conversation against `/ai/messages`; `server/scripts/demo_analysis.py --token tbx_dev_…
+  wind` uploads a geometry and submits a wind job (`watch`, `output` follow it); `server/scripts/fake_ai_upstream.py`
+  stands in for the model provider (`ANTHROPIC_BASE_URL=http://127.0.0.1:8790`) so no key is spent.
+
+Known gaps: results are reports, never certificates, and no number is claimed publicly before GD2's validation
+cases pass; the app sides (AN2–AN4 exporting inputs, AI3's panel) ship separately, so the public copy keeps these
+on the roadmap.
+
+---
+
+## Public API, SDKs, webhooks and the MCP package
+
+The developer API (PF12) is everything an API key reaches, described by one
+OpenAPI document, `openapi/v1.json`, from which the SDKs and the reference
+tables on `/developers/` are generated. The code is `server/app/routers/v1/`,
+`server/app/scopes.py` and `server/app/webhooks/`.
+
+- **Keys and scopes.** A key is made with scopes (`projects:read`,
+  `projects:write`, `jobs:write`, `shares:write`, `market:read`,
+  `supplier:feed`, `webhooks:manage`); keys made before scopes read as every
+  read scope. Every key call is metered as before and held to a per-key burst
+  limit (`API_KEY_BURST` 60 at once, refilled at `API_KEY_PER_MINUTE` 600):
+  past it, 429 `rate_limited` with `retry_after_s`.
+- **The mirror.** `/v1/projects…` (project-log 5.1–5.18), `/v1/jobs…`
+  (render-jobs 5.1–5.6) and `/v1/uploads…`, `/v1/shares…` (share-bundle
+  5.1–5.9) hand each call to the contract router's own handler with the key as
+  an `api_key` caller, so shapes and errors are the contract's. A key's pushes
+  are `author_kind: "agent"` with the key's author id (`GET /v1/account`);
+  deleting a project stays the website's (403 `session_required`). Marketplace
+  reads take an optional key (`market:read`: metered, no anonymous limit);
+  supplier feeds need `supplier:feed` (keys made before scopes keep PF8's
+  access).
+- **Webhooks.** Endpoints per account (`/v1/webhooks` with `webhooks:manage`,
+  or Dashboard → Webhooks), https to public addresses only (checked again at
+  each delivery). Events are signed per the Standard Webhooks specification
+  (`webhook-id`, `webhook-timestamp`, `webhook-signature: v1,…`), retried
+  immediately, 5 s, 5 min, 30 min, 2 h, 5 h, 10 h, 14 h, 20 h and 24 h, logged
+  per attempt, re-sendable, and an endpoint failing for five days is switched
+  off with an e-mail. Events come from PF4's push hook (`project.ops_appended`,
+  one per 30 s per project) and a session observer that sees jobs end, shares go
+  live, versions, invitations, order changes and feed runs, without those
+  features calling in. Secrets are sealed with `WEBHOOK_SECRET_KEY`.
+  `server\scripts\webhook_echo.py --port 9900 --secret whsec_…` is a local
+  receiver that checks signatures (with `WEBHOOKS_ALLOW_HTTP_LOCAL=true`).
+- **The document and the SDKs.** `server\scripts\export_openapi.py --v1`
+  writes `openapi/v1.json` (a test fails when it drifts);
+  `scripts\gen-sdks.ps1` regenerates it, the Python SDK `truebex`
+  (`sdks/python/`, standard library only; types by datamodel-code-generator)
+  and the JavaScript SDK `@truebex/sdk` (`sdks/js/`; types by
+  openapi-typescript), each with a webhook verifier. Publishing to PyPI and
+  npm is the owner's; flip `DEVELOPER_DOCS.sdksPublished` in
+  `src/lib/constants.ts` afterwards.
+- **The MCP package.** `packages/mcp/` is `@truebex/mcp` (bin `truebex-mcp`):
+  the stdio bridge of contract agent-interface §6.6 that relays tool calls to
+  the running app over a per-user named pipe, with `tools.json` (also copied to
+  `src/content/tools.json` for `/developers/mcp/`). Until the app ships its own
+  `Tools/mcp/`, the package holds a stand-in written to the contract;
+  `scripts\sync-mcp.ps1` copies the app's files over it at an app release.
+  Install notes are in `packages/mcp/README.md`.
+
+Try it locally: `server\run.bat` with `WEBHOOKS_ALLOW_HTTP_LOCAL=true` in
+`server\.env`, then from `sdks\python`:
+`py -3.12 -c "import truebex; print(truebex.Client(api_key='tbx_live_…', base_url='http://127.0.0.1:8000').account.get())"`.
+
 ## Mobile web client (PF9)
 
 `/app/` is the first mobile version of Truebex: an installable web app (the

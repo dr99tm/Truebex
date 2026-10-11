@@ -27,8 +27,9 @@ _bearer = HTTPBearer(auto_error=False)
 @dataclass(frozen=True)
 class ProjectCaller:
     user: User
-    kind: str  # device | session | api_key (5.5 only)
+    kind: str  # device | session | api_key (5.5 here; every route under /v1/projects, PF12)
     device: Device | None = None
+    key_id: int | None = None  # PF12: the API key behind an api_key caller
 
     @property
     def is_device(self) -> bool:
@@ -38,6 +39,8 @@ class ProjectCaller:
         """The same credential as the upload protocol sees it (share-bundle §4)."""
         if self.device is not None:
             return UploadCaller(account_id=self.user.id, kind="device", credential_id=self.device.device_id)
+        if self.kind == "api_key":  # PF12: /v1/uploads opened it with the same key's account
+            return UploadCaller(account_id=self.user.id, kind="api_key", credential_id=str(self.key_id or ""))
         return UploadCaller(account_id=self.user.id, kind="session")
 
 

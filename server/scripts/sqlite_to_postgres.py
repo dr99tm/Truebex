@@ -83,6 +83,8 @@ def _models() -> list[Table]:
     from app import idempotency as _idempotency  # noqa: F401  (PF4)
     from app.projects import models as _projects  # noqa: F401  (PF4)
     from app.render import models as _render  # noqa: F401  (PF6, and metering's meter_daily)
+    from app.ai import models as _ai  # noqa: F401  (PF11: ai_*, and analysis_weather)
+    from app.webhooks import models as _webhooks  # noqa: F401  (PF12)
 
     return list(Base.metadata.sorted_tables)  # parents before children
 

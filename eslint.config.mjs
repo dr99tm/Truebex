@@ -12,6 +12,10 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // PF12: the SDKs and the MCP package are their own packages (Node code,
+    // generated clients), not the site.
+    "sdks/**",
+    "packages/**",
   ]),
 ]);
 

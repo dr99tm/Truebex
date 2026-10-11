@@ -34,7 +34,8 @@ from .models import OverageCap, RenderJob
 
 ACCOUNT_KIND = "user"
 METRIC = "cu"
-CONTRACT_KINDS = ("panorama", "tiles", "pack", "wind", "energy")
+# PF11 adds acoustics and texture (MINOR proposals) beside the contract's five.
+CONTRACT_KINDS = ("panorama", "tiles", "pack", "wind", "energy", "acoustics", "texture")
 LIVE_STATES = ("queued", "claimed", "running")
 TENTH = Decimal("0.1")
 
@@ -48,13 +49,22 @@ class Kind:
     unit: str
 
 
-# Kinds this platform runs. PF11 adds `wind` and `energy` (feature
-# `analysis.reports`, class `cpu-8`) on the same queue.
+# Kinds this platform runs. PF11 adds `wind`, `energy`, `acoustics` (feature
+# `analysis.reports`, class `cpu-8`) and `texture` (gpu-ai) on the same queue
+# (app.analysis.kinds.sync).
 KINDS: dict[str, Kind] = {
     "panorama": Kind("panorama", "cloud.panoramas", "gpu-std", "view"),
     "tiles": Kind("tiles", "cloud.panoramas", "gpu-std", "view"),
     "pack": Kind("pack", "cloud.panoramas", "gpu-std", "item"),
 }
+# Each kind's worker class, switched-off kinds included (a worker token's
+# kinds must all run on its class).
+KIND_CLASSES: dict[str, str] = {name: k.worker_class for name, k in KINDS.items()}
+
+
+def kind_class(kind: str) -> str | None:
+    known = KINDS.get(kind)
+    return known.worker_class if known is not None else KIND_CLASSES.get(kind)
 
 # Placeholders "from GD7" (the guide has no matrix yet).
 PLACEHOLDER_CU: dict[str, int | None] = {"free": 0, "pro": 120, "studio": 600, "team": 600, "enterprise": None}

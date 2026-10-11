@@ -1,0 +1,42 @@
+{
+  "schema": "truebex-ai-aliases/1",
+  "source": "PF11 alias table (contracts/ai-proxy.md 6.1). Platform configuration: an alias may move to another provider model without an app release. credits_per_mtok are placeholders until guides/GD7 sets the credit rates: the contract's 5.1 shape, which is the default model's list price at 1 credit = 0.001 USD of provider cost (cache reads at twice cost). provider_usd_per_mtok are the providers' list prices (cache_write = the 5-minute cache write) so the admin can compare credits with cost; confirm at writing time.",
+  "default": "truebex-assist",
+  "aliases": {
+    "truebex-assist": {
+      "adapter": "anthropic",
+      "provider": "anthropic",
+      "model": "claude-opus-5-5",
+      "effort": "high",
+      "fallbacks": "default",
+      "enabled": true,
+      "context_tokens": 1000000,
+      "max_output_tokens": 64000,
+      "vision": true,
+      "credits_per_mtok": {"input": 4000, "output": 20000, "cache_read": 400, "cache_write": 5000}
+    },
+    "truebex-open": {
+      "adapter": "selfhosted",
+      "provider": "truebex",
+      "model": "truebex-open",
+      "note": "An open-weight instruct model whose licence allows commercial hosting (Apache-2.0 or MIT), served by an OpenAI-compatible inference server under the served model name truebex-open on gpu-ai workers. Off until GD3 names the GPU class and GD7 the rates; turns fall back to fallback_alias while no server is warm.",
+      "fallback_alias": "truebex-assist",
+      "enabled": false,
+      "context_tokens": 131072,
+      "max_output_tokens": 16384,
+      "vision": false,
+      "credits_per_mtok": {"input": 600, "output": 2400, "cache_read": 600, "cache_write": 600}
+    }
+  },
+  "model_credits_per_mtok": {
+    "claude-opus-5-5": {"input": 4000, "output": 20000, "cache_read": 400, "cache_write": 5000},
+    "claude-opus-5": {"input": 5000, "output": 25000, "cache_read": 500, "cache_write": 6250},
+    "claude-opus-4-8": {"input": 5000, "output": 25000, "cache_read": 500, "cache_write": 6250}
+  },
+  "provider_usd_per_mtok": {
+    "claude-opus-5-5": {"input": 4.0, "output": 20.0, "cache_read": 0.2, "cache_write": 5.0},
+    "claude-opus-5": {"input": 5.0, "output": 25.0, "cache_read": 0.5, "cache_write": 6.25},
+    "claude-opus-4-8": {"input": 5.0, "output": 25.0, "cache_read": 0.5, "cache_write": 6.25},
+    "truebex-open": {"input": 0.0, "output": 0.0, "cache_read": 0.0, "cache_write": 0.0}
+  }
+}

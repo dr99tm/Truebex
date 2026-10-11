@@ -1,0 +1,3 @@
+{"request":{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"desktop","version":"1.0.0"}}},"answer":{"jsonrpc":"2.0","id":1,"result":{"protocolVersion":"2025-06-18","capabilities":{"tools":{"listChanged":false}},"serverInfo":"<masked>"}}}
+{"request":{"jsonrpc":"2.0","id":2,"method":"tools/list"},"answer":{"jsonrpc":"2.0","id":2,"result":{"tools":"<masked>"}}}
+{"request":{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"find","arguments":{"kind":"wall"}}},"answer":{"jsonrpc":"2.0","id":3,"result":{"resultType":"complete","content":"<masked>","structuredContent":{"detail":"<masked>","code":"app_not_running","request_id":"<masked>","data":null},"isError":true}}}

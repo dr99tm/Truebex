@@ -6,10 +6,17 @@ import { ErrorNote, PageHeader, Panel } from "@/components/dashboard/DashboardSh
 import { useApiData } from "@/components/dashboard/useApiData";
 import { Button } from "@/components/ui/Button";
 import { API_URL, formatDate } from "@/lib/api";
-import { createKey, listKeys, revokeKey, type CreatedApiKey } from "@/lib/developer";
+import { DEVELOPER_DOCS } from "@/lib/constants";
+import { createKey, listKeys, listScopes, revokeKey, type CreatedApiKey } from "@/lib/developer";
+
+const T = DEVELOPER_DOCS.keys;
 
 export default function KeysPage() {
   const { data: keys, error, loading, reload } = useApiData(listKeys);
+  // PF12: the scopes a key can hold; the read scopes are ticked to start with.
+  const { data: catalog } = useApiData(listScopes);
+  const [chosen, setChosen] = useState<string[] | null>(null);
+  const picked = chosen ?? catalog?.default ?? [];
   const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState("");
@@ -17,12 +24,20 @@ export default function KeysPage() {
   const [copied, setCopied] = useState(false);
   const [confirming, setConfirming] = useState<number | null>(null);
 
+  function toggleScope(scope: string) {
+    setChosen(picked.includes(scope) ? picked.filter((s) => s !== scope) : [...picked, scope]);
+  }
+
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
+    if (catalog && picked.length === 0) {
+      setActionError(T.none);
+      return;
+    }
     setBusy(true);
     setActionError("");
     try {
-      const key = await createKey(name.trim() || "Default");
+      const key = await createKey(name.trim() || "Default", catalog ? picked : undefined);
       setCreated(key);
       setCopied(false);
       setName("");
@@ -101,6 +116,28 @@ export default function KeysPage() {
             <span className="ml-2">{busy ? "Creating…" : "Create key"}</span>
           </Button>
         </form>
+        {catalog && (
+          <fieldset className="mt-5">
+            <legend className="text-sm font-medium text-text-primary">{T.scopesLabel}</legend>
+            <p className="mt-1 text-xs text-text-muted">{T.scopesHelp}</p>
+            <div className="mt-3 grid gap-2 sm:grid-cols-2">
+              {catalog.scopes.map((s) => (
+                <label key={s.scope} className="flex items-start gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    className="mt-1 accent-[var(--color-accent)]"
+                    checked={picked.includes(s.scope)}
+                    onChange={() => toggleScope(s.scope)}
+                  />
+                  <span>
+                    <code className="font-mono text-text-primary">{s.scope}</code>
+                    <span className="block text-xs text-text-muted">{s.description}</span>
+                  </span>
+                </label>
+              ))}
+            </div>
+          </fieldset>
+        )}
         {(actionError || error) && (
           <div className="mt-4">
             <ErrorNote message={actionError || error || ""} />
@@ -121,6 +158,7 @@ export default function KeysPage() {
                 <tr>
                   <th className="py-2 pr-4 font-medium">Name</th>
                   <th className="py-2 pr-4 font-medium">Key</th>
+                  <th className="py-2 pr-4 font-medium">{T.scopesLabel}</th>
                   <th className="py-2 pr-4 font-medium">Created</th>
                   <th className="py-2 pr-4 font-medium">Last used</th>
                   <th className="py-2 font-medium">
@@ -133,6 +171,13 @@ export default function KeysPage() {
                   <tr key={k.id} className="border-t border-border">
                     <td className="py-3 pr-4 text-text-primary">{k.name}</td>
                     <td className="py-3 pr-4 font-mono text-text-secondary">{k.prefix}…</td>
+                    <td className="py-3 pr-4 text-xs text-text-secondary">
+                      {k.legacy ? (
+                        <span title={(k.scopes ?? []).join(", ")}>{T.legacy}</span>
+                      ) : (
+                        (k.scopes ?? []).join(", ")
+                      )}
+                    </td>
                     <td className="py-3 pr-4 text-text-secondary">{formatDate(k.created_at)}</td>
                     <td className="py-3 pr-4 text-text-secondary">{formatDate(k.last_used_at)}</td>
                     <td className="py-3 text-right">

@@ -1,11 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useState } from "react";
 import { ErrorNote, PageHeader, Panel } from "@/components/dashboard/DashboardShell";
 import { UsageChart } from "@/components/dashboard/UsageChart";
 import { UsageMeter } from "@/components/dashboard/UsageMeter";
+import { AiCredits } from "@/components/cloud/AiCredits";
 import { TilePreview } from "@/components/cloud/TilePreview";
 import { Button } from "@/components/ui/Button";
+import { kindLabel } from "@/lib/ai";
 import { formatDate } from "@/lib/api";
 import { fill } from "@/lib/catalogue";
 import { CLOUD } from "@/lib/constants";
@@ -79,7 +81,7 @@ function ByKind({ rows }: { rows: Record<string, number> }) {
           <tbody>
             {entries.map(([kind, cu]) => (
               <tr key={kind} className="border-t border-border first:border-t-0">
-                <td className="py-2 pr-4 text-text-secondary">{CLOUD.kinds[kind as keyof typeof CLOUD.kinds] ?? kind}</td>
+                <td className="py-2 pr-4 text-text-secondary">{kindLabel(kind)}</td>
                 <td className="py-2 text-right tabular-nums text-text-primary">{formatCu(cu)}</td>
               </tr>
             ))}
@@ -159,7 +161,7 @@ function JobRow({
   return (
     <tr className="border-t border-border align-top">
       <td className="py-3 pr-4">
-        <p className="text-text-primary">{CLOUD.kinds[job.kind] ?? job.kind}</p>
+        <p className="text-text-primary">{kindLabel(job.kind)}</p>
         <p className="font-mono text-xs text-text-muted">
           {job.job_id.slice(0, 8)}
           {following && <span className="ml-2 font-sans text-accent">{CLOUD.jobs.following}</span>}
@@ -294,6 +296,12 @@ export default function CloudPage() {
             </div>
           </>
         )
+      )}
+      {/* After the usage panels load, so #ai-credits doesn't move under them. */}
+      {loaded && (
+        <Suspense fallback={null}>
+          <AiCredits />
+        </Suspense>
       )}
       {preview && (
         <Panel className="mb-6">

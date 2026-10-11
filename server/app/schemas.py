@@ -3,7 +3,9 @@
 from datetime import date, datetime
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator, model_validator
+
+from . import scopes as _scopes
 
 
 class UserCreate(BaseModel):
@@ -51,6 +53,21 @@ class Token(BaseModel):
 
 class ApiKeyCreate(BaseModel):
     name: str = Field(min_length=1, max_length=100)
+    # PF12: what the key may do (app/scopes.py); omitted = every read scope.
+    scopes: list[str] | None = Field(default=None, max_length=20)
+
+    @field_validator("scopes")
+    @classmethod
+    def _known(cls, v: list[str] | None) -> list[str] | None:
+        if v is None:
+            return None
+        try:
+            chosen = _scopes.normalise(v)
+        except _scopes.ScopeError as exc:
+            raise ValueError(f"{exc}; choose from {', '.join(_scopes.SCOPES)}")
+        if not chosen:
+            raise ValueError("choose at least one scope")
+        return chosen
 
 
 class ApiKeyOut(BaseModel):
@@ -62,6 +79,25 @@ class ApiKeyOut(BaseModel):
     created_at: datetime
     last_used_at: datetime | None
     revoked_at: datetime | None
+    # PF12: the key's scopes; `legacy` = made before scopes (every read scope).
+    scopes: list[str] = []
+    legacy: bool = False
+
+    @model_validator(mode="before")
+    @classmethod
+    def _from_row(cls, data):
+        if isinstance(data, dict):
+            return data
+        return {
+            "id": data.id,
+            "name": data.name,
+            "prefix": data.prefix,
+            "created_at": data.created_at,
+            "last_used_at": data.last_used_at,
+            "revoked_at": data.revoked_at,
+            "scopes": _scopes.of_key(data),
+            "legacy": _scopes.is_legacy(data),
+        }
 
 
 class ApiKeyCreated(ApiKeyOut):
