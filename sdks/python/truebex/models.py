@@ -123,14 +123,20 @@ class JobRequest(TypedDict):
     5.1: a job. `pack` (exports) takes `params.items` from renders, panoramas, sheets, boq.
     """
 
-    at_seq: int
+    at_seq: NotRequired[int]
+    """
+    With project_id, the snapshot reference; panorama, tiles and pack need it
+    """
     base_job_id: NotRequired[str | None]
     changed: NotRequired[list[str]]
     follow: NotRequired[bool]
     inputs: NotRequired[JobInputs | None]
     kind: Literal['panorama', 'tiles', 'pack', 'wind', 'energy']
     params: NotRequired[dict[str, Any]]
-    project_id: str
+    project_id: NotRequired[str | None]
+    """
+    32 hex; panorama, tiles and pack need it, an analysis may name none
+    """
     quality: NotRequired[Literal['draft', 'standard', 'high']]
     views: NotRequired[list[str]]
 
@@ -597,7 +603,10 @@ class Job(TypedDict):
     message: str
     output_ready: bool
     progress: float
-    project_id: str
+    project_id: str | None
+    """
+    null for an analysis that named no project
+    """
     rev: int
     started_at: str | None
     state: Literal[

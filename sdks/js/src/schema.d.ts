@@ -1071,8 +1071,11 @@ export interface components {
             output_ready: boolean;
             /** Progress */
             progress: number;
-            /** Project Id */
-            project_id: string;
+            /**
+             * Project Id
+             * @description null for an analysis that named no project
+             */
+            project_id: string | null;
             /** Rev */
             rev: number;
             /** Started At */
@@ -1133,7 +1136,11 @@ export interface components {
          * @description 5.1: a job. `pack` (exports) takes `params.items` from renders, panoramas, sheets, boq.
          */
         JobRequest: {
-            /** At Seq */
+            /**
+             * At Seq
+             * @description With project_id, the snapshot reference; panorama, tiles and pack need it
+             * @default 0
+             */
             at_seq: number;
             /**
              * Base Job Id
@@ -1162,8 +1169,12 @@ export interface components {
              * @default {}
              */
             params: Record<string, never>;
-            /** Project Id */
-            project_id: string;
+            /**
+             * Project Id
+             * @description 32 hex; panorama, tiles and pack need it, an analysis may name none
+             * @default null
+             */
+            project_id: string | null;
             /**
              * Quality
              * @default standard

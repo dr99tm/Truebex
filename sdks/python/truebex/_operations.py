@@ -203,7 +203,7 @@ class Jobs(Resource):
         POST /v1/jobs/{job_id}/cancel · scope: jobs:write"""
         return self._call('jobs_cancel', job_id)
 
-    def create(self, *, at_seq: int, kind: Literal["panorama", "tiles", "pack", "wind", "energy"], project_id: str, base_job_id: str | None = UNSET, changed: list[str] | None = UNSET, follow: bool | None = UNSET, inputs: models.JobInputs | None = UNSET, params: dict[str, Any] | None = UNSET, quality: Literal["draft", "standard", "high"] | None = UNSET, views: list[str] | None = UNSET, idempotency_key: str | None = None) -> models.Job:
+    def create(self, *, kind: Literal["panorama", "tiles", "pack", "wind", "energy"], at_seq: int | None = UNSET, base_job_id: str | None = UNSET, changed: list[str] | None = UNSET, follow: bool | None = UNSET, inputs: models.JobInputs | None = UNSET, params: dict[str, Any] | None = UNSET, project_id: str | None = UNSET, quality: Literal["draft", "standard", "high"] | None = UNSET, views: list[str] | None = UNSET, idempotency_key: str | None = None) -> models.Job:
         """Submit a job (5.1); answers the estimate in cost units. Send an `Idempotency-Key`.
 
         POST /v1/jobs · scope: jobs:write"""

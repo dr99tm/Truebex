@@ -278,8 +278,8 @@ class JobRequest(_Doc):
     """5.1: a job. `pack` (exports) takes `params.items` from renders, panoramas, sheets, boq."""
 
     kind: Literal["panorama", "tiles", "pack", "wind", "energy"]
-    project_id: str
-    at_seq: int
+    project_id: str | None = Field(default=None, description="32 hex; panorama, tiles and pack need it, an analysis may name none")
+    at_seq: int = Field(default=0, description="With project_id, the snapshot reference; panorama, tiles and pack need it")
     views: list[str] = []
     changed: list[str] = []
     base_job_id: str | None = None
@@ -301,7 +301,7 @@ class Job(_Doc):
     kind: str
     state: Literal["queued", "claimed", "running", "succeeded", "failed", "cancelled", "expired"]
     rev: int
-    project_id: str
+    project_id: str | None = Field(description="null for an analysis that named no project")
     at_seq: int
     progress: float
     message: str

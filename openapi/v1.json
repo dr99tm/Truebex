@@ -548,8 +548,16 @@
             "type": "number"
           },
           "project_id": {
-            "title": "Project Id",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "null for an analysis that named no project",
+            "title": "Project Id"
           },
           "rev": {
             "title": "Rev",
@@ -688,6 +696,8 @@
         "description": "5.1: a job. `pack` (exports) takes `params.items` from renders, panoramas, sheets, boq.",
         "properties": {
           "at_seq": {
+            "default": 0,
+            "description": "With project_id, the snapshot reference; panorama, tiles and pack need it",
             "title": "At Seq",
             "type": "integer"
           },
@@ -744,8 +754,17 @@
             "type": "object"
           },
           "project_id": {
-            "title": "Project Id",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "32 hex; panorama, tiles and pack need it, an analysis may name none",
+            "title": "Project Id"
           },
           "quality": {
             "default": "standard",
@@ -767,9 +786,7 @@
           }
         },
         "required": [
-          "kind",
-          "project_id",
-          "at_seq"
+          "kind"
         ],
         "title": "JobRequest",
         "type": "object"
