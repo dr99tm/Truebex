@@ -87,6 +87,19 @@ def bytes_used(db: Session, owner_id: int) -> int:
     )
 
 
+def bytes_used_by(db: Session, owner_ids: list[int]) -> dict[int, int]:
+    """`bytes_used` for several owners in one query (PF3b's member usage);
+    an owner with no live project is absent."""
+    if not owner_ids:
+        return {}
+    rows = db.execute(
+        select(Project.owner_user_id, func.coalesce(func.sum(Project.bytes), 0))
+        .where(Project.owner_user_id.in_(owner_ids), Project.deleted_at.is_(None))
+        .group_by(Project.owner_user_id)
+    ).all()
+    return {int(owner): int(total or 0) for owner, total in rows}
+
+
 def check_projects(db: Session, owner: User, plan: Plan) -> None:
     cap = limit(plan, "cloud_projects")
     used = projects_owned(db, owner.id)
