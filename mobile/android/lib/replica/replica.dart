@@ -13,12 +13,22 @@ import '../digest/digest.dart';
 import '../outbox/outbox.dart';
 import 'database.dart';
 
+/// project-log §6.2: an agent's operation (the assistant, an API key through /v1).
+const agentKind = 'agent';
+
+/// Who wrote an operation, as the history and a conflict name them: an agent by the one agent
+/// label (its author id is an agent session's or a key's own, no member's), a member's author id
+/// by their name, anyone else as "Someone". This person's own operations are the caller's to name.
+String authorName(String author, String? kind, Map<String, String> names, {required String agent, required String someone}) =>
+    kind == agentKind ? agent : (names[author] ?? someone);
+
 /// One line of the history: an operation from the log, or one of the phone's own edits.
 class HistoryItem {
   HistoryItem({
     required this.name,
     required this.author,
     required this.at,
+    this.authorKind = 'person',
     this.serverSeq,
     this.kind = 'delta',
     this.mine = false,
@@ -27,6 +37,9 @@ class HistoryItem {
 
   final String name;
   final String author;
+
+  /// `person` or `agent` (project-log §6.2), as the log stores it.
+  final String authorKind;
   final String at;
   final int? serverSeq;
   final String kind;
@@ -181,10 +194,11 @@ class Replica implements OutboxStore {
         HistoryItem(
           name: r.name,
           author: r.author,
+          authorKind: r.authorKind,
           at: r.at,
           serverSeq: r.serverSeq,
           kind: r.kind,
-          mine: r.author == me,
+          mine: r.authorKind != agentKind && r.author == me,
         ),
     ];
     return items;

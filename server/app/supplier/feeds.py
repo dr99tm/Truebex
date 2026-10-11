@@ -11,10 +11,11 @@ importer engine, and their runs.
   queued feeds, one run per supplier at a time; a run with rejected rows
   e-mails the supplier.
 * 5.12 registers an https URL that `market.feeds.pull` fetches every day at
-  02:00 UTC (ETag, 50 MB, 60 s); private, loopback and link-local addresses
-  are refused after DNS resolution (the request-forgery guard), at
-  registration and on every fetch and redirect. A failed pull e-mails the
-  supplier.
+  02:00 UTC (ETag, 50 MB, 60 s); a host that is not public after DNS
+  resolution is refused (the request-forgery guard) at registration, and on
+  every fetch and redirect by PF14b's pinned connection (`app.net.outbound`:
+  one lookup, checked, connected to at a checked address). A failed pull
+  e-mails the supplier.
 """
 
 import logging
@@ -33,6 +34,7 @@ from ..market.catalogue import CATALOGUE_ROLES, member_role
 from ..market.common import aware, now, rfc3339
 from ..market.models import FeedRun, Supplier
 from ..models import ApiKey, User
+from ..net import outbound
 from ..security import API_KEY_PREFIX, hash_api_key
 from . import notify
 from .common import memberships
@@ -44,7 +46,8 @@ PULL_TIMEOUT_S = 60.0
 MAX_REDIRECTS = 3
 # Runs left `running` this long were cut off (the server stopped): failed.
 RUN_STALE_AFTER = timedelta(hours=2)
-# DNS check for remote fetches (tests swap it).
+# DNS check for a URL being registered (tests swap it); fetches check every
+# hop on the pinned connection itself.
 public_host = media._public_address
 
 
@@ -230,7 +233,8 @@ class PullError(Exception):
 
 class HttpFeedFetcher:
     """GET with If-None-Match: (status, body, etag); https, public hosts,
-    50 MB and 60 s; redirects followed (≤ 3) through the same checks."""
+    50 MB and 60 s; redirects followed (≤ 3) through the same checks, every
+    hop over the pinned connection."""
 
     def get(self, url: str, etag: str | None) -> tuple[int, bytes, str | None]:
         import httpx
@@ -238,13 +242,11 @@ class HttpFeedFetcher:
         for _ in range(MAX_REDIRECTS + 1):
             if not media.is_https_url(url):
                 raise PullError("only https addresses are read")
-            if not public_host(urlsplit(url).hostname or ""):
-                raise PullError("the host is not a public internet address")
             headers = {"User-Agent": "Truebex-Feeds/1"}
             if etag:
                 headers["If-None-Match"] = etag
             try:
-                with httpx.Client(timeout=PULL_TIMEOUT_S, follow_redirects=False) as client:
+                with outbound.client(timeout=PULL_TIMEOUT_S) as client:
                     with client.stream("GET", url, headers=headers) as res:
                         if res.status_code in (301, 302, 303, 307, 308) and res.headers.get("location"):
                             url = urljoin(url, res.headers["location"])
@@ -259,6 +261,8 @@ class HttpFeedFetcher:
                             if len(body) > importer.MAX_BYTES:
                                 raise PullError("the file is larger than 50 MB")
                         return 200, bytes(body), res.headers.get("etag")
+            except outbound.Refused as exc:
+                raise PullError("the host is not a public internet address") from exc
             except httpx.HTTPError as exc:
                 raise PullError(f"the address could not be read ({type(exc).__name__})") from exc
         raise PullError("too many redirects")

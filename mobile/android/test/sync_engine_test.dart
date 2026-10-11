@@ -6,13 +6,17 @@
 
 import 'dart:async';
 
+import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:truebex/actions/actions.dart';
 import 'package:truebex/actions/finishes.dart';
 import 'package:truebex/auth/session.dart';
+import 'package:truebex/l10n/app_localizations.dart';
 import 'package:truebex/outbox/outbox.dart';
 import 'package:truebex/project/project_controller.dart';
+import 'package:truebex/replica/replica.dart';
 import 'package:truebex/screens/panels.dart';
+import 'package:truebex/services.dart';
 import 'package:truebex/sync/background.dart';
 import 'package:truebex/sync/sync_engine.dart';
 
@@ -131,14 +135,14 @@ void main() {
     expect(notices.shown.single, endsWith('You changed this first on another device — your edit was replaced'));
   });
 
-  test('a winner pushed with an API key (an agent through /v1) reads "Someone"', () async {
+  test('a winner pushed with an API key (an agent through /v1) reads "An assistant or script"', () async {
     final services = await testServices(log, notifier: notices, scheduler: scheduler);
     await services.auth.signInWithPassword('alex@example.com', 'password123');
     final c = await openOffline(services);
     await c.edit(wallEdit());
     final mine = c.entries.single;
     c.dispose();
-    // PF12: a key's push carries the key's own author id, which is no member's.
+    // PF12: a key's push carries author_kind agent and the key's own author id, which is no member's.
     const keyAuthor = '0199c6a2f0007000a0000000000000aa';
     log.append({'op_id': 'f0000000000000000000000000000011', 'author': keyAuthor, 'author_kind': 'agent',
       'at': '2026-10-09T11:00:00.000Z', 'touched': [kitchenWall], 'kind': 'delta', 'name': 'Move wall', 'base_seq': 0,
@@ -146,10 +150,61 @@ void main() {
     log.online = true;
     final report = await services.engine.syncAll();
     expect(report.rejected, 1);
-    expect(notices.shown, ['Wall finish: Sage green (Kitchen, North wall): Someone changed this first — your edit was replaced']);
-    expect((await services.replica.get(mine.opId))!.winning.single.author, keyAuthor);
+    expect(notices.shown, ['Wall finish: Sage green (Kitchen, North wall): An assistant or script changed this first — your edit was replaced']);
+    final rejected = (await services.replica.get(mine.opId))!;
+    expect(rejected.winning.single.author, keyAuthor);
+    expect(rejected.winning.single.authorKind, 'agent', reason: 'the winner keeps its author_kind in the outbox');
+    // The open project's edit list reads the same line.
+    final c2 = ProjectController(services, pid, connectivity: const Stream.empty());
+    c2.authorNames = await services.replica.authorNames(pid);
+    c2.me = {'author_id': alexAuthor};
+    expect(entryState(services.strings, c2, rejected), 'An assistant or script changed this first — your edit was replaced');
     final history = await services.replica.history(pid, me: alexAuthor);
-    expect(history.any((h) => h.author == keyAuthor && !h.mine), isTrue, reason: 'the agent operation is pulled and kept');
+    final agentOp = history.singleWhere((h) => h.author == keyAuthor);
+    expect(agentOp.mine, isFalse, reason: 'the agent operation is pulled and kept');
+    expect(agentOp.authorKind, 'agent');
+  });
+
+  test('an unknown person still reads "Someone"', () async {
+    final services = await testServices(log, notifier: notices, scheduler: scheduler);
+    await services.auth.signInWithPassword('alex@example.com', 'password123');
+    final c = await openOffline(services);
+    await c.edit(wallEdit());
+    final mine = c.entries.single;
+    c.dispose();
+    // A person's author id the project's members do not carry (someone who has since left).
+    const strangerAuthor = '0199c6a2f0007000a0000000000000bb';
+    log.append({'op_id': 'f0000000000000000000000000000012', 'author': strangerAuthor, 'author_kind': 'person',
+      'at': '2026-10-09T11:00:00.000Z', 'touched': [kitchenWall], 'kind': 'delta', 'name': 'Wall finish', 'base_seq': 0,
+      'delta': 'VEJYRA==', 'delta_format': 'o5/38'}, replica: 'f1000000000000000000000000000003');
+    log.online = true;
+    await services.engine.syncAll();
+    expect(notices.shown, ['Wall finish: Sage green (Kitchen, North wall): Someone changed this first — your edit was replaced']);
+    expect((await services.replica.get(mine.opId))!.winning.single.authorKind, 'person');
+  });
+
+  test('who wrote an operation: self, a member, an agent, an unknown person', () {
+    const names = {samAuthor: 'Sam'};
+    String name(String author, String? kind) => authorName(author, kind, names, agent: 'An assistant or script', someone: 'Someone');
+    expect(name(samAuthor, 'person'), 'Sam');
+    expect(name('0199c6a2f0007000a0000000000000bb', 'person'), 'Someone');
+    expect(name('0199c6a2f0007000a0000000000000aa', 'agent'), 'An assistant or script');
+    expect(name(samAuthor, 'agent'), 'An assistant or script', reason: 'an agent is named as one, whatever its author id');
+    expect(name(samAuthor, null), 'Sam', reason: 'a winner stored before author_kind was kept reads as a person');
+
+    final text = conflictText(lookupS(const Locale('en')));
+    OutboxEntry rejected(String author, String? kind) => OutboxEntry(
+          opId: 'e0000000000000000000000000000001', projectId: pid, op: const {}, state: EntryState.rejected, label: 'Wall finish',
+          createdAt: 0, winning: [Winner(opId: 'f0000000000000000000000000000001', serverSeq: 13, author: author, name: 'Move wall', authorKind: kind)]);
+    expect(text.line(rejected(alexAuthor, 'person'), names, alexAuthor), 'You changed this first on another device — your edit was replaced');
+    expect(text.line(rejected(samAuthor, 'person'), names, alexAuthor), 'Sam changed this first — your edit was replaced');
+    expect(text.line(rejected('0199c6a2f0007000a0000000000000aa', 'agent'), names, alexAuthor),
+        'An assistant or script changed this first — your edit was replaced');
+    expect(text.line(rejected('0199c6a2f0007000a0000000000000bb', 'person'), names, alexAuthor),
+        'Someone changed this first — your edit was replaced');
+    // A winner the answer left out (none listed) still reads as someone's.
+    final none = rejected(samAuthor, 'person').copyWith(winning: const []);
+    expect(text.line(none, names, alexAuthor), 'Someone changed this first — your edit was replaced');
   });
 
   test('a lapsed Google session is renewed silently; a password one signs out', () async {

@@ -15,6 +15,7 @@ from sqlalchemy import select
 from app import tasks
 from app.config import get_settings
 from app.database import SessionLocal
+from app.net import outbound
 from app.routers import auth as auth_router
 from app.sso import domains, oidc
 from app.sso.models import SsoConnection, SsoRequest
@@ -32,9 +33,13 @@ SAML_SSO = "https://idp.test/saml/sso"
 
 @pytest.fixture()
 def idp(monkeypatch):
-    """The mock OIDC provider as the server's HTTP client; TXT lookups answer from DNS."""
+    """The mock OIDC provider as the server's HTTP client; TXT lookups answer
+    from DNS, and the issuer's name resolves to a public address (PF14b checks
+    it when the connection is saved)."""
     mock_oidc.reset()
     monkeypatch.setattr(oidc, "http_client", lambda: TestClient(mock_oidc.app, base_url=ISSUER))
+    real_resolve = outbound.resolve
+    monkeypatch.setattr(outbound, "resolve", lambda host: ["93.184.216.34"] if host == "idp.test" else real_resolve(host))
     dns: dict[str, list[str]] = {}
     monkeypatch.setattr(domains, "resolve_txt", lambda name: dns.get(name, []))
     yield dns

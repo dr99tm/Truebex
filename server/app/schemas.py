@@ -1,9 +1,9 @@
 """Pydantic request/response schemas."""
 
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator, model_validator
+from pydantic import AfterValidator, BaseModel, ConfigDict, EmailStr, Field, field_validator, model_validator
 
 from . import scopes as _scopes
 
@@ -133,6 +133,16 @@ Interval = Literal["month", "year"]
 OrgId = Annotated[str, Field(pattern=r"^[0-9a-f]{32}$")]
 
 
+def _utc(dt: datetime) -> datetime:
+    # SQLite hands back naive UTC; Postgres answers in the session's time zone.
+    return dt.replace(tzinfo=timezone.utc) if dt.tzinfo is None else dt.astimezone(timezone.utc)
+
+
+# PF2c: every billing time leaves the API as RFC 3339 UTC with `Z` (pydantic
+# writes a UTC time with Z), whatever the database session's zone is.
+UtcDateTime = Annotated[datetime, AfterValidator(_utc)]
+
+
 class PriceOut(BaseModel):
     interval: Interval
     currency: str
@@ -155,7 +165,7 @@ class FoundingOut(BaseModel):
     total: int
     remaining: int
     discount_percent: int
-    ends_at: datetime | None
+    ends_at: UtcDateTime | None
     # The tiers and billing intervals the founding price applies to.
     tiers: list[str] = []
     intervals: list[str] = []
@@ -234,7 +244,7 @@ class SubscriptionOut(BaseModel):
     seats: int
     status: str
     provider: str | None
-    current_period_end: datetime | None
+    current_period_end: UtcDateTime | None
     cancel_at_period_end: bool
     founding: bool
     can_manage: bool
@@ -242,8 +252,8 @@ class SubscriptionOut(BaseModel):
     # PF2b: the easy exit is open; the renewal cooling-off and the EU
     # withdrawal period end then (null when not offered).
     can_cancel: bool = False
-    cooling_off_until: datetime | None = None
-    withdrawal_until: datetime | None = None
+    cooling_off_until: UtcDateTime | None = None
+    withdrawal_until: UtcDateTime | None = None
     # PF3a: the organisation this is (None = the caller's own plan), and the
     # seats given to people (named seats + the floating pool; 1 for a person).
     org_id: str | None = None
@@ -266,9 +276,9 @@ class ExitOut(BaseModel):
     webhook confirms it."""
 
     kind: Literal["cancel", "cooling_off", "withdrawal"]
-    requested_at: datetime
+    requested_at: UtcDateTime
     # When the plan ends.
-    effective_at: datetime | None
+    effective_at: UtcDateTime | None
     refund_minor: int | None
     currency: str | None
     # done: the provider took it; processing: retried until it does.
@@ -293,7 +303,7 @@ class PortalRequest(BaseModel):
 class InvoiceOut(BaseModel):
     id: str
     number: str | None
-    issued_at: datetime | None
+    issued_at: UtcDateTime | None
     total_minor: int
     tax_minor: int
     currency: str
@@ -310,17 +320,21 @@ class PaymentOut(BaseModel):
     amount: int
     currency: str
     status: str
-    created_at: datetime
-    paid_at: datetime | None
+    created_at: UtcDateTime
+    paid_at: UtcDateTime | None
     interval: str | None = None
     seats: int | None = None
     tax_minor: int | None = None
     # PF2b: what the buyer agreed to.
     consent_version: str | None = None
     key_info: str | None = None
-    key_info_at: datetime | None = None
+    key_info_at: UtcDateTime | None = None
     business: bool | None = None
     organisation_id: str | None = None
+    # PF2c: a one-off item's payment (billing.service.ONE_OFF_ITEMS) names the
+    # item, and an AI credit pack's the credits it adds; null for a plan.
+    item: str | None = None
+    credits: int | None = None
 
 
 # --- Admin: growth ------------------------------------------------------------

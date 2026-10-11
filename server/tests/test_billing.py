@@ -89,8 +89,10 @@ def test_wayl_checkout_and_verified_webhook(client, monkeypatch, wayl_on):
 
     sub = client.get("/billing/subscription", headers=h).json()
     assert sub["provider"] == "wayl" and sub["status"] == "active"
+    # UTC with Z whatever the database session's zone (PF2c): compare aware times.
     end = datetime.fromisoformat(sub["current_period_end"])
-    assert timedelta(days=29) < end.replace(tzinfo=timezone.utc) - datetime.now(timezone.utc) <= timedelta(days=30)
+    assert sub["current_period_end"].endswith("Z") and end.utcoffset() == timedelta(0)
+    assert timedelta(days=29) < end - datetime.now(timezone.utc) <= timedelta(days=30)
 
     # Replaying the webhook must not add a second month.
     client.post("/billing/webhooks/wayl", json={"referenceId": ref})

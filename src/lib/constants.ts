@@ -388,6 +388,15 @@ export const BILLING = {
     amount: "Amount",
     status: "Status",
     card: "Card",
+    // PF2c: a one-off purchase is named by its item (the API's `item`), never
+    // by its id; {credits} is the size of an AI credit pack.
+    items: {
+      ai_credits: { name: "AI credits", sized: "{credits} AI credits" },
+    },
+    // An item without a name here yet.
+    otherItem: "Purchase",
+    // Beside an item, where a plan shows Monthly or Annual.
+    once: "One-off",
   },
   notices: {
     confirming: "Confirming your payment…",
@@ -2918,6 +2927,8 @@ export const APP = {
   conflict: "{name} changed this first — your edit was replaced",
   conflictSelf: "You changed this first on another device — your edit was replaced",
   someone: "Someone",
+  // PF9a: who made an agent's edit (the assistant, or an API key through /v1); the Android app says the same.
+  agentAuthor: "An assistant or script",
   dismiss: "Dismiss",
   project: {
     metaTitle: "Project",

@@ -3,15 +3,15 @@
 // gate (`node out/viewer/selftest.mjs`, test_site_pf9_js_selftests): the
 // action builder against the contract fixture (project-log §9
 // action-move.json), the tile diff against the render-jobs fixtures, the
-// cache policy, the outbox's §6.3 handling and the orientation maths. Exits
-// non-zero on the first failed check.
+// cache policy, the outbox's §6.3 handling, who a rejection names (PF9a) and
+// the orientation maths. Exits non-zero on the first failed check.
 
 import fixture from "../../server/tests/contracts/project-log/action-move.json";
 import panorama from "../../server/tests/contracts/render-jobs/manifest-panorama.json";
 import partial from "../../server/tests/contracts/render-jobs/manifest-tiles.json";
 import { applyTheme, buildActionOp, fillFace, moveBy, nudgeVector, slideAlong, swapProduct, touchedOf } from "./actions";
 import { isTileUrl, pageKey, planEviction, requestRule, TILE_BUDGET_BYTES } from "./cachepolicy";
-import { flush, MemoryOutbox, PushError, type OutboxEntry, type PushAnswer } from "./outbox";
+import { conflictLine, flush, MemoryOutbox, PushError, type ConflictText, type OutboxEntry, type PushAnswer, type Winner } from "./outbox";
 import { angleDelta, bearingTo, lookFromOrientation } from "./orientation";
 import { diffTiles, levelAtMost, levelFor, tileUrls, type TileViewLike } from "./tilediff";
 
@@ -171,7 +171,7 @@ async function outbox(): Promise<void> {
       else if (o.op_id === entries[1].op_id) {
         stopped = true;
         results.push({ op_id: o.op_id, status: "rejected", reason: "conflict",
-          winning: [{ op_id: "f".repeat(32), server_seq: 13, author: "0199c6a2f0007000a000000000000007", name: "Move sofa" }] });
+          winning: [{ op_id: "f".repeat(32), server_seq: 13, author: "0199c6a2f0007000a000000000000007", author_kind: "person", name: "Move sofa" }] });
       } else results.push({ op_id: o.op_id, status: "accepted", server_seq: ++seq });
     }
     return { head_seq: seq, results };
@@ -179,6 +179,7 @@ async function outbox(): Promise<void> {
   const after = new Map((await store.list(pid)).map((e) => [e.op_id, e]));
   check("first accepted", after.get(entries[0].op_id)?.state === "accepted" && after.get(entries[0].op_id)?.seq === 13);
   check("second rejected with its winner", after.get(entries[1].op_id)?.state === "rejected" && after.get(entries[1].op_id)?.winner?.name === "Move sofa");
+  check("the winner keeps its author_kind", after.get(entries[1].op_id)?.winner?.author_kind === "person");
   check("third sent again", sent.length === 2 && same(sent[1], [entries[2].op_id]) && after.get(entries[2].op_id)?.state === "accepted");
   check("rejected never re-sent", !sent[1].includes(entries[1].op_id) && out.rejected.length === 1 && out.accepted.length === 2);
 
@@ -189,6 +190,31 @@ async function outbox(): Promise<void> {
     throw new PushError(false, "ops[0].touched: sorted and unique", 422, "validation_failed");
   });
   check("422 fails", out.failed.length === 1 && (await store.list(pid)).find((e) => e.op_id === bad.op_id)?.state === "failed");
+}
+
+// --- who a rejection names (PF9a) ---------------------------------------------------------------
+
+function authors(): void {
+  const text: ConflictText = {
+    named: (name) => `${name} changed this first — your edit was replaced`,
+    self: "You changed this first on another device — your edit was replaced",
+    agent: "An assistant or script",
+    someone: "Someone",
+  };
+  const me = "0199c6a2f0007000a000000000000042";
+  const sam = "0199c6a2f0007000a000000000000007";
+  const key = "0199c6a2f0007000a0000000000000aa";
+  const stranger = "0199c6a2f0007000a0000000000000bb";
+  const names = new Map([[sam, "Sam"]]);
+  const won = (author: string, author_kind?: Winner["author_kind"]): Winner => ({ author, author_kind, name: "Move sofa", server_seq: 13 });
+  check("authors: self", conflictLine(won(me, "person"), me, names, text) === text.self);
+  check("authors: a member by name", conflictLine(won(sam, "person"), me, names, text) === "Sam changed this first — your edit was replaced");
+  check("authors: an API key reads as an agent", conflictLine(won(key, "agent"), me, names, text) === "An assistant or script changed this first — your edit was replaced");
+  check("authors: an agent whatever its id", conflictLine(won(sam, "agent"), me, names, text) === "An assistant or script changed this first — your edit was replaced");
+  check("authors: an unknown person", conflictLine(won(stranger, "person"), me, names, text) === "Someone changed this first — your edit was replaced");
+  check("authors: no winner", conflictLine(null, me, names, text) === "Someone changed this first — your edit was replaced");
+  check("authors: stored before author_kind", conflictLine(won(sam), me, names, text) === "Sam changed this first — your edit was replaced");
+  check("authors: signed out", conflictLine(won(me, "person"), null, names, text) === "Someone changed this first — your edit was replaced");
 }
 
 // --- orientation ------------------------------------------------------------------------------------
@@ -213,13 +239,14 @@ async function main(): Promise<void> {
   tileDiff();
   cachePolicy();
   await outbox();
+  authors();
   orientation();
   if (failures.length) {
     console.error(`selftest: ${failures.length} of ${checks} checks failed`);
     for (const f of failures) console.error(`  FAIL ${f}`);
     process.exitCode = 1;
   } else {
-    console.log(`selftest: ${checks} checks passed (action builder, tile diff, cache policy, outbox, orientation)`);
+    console.log(`selftest: ${checks} checks passed (action builder, tile diff, cache policy, outbox, authors, orientation)`);
   }
 }
 

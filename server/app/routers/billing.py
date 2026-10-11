@@ -340,21 +340,29 @@ def change_plan(
 # --- Payments and checkout -------------------------------------------------------------
 
 
+def _payments_out(db: Session, rows: list[Payment]) -> list[PaymentOut]:
+    """PaymentOut per row; a one-off item's (PF11's credit packs) also names
+    the item and what it bought (PF2c), so the history never shows a plan id."""
+    extra = service.one_off_details(db, rows)
+    return [
+        PaymentOut.model_validate(p).model_copy(update=extra.get(p.reference, {})) for p in rows
+    ]
+
+
 @router.get("/payments", response_model=list[PaymentOut])
 def payment_history(
     org_id: str | None = Query(default=None, pattern=ORG_ID),
     current: User = Depends(get_current_user),
     db: Session = Depends(get_db),
-) -> list[Payment]:
+) -> list[PaymentOut]:
     """The caller's own payments, or (PF3a) an organisation's, whoever paid."""
     org = _org(db, org_id, current)
     if org is not None:
         mine = Payment.organisation_id == org.id
     else:
         mine = (Payment.user_id == current.id) & Payment.organisation_id.is_(None)
-    return list(
-        db.scalars(select(Payment).where(mine).order_by(Payment.created_at.desc()).limit(50))
-    )
+    rows = db.scalars(select(Payment).where(mine).order_by(Payment.created_at.desc()).limit(50))
+    return _payments_out(db, list(rows))
 
 
 @router.get("/payments/{reference}", response_model=PaymentOut)
@@ -362,7 +370,7 @@ def payment_detail(
     reference: str = Path(max_length=64),
     current: User = Depends(get_current_user),
     db: Session = Depends(get_db),
-) -> Payment:
+) -> PaymentOut:
     """One checkout: /checkout/ shows its key information beside the pay
     button (PF2b)."""
     payment = db.scalar(
@@ -370,7 +378,7 @@ def payment_detail(
     )
     if payment is None:
         raise HTTPException(status_code=404, detail="Payment not found.")
-    return payment
+    return _payments_out(db, [payment])[0]
 
 
 def _new_reference() -> str:
@@ -539,7 +547,7 @@ def refresh_payment(
     reference: str,
     current: User = Depends(get_current_user),
     db: Session = Depends(get_db),
-) -> Payment:
+) -> PaymentOut:
     """Re-check a payment with its provider (the user just came back from
     checkout). Covers webhooks that never arrived while the server was off."""
     payment = db.scalar(
@@ -558,7 +566,7 @@ def refresh_payment(
             except _PROVIDER_ERRORS:
                 log.exception("%s refresh failed for %s", payment.provider, reference)
         db.refresh(payment)
-    return payment
+    return _payments_out(db, [payment])[0]
 
 
 # --- Invoices ----------------------------------------------------------------------------

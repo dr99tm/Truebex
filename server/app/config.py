@@ -263,6 +263,13 @@ class Settings(BaseSettings):
     # Seconds a delivery may take before it counts as failed.
     webhooks_timeout_s: float = 15.0
 
+    # --- Outbound requests pinned to checked addresses (PF14b) ---------------------
+    # SSO issuers on loopback or private-network addresses (an identity provider
+    # on the office network, the mock provider with API_URL on a LAN address).
+    # Off: public https issuers only, unless API_URL itself is on 127.0.0.1 or
+    # localhost (local trials). Never on in production.
+    sso_allow_private_issuers: bool = False
+
     @property
     def cors_origin_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
