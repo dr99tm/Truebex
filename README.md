@@ -1041,3 +1041,6 @@ that API; `scripts\autopilot-serve.ps1` then serves it. Service workers, install
 and the headset view need HTTPS or `localhost` (on an Android phone over USB:
 `adb reverse tcp:3112 tcp:3112` and `adb reverse tcp:8000 tcp:8000`, then open
 `http://localhost:3112/app/`).
+`demo_mobile.py --token tbx_dev_… move --project <id> --entity Oslo` moves the sofa
+as Sam's desktop; with an API key (`--token tbx_live_…`, PF12) it moves it as an
+agent through `/v1`.

@@ -251,8 +251,8 @@ None on the server. On the client: the outbox flushes on reconnect (`online` eve
       `__next.app/__PAGE__.txt`); Next falls back to the full payload. It happens on every exported page, not only
       PF9's.
 * **Merged with master: PF11 and PF12 (2026-10-11, Autopilot T33, `ap/t33-merge-t12-pf9-mobile-web-client`):** verify
-  green (lint, build, pytest 534 passed and the 5 Postgres-only skips: master's 511, this feature's 17 and the
-  merge's 6). Three files conflicted, each where both sides append to the end (`main.py`'s router lines,
+  green (lint, build, pytest 535 passed and the 5 Postgres-only skips: master's 511, this feature's 17 and the
+  merge's 7). Three files conflicted, each where both sides append to the end (`main.py`'s router lines,
   `constants.ts`, the README section): both sides kept, master's first. `main.py` keeps PF12's single
   `uploads.router` include and `v1.install(app)` and adds PF9's `mobile_router` once at the end; `schemas.py`
   (`UserOut.author_id` beside PF12's key scopes) and `database.py` (both `_ADDED_COLUMNS` blocks) merged cleanly.
@@ -265,10 +265,12 @@ None on the server. On the client: the outbox flushes on reconnect (`online` eve
   `digest: SnapshotFileUrl | None` (required and nullable like `tbxpack`: the server always answers it), `Member`
   gains `author_id`, and both snapshot-file models a description naming the digest (it shows in the reference's
   `files` rows); `openapi/v1.json` and both SDKs regenerated with `scripts\gen-sdks.ps1`, `API_VERSION` left at 1.0.0
-  as T32 did (nothing is published yet). `tests/test_pf9_pf12_meet.py` (6): a key's `/v1` snapshot with a digest
-  round-trips (and a bad one is the contract's 422 on `files.digest`); an API key's agent edit beats a phone edit
-  of the same sofa, rejected with the agent's operation as winning (no member's `author_id`, so the phone reads
-  "Someone changed this first …"), and the key pulls the phone's later edit; the document and both SDKs' types name
+  as T32 did (nothing is published yet). For the human test, `demo_mobile.py move` also takes an API key
+  (`--token tbx_live_…`: it pushes through `/v1` as an agent) and a name for `--entity` (`Oslo`).
+  `tests/test_pf9_pf12_meet.py` (7): a key's `/v1` snapshot with a digest round-trips (and a bad one is the
+  contract's 422 on `files.digest`); an API key's agent edit beats a phone edit of the same sofa, rejected with the
+  agent's operation as winning (no member's `author_id`, so the phone reads "Someone changed this first …"), and
+  the key pulls the phone's later edit; `demo_mobile.py move` with a key does the same; the document and both SDKs' types name
   the fields; the Python SDK registers and reads a digest; the panorama routes refuse a key (401) and are not in the
   document; the built `/developers/projects/` names the digest. **Live run** on the human test's path
   (`try-mobile.ps1`, out/ served on :3133, headless Edge at 412×915): 25 of 25 — `/v1` and the SDK read the House's

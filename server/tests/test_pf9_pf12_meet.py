@@ -119,6 +119,36 @@ def test_api_key_edit_wins_over_a_phone_edit(client):
     assert [(o["kind"], o["author_kind"], o["author"]) for o in via_key] == [("action", "person", owner.author_id)]
 
 
+def test_demo_mobile_moves_as_an_api_key(client, monkeypatch, capsys):
+    """The human test's agent: `demo_mobile.py --token tbx_live_… move --entity Oslo` pushes through /v1."""
+    import requests
+
+    from scripts import demo_mobile
+
+    def route(method, url, headers=None, timeout=None, **kw):
+        return client.request(method, url.replace("http://127.0.0.1:8000", ""), headers=headers, **kw)
+
+    monkeypatch.setattr(requests, "request", route)
+    monkeypatch.setattr(requests, "post", lambda url, **kw: route("POST", url, **kw))
+    assert demo_mobile.main(["setup", "--email", "alex@example.com", "--password", "password123",
+                             "--editor-email", "sam@example.com", "--no-render"]) == 0
+    pid = capsys.readouterr().out.split("project id: ")[1].split()[0]
+    alex = {"Authorization": "Bearer " + client.post(
+        "/auth/login", json={"email": "alex@example.com", "password": "password123"}).json()["access_token"]}
+    key = make_key(client, alex, ["projects:read", "projects:write"])
+
+    assert demo_mobile.main(["--token", key["key"], "move", "--project", pid, "--entity", "Oslo"]) == 0
+    assert "Move Oslo 3-seater sofa: accepted as 13" in capsys.readouterr().out
+    op = client.get(f"/v1/projects/{pid}/ops", params={"after": 12}, headers=kh(key, **PL)).json()["ops"][0]
+    sofa = next(p["id"] for p in json.loads(digest_bytes())["products"] if p["name"].startswith("Oslo"))
+    assert op["author_kind"] == "agent" and op["author"] == format(key["id"], "032x") and op["touched"] == [sofa]
+    # The phone's offline move made at 12 then loses to the agent's.
+    me = client.get("/auth/me", headers=alex).json()["author_id"]
+    late = action_op(me, [sofa], args={"refs": [sofa], "by_mm": [250, 0, 0]}, base_seq=12)
+    first = pushed(client, {**alex, **PL}, pid, hex32(), [late])["results"][0]
+    assert first["status"] == "rejected" and first["winning"][0]["author_kind"] == "agent"
+
+
 def test_v1_document_and_sdks_name_the_digest():
     schemas = _doc()["components"]["schemas"]
     out = schemas["SnapshotFiles"]
