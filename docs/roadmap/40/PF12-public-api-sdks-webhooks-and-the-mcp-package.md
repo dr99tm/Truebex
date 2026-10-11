@@ -11,6 +11,8 @@ JavaScript SDKs (`sdks/`), the MCP package (`packages/mcp/`), `/developers/` wit
 Dashboard → API keys and a Dashboard → Webhooks page. Waiting on others: the app's bridge and `tools.json` (AI1; the
 package holds a stand-in written to the contract), cloud save in the app (CL1), the headless render (CL3), and the
 owner's PyPI and npm publishing. See As-built.
+Merged with master (PF11) on 2026-10-11 (Autopilot T32): an analysis job may name no project through `/v1/jobs` and
+the SDKs. See As-built.
 
 Before this task the developer API had two endpoints and no scopes, webhooks, SDKs or MCP package. Verified with Grep on 2026-10-09:
 
@@ -275,6 +277,22 @@ The first four names are `agent-interface.md` §10's platform tests.
       server is installed, not products Truebex is compared with).
   14. *PF7's sitemap check* asserted no `/market/` substring; `/developers/market/` now has one, so it checks the
       `…com/market/` prefix it meant.
+* **Merged with master: PF11 (2026-10-11, Autopilot T32, `ap/t32-merge-t8-pf12-public-api-sdks-we`):** verify green
+  (lint, build, pytest 516 collected, 511 passed and the 5 Postgres-only skips: master's 468, this feature's 44 and
+  the merge's 4). Twelve files conflicted, each where both features append to a shared list (`config.py`,
+  `server/.env.example`, `infra/secrets/server.env.example`, the deploy skill's secrets table, the model and job
+  imports in `database.py`, `tasks.py` and `sqlite_to_postgres.py`, `main.py`'s router line, `test_ops.py`'s table
+  list, `constants.ts`, the README section, the tracker): both sides kept, PF11's first. One fix where they meet:
+  PF11 lets an analysis job name no project, but `JobRequest` required `project_id` and `at_seq`, so the Python SDK's
+  `jobs.create` could not submit one (and a null `at_seq` is a 422). Both are optional in the document now (the render
+  kinds still need them; the contract's 422 says so), `Job.project_id` may be null, and `openapi/v1.json` and both
+  SDKs are regenerated (`scripts\gen-sdks.ps1` first reproduced the committed files unchanged).
+  `tests/test_pf11_pf12_meet.py` (4): a key uploads a `job-input` through `/v1/uploads` and runs a `wind` job through
+  `/v1/jobs` on a cpu-8 worker, the account's endpoint hears `job.succeeded` and the key reads the §6.3 result;
+  `jobs:write` on both job routes and `projects:read` on `/analysis/catalogue`; `/ai/*` still refuses keys; the SDK
+  submits an analysis with no project. Left as is: `JobRequest.kind` lists the contract's five kinds; PF11's
+  `acoustics` and `texture` join it with their MINOR additions to `render-jobs.md` (the handler already takes
+  `acoustics`).
 * **Contract §11 rows** for the owner to set in `contracts/agent-interface.md` (the platform column): `server/discover`,
   `initialize` (legacy), `tools/list`, `notifications/cancelled` → "PF12 (package): done (stand-in until AI1's bridge is
   copied in)"; `read_state`, `find`, `explain`, `place`, `move`, `resize`, `fill`, `apply_theme`, `export_pdf`,
