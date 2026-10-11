@@ -49,6 +49,19 @@ if (-not $ready) {
         } else {
             Write-Host "server\.venv exists but its requirements were never confirmed -- installing again"
         }
+        # Every interpreter in this venv (pip included) keeps `platform` off WMI: on a busy machine
+        # Python 3.12's WMI query times out and the `cmd /c ver` fallback crashes the process
+        # (0xC0000005 / 0xC000070A) -- pip then hangs on its retries until setup times out.
+        # Same guard as server/app/__init__.py.
+        Set-Content -Path '.venv\Lib\site-packages\sitecustomize.py' -Encoding ascii -Value @'
+import sys
+if sys.platform == "win32":
+    import platform
+    if getattr(platform, "_uname_cache", None) is None and hasattr(platform, "_wmi_query"):
+        def _no_wmi(*_keys):
+            raise OSError("WMI is not used in the Truebex venv")
+        platform._wmi_query = _no_wmi
+'@
         & .venv\Scripts\python.exe -m pip install -q -r requirements-dev.txt
         if ($LASTEXITCODE -ne 0) { throw "pip install failed ($LASTEXITCODE)" }
         & .venv\Scripts\python.exe -c "import fastapi, pytest, sqlalchemy"
