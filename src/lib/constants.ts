@@ -3029,3 +3029,17 @@ export const ANDROID_APP_PRIVACY = {
     "The app's data is left out of phone backups. Signing out removes the session, the copies of your projects, edits not yet sent and the panorama tiles from the phone; uninstalling the app does the same.",
   ],
 } as const;
+
+// --- Supplier portal: back from a listing plan's checkout (PF2d) -------------------------------
+// /supplier/billing/?checkout=success|canceled&ref=… after the provider's checkout: the page
+// confirms the payment (POST /billing/payments/{ref}/refresh) and shows the plan's state.
+// `{plan}` is the listing plan's name.
+
+export const SUPPLIER_CHECKOUT = {
+  confirming: "Confirming your payment…",
+  active: "Payment received. {plan} is your listing plan.",
+  paid: "Payment received. Your new listing plan shows here once the provider confirms the subscription.",
+  processing: "Payment is still processing. Your listing plan changes here once the provider confirms it.",
+  unconfirmed: "We couldn't confirm the payment yet. Your listing plan changes here once the provider confirms it.",
+  canceled: "Checkout was cancelled — you haven't been charged. Your listing plan is unchanged.",
+} as const;

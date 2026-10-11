@@ -147,12 +147,14 @@ class StripeProvider(BillingProvider):
             # PF3a: shown in Stripe and echoed back; attaching reads our payment row.
             meta["org_id"] = payment.organisation_id
             back += f"&org={payment.organisation_id}"
+        # A supplier's listing plan (PF8) returns to the portal's billing page (PF2d).
+        page = "supplier/billing" if payment.plan.startswith(service.LISTING_TIER_PREFIX) else "dashboard/billing"
         params: dict[str, Any] = {
             "mode": "subscription",
             "line_items": [{"price": price.provider_price_id, "quantity": seats}],
             "client_reference_id": payment.reference,
-            "success_url": f"{s.site_url}/dashboard/billing/?checkout=success{back}",
-            "cancel_url": f"{s.site_url}/dashboard/billing/?checkout=canceled{back}",
+            "success_url": f"{s.site_url}/{page}/?checkout=success{back}",
+            "cancel_url": f"{s.site_url}/{page}/?checkout=canceled{back}",
             "metadata": meta,
             "subscription_data": {"metadata": meta},
             "automatic_tax": {"enabled": bool(s.stripe_tax_enabled)},

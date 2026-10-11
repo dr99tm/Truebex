@@ -11,8 +11,10 @@ plan with a fee is recorded `pending` (the owner bills it by hand).
 
 A paid plan is a Stripe subscription opened with PF2's
 `create_checkout(db, user, payment, price, seats, discount)` on the synced
-listing price (`provider_prices` tier `listing_<plan>`, interval `month`).
-PF2's webhook writes the subscription; `supplier.listing.sync` copies its
+listing price (`provider_prices` tier `listing_<plan>`, interval `month`);
+its checkout returns to `/supplier/billing/?checkout=…&ref=…`, whose page
+calls PF2's refresh (PF2d). PF2's webhook or that refresh writes the
+subscription; `supplier.listing.sync` (and each read of the plan) copies its
 state into `listing_subscriptions` and the customer into
 `suppliers.billing_customer_id`, which PF7's statements invoice through
 `create_invoice(db, customer, lines)`. A plan billed by its subscription
@@ -113,6 +115,9 @@ def subscription_json(sub: ListingSubscription | None, exponent: int = 2) -> dic
 
 
 def overview(db: Session, supplier: Supplier) -> dict:
+    # The supplier's own plan follows PF2's subscription first, so the page
+    # shows a plan just paid for at once (PF2d: back from its checkout).
+    sync(db, now(), supplier.supplier_id)
     currency = billing_currency(db, supplier)
     exp = _exponent(db, currency)
     bi = billing_interface()
@@ -221,16 +226,16 @@ def choose(db: Session, m: Member, plan_id: str) -> dict:
 _STATUS = {"active": "active", "trialing": "active", "past_due": "past_due", "canceled": "canceled", "paused": "past_due"}
 
 
-def sync(db: Session, at: datetime) -> int:
-    """Keep listing_subscriptions in step with PF2's subscriptions."""
+def sync(db: Session, at: datetime, supplier_id: str | None = None) -> int:
+    """Keep listing_subscriptions in step with PF2's subscriptions (every
+    supplier's, or only `supplier_id`'s)."""
     n = 0
-    rows = list(
-        db.scalars(
-            select(ListingSubscription).where(
-                ListingSubscription.provider == "stripe", ListingSubscription.status.in_(("checkout", "active", "past_due"))
-            )
-        )
+    query = select(ListingSubscription).where(
+        ListingSubscription.provider == "stripe", ListingSubscription.status.in_(("checkout", "active", "past_due"))
     )
+    if supplier_id is not None:
+        query = query.where(ListingSubscription.supplier_id == supplier_id)
+    rows = list(db.scalars(query))
     for row in rows:
         payment = db.scalar(select(Payment).where(Payment.reference == row.payment_ref)) if row.payment_ref else None
         sub = None

@@ -549,13 +549,14 @@ def refresh_payment(
     db: Session = Depends(get_db),
 ) -> PaymentOut:
     """Re-check a payment with its provider (the user just came back from
-    checkout). Covers webhooks that never arrived while the server was off."""
+    checkout). Covers webhooks that never arrived while the server was off,
+    and (PF2d) a paid checkout whose subscription is not stored yet."""
     payment = db.scalar(
         select(Payment).where(Payment.reference == reference, Payment.user_id == current.id)
     )
     if payment is None:
         raise HTTPException(status_code=404, detail="Payment not found.")
-    if payment.status == "pending":
+    if payment.status == "pending" or service.awaits_subscription(db, payment):
         try:
             adapter = providers.get_provider(payment.provider, settings)
         except KeyError:

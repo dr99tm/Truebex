@@ -21,6 +21,12 @@ charge and the next period, as Paddle bills it; also `POST /mock/renew/{id}`
 for clicking through) and the buyer's address
 (`GET /customers/{id}/addresses/{id}`). Every event the mock makes is kept in
 STATE["sent"], so tests can deliver what an API call caused.
+
+PF2d, for trying lost webhooks by hand: MOCK_PADDLE_DROP names event types
+the mock makes but never sends (comma-separated, e.g.
+`MOCK_PADDLE_DROP=subscription.created`; kept in STATE["dropped"]), and
+MOCK_PADDLE_NO_RETURN=1 keeps the buyer on the pay page after paying, as if
+they closed the tab before the billing page loaded.
 """
 
 import calendar
@@ -49,6 +55,19 @@ WEBHOOK: dict[str, Any] = {
     "send": True,
 }
 
+
+def drop_list(value: str) -> set[str]:
+    """The event types in MOCK_PADDLE_DROP's comma-separated list."""
+    return {kind.strip() for kind in value.split(",") if kind.strip()}
+
+
+# Event types made but never sent (PF2d: a webhook Paddle never delivered).
+DROP: set[str] = drop_list(os.environ.get("MOCK_PADDLE_DROP", ""))
+
+# False: the pay page says "Paid" and stays there instead of returning to the
+# site (a buyer who closes the tab before the billing page loads).
+RETURN: dict[str, bool] = {"to_site": os.environ.get("MOCK_PADDLE_NO_RETURN", "") not in ("1", "true", "yes")}
+
 # "page": checkout URLs open the mock's pay page (clicking through locally);
 # "paddle": they are `<checkout.url>?_ptxn=txn_…` as real Paddle answers (tests).
 CHECKOUT: dict[str, str] = {"style": os.environ.get("MOCK_PADDLE_CHECKOUT", "page")}
@@ -74,6 +93,8 @@ def reset() -> None:
         adjustments=[],
         # Every webhook event made, newest last (sent or not).
         sent=[],
+        # Those MOCK_PADDLE_DROP kept back.
+        dropped=[],
         invoice_seq=0,
         discounts={
             "dsc_launch10": {
@@ -163,6 +184,10 @@ def _send(events: list[dict]) -> None:
     if not WEBHOOK["send"] or not WEBHOOK["url"]:
         return
     for ev in events:
+        if ev["event_type"] in DROP:
+            STATE["dropped"].append(ev)
+            print(f"mock paddle: {ev['event_type']} not sent (MOCK_PADDLE_DROP)", flush=True)
+            continue
         body = json.dumps(ev).encode()
         try:
             httpx.post(
@@ -854,6 +879,14 @@ async def pay_submit(txn_id: str, request: Request, back: str = ""):
         # Off the event loop: the API answers the webhooks by calling back
         # here (the buyer's address, PF2b) before they return.
         await run_in_threadpool(pay, txn_id, country, bool(form.get("business")))
+    if not RETURN["to_site"]:
+        # MOCK_PADDLE_NO_RETURN: the buyer never reaches the billing page.
+        return HTMLResponse(
+            "<!doctype html><title>Mock Paddle checkout</title>"
+            "<body style='font-family:sans-serif;max-width:32rem;margin:3rem auto'>"
+            "<h1>Paid</h1><p id=paid>Payment complete. You can close this tab.</p>"
+            "<p>(MOCK_PADDLE_NO_RETURN is set: the mock does not open the billing page.)</p>"
+        )
     return RedirectResponse(_return_url(txn, "success", back), status_code=303)
 
 
