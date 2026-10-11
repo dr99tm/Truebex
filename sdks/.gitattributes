@@ -1,0 +1,2 @@
+# Published to npm / PyPI: LF everywhere (a CRLF shebang breaks npx on macOS and Linux).
+* text=auto eol=lf

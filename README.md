@@ -898,46 +898,6 @@ Known gaps: the app's headless render (CL3) and its Cloud panorama command
 copy; `live_job_id` and `/s/{slug}/live` are a share-bundle MINOR proposal until
 the owner writes them into the contract.
 
-## Mobile web client (PF9)
-
-`/app/` is the first mobile version of Truebex: an installable web app (the
-manifest's `id` and `start_url` are `/app/`, with a maskable icon and iOS
-home-screen metadata) that opens the projects a person owns or that are shared
-with them, walks their cloud panoramas and makes light edits. Pages are
-`noindex`; the code is `src/app/app/`, `src/components/app/` and the
-framework-free modules in `src/viewer/`.
-
-- **Panoramas.** A project's followed render sets (PF6) are read by any member
-  through `GET /projects/{pid}/panoramas[/{set_id}]` (long-poll on `rev`) and
-  shown with the shared cube-tile viewer: drag or tilt the phone to look around,
-  tap a label to go to another view; a newer manifest swaps only changed tiles.
-- **Rooms and products** come from the snapshot's project digest
-  (`files.digest`, `truebex-project-digest/1`, a proposal for project-log §6.4),
-  with regional prices from `POST /market/prices` (PF7).
-- **Edits are log operations.** Floor and wall finish (`fill`), room theme
-  (`apply_theme`), move (`move` by 50 / 250 mm) and swap product (`place` with
-  `replace`) are pushed as `action` operations with the person's `author_id`
-  (now on `/auth/me`); each shows Pending, then Saved, or "Sam changed this
-  first — your edit was replaced" when another edit of the same thing won.
-- **Offline.** `out/sw.js` (built by `scripts/build-app.mjs`) caches the app
-  shell and the tiles of the views opened (150 MB, least recently used out);
-  IndexedDB keeps the projects, digests, manifests and the outbox, which is sent
-  on reconnect. No API answer is cached; sign-out clears it all.
-- **Headset.** Where the browser offers an immersive-vr session, "View in
-  headset" shows the current view around the person with controller rays for
-  the labels and a floating theme and floor menu (`src/viewer/xr.ts`; the 3D
-  library loads only then).
-
-Try it locally: `powershell -NoProfile -ExecutionPolicy Bypass -File scripts\try-mobile.ps1`
-starts the API on :8000 with its own database (`server\try-mobile\`, gitignored),
-a render worker with the stand-in app, runs `server\scripts\demo_mobile.py setup`
-(alex@example.com owns a shared House with a digest and a followed panorama set;
-sam@example.com is its editor) and `seed_market.py`, and builds `out/` against
-that API; `scripts\autopilot-serve.ps1` then serves it. Service workers, install
-and the headset view need HTTPS or `localhost` (on an Android phone over USB:
-`adb reverse tcp:3112 tcp:3112` and `adb reverse tcp:8000 tcp:8000`, then open
-`http://localhost:3112/app/`).
-
 ## Analysis and AI services
 
 Two contracts (Unreal project, `Docs/roadmap/40/contracts/`; the app side is authoritative): `render-jobs` v1.0.0
@@ -986,6 +946,105 @@ Known gaps: results are reports, never certificates, and no number is claimed pu
 cases pass; the app sides (AN2–AN4 exporting inputs, AI3's panel) ship separately, so the public copy keeps these
 on the roadmap.
 
+---
+
+## Public API, SDKs, webhooks and the MCP package
+
+The developer API (PF12) is everything an API key reaches, described by one
+OpenAPI document, `openapi/v1.json`, from which the SDKs and the reference
+tables on `/developers/` are generated. The code is `server/app/routers/v1/`,
+`server/app/scopes.py` and `server/app/webhooks/`.
+
+- **Keys and scopes.** A key is made with scopes (`projects:read`,
+  `projects:write`, `jobs:write`, `shares:write`, `market:read`,
+  `supplier:feed`, `webhooks:manage`); keys made before scopes read as every
+  read scope. Every key call is metered as before and held to a per-key burst
+  limit (`API_KEY_BURST` 60 at once, refilled at `API_KEY_PER_MINUTE` 600):
+  past it, 429 `rate_limited` with `retry_after_s`.
+- **The mirror.** `/v1/projects…` (project-log 5.1–5.18), `/v1/jobs…`
+  (render-jobs 5.1–5.6) and `/v1/uploads…`, `/v1/shares…` (share-bundle
+  5.1–5.9) hand each call to the contract router's own handler with the key as
+  an `api_key` caller, so shapes and errors are the contract's. A key's pushes
+  are `author_kind: "agent"` with the key's author id (`GET /v1/account`);
+  deleting a project stays the website's (403 `session_required`). Marketplace
+  reads take an optional key (`market:read`: metered, no anonymous limit);
+  supplier feeds need `supplier:feed` (keys made before scopes keep PF8's
+  access).
+- **Webhooks.** Endpoints per account (`/v1/webhooks` with `webhooks:manage`,
+  or Dashboard → Webhooks), https to public addresses only (checked again at
+  each delivery). Events are signed per the Standard Webhooks specification
+  (`webhook-id`, `webhook-timestamp`, `webhook-signature: v1,…`), retried
+  immediately, 5 s, 5 min, 30 min, 2 h, 5 h, 10 h, 14 h, 20 h and 24 h, logged
+  per attempt, re-sendable, and an endpoint failing for five days is switched
+  off with an e-mail. Events come from PF4's push hook (`project.ops_appended`,
+  one per 30 s per project) and a session observer that sees jobs end, shares go
+  live, versions, invitations, order changes and feed runs, without those
+  features calling in. Secrets are sealed with `WEBHOOK_SECRET_KEY`.
+  `server\scripts\webhook_echo.py --port 9900 --secret whsec_…` is a local
+  receiver that checks signatures (with `WEBHOOKS_ALLOW_HTTP_LOCAL=true`).
+- **The document and the SDKs.** `server\scripts\export_openapi.py --v1`
+  writes `openapi/v1.json` (a test fails when it drifts);
+  `scripts\gen-sdks.ps1` regenerates it, the Python SDK `truebex`
+  (`sdks/python/`, standard library only; types by datamodel-code-generator)
+  and the JavaScript SDK `@truebex/sdk` (`sdks/js/`; types by
+  openapi-typescript), each with a webhook verifier. Publishing to PyPI and
+  npm is the owner's; flip `DEVELOPER_DOCS.sdksPublished` in
+  `src/lib/constants.ts` afterwards.
+- **The MCP package.** `packages/mcp/` is `@truebex/mcp` (bin `truebex-mcp`):
+  the stdio bridge of contract agent-interface §6.6 that relays tool calls to
+  the running app over a per-user named pipe, with `tools.json` (also copied to
+  `src/content/tools.json` for `/developers/mcp/`). Until the app ships its own
+  `Tools/mcp/`, the package holds a stand-in written to the contract;
+  `scripts\sync-mcp.ps1` copies the app's files over it at an app release.
+  Install notes are in `packages/mcp/README.md`.
+
+Try it locally: `server\run.bat` with `WEBHOOKS_ALLOW_HTTP_LOCAL=true` in
+`server\.env`, then from `sdks\python`:
+`py -3.12 -c "import truebex; print(truebex.Client(api_key='tbx_live_…', base_url='http://127.0.0.1:8000').account.get())"`.
+
+## Mobile web client (PF9)
+
+`/app/` is the first mobile version of Truebex: an installable web app (the
+manifest's `id` and `start_url` are `/app/`, with a maskable icon and iOS
+home-screen metadata) that opens the projects a person owns or that are shared
+with them, walks their cloud panoramas and makes light edits. Pages are
+`noindex`; the code is `src/app/app/`, `src/components/app/` and the
+framework-free modules in `src/viewer/`.
+
+- **Panoramas.** A project's followed render sets (PF6) are read by any member
+  through `GET /projects/{pid}/panoramas[/{set_id}]` (long-poll on `rev`) and
+  shown with the shared cube-tile viewer: drag or tilt the phone to look around,
+  tap a label to go to another view; a newer manifest swaps only changed tiles.
+- **Rooms and products** come from the snapshot's project digest
+  (`files.digest`, `truebex-project-digest/1`, a proposal for project-log §6.4),
+  with regional prices from `POST /market/prices` (PF7).
+- **Edits are log operations.** Floor and wall finish (`fill`), room theme
+  (`apply_theme`), move (`move` by 50 / 250 mm) and swap product (`place` with
+  `replace`) are pushed as `action` operations with the person's `author_id`
+  (now on `/auth/me`); each shows Pending, then Saved, or "Sam changed this
+  first — your edit was replaced" when another edit of the same thing won.
+- **Offline.** `out/sw.js` (built by `scripts/build-app.mjs`) caches the app
+  shell and the tiles of the views opened (150 MB, least recently used out);
+  IndexedDB keeps the projects, digests, manifests and the outbox, which is sent
+  on reconnect. No API answer is cached; sign-out clears it all.
+- **Headset.** Where the browser offers an immersive-vr session, "View in
+  headset" shows the current view around the person with controller rays for
+  the labels and a floating theme and floor menu (`src/viewer/xr.ts`; the 3D
+  library loads only then).
+
+Try it locally: `powershell -NoProfile -ExecutionPolicy Bypass -File scripts\try-mobile.ps1`
+starts the API on :8000 with its own database (`server\try-mobile\`, gitignored),
+a render worker with the stand-in app, runs `server\scripts\demo_mobile.py setup`
+(alex@example.com owns a shared House with a digest and a followed panorama set;
+sam@example.com is its editor) and `seed_market.py`, and builds `out/` against
+that API; `scripts\autopilot-serve.ps1` then serves it. Service workers, install
+and the headset view need HTTPS or `localhost` (on an Android phone over USB:
+`adb reverse tcp:3112 tcp:3112` and `adb reverse tcp:8000 tcp:8000`, then open
+`http://localhost:3112/app/`).
+`demo_mobile.py --token tbx_dev_… move --project <id> --entity Oslo` moves the sofa
+as Sam's desktop; with an API key (`--token tbx_live_…`, PF12) it moves it as an
+agent through `/v1`.
+
 ## Android app
 
 `mobile/android/` is the Flutter app `com.truebex.app` (PF10): the same light client as the mobile web app
@@ -1017,8 +1076,8 @@ operations, never deltas). Doc: `docs/roadmap/40/PF10-android-native-app.md`.
   server client id (`--dart-define=GOOGLE_SERVER_CLIENT_ID=…`; `/auth/google` takes the token unchanged); a
   Google session is renewed silently when the 24 h token lapses.
 
-Gate (separate from `scriptsutopilot-verify.ps1`, so no other task needs the Flutter SDK):
-`powershell -NoProfile -ExecutionPolicy Bypass -File scriptserify-mobile.ps1` runs the viewer bundle,
+Gate (separate from `scripts\autopilot-verify.ps1`, so no other task needs the Flutter SDK):
+`powershell -NoProfile -ExecutionPolicy Bypass -File scripts\verify-mobile.ps1` runs the viewer bundle,
 `flutter analyze`, `flutter test` and `flutter build apk --debug`
 (`mobile/android/build/app/outputs/flutter-apk/app-debug.apk`). Release builds are signed with the upload
 key named in `mobile/android/android/key.properties` (git-ignored; GD4).

@@ -134,6 +134,9 @@ _ADDED_COLUMNS.setdefault("project_snapshots", []).extend(
     [("digest_sha256", "VARCHAR(64)"), ("digest_bytes", "BIGINT")]
 )
 
+# PF12 (public API): API key scopes, a JSON list; NULL = every read scope.
+_ADDED_COLUMNS.setdefault("api_keys", []).append(("scopes", "TEXT"))
+
 
 def _migrate(bind: Engine) -> None:
     insp = inspect(bind)
@@ -198,6 +201,7 @@ def init_db(bind: Engine | None = None, *, seed: bool = True) -> None:
     from .projects import models as _project_models  # noqa: F401  (PF4)
     from .render import models as _render_models  # noqa: F401  (PF6, and metering's meter_daily)
     from .ai import models as _ai_models  # noqa: F401  (PF11: ai_*, and analysis_weather)
+    from .webhooks import models as _webhook_models  # noqa: F401  (PF12)
 
     bind = bind or engine
     Base.metadata.create_all(bind=bind)

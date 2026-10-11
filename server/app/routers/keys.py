@@ -12,6 +12,7 @@ from ..deps import get_current_user
 from ..models import ApiKey, User
 from ..plans import get_plan
 from ..schemas import ApiKeyCreate, ApiKeyCreated, ApiKeyOut
+from ..scopes import READ_SCOPES, SCOPES, dump
 from ..security import generate_api_key
 
 router = APIRouter(prefix="/keys", tags=["api keys"])
@@ -29,6 +30,14 @@ def list_keys(
             .order_by(ApiKey.revoked_at.is_not(None), ApiKey.created_at.desc())
         )
     )
+
+
+@router.get("/scopes")
+def list_scopes() -> dict:
+    """PF12: the scopes a key can hold, with what each allows."""
+    from ..scopes import DESCRIPTIONS
+
+    return {"scopes": [{"scope": s, "description": DESCRIPTIONS[s]} for s in SCOPES], "default": list(READ_SCOPES)}
 
 
 @router.post("", response_model=ApiKeyCreated, status_code=status.HTTP_201_CREATED)
@@ -52,7 +61,9 @@ def create_key(
             ),
         )
     full, prefix, digest = generate_api_key()
-    key = ApiKey(user_id=current.id, name=payload.name.strip(), prefix=prefix, key_hash=digest)
+    # PF12: the chosen scopes (validated by ApiKeyCreate); none given = every read scope.
+    chosen = payload.scopes if payload.scopes is not None else list(READ_SCOPES)
+    key = ApiKey(user_id=current.id, name=payload.name.strip(), prefix=prefix, key_hash=digest, scopes=dump(chosen))
     db.add(key)
     db.commit()
     db.refresh(key)

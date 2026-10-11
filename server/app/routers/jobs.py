@@ -44,7 +44,14 @@ def get_job_caller(
     raw = x_api_key or (creds.credentials if creds else "")
     if raw.startswith(API_KEY_PREFIX):
         found = api_key_auth(request, response, creds, x_api_key, db)
-        return ProjectCaller(user=found.user, kind="api_key")
+        # PF12: scopes are checked on every route (writes jobs:write, reads projects:read).
+        needed = "jobs:write" if request.method != "GET" else "projects:read"
+        if needed not in found.scopes:
+            raise ContractError(
+                "forbidden", 403, f"This API key does not have the {needed} scope.",
+                {"needed": needed, "scopes": list(found.scopes)},
+            )
+        return ProjectCaller(user=found.user, kind="api_key", key_id=found.key.id)
     if not raw:
         raise ContractError("unauthenticated", 401, "Sign in to use cloud rendering.", headers={"WWW-Authenticate": "Bearer"})
     if raw.startswith(WORKER_TOKEN_PREFIX):

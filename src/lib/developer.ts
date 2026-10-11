@@ -10,6 +10,15 @@ export interface ApiKey {
   created_at: string;
   last_used_at: string | null;
   revoked_at: string | null;
+  /** PF12: what the key may do; `legacy` = made before scopes (every read scope). */
+  scopes?: string[];
+  legacy?: boolean;
+}
+
+/** PF12: a scope a key can hold (GET /keys/scopes). */
+export interface ScopeInfo {
+  scope: string;
+  description: string;
 }
 
 export interface CreatedApiKey extends ApiKey {
@@ -163,8 +172,10 @@ export interface CheckoutRequest {
 }
 
 export const listKeys = () => api<ApiKey[]>("/keys");
-export const createKey = (name: string) =>
-  api<CreatedApiKey>("/keys", { method: "POST", json: { name } });
+export const createKey = (name: string, scopes?: string[]) =>
+  api<CreatedApiKey>("/keys", { method: "POST", json: scopes ? { name, scopes } : { name } });
+export const listScopes = () =>
+  api<{ scopes: ScopeInfo[]; default: string[] }>("/keys/scopes", { auth: false });
 export const revokeKey = (id: number) =>
   api<ApiKey>(`/keys/${id}`, { method: "DELETE" });
 

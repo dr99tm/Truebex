@@ -4,6 +4,7 @@ app will leave one, before the app's cloud save (CL1) lands.
     cd server
     .venv\\Scripts\\python.exe scripts\\demo_mobile.py setup --email alex@example.com --password … --editor-email sam@example.com
     .venv\\Scripts\\python.exe scripts\\demo_mobile.py --token tbx_dev_… move --project <id> --entity <id>
+    .venv\\Scripts\\python.exe scripts\\demo_mobile.py --token tbx_live_… move --project <id> --entity Oslo
 
 `setup` (run it again at any time; it reuses what exists):
 1. signs the owner and the editor up (or in) with e-mail and password, and
@@ -20,7 +21,11 @@ app will leave one, before the app's cloud save (CL1) lands.
 
 `move` pushes one "Move <name>" operation from a device (the desktop's stand-in),
 made at --base (default the head), touching --entity: with the phone offline,
-its own edit of the same entity then loses (the visible resolution). Steps 1
+its own edit of the same entity then loses (the visible resolution). With an
+API key (`--token tbx_live_…`, scope projects:write) it pushes through `/v1`
+as an agent instead (PF12), so the phone names no person ("Someone changed
+this first"). --entity is a 32-hex id or the start of a name in the digest
+("Oslo" for the sofa). Steps 1
 and 3 use server/.env like the API (DATABASE_URL). API: --api (default
 http://127.0.0.1:8000); the site for the printed address: --site.
 """
@@ -215,18 +220,23 @@ def cmd_move(args) -> int:
     digest = json.loads(DIGEST.read_text(encoding="utf-8"))
     names = {e["id"]: e["name"] for key in ("products", "rooms", "openings") for e in digest.get(key, [])}
     entity = args.entity.lower()
-    author = api.call("GET", "/licence/account", headers=LICENCE)["author_id"]
-    base = args.base if args.base is not None else api.call("GET", f"/projects/{args.project}", headers=LOG)["head_seq"]
+    if entity not in names and len(entity) != 32:  # the start of a name ("Oslo")
+        entity = next((i for i, n in names.items() if n.lower().startswith(entity)), entity)
+    agent = args.token.startswith("tbx_live_")  # PF12: an API key pushes through /v1 as an agent
+    prefix = "/v1" if agent else ""
+    base = args.base if args.base is not None else api.call("GET", f"{prefix}/projects/{args.project}", headers=LOG)["head_seq"]
     name = f"Move {names.get(entity, 'object')}"[:80]
     raw = b"TBXD" + json.dumps({"stand_in": True, "name": name, "rows": [entity]}).encode()
     import base64
 
     op = {
-        "op_id": secrets.token_hex(16), "author": author, "author_kind": "person",
+        "op_id": secrets.token_hex(16),
         "at": time.strftime("%Y-%m-%dT%H:%M:%S.000Z", time.gmtime()), "touched": [entity], "kind": "delta",
         "name": name, "base_seq": base, "delta_format": "o5/38", "delta": base64.b64encode(raw).decode("ascii"),
     }
-    answer = api.call("POST", f"/projects/{args.project}/ops", headers=LOG, json={"replica_id": secrets.token_hex(16), "ops": [op]})
+    if not agent:  # a key's operations get the key's own author id from the server
+        op.update(author=api.call("GET", "/licence/account", headers=LICENCE)["author_id"], author_kind="person")
+    answer = api.call("POST", f"{prefix}/projects/{args.project}/ops", headers=LOG, json={"replica_id": secrets.token_hex(16), "ops": [op]})
     result = answer["results"][0]
     if result["status"] == "accepted":
         print(f"{name}: accepted as {result['server_seq']} (head {answer['head_seq']})")
@@ -238,7 +248,7 @@ def cmd_move(args) -> int:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="demo_mobile.py", description=__doc__.split("\n")[0])
     parser.add_argument("--api", default="http://127.0.0.1:8000")
-    parser.add_argument("--token", help="a device token, tbx_dev_... (move)")
+    parser.add_argument("--token", help="a device token, tbx_dev_..., or an API key, tbx_live_... (move)")
     sub = parser.add_subparsers(dest="command", required=True)
     p = sub.add_parser("setup", help="the owner, an editor and a shared House for the phone")
     p.add_argument("--email", required=True, help="the owner (signs in on the phone)")
@@ -252,13 +262,13 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--no-render", action="store_true", help="skip the followed panorama set")
     p = sub.add_parser("move", help="push one Move operation from a device")
     p.add_argument("--project", required=True)
-    p.add_argument("--entity", required=True, help="32-hex entity id (the digest's products, rooms, openings)")
+    p.add_argument("--entity", required=True, help="32-hex entity id or the start of its name (the digest's products, rooms, openings)")
     p.add_argument("--base", type=int, help="the sequence it was made at (default: the head)")
     args = parser.parse_args(argv)
     if args.command == "setup":
         return cmd_setup(args)
     if not args.token:
-        raise SystemExit("move needs --token tbx_dev_... (setup prints the editor's)")
+        raise SystemExit("move needs --token tbx_dev_... (setup prints the editor's) or an API key tbx_live_...")
     return cmd_move(args)
 
 
