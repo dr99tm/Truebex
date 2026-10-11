@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- PF10, debug builds only: cleartext is allowed so the app can reach a local
+     API on the PC's LAN address during the human test. Release builds use
+     src/main/res/xml/network_security_config.xml (HTTPS only). -->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system" />
+            <certificates src="user" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>

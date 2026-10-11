@@ -50,12 +50,13 @@ export interface WireOp {
   name: string;
 }
 
+/** 5.6's per-operation result as openapi/clients.json describes it (null where absent). */
 export interface PushResult {
   op_id: string;
   status: "accepted" | "duplicate" | "rejected" | "not_processed";
-  server_seq?: number;
-  reason?: string;
-  winning?: WireOp[];
+  server_seq?: number | null;
+  reason?: string | null;
+  winning?: WireOp[] | null;
 }
 
 export interface PushAnswer {
@@ -105,7 +106,7 @@ export function applyResults(batch: OutboxEntry[], answer: PushAnswer): OutboxEn
     const r = byId.get(entry.op_id);
     if (!r || r.status === "not_processed") return entry;
     if (r.status === "accepted" || r.status === "duplicate") {
-      return { ...entry, state: "accepted" as const, seq: r.server_seq, reason: undefined };
+      return { ...entry, state: "accepted" as const, seq: r.server_seq ?? undefined, reason: undefined };
     }
     const w = r.winning?.[0];
     return {

@@ -1,0 +1,14 @@
+include: package:flutter_lints/flutter.yaml
+
+analyzer:
+  exclude:
+    # Generated: the API client (scripts/gen-clients.ps1) and drift's tables.
+    - lib/api/gen/**
+    - lib/**/*.g.dart
+    - build/**
+
+linter:
+  rules:
+    prefer_single_quotes: true
+    always_declare_return_types: true
+    avoid_print: true
