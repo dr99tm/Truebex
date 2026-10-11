@@ -371,6 +371,8 @@ def payment_paid(db: Session, payment: Payment) -> bool:
     one). Idempotent. Returns True when it was sent now."""
     if not wording_approved() or payment.status != "paid" or payment.confirmation_sent_at is not None:
         return False
+    if payment.plan in service.ONE_OFF_ITEMS:
+        return False  # not a subscription: its wording waits for QS-17 (PF11's As-built)
     paid = _aware(payment.paid_at)
     if paid is None or paid < _now() - CONFIRMATION_WINDOW:
         return False  # a late event about an old order: no confirmation out of the blue
@@ -451,10 +453,16 @@ def checkout_payment(db: Session, sub: Subscription) -> Payment | None:
         if found is not None:
             return found
     # Payments from before PF2b carry no subscription id: the user's latest
-    # paid checkout with this provider (one live subscription at a time).
+    # paid checkout with this provider (one live subscription at a time),
+    # never a one-off item's (PF11's credit packs).
     found = db.scalar(
         select(Payment)
-        .where(Payment.user_id == sub.user_id, Payment.provider == sub.provider, Payment.status == "paid")
+        .where(
+            Payment.user_id == sub.user_id,
+            Payment.provider == sub.provider,
+            Payment.status == "paid",
+            Payment.plan.not_in(sorted(service.ONE_OFF_ITEMS)),
+        )
         .order_by(Payment.paid_at.desc())
     )
     created = _aware(sub.created_at)

@@ -1,0 +1,13 @@
+{
+  "detail": "Your AI credits are used up for this month.",
+  "code": "credits_exhausted",
+  "status": 403,
+  "request_id": "5ee1d00000000000000000000000c0de",
+  "retry_after_s": null,
+  "data": {
+    "remaining": 0,
+    "resets_at": "2026-11-01T00:00:00Z",
+    "plan_needed": "studio",
+    "top_up_url": "https://truebex.com/dashboard/cloud/#ai-credits"
+  }
+}

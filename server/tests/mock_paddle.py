@@ -38,6 +38,7 @@ from urllib.parse import parse_qs
 import httpx
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
+from starlette.concurrency import run_in_threadpool
 
 app = FastAPI(title="Mock Paddle")
 
@@ -358,6 +359,16 @@ def list_discounts(request: Request, code: str = "", status: str = ""):
 def _items(raw: list[dict]) -> list[dict] | JSONResponse:
     items = []
     for item in raw:
+        if isinstance(item.get("price"), dict) and not item.get("price_id"):
+            # A non-catalogue price for this transaction alone (one-off items, PF11).
+            inline = item["price"]
+            price = {
+                "id": _id("pri"), "description": inline.get("description"), "name": inline.get("name"),
+                "unit_price": inline["unit_price"], "product": inline.get("product"), "billing_cycle": None,
+                "one_time": True,
+            }
+            items.append({"price": price, "price_id": price["id"], "quantity": int(item.get("quantity") or 1), "status": "active"})
+            continue
         price = STATE["prices"].get(item.get("price_id"))
         if price is None:
             return _error(400, "transaction_price_not_found", f"price {item.get('price_id')} not found")
@@ -534,6 +545,10 @@ def pay(txn_id: str, country: str = "GB", business: bool = False) -> list[dict]:
     if business:
         txn["business_id"] = _id("biz")
     _bill(txn)
+    if all(i["price"].get("one_time") for i in txn["items"]):
+        events = [event("transaction.completed", txn)]  # a one-off purchase: no subscription
+        _send(events)
+        return events
     sub = _subscription_from(txn)
     STATE["subscriptions"][sub["id"]] = sub
     txn["subscription_id"] = sub["id"]
@@ -784,12 +799,21 @@ def _org_query(txn: dict) -> str:
     return f"&org={org}" if org.isalnum() else ""
 
 
+def _return_url(txn: dict, outcome: str, back: str = "") -> str:
+    """Where the pay page sends the buyer: the Cloud page for a credit pack
+    bought there (PF11, `back=dashboard-cloud`, as /checkout/ does), else billing."""
+    ref = str((txn.get("custom_data") or {}).get("reference", ""))
+    if back == "dashboard-cloud":
+        return f"{_site(txn)}/dashboard/cloud/?topup={outcome}&ref={ref}"
+    return f"{_site(txn)}/dashboard/billing/?checkout={outcome}&ref={ref}{_org_query(txn)}"
+
+
 def _money(minor: str | int, currency: str) -> str:
     return f"{int(minor) / 100:,.2f} {currency}"
 
 
 @app.get("/pay/{txn_id}", response_class=HTMLResponse)
-def pay_page(txn_id: str):
+def pay_page(txn_id: str, back: str = ""):
     txn = STATE["transactions"].get(txn_id)
     if txn is None:
         return HTMLResponse("<h1>Unknown transaction</h1>", status_code=404)
@@ -798,8 +822,8 @@ def pay_page(txn_id: str):
         f"<li>{html.escape(str(i['price'].get('description') or i['price']['id']))} &times; {i['quantity']}</li>"
         for i in txn["items"]
     )
-    ref = html.escape(str((txn.get("custom_data") or {}).get("reference", "")))
-    cancel = f"{_site(txn)}/dashboard/billing/?checkout=canceled&ref={ref}{_org_query(txn)}"
+    back = back if back == "dashboard-cloud" else ""
+    cancel = _return_url(txn, "canceled", back)
     return (
         "<!doctype html><title>Mock Paddle checkout</title>"
         "<body style='font-family:sans-serif;max-width:32rem;margin:3rem auto'>"
@@ -808,7 +832,7 @@ def pay_page(txn_id: str):
         f" &middot; discount {_money(totals['discount'], txn['currency_code'])}"
         f" &middot; VAT {VAT_PERCENT}% {_money(totals['tax'], txn['currency_code'])}</p>"
         f"<p><strong>Total {_money(totals['grand_total'], txn['currency_code'])}</strong></p>"
-        f"<form method=post action='/pay/{txn_id}'>"
+        f"<form method=post action='/pay/{txn_id}{'?back=' + back if back else ''}'>"
         "<p><label>Country <select name=country id=country>"
         "<option value=GB>United Kingdom</option><option value=DE>Germany</option>"
         "<option value=FR>France</option><option value=IE>Ireland</option>"
@@ -820,18 +844,17 @@ def pay_page(txn_id: str):
 
 
 @app.post("/pay/{txn_id}")
-async def pay_submit(txn_id: str, request: Request):
+async def pay_submit(txn_id: str, request: Request, back: str = ""):
     txn = STATE["transactions"].get(txn_id)
     if txn is None:
         return HTMLResponse("<h1>Unknown transaction</h1>", status_code=404)
     form = parse_qs((await request.body()).decode())
     country = (form.get("country") or ["GB"])[0][:2] or "GB"
     if txn["status"] == "ready":
-        pay(txn_id, country=country, business=bool(form.get("business")))
-    ref = (txn.get("custom_data") or {}).get("reference", "")
-    return RedirectResponse(
-        f"{_site(txn)}/dashboard/billing/?checkout=success&ref={ref}{_org_query(txn)}", status_code=303
-    )
+        # Off the event loop: the API answers the webhooks by calling back
+        # here (the buyer's address, PF2b) before they return.
+        await run_in_threadpool(pay, txn_id, country, bool(form.get("business")))
+    return RedirectResponse(_return_url(txn, "success", back), status_code=303)
 
 
 @app.get("/portal/{customer_id}", response_class=HTMLResponse)

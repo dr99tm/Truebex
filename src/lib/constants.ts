@@ -2593,3 +2593,110 @@ export const APP = {
     session: "Your session ended. Sign in again to send your edits.",
   },
 } as const;
+
+// --- AI credits and analysis jobs (PF11) ------------------------------------------
+// The Cloud page's AI credits section and the render admin's AI panel (account
+// pages, noindex). The assistant and the sound, wind and energy reports stay
+// "On the roadmap" in the public copy (FEATURES, the roadmap page) until the
+// app ships them; these pages only show what an account already has. No model
+// or provider names: the aliases are Truebex's own. Tokens: {credits}, {id}.
+
+export const CLOUD_AI = {
+  title: "AI credits",
+  loading: "Loading AI credits…",
+  // Job kinds PF11 adds to the Cloud page and the render admin (CLOUD.kinds first).
+  kinds: {
+    acoustics: "Acoustics study",
+    texture: "Material textures",
+  },
+  locked: {
+    text: "AI credits come with Pro, Studio, Team and the 14-day trial.",
+    cta: "See plans",
+  },
+  balance: {
+    left: "Credits left",
+    unlimited: "No monthly limit",
+    allowance: "This month's allowance",
+    unit: "credits",
+    label: "AI credits used from this month's allowance",
+    allowanceUnlimited: "Your plan has no monthly limit on AI credits.",
+    allowanceNone: "Your plan has no monthly allowance. Turns use bought credits.",
+    topUps: "Bought credits left",
+    resets: "Allowance resets on",
+    help: "Each turn of the assistant costs credits by its length: the longer the request and the reply, the more credits it uses. The allowance resets on the 1st of each month (UTC) and unused credits don't roll over. Bought credits are used once the allowance runs out, and never expire.",
+  },
+  turns: {
+    title: "Recent turns",
+    empty: "No assistant turns yet.",
+    columns: { at: "When", alias: "Model", credits: "Credits", tools: "Tools used" },
+    noTools: "—",
+  },
+  buy: {
+    title: "Buy credits",
+    currency: "Currency",
+    packs: "Credit packs",
+    pack: "{credits} credits",
+    noPacks: "No credit packs are on sale in this currency.",
+    tax: "Tax for your country is added at checkout.",
+    consent:
+      "I want the credits added now. I understand that I lose my 14-day right to cancel this purchase once they are added.",
+    reason: "Tick the box above to continue.",
+    submit: "Buy credits",
+    busy: "Opening checkout…",
+    history: "Recent purchases",
+    states: { pending: "Waiting for payment", credited: "Added", canceled: "Cancelled" },
+  },
+  notices: {
+    confirming: "Confirming your payment…",
+    added: "Credits added.",
+    processing: "Payment processing. Your credits appear here once the provider confirms it.",
+    unconfirmed: "We couldn't confirm the payment yet. Your credits appear here once the provider confirms it.",
+    canceled: "Checkout was cancelled — you haven't been charged.",
+  },
+  // The checkout page when a credit pack was bought from the Cloud page.
+  checkout: {
+    back: "Back to Cloud",
+    done: "Payment received. Taking you back to Cloud…",
+  },
+  errors: { generic: "Something went wrong." },
+} as const;
+
+export const ADMIN_AI = {
+  title: "AI services",
+  spend: {
+    title: "AI spend this month",
+    alias: "Alias",
+    servedBy: "Served by",
+    turns: "Turns",
+    credits: "Credits",
+    cost: "Provider cost (USD)",
+    empty: "No AI turns yet this month.",
+  },
+  servers: {
+    title: "Inference servers",
+    id: "Server",
+    alias: "Alias",
+    state: "State",
+    probe: "Last probe",
+    actions: "Actions",
+    remove: "Remove",
+    confirm: "Remove {id}? Turns for its alias stop going to it.",
+    empty: "No inference servers registered.",
+    states: { warm: "Warm", cold: "Cold", stopped: "Stopped" },
+    wanted: "gpu-ai machines wanted",
+    unset: "not set",
+  },
+  add: {
+    title: "Register an inference server",
+    id: "Server id",
+    idPlaceholder: "gpu-ai-1",
+    alias: "Alias",
+    url: "Base URL",
+    urlPlaceholder: "http://10.0.0.5:8000",
+    submit: "Register server",
+    busy: "Registering…",
+    noAlias: "The alias table has no self-hosted alias yet.",
+    added: "{id} registered.",
+  },
+  errors: { generic: "Something went wrong." },
+} as const;

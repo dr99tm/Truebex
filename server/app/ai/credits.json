@@ -1,0 +1,10 @@
+{
+  "schema": "truebex-ai-credits/1",
+  "source": "PF11 placeholders until guides/GD7 sets allowances, packs and prices (confirm at writing time). A tier that holds ai.metered with limits.ai_credits_month 0 in catalogue.json takes allowance_month here; any other number (or null = no limit) in the catalogue wins. One credit is about 0.001 USD of the default model's list price (aliases.json).",
+  "allowance_month": {"free": 0, "pro": 2000, "studio": 5000, "team": 5000, "enterprise": 20000},
+  "top_up_packs": [
+    {"id": "credits-5000", "credits": 5000, "prices": {"GBP": 600, "USD": 750, "EUR": 700}},
+    {"id": "credits-20000", "credits": 20000, "prices": {"GBP": 2200, "USD": 2800, "EUR": 2600}}
+  ],
+  "usage_retention_days": 400
+}
