@@ -1090,3 +1090,21 @@ mode **and** Ctrl+C on the relay; `scripts\try-android.ps1 -RelayOnly` brings th
 
 Store listing (text, Data safety and content-rating answers, icon, feature graphic, screenshots):
 `mobile/android/store/`, made with `scripts/make_android_assets.py`. Publishing is the owner's (GD4).
+
+## Panorama reads for API keys (PF12a)
+
+An API key with `projects:read` follows a project's live panoramas the way the
+phone does: `GET /v1/projects/{pid}/panoramas` lists the project's followed
+panorama sets (those of its active members; `mine` marks the key's own
+account's), and `GET /v1/projects/{pid}/panoramas/{set_id}` answers a set's
+newest tile manifest, waiting with `rev` and `wait_s` (up to 25 s) until the
+set's `rev` moves. Both hand the call to PF9's handlers in
+`server/app/routers/mobile.py`, so the answers, the viewer-role rule, 404 for
+non-members and `Cache-Control: private, no-store` are the session routes';
+they are metered and burst-limited like every `/v1` call. The SDKs have
+`c.projects.panoramas_list(pid)` / `panoramas_get(pid, set_id, rev=, wait_s=)`
+(Python) and `panoramasList` / `panoramasGet` (JavaScript).
+
+Try it: `scripts\try-mobile.ps1` (the API on :8000, a render worker, the demo
+House with a followed set), a key from Dashboard → API keys, then
+`curl.exe -H "Authorization: Bearer tbx_live_…" http://127.0.0.1:8000/v1/projects/<project id>/panoramas`.
