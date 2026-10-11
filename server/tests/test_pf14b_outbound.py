@@ -563,3 +563,23 @@ def test_sso_loopback_issuer_allowed_for_local_api(client, txt, local_idp, monke
     assert oidc.private_issuers_allowed()
     assert _put_oidc(client, h, org, local_idp).status_code == 200
     assert "token=" in sign_in(f"d@{DOMAIN}")
+
+
+def test_try_outbound_script(net, capsys):
+    """scripts/try_outbound.py (the human test's probe) shows the lookup, the
+    verdict on each address and the address it dials."""
+    from scripts import try_outbound
+
+    net.dns["public.example.com"] = [[PUBLIC]]
+    net.dns["inside.example.com"] = [["10.0.0.7"]]
+    net.routes["public.example.com"] = ok()
+    assert try_outbound.main(["https://public.example.com/"]) == 0
+    out = capsys.readouterr().out
+    assert f"{PUBLIC}: public" in out and f"connect {PUBLIC} port 443" in out
+    assert "HTTP 200, Host: public.example.com, certificate checked for public.example.com" in out
+    assert try_outbound.main(["https://inside.example.com/"]) == 2
+    out = capsys.readouterr().out
+    assert "10.0.0.7: NOT public" in out and "nothing was sent" in out and "connect" not in out
+    assert try_outbound.main(["--private", "https://inside.example.com/"]) == 1  # allowed, but nothing listens there
+    assert "10.0.0.7: not public, allowed by --private" in capsys.readouterr().out
+    assert outbound.resolve == net.resolve and outbound.connect == net.connect  # put back

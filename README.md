@@ -1090,3 +1090,25 @@ mode **and** Ctrl+C on the relay; `scripts\try-android.ps1 -RelayOnly` brings th
 
 Store listing (text, Data safety and content-rating answers, icon, feature graphic, screenshots):
 `mobile/android/store/`, made with `scripts/make_android_assets.py`. Publishing is the owner's (GD4).
+
+## Outbound requests (PF14b)
+
+Every request the API sends to a URL someone else chose goes through `server/app/net/outbound.py`: feed pulls
+and feed image and geometry URLs (suppliers), webhook deliveries (accounts), and OpenID Connect discovery, keys
+and token calls (organisation admins). Its client resolves the host once and refuses it before sending anything
+unless every address is global unicast. It refuses loopback, private networks, link-local (169.254.169.254),
+multicast, reserved, 100.64.0.0/10, IPv6 site-local, and the IPv4-mapped, NAT64 and 6to4 forms of those. It then
+connects to a checked address with no second lookup, so DNS rebinding cannot reach the VM's own network. TLS
+still verifies the certificate for the host name (SNI and Host carry it). Redirect hops are followed by hand,
+each one checked. The error messages are the ones the save-time checks already gave. Doc:
+`docs/roadmap/40/PF14b-outbound-requests-pinned.md`.
+
+- **SSO issuers on this computer or a private network** are accepted only while `API_URL` itself is on
+  127.0.0.1 or localhost (local trials with `server/tests/mock_oidc.py`), or with `SSO_ALLOW_PRIVATE_ISSUERS=true`
+  (off by default, never on the VM). Otherwise the SSO tab refuses them on save and sign-in answers `sso_failed`.
+- **See what it does with a URL:** `server\.venv\Scripts\python.exe server\scripts\try_outbound.py https://example.com/`
+  prints the lookup, the verdict on each address, the address it connects to and the answer;
+  `https://localtest.me/` (a public name for 127.0.0.1) is refused with nothing sent.
+- **Tests:** `server/tests/test_pf14b_outbound.py` (no real network: a table of DNS answers and an in-process TLS
+  server with a test CA). A test that swaps in an `httpx.MockTransport` bypasses the pinning, so rebinding tests
+  run over the real client.
