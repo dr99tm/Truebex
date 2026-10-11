@@ -189,6 +189,10 @@ class MarketRegions(TypedDict):
 
 class Member(TypedDict):
     accepted_at: NotRequired[str | None]
+    author_id: NotRequired[str | None]
+    """
+    The member's author id, as on their operations (PF9); null until they have one
+    """
     email: str
     invited_at: NotRequired[str | None]
     name: NotRequired[str | None]
@@ -405,11 +409,22 @@ class SnapshotFileUrl(TypedDict):
 
 
 class SnapshotFiles(TypedDict):
+    """
+    The snapshot's files: `tbxp`, `tbxpack` and `digest`, the project digest (`truebex-project-digest/1`: rooms,
+    walls, products, themes, for light clients; PF9). `tbxpack` and `digest` are null when the snapshot has none.
+    """
+
+    digest: SnapshotFileUrl | None
     tbxp: SnapshotFileUrl
     tbxpack: SnapshotFileUrl | None
 
 
 class SnapshotFilesIn(TypedDict):
+    """
+    SHA-256s of the snapshot's files in its upload: `tbxp`, optionally `tbxpack` and `digest` (the project digest).
+    """
+
+    digest: NotRequired[str | None]
     tbxp: str
     tbxpack: NotRequired[str | None]
 

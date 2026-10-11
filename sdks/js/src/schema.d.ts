@@ -1303,6 +1303,11 @@ export interface components {
         Member: {
             /** Accepted At */
             accepted_at?: string | null;
+            /**
+             * Author Id
+             * @description The member's author id, as on their operations (PF9); null until they have one
+             */
+            author_id?: string | null;
             /** Email */
             email: string;
             /** Invited At */
@@ -1861,15 +1866,25 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
-        /** SnapshotFiles */
+        /**
+         * SnapshotFiles
+         * @description The snapshot's files: `tbxp`, `tbxpack` and `digest`, the project digest (`truebex-project-digest/1`: rooms,
+         *     walls, products, themes, for light clients; PF9). `tbxpack` and `digest` are null when the snapshot has none.
+         */
         SnapshotFiles: {
+            digest: components["schemas"]["SnapshotFileUrl"] | null;
             tbxp: components["schemas"]["SnapshotFileUrl"];
             tbxpack: components["schemas"]["SnapshotFileUrl"] | null;
         } & {
             [key: string]: unknown;
         };
-        /** SnapshotFilesIn */
+        /**
+         * SnapshotFilesIn
+         * @description SHA-256s of the snapshot's files in its upload: `tbxp`, optionally `tbxpack` and `digest` (the project digest).
+         */
         SnapshotFilesIn: {
+            /** Digest */
+            digest?: string | null;
             /** Tbxp */
             tbxp: string;
             /** Tbxpack */

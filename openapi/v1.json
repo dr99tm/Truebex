@@ -1077,6 +1077,18 @@
             ],
             "title": "Accepted At"
           },
+          "author_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The member's author id, as on their operations (PF9); null until they have one",
+            "title": "Author Id"
+          },
           "email": {
             "title": "Email",
             "type": "string"
@@ -2589,7 +2601,18 @@
       },
       "SnapshotFiles": {
         "additionalProperties": true,
+        "description": "The snapshot's files: `tbxp`, `tbxpack` and `digest`, the project digest (`truebex-project-digest/1`: rooms,\nwalls, products, themes, for light clients; PF9). `tbxpack` and `digest` are null when the snapshot has none.",
         "properties": {
+          "digest": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SnapshotFileUrl"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "tbxp": {
             "$ref": "#/components/schemas/SnapshotFileUrl"
           },
@@ -2606,13 +2629,27 @@
         },
         "required": [
           "tbxp",
-          "tbxpack"
+          "tbxpack",
+          "digest"
         ],
         "title": "SnapshotFiles",
         "type": "object"
       },
       "SnapshotFilesIn": {
+        "description": "SHA-256s of the snapshot's files in its upload: `tbxp`, optionally `tbxpack` and `digest` (the project digest).",
         "properties": {
+          "digest": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Digest"
+          },
           "tbxp": {
             "maxLength": 64,
             "title": "Tbxp",
