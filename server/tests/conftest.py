@@ -2,7 +2,9 @@ import hashlib
 import json
 import os
 import shutil
+import sqlite3
 import tempfile
+from contextlib import closing
 from pathlib import Path
 
 import pytest
@@ -60,9 +62,14 @@ os.environ.update(
 
 from fastapi.testclient import TestClient  # noqa: E402
 
-from app import mail, ratelimit, storage, tasks  # noqa: E402
-from app.database import Base, engine  # noqa: E402
+from app import mail, ratelimit, security, storage, tasks  # noqa: E402
+from app.database import Base, engine, init_db  # noqa: E402
 from app.main import app  # noqa: E402
+
+# bcrypt at its production cost (12 rounds, 0.3-0.5 s a hash on the owner's PC)
+# was a sixth of the suite's time. The tests hash with the same scheme at its
+# lowest cost; a hash of either cost verifies the same way.
+security._pwd_context.update(bcrypt__rounds=4)
 
 STORAGE_DIR = os.environ["STORAGE_DIR"]
 # Set TEST_DATABASE_URL=postgresql+psycopg://user:pass@host:port/db to run the
@@ -93,9 +100,36 @@ def _reset_plumbing() -> None:
     shutil.rmtree(STORAGE_DIR, ignore_errors=True)
 
 
+# An empty app database (every table and init_db's seed), made once and copied
+# in before each test with SQLite's backup API: the same fresh start as
+# dropping every table and letting the app's startup create them again, which
+# took 1.5-2 s a test (half the suite's time) on the owner's PC under load.
+_EMPTY_DB: list[sqlite3.Connection] = []
+
+
+def _fresh_database() -> None:
+    """Every test that uses `client` starts on an empty database. On Postgres
+    every table is dropped and the app's lifespan creates them again."""
+    if engine.dialect.name != "sqlite":
+        Base.metadata.drop_all(bind=engine)
+        return
+    engine.dispose()  # pooled connections keep the old file's schema
+    path = engine.url.database
+    if not _EMPTY_DB:
+        Base.metadata.drop_all(bind=engine)
+        init_db()
+        engine.dispose()
+        empty = sqlite3.connect(":memory:", check_same_thread=False)
+        with closing(sqlite3.connect(path)) as made:
+            made.backup(empty)
+        _EMPTY_DB.append(empty)
+    with closing(sqlite3.connect(path)) as target:
+        _EMPTY_DB[0].backup(target)
+
+
 @pytest.fixture()
 def client():
-    Base.metadata.drop_all(bind=engine)
+    _fresh_database()
     _reset_plumbing()
     with TestClient(app) as c:  # runs lifespan -> init_db
         yield c
