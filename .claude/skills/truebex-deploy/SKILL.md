@@ -145,6 +145,25 @@ with WAL archived by wal-g to a backup bucket at a second provider. Everything i
   nightly base backups at 02:30 UTC (`journalctl -u truebex-backup`).
 - **Alerts:** the hosted monitor (e-mail + phone push), `host-check.sh` every minute, the worker's
   `backup.check`; see `infra/README.md#alerts`.
+- **Picture search, once per VM (PF7a):** the model files live in the `models` volume, which
+  `infra/host/compose.yaml` mounts in `api` and `worker` at `EMBEDDING_DIR` (`/app/models`); deploys and new
+  images keep them. In this order:
+  1. On the VM in `/opt/truebex`: `docker compose exec api python scripts/fetch_models.py --dir /app/models`
+     downloads CLIP ViT-B/32 (about 155 MB: the vision and text models and the tokenizer) into the volume
+     (`--force` downloads them again).
+  2. `sops infra\secrets\server.sops.env`: set `EMBEDDING_MODEL=clip-vit-b32` (leave `EMBEDDING_DIR` out:
+     Compose sets it), then `infra\deploy.ps1` restarts `api` and `worker` with it. Until then
+     `POST /market/search/image` answers 503.
+  3. Existing products need no command: the worker's `market.embeddings` job embeds every approved product
+     that has no vector for the model, 50 a minute (600 products take about 12 minutes). To embed the next
+     50 at once: `docker compose exec worker python -m app.worker --run market.embeddings`. Check:
+     `curl -F image=@<a product photo>.jpg https://api.truebex.com/market/search/image` answers
+     `"model": "clip-vit-b32"` with that product first.
+- **Marketplace search index (PF7a):** on Postgres the text search is the `market_search_tsv` table
+  (full-text, `simple` configuration, GIN index). It is derived data and needs no step: created with the
+  tables, filled from the products by a start that finds it empty (the first deploy of PF7a, a restore), and
+  rebuilt by the cutover copy (`search index rebuilt: <n> products`). By hand, as an admin:
+  `POST https://api.truebex.com/admin/market/search/rebuild` → `{"indexed": <n>}`.
 - **Admins:** `docker compose exec api python -m scripts.make_admin <email>` on the VM.
 - **Organisation seats by hand** (Enterprise contracts; PF2's checkout does not sell organisation seats yet):
   `docker compose exec api python -m scripts.grant_org_seats --org <slug> --tier enterprise --seats <n> [--until YYYY-MM-DD]`
@@ -177,7 +196,7 @@ reads the switches at runtime through `/config` and `/billing/plans`, with no si
 | Alerts, telemetry (PF14) | `ALERT_EMAIL`, `ALERT_PUSH_URL`; `TELEMETRY_EVENTS_ENABLED` (the events kill switch), `TELEMETRY_INGESTION_ENABLED` | ingestion off = 503 |
 | Organisations, SSO (PF3) | `SSO_SECRET_KEY` (a Fernet key sealing each organisation's SSO client secret: set it once and keep it), `SAML_SP_ENTITY_ID`, `AUDIT_RETENTION_DAYS` (730) | no `SSO_SECRET_KEY` = derived from `SECRET_KEY`, so a new `SECRET_KEY` makes every organisation re-enter its SSO secret; no entity id = each organisation's metadata URL |
 | Share pages (PF5) | `SHARE_BASE_URL` (the links' origin), `SHARE_MAX_DAYS` (30), `SHARE_MAX_BYTES` (1 GiB per bundle) | no `SHARE_BASE_URL` = links are `{API_URL}/view/{slug}`; the bundles live in the data bucket with the installers |
-| Marketplace (PF7) | `MARKET_PAYMENTS_ENABLED` (`false` until GD5 signs off the marketplace terms), `STRIPE_CONNECT_WEBHOOK_SECRET` (the `/market/webhooks/stripe` endpoint's; uses `STRIPE_SECRET_KEY`), `MARKET_READS_PER_MINUTE` (120), `EMBEDDING_MODEL`, `EMBEDDING_DIR` | payments off = every supplier takes requests for quote only; no webhook secret = 404; no `EMBEDDING_MODEL` = picture search off (the weights from `scripts/fetch_models.py` are not in the image) |
+| Marketplace (PF7) | `MARKET_PAYMENTS_ENABLED` (`false` until GD5 signs off the marketplace terms), `STRIPE_CONNECT_WEBHOOK_SECRET` (the `/market/webhooks/stripe` endpoint's; uses `STRIPE_SECRET_KEY`), `MARKET_READS_PER_MINUTE` (120), `EMBEDDING_MODEL` (`clip-vit-b32` once its files are in the `models` volume: *API*, picture search), `EMBEDDING_DIR` (set by Compose to `/app/models`: leave it out) | payments off = every supplier takes requests for quote only; no webhook secret = 404; no `EMBEDDING_MODEL` = picture search off (the files from `scripts/fetch_models.py` are in the volume, not the image) |
 | Supplier portal (PF8) | `FEED_PULL_HOUR_UTC` (2: the daily read of registered feed URLs), `MARKET_MEDIA_FIXTURES` (local trials only) | `MARKET_MEDIA_FIXTURES` stays empty on the VM |
 | Consumer rules (PF2b), all off until the solicitor approves GD5 §7 | `SUBSCRIPTION_NOTICES_ENABLED`, `SUBSCRIPTION_RULES_FROM` (2027-01-01), `RENEWAL_REMINDER_DAYS_YEAR` / `_MONTH`, `TRIAL_END_NOTICE_DAYS`, `EU_WITHDRAWAL_ENABLED`, `LEGAL_WORDING_APPROVED` (with a site build made with `NEXT_PUBLIC_LEGAL_WORDING_APPROVED=true` at the same time, or checkout says "being set up"), `CONSENT_VARIANT`, `COMPANY_ADDRESS`, `EULA_URL` | each switch `false`: no reminder, no renewal refund, no withdrawal button, the placeholder consent; when to flip each one is the switch table in `docs/roadmap/40/PF2b-subscription-consumer-rules.md` (As-built) |
 | Cloud rendering (PF6) | `TILES_BASE_URL`, `CU_CLASS_WEIGHTS` (gpu-std 1.0, cpu-8 0.25, gpu-ai 0.85), `RENDER_POOL=static`, `RENDER_POOL_MIN` / `_MAX` / `_WARM_MIN` / `_WARM_HOURS` / `_IDLE_STOP_S` (GD3 placeholders) | no `TILES_BASE_URL` = `CDN_BASE_URL/tiles` on the s3 backend (public read of `tiles/` only, `infra/README.md`), else the API's `/tiles/`; render workers hold their own token (Admin → Render, one per machine, in its `worker.toml`), never in these files; with no worker running, jobs wait and expire after 24 h |
@@ -185,8 +204,8 @@ reads the switches at runtime through `/config` and `/billing/plans`, with no si
 | Cloud rendering (PF6) | `TILES_BASE_URL`, `CU_CLASS_WEIGHTS` (gpu-std 1.0, cpu-8 0.25), `RENDER_POOL=static`, `RENDER_POOL_MIN` / `_MAX` / `_WARM_MIN` / `_WARM_HOURS` / `_IDLE_STOP_S` (GD3 placeholders) | no `TILES_BASE_URL` = `CDN_BASE_URL/tiles` on the s3 backend (public read of `tiles/` only, `infra/README.md`), else the API's `/tiles/`; render workers hold their own token (Admin → Render, one per machine, in its `worker.toml`), never in these files; with no worker running, jobs wait and expire after 24 h |
 | Public API, webhooks (PF12) | `WEBHOOK_SECRET_KEY` (a Fernet key sealing each webhook endpoint's signing secret: set it once and keep it), `API_KEY_BURST` (60) / `API_KEY_PER_MINUTE` (600: the per-key burst limit), `WEBHOOKS_TIMEOUT_S` (15); `WEBHOOKS_ALLOW_HTTP_LOCAL` stays `false` on the VM (local testing only) | no `WEBHOOK_SECRET_KEY` = derived from `SECRET_KEY`, so a new `SECRET_KEY` makes every endpoint's secret unreadable (each account rotates it on Dashboard → Webhooks); deliveries run in the `worker` container (`webhooks.deliver` every 5 s) |
 
-`infra/host/compose.yaml` sets `BACKGROUND_TASKS=worker`, `RATELIMIT_BACKEND=db` and (worker) `BACKUP_EXPECTED=true`;
-they are not in the file.
+`infra/host/compose.yaml` sets `BACKGROUND_TASKS=worker`, `RATELIMIT_BACKEND=db`, `EMBEDDING_DIR=/app/models` (the
+`models` volume) and (worker) `BACKUP_EXPECTED=true`; they are not in the file.
 
 The other files:
 
