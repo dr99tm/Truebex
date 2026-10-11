@@ -39,10 +39,20 @@ class SilentNotifier implements Notifier {
 
 /// The texts a notification needs (from the app's strings; no BuildContext in the background).
 class ConflictText {
-  const ConflictText({required this.named, required this.self, required this.someone});
+  const ConflictText({required this.named, required this.self, required this.someone, required this.agent});
   final String Function(String name) named;
   final String self;
   final String someone;
+  final String agent;
+
+  /// A rejected edit's line: "Sam changed this first — your edit was replaced", the agent label
+  /// for an agent, the self text for this person's own author id, "Someone" for anyone else.
+  String line(OutboxEntry e, Map<String, String> names, String? me) {
+    final winner = e.winning.isEmpty ? null : e.winning.first;
+    if (winner == null) return named(someone);
+    if (winner.authorKind != agentKind && me != null && winner.author == me) return self;
+    return named(authorName(winner.author, winner.authorKind, names, agent: agent, someone: someone));
+  }
 }
 
 class SyncReport {
@@ -178,7 +188,8 @@ class SyncEngine {
     return out;
   }
 
-  /// Every rejection not yet shown, as "Sam changed this first — your edit was replaced".
+  /// Every rejection not yet shown, as "Sam changed this first — your edit was replaced"
+  /// ("An assistant or script changed this first …" for an agent).
   Future<void> notifyRejections(String pid) async {
     final found = await outbox.takeUnnotified(pid);
     if (found.isEmpty) return;
@@ -190,12 +201,7 @@ class SyncEngine {
     }
   }
 
-  String conflictLine(OutboxEntry e, Map<String, String> names, String? me) {
-    final winner = e.winning.isEmpty ? null : e.winning.first;
-    if (winner != null && me != null && winner.author == me) return text.self;
-    final name = winner == null ? null : names[winner.author];
-    return text.named(name ?? text.someone);
-  }
+  String conflictLine(OutboxEntry e, Map<String, String> names, String? me) => text.line(e, names, me);
 
   Future<SyncReport> syncProject(String pid, {SyncReport? report, bool prefetchTiles = false}) async {
     final r = report ?? SyncReport();

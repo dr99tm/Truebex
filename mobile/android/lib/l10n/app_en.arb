@@ -108,6 +108,8 @@
   "@conflict": {"placeholders": {"name": {"type": "String"}}},
   "conflictSelf": "You changed this first on another device — your edit was replaced",
   "someone": "Someone",
+  "agentAuthor": "An assistant or script",
+  "@agentAuthor": {"description": "Who made an agent's edit (the assistant, or an API key through the public API), in the history and in \"{name} changed this first\". The web app says the same (APP.agentAuthor)."},
   "dismiss": "Dismiss",
   "historyEmpty": "No changes yet.",
   "recentEdits": "Your edits",

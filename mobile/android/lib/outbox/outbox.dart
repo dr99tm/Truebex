@@ -28,20 +28,26 @@ const keepAccepted = 50;
 enum EntryState { pending, accepted, rejected, failed, dismissed }
 
 class Winner {
-  const Winner({required this.opId, required this.serverSeq, required this.author, required this.name});
+  const Winner({required this.opId, required this.serverSeq, required this.author, required this.name, this.authorKind});
 
   final String opId;
   final int serverSeq;
   final String author;
   final String name;
 
-  Map<String, Object?> toJson() => {'op_id': opId, 'server_seq': serverSeq, 'author': author, 'name': name};
+  /// `person` or `agent` (project-log §6.2: the assistant, an API key through /v1); null on a
+  /// winner stored before PF9a, read as a person.
+  final String? authorKind;
+
+  Map<String, Object?> toJson() =>
+      {'op_id': opId, 'server_seq': serverSeq, 'author': author, 'author_kind': ?authorKind, 'name': name};
 
   static Winner fromJson(Map<String, Object?> j) => Winner(
         opId: j['op_id'] as String,
         serverSeq: (j['server_seq'] as num).toInt(),
         author: j['author'] as String,
         name: j['name'] as String,
+        authorKind: j['author_kind'] as String?,
       );
 }
 
@@ -132,7 +138,7 @@ List<OutboxEntry> applyResults(List<OutboxEntry> batch, PushAnswer answer) {
             reason: r.reason ?? 'conflict',
             winning: [
               for (final w in r.winning ?? const <Operation>[])
-                Winner(opId: w.opId, serverSeq: w.serverSeq, author: w.author, name: w.name),
+                Winner(opId: w.opId, serverSeq: w.serverSeq, author: w.author, name: w.name, authorKind: w.authorKind.toJson()),
             ],
           ),
       },

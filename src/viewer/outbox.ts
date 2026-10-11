@@ -22,8 +22,13 @@ const KEEP_ACCEPTED = 20;
 
 export type EntryState = "pending" | "accepted" | "rejected" | "failed";
 
+/** project-log §6.2: a person's operation, or an agent's (the assistant, an API key through /v1). */
+export type AuthorKind = "person" | "agent";
+
 export interface Winner {
   author: string;
+  /** Absent on a winner stored before PF9a: read as a person. */
+  author_kind?: AuthorKind;
   name: string;
   server_seq: number;
 }
@@ -47,6 +52,7 @@ export interface WireOp {
   op_id: string;
   server_seq: number;
   author: string;
+  author_kind: AuthorKind;
   name: string;
 }
 
@@ -113,9 +119,28 @@ export function applyResults(batch: OutboxEntry[], answer: PushAnswer): OutboxEn
       ...entry,
       state: "rejected" as const,
       reason: r.reason ?? "conflict",
-      winner: w ? { author: w.author, name: w.name, server_seq: w.server_seq } : null,
+      winner: w ? { author: w.author, author_kind: w.author_kind, name: w.name, server_seq: w.server_seq } : null,
     };
   });
+}
+
+/** The texts that name who won a conflict (APP's copy, passed in: this module stays framework-free). */
+export interface ConflictText {
+  /** "{name} changed this first — your edit was replaced", the name filled in. */
+  named: (name: string) => string;
+  /** This person's own author id: another of their devices. */
+  self: string;
+  /** An agent's operation, whatever its author id (an agent session id or a key's own). */
+  agent: string;
+  /** A person the project's members do not name. */
+  someone: string;
+}
+
+/** A rejected edit's line: an agent by the agent label, this person by the self text, a member by name, anyone else as "Someone". */
+export function conflictLine(winner: Winner | null | undefined, me: string | null, names: ReadonlyMap<string, string>, text: ConflictText): string {
+  if (winner?.author_kind === "agent") return text.named(text.agent);
+  if (winner && me && winner.author === me) return text.self;
+  return text.named((winner && names.get(winner.author)) || text.someone);
 }
 
 let flushing: Promise<FlushOutcome> | null = null;

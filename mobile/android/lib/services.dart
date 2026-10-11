@@ -124,4 +124,4 @@ class Services {
   }
 }
 
-ConflictText conflictText(S s) => ConflictText(named: s.conflict, self: s.conflictSelf, someone: s.someone);
+ConflictText conflictText(S s) => ConflictText(named: s.conflict, self: s.conflictSelf, someone: s.someone, agent: s.agentAuthor);
