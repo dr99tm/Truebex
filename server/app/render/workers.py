@@ -63,6 +63,11 @@ def issue(db: Session, *, name: str, kinds: list[str], worker_class: str, admin_
         raise _invalid("kinds", f"one or more of {', '.join(quotas.CONTRACT_KINDS)}")
     if worker_class not in quotas.class_weights():
         raise _invalid("class", f"one of {', '.join(quotas.class_weights())}")
+    # PF11: a token claims only kinds that run on its class (analysis workers
+    # only analysis kinds, render workers only render kinds).
+    elsewhere = [k for k in kinds if quotas.kind_class(k) not in (None, worker_class)]
+    if elsewhere:
+        raise _invalid("kinds", f"{', '.join(elsewhere)} run on another class than {worker_class}")
     token = WORKER_TOKEN_PREFIX + secrets.token_urlsafe(32)
     row = db.get(Worker, name)
     if row is not None and row.revoked_at is None:

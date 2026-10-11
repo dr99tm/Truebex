@@ -116,6 +116,20 @@ class BillingProvider(ABC):
     ) -> str:
         """Open a checkout for `payment`; returns the URL the browser opens."""
 
+    def create_one_time_checkout(
+        self,
+        db: Session,
+        user: User,
+        payment: Payment,
+        description: str,
+        return_path: str,
+    ) -> str:
+        """Open a checkout for a one-off item at `payment.amount` in
+        `payment.currency` (PF11's AI credit packs); returns the URL the
+        browser opens. The item is delivered when the payment is verified
+        (`service.PAID_HOOKS`)."""
+        raise NotSupported(f"{self.name} cannot sell one-off items")
+
     @abstractmethod
     def verify_payment(self, db: Session, payment: Payment) -> None:
         """Fetch the provider's own state of a checkout and apply it."""

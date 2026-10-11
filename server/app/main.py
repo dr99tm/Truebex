@@ -36,6 +36,7 @@ from .routers import growth as growth_router
 from .projects import jobs as _project_jobs  # noqa: F401  (PF4: projects.*)
 from .routers import projects  # PF4 (its snapshots use PF5's uploads, registered below)
 from .routers import render as render_router  # PF6: jobs, workers, tiles, render admin
+from .routers import analysis_ai as analysis_ai_router  # PF11: AI proxy, credits, analysis catalogue
 from .telemetry.service import record_server_exception
 from .shares import jobs as _share_jobs  # noqa: F401  (PF5: shares.expire, shares.purge)
 from .uploads import jobs as _upload_jobs  # noqa: F401  (PF5: uploads.expire)
@@ -157,5 +158,7 @@ app.include_router(telemetry.router)
 app.include_router(admin_telemetry.router)
 # PF6: cloud render orchestration
 app.include_router(render_router.router)
+# PF11: analysis and AI services
+app.include_router(analysis_ai_router.router)
 # PF12: the dashboard's webhook routes (/v1 is registered above with the other routers)
 v1.install(app)

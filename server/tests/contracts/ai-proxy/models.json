@@ -1,0 +1,17 @@
+{
+  "default": "truebex-assist",
+  "models": [
+    {
+      "alias": "truebex-assist",
+      "context_tokens": 1000000,
+      "max_output_tokens": 64000,
+      "vision": true,
+      "credits_per_mtok": {
+        "input": 4000,
+        "output": 20000,
+        "cache_read": 400,
+        "cache_write": 5000
+      }
+    }
+  ]
+}

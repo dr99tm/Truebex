@@ -470,7 +470,8 @@ def test_jobs_usage_by_kind(client, setup):
     expected = json.loads((FIX / "usage.json").read_text("utf-8"))
     assert set(expected) <= set(usage)
     assert usage["used_cu"] == 2.0 and usage["by_kind"] == {"panorama": 1.5, "tiles": 0.5}
-    assert usage["classes"] == {"gpu-std": 1.0, "cpu-8": 0.25}
+    # PF11 adds GD3's gpu-ai class (0.85) beside gpu-std and cpu-8.
+    assert usage["classes"] == {"gpu-std": 1.0, "cpu-8": 0.25, "gpu-ai": 0.85}
     assert usage["limit_cu"] == 120 and usage["remaining_cu"] == 118.0
     assert usage["period_start"].endswith("-01T00:00:00Z") and usage["daily"][-1]["cu"] == 2.0
     start, end = quotas.month_bounds()
@@ -860,7 +861,8 @@ def test_admin_render_overview_and_auth(client, setup):
     finish(client, token, claimed(client, token))
     body = client.get("/admin/render", headers=adm).json()
     assert body["cost_by_kind"] == {"panorama": 1.5} and body["workers"][0]["last_heartbeat_at"]
-    pool = body["pool"]["classes"][0]
+    # PF11 adds the cpu-8 class (analysis kinds) to the pool list.
+    pool = next(c for c in body["pool"]["classes"] if c["class"] == "gpu-std")
     assert pool["class"] == "gpu-std" and pool["machines"] == 1 and pool["running"] == 0 and pool["queued"] == 0
     assert client.get("/admin/workers", headers=adm).json()["workers"][0]["kinds"] == ["pack", "panorama", "tiles"]
     assert client.get("/admin/render", headers=a.session).status_code == 403

@@ -220,7 +220,7 @@ class Settings(BaseSettings):
     tiles_base_url: str = ""
     # Cost-unit weight per worker class, "class:weight,…" (1 cu = 1 min on
     # gpu-std; GD3 names the hardware).
-    cu_class_weights: str = "gpu-std:1.0,cpu-8:0.25"
+    cu_class_weights: str = "gpu-std:1.0,cpu-8:0.25,gpu-ai:0.85"
     # The worker pool (GD3 placeholders): "static" (machines registered by
     # hand) until GD3 names a cloud provider; machines per class, the
     # business-hours warm pool ("8-18" UTC hours) and the idle stop.
@@ -230,6 +230,24 @@ class Settings(BaseSettings):
     render_pool_warm_min: int = 0
     render_pool_warm_hours: str = ""
     render_pool_idle_stop_s: int = 600
+
+    # --- Analysis and AI services (PF11, contracts render-jobs + ai-proxy) -----
+    # The AI proxy's provider keys live only here (server/.env). Empty
+    # ANTHROPIC_API_KEY answers /ai/messages with 502 upstream_failed.
+    # ANTHROPIC_BASE_URL is for tests and a regional endpoint (empty = the SDK's).
+    anthropic_api_key: str = ""
+    anthropic_base_url: str = ""
+    # The alias table (alias -> adapter, provider model, effort, credit rates);
+    # empty = server/app/ai/aliases.json. Re-read when the file changes, so an
+    # alias moves to another model without an app release or a restart.
+    ai_aliases_path: str = ""
+    # Self-hosted inference servers (an OpenAI-compatible server on gpu-ai
+    # workers): the key they expect, if any. Their URLs are registered by an
+    # admin (POST /admin/ai/servers).
+    selfhosted_api_key: str = ""
+    # The `texture` job kind (seamless PBR maps, gpu-ai) waits for its MINOR
+    # addition to render-jobs.md: off answers it as an unknown kind.
+    ai_texture_enabled: bool = False
 
     # --- Public API, webhooks (PF12) --------------------------------------------
     # Per-key burst limit beside the monthly quota: a bucket of API_KEY_BURST

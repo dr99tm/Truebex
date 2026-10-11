@@ -26,7 +26,7 @@ router = APIRouter(prefix="/admin", tags=["admin"], dependencies=[enveloped()])
 
 class IssueIn(BaseModel):
     name: str = Field(max_length=40)
-    kinds: list[str] = Field(min_length=1, max_length=5)
+    kinds: list[str] = Field(min_length=1, max_length=8)
     worker_class: str = Field(default="gpu-std", alias="class", max_length=16)
 
 
