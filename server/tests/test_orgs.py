@@ -245,8 +245,9 @@ def test_orgs_usage_per_member(client, monkeypatch):
     assert rows["b@example.com"]["floating_hours"] == 1.5 and rows["b@example.com"]["devices"] == 1
     assert rows["b@example.com"]["last_active_at"] is not None
     assert rows["owner@example.com"]["devices"] == 0 and rows["owner@example.com"]["floating_hours"] == 0
+    # Nothing stored, rendered or asked of the AI this month: 0, not null (PF3b, test_orgs_usage.py).
     for row in rows.values():
-        assert row["storage_bytes"] is None and row["panoramas"] is None and row["ai_credits"] is None
+        assert row["storage_bytes"] == 0 and row["panoramas"] == 0 and row["ai_credits"] == 0
     month = clock.now().strftime("%Y-%m")
     by_month = {r["email"]: r["api_requests"] for r in client.get(f"/orgs/{org['id']}/usage?month={month}", headers=h).json()}
     assert by_month == {"owner@example.com": 7, "b@example.com": 0}

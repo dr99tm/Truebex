@@ -267,6 +267,8 @@ def test_fresh_process_never_queries_wmi(tmp_path):
         # PF3's hand scripts, as `python scripts\<name>.py` loads them (scripts/ first on sys.path).
         "import runpy, sys; sys.path.insert(0, 'scripts'); runpy.run_path('scripts/grant_org_seats.py')",
         "import runpy, sys; sys.path.insert(0, 'scripts'); runpy.run_path('scripts/verify_org_domain.py')",
+        # PF3b's member-usage seed, the same way.
+        "import runpy, sys; sys.path.insert(0, 'scripts'); runpy.run_path('scripts/seed_member_usage.py')",
         # PF7's trial catalogue, the same way.
         "import contextlib, io, runpy, sys; sys.path.insert(0, 'scripts'); g = runpy.run_path('scripts/seed_market.py'); "
         "r = contextlib.redirect_stdout(io.StringIO()); r.__enter__(); g['main'](['--fixture', 'no-such-folder']); "
