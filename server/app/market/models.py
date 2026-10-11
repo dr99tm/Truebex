@@ -552,4 +552,3 @@ event.listen(
     "before_drop",
     DDL(f"DROP TABLE IF EXISTS {PG_TABLE}").execute_if(dialect="postgresql"),
 )
-
