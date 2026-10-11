@@ -3155,3 +3155,32 @@ export const SELL_PAGE = {
   closingBody:
     "Apply with your company details and one document. We review every application by hand and e-mail you the decision.",
 } as const;
+
+// --- Member usage (PF3b) ------------------------------------------------------------------------
+// The organisation console's Member usage tab (owners and admins). Every figure
+// is the member's own account: projects they own, panoramas they ran, credits
+// they spent (server/app/orgs/usage.py).
+
+export const MEMBER_USAGE = {
+  title: "Member usage",
+  description:
+    "What each member used in the month, from their own account: devices, last activity, API requests, floating-seat hours, cloud storage, panoramas and AI credits.",
+  month: "Month",
+  loading: "Loading…",
+  columns: {
+    member: "Member",
+    devices: "Devices",
+    lastActive: "Last active",
+    apiRequests: "API requests",
+    floatingHours: "Floating hours",
+    storage: "Cloud storage",
+    panoramas: "Panoramas",
+    aiCredits: "AI credits",
+  },
+  storageCurrentOnly: "Shown for the current month only",
+  notes: [
+    "Cloud storage is what the member's own projects hold now, so it is shown for the current month only.",
+    "Panoramas count the renders that finished in the month. Updates to a panorama that follows the project are not counted again.",
+    "AI credits are the credits spent in the month, less any refunded.",
+  ],
+} as const;

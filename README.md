@@ -1142,3 +1142,25 @@ BreadcrumbList and FAQPage JSON-LD built from the same copy; the portal under `/
 disallowed (`robots.txt` rules are prefixes, so `/supplier/` does not cover `/suppliers/`). The footer and the
 marketplace feature page's "Sell on Truebex" button link to it. English only. Build checks:
 `server/tests/test_site_pf13a.py`. When a roadmap card ships, move it to "What you get" in the present tense.
+
+## Member usage (PF3b)
+
+The organisation console's Member usage tab (`/dashboard/organisation/usage/`, owners and admins) shows, per
+member and month, each member's own account: devices, last activity, API requests, floating-seat hours, and
+
+- **Cloud storage**: what the member's own projects hold now (PF4's `cloud_bytes` figure,
+  `projects.quotas.bytes_used`), for the current month only (storage is a level with no history; earlier months
+  show "—");
+- **Panoramas**: their `panorama` render jobs that succeeded in the month (PF6); a followed set's `tiles` updates
+  are not counted again;
+- **AI credits**: credits spent in the month (PF11's ledger: `usage` rows less `refund` rows).
+
+`GET /orgs/{id}/usage?month=YYYY-MM` reads each column with one grouped query (`server/app/orgs/usage.py`).
+To try it on a local API, give a member some usage (in `server/`):
+
+```powershell
+.venv\Scripts\python.exe scripts\seed_member_usage.py --email member@example.com [--bytes 268435456] [--panoramas 2] [--credits 1250]
+```
+
+It writes a project of that size, succeeded panorama jobs and two assistant turns through each feature's own
+models, and prints what the tab shows. Each run adds to what is there.
