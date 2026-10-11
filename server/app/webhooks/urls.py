@@ -1,15 +1,17 @@
 """Which webhook URLs are allowed (PF12 §Security): https, with a host that
-resolves to public addresses only, checked when the endpoint is saved and again
-before every delivery (a name that later points at a private address, DNS
-rebinding, fails that attempt). WEBHOOKS_ALLOW_HTTP_LOCAL lets
-`http://127.0.0.1` / `localhost` through, for local testing only."""
+resolves to public addresses only, checked when the endpoint is saved (a clear
+422). Each delivery connects over PF14b's pinned connection
+(`app.net.outbound`), which resolves the name once more, checks every address
+and connects to a checked one: a name that later points at a private address
+(DNS rebinding) fails that attempt with the same reason. WEBHOOKS_ALLOW_HTTP_LOCAL
+lets `http://127.0.0.1` / `localhost` through, for local testing only."""
 
 import ipaddress
-import socket
 from urllib.parse import urlsplit
 
 from ..config import get_settings
 from ..contract_http import ContractError
+from ..net import outbound
 
 MAX_URL = 2048
 LOCAL_HOSTS = ("127.0.0.1", "localhost", "::1")
@@ -19,17 +21,25 @@ class UrlRefused(ValueError):
     pass
 
 
+NOT_PUBLIC = "a host that resolves to public addresses only"
+
+
 def resolve(host: str) -> list[str]:
     """Every address `host` resolves to (patched in tests)."""
-    infos = socket.getaddrinfo(host, None, type=socket.SOCK_STREAM)
-    return sorted({info[4][0] for info in infos})
+    return outbound.resolve(host)
 
 
 def _public(address: str) -> bool:
-    ip = ipaddress.ip_address(address.split("%", 1)[0])
-    if isinstance(ip, ipaddress.IPv6Address) and ip.ipv4_mapped is not None:
-        ip = ip.ipv4_mapped
-    return ip.is_global and not ip.is_multicast
+    return outbound.is_public(address)
+
+
+def unresolved(host: str) -> str:
+    return f"a host that resolves ({host} does not)"
+
+
+def refusal(exc: outbound.Refused) -> str:
+    """The save-time reason for a delivery the pinned connection refused."""
+    return unresolved(exc.host) if exc.reason == outbound.UNRESOLVED else NOT_PUBLIC
 
 
 def _local_http_allowed(scheme: str, host: str) -> bool:
@@ -65,10 +75,10 @@ def check(url: str, *, resolve_host: bool = True) -> str:
     if resolve_host:
         try:
             addresses = resolve(host)
-        except OSError:
-            raise UrlRefused(f"a host that resolves ({host} does not)")
+        except (OSError, UnicodeError):
+            raise UrlRefused(unresolved(host))
         if not addresses or not all(_public(a) for a in addresses):
-            raise UrlRefused("a host that resolves to public addresses only")
+            raise UrlRefused(NOT_PUBLIC)
     return url
 
 
