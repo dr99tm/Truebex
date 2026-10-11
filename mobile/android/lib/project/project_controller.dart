@@ -98,7 +98,12 @@ class ProjectController extends ChangeNotifier {
       _changed();
     }));
     _subs.add((_connectivity ?? Connectivity().onConnectivityChanged).listen((kinds) {
-      if (kinds.any((k) => k != ConnectivityResult.none)) unawaited(sync());
+      if (kinds.any((k) => k != ConnectivityResult.none)) {
+        unawaited(sync());
+      } else if (!offline) {
+        offline = true;
+        _changed();
+      }
     }));
     await sync(first: true);
     if (_disposed || status != ProjectStatus.ready) return;
@@ -254,7 +259,7 @@ class ProjectController extends ChangeNotifier {
 
   /// The body of 5.17: `client: "android"`, the view's storey, eye and bearing.
   PresenceIn presenceBody({bool leaving = false}) {
-    final view = digest?.digest.view(viewId);
+    final view = digest?.digest.view(currentViewId);
     return PresenceIn(
       replicaId: _replicaId ?? hex32(),
       client: 'android',
@@ -290,6 +295,9 @@ class ProjectController extends ChangeNotifier {
     pitchDeg = pitch;
   }
 
+  /// The view on screen: the one chosen, else the set's first.
+  String? get currentViewId => viewId ?? set?.manifest?.views.firstOrNull?.view;
+
   void chooseView(String id) {
     viewId = id;
     _changed();
@@ -313,7 +321,9 @@ class ProjectController extends ChangeNotifier {
     // Sent by the background job when the network returns, should the app close first.
     unawaited(services.scheduler.syncWhenOnline());
     if (!offline) {
-      await services.engine.flush(pid);
+      final out = await services.engine.flush(pid);
+      // The push found no network: the edit waits, and says so.
+      if (out.error?.offline ?? false) offline = true;
       project = await _replica.project(pid);
       entries = (await _replica.list(pid)).reversed.toList();
       await _loadHistory();

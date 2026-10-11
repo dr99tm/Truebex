@@ -138,6 +138,24 @@ class _ProjectScreenState extends State<ProjectScreen> with WidgetsBindingObserv
                     ),
                   ),
           ),
+          // The header reads on any panorama: the page colour fades out below it.
+          Positioned(
+            left: 0,
+            right: 0,
+            top: 0,
+            child: IgnorePointer(
+              child: Container(
+                height: 190,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [Brand.page.withValues(alpha: 0.92), Brand.page.withValues(alpha: 0)],
+                  ),
+                ),
+              ),
+            ),
+          ),
           SafeArea(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),

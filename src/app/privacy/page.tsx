@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { LegalPage } from "@/components/layout/LegalPage";
-import { APP_TELEMETRY_PRIVACY, PROCESSORS, SITE, WEBSITE_ANALYTICS_NOTICE } from "@/lib/constants";
+import { ANDROID_APP_PRIVACY, APP_TELEMETRY_PRIVACY, PROCESSORS, SITE, WEBSITE_ANALYTICS_NOTICE } from "@/lib/constants";
 
 export const metadata: Metadata = {
   title: "Privacy Policy",
@@ -122,6 +122,11 @@ export default function PrivacyPage() {
         ))}
       </ul>
       <p>{APP_TELEMETRY_PRIVACY.deletion}</p>
+
+      <h2>{ANDROID_APP_PRIVACY.heading}</h2>
+      {ANDROID_APP_PRIVACY.paragraphs.map((text) => (
+        <p key={text.slice(0, 32)}>{text}</p>
+      ))}
 
       <h2>How long we keep it</h2>
       <p>

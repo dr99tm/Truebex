@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // PF10: the Android app (Flutter; its own analyzer in scripts/verify-mobile.ps1).
+    "mobile/**",
   ]),
 ]);
 

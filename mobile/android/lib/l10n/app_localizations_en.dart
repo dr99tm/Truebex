@@ -49,6 +49,9 @@ class SEn extends S {
   }
 
   @override
+  String get signInCheck => 'Check the e-mail address and the password.';
+
+  @override
   String get sessionEnded =>
       'Your session ended. Sign in again to send your edits.';
 
@@ -335,6 +338,9 @@ class SEn extends S {
 
   @override
   String get historyEmpty => 'No changes yet.';
+
+  @override
+  String get recentEdits => 'Your edits';
 
   @override
   String historyOp(int seq) {

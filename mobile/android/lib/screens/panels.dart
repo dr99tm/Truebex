@@ -166,7 +166,7 @@ class EditPanel extends StatelessWidget {
         if (product != null) _ProductEdit(key: ValueKey(product.id), product: product, region: d.region, controller: controller),
         if (opening != null) _OpeningEdit(key: ValueKey(opening.id), opening: opening, controller: controller),
       ],
-      SectionTitle(s.tabHistory),
+      SectionTitle(s.recentEdits),
       _Entries(controller: controller, limit: 5),
     ]);
   }

@@ -54,6 +54,7 @@ class _TruebexAppState extends State<TruebexApp> with WidgetsBindingObserver {
   @override
   Widget build(BuildContext context) => MaterialApp(
         title: 'Truebex',
+        debugShowCheckedModeBanner: false,
         theme: truebexTheme(),
         localizationsDelegates: const [S.delegate, GlobalMaterialLocalizations.delegate, GlobalWidgetsLocalizations.delegate],
         supportedLocales: S.supportedLocales,

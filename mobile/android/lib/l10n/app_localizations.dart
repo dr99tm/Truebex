@@ -165,6 +165,12 @@ abstract class S {
   /// **'Sign-in failed: {reason}'**
   String signInFailed(String reason);
 
+  /// No description provided for @signInCheck.
+  ///
+  /// In en, this message translates to:
+  /// **'Check the e-mail address and the password.'**
+  String get signInCheck;
+
   /// No description provided for @sessionEnded.
   ///
   /// In en, this message translates to:
@@ -638,6 +644,12 @@ abstract class S {
   /// In en, this message translates to:
   /// **'No changes yet.'**
   String get historyEmpty;
+
+  /// No description provided for @recentEdits.
+  ///
+  /// In en, this message translates to:
+  /// **'Your edits'**
+  String get recentEdits;
 
   /// No description provided for @historyOp.
   ///

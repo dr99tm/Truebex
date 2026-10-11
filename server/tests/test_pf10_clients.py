@@ -29,7 +29,6 @@ from .project_helpers import (
     delta_op,
     hex32,
     invite_and_accept,
-    pushed,
 )
 from .test_mobile import _followed_set, digest_bytes, snapshot_with_digest
 

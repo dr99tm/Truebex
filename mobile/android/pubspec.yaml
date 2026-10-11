@@ -44,3 +44,5 @@ flutter:
   assets:
     # PF9's viewer (src/viewer/cube.ts) bundled by scripts/build-mobile-viewer.mjs.
     - assets/viewer/
+    # The brand lockup (scripts/make_android_assets.py): the wordmark is never retyped in a font.
+    - assets/brand/

@@ -47,7 +47,11 @@ class _SignInScreenState extends State<SignInScreen> {
     try {
       if (await attempt()) widget.onSignedIn();
     } on ApiFailure catch (e) {
-      _error = e.offline ? s.networkError : s.signInFailed(e.message);
+      _error = e.offline
+          ? s.networkError
+          : e.status == 422
+              ? s.signInCheck
+              : s.signInFailed(e.message);
     } catch (e) {
       _error = s.signInFailed(e.toString());
     } finally {
@@ -70,7 +74,7 @@ class _SignInScreenState extends State<SignInScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    const Text('Truebex', textAlign: TextAlign.center, style: TextStyle(fontSize: 32, fontWeight: FontWeight.w600, color: Brand.logo)),
+                    Center(child: Image.asset('assets/brand/lockup.png', width: 220, semanticLabel: 'Truebex')),
                     const SizedBox(height: 4),
                     Text(s.badge, textAlign: TextAlign.center, style: const TextStyle(color: Brand.accent, fontSize: 12)),
                     const SizedBox(height: 24),
@@ -82,6 +86,7 @@ class _SignInScreenState extends State<SignInScreen> {
                       key: const Key('email'),
                       controller: _email,
                       keyboardType: TextInputType.emailAddress,
+                      textInputAction: TextInputAction.next,
                       autofillHints: const [AutofillHints.email],
                       decoration: InputDecoration(labelText: s.email),
                     ),
@@ -90,6 +95,7 @@ class _SignInScreenState extends State<SignInScreen> {
                       key: const Key('password'),
                       controller: _password,
                       obscureText: true,
+                      textInputAction: TextInputAction.go,
                       autofillHints: const [AutofillHints.password],
                       decoration: InputDecoration(labelText: s.password),
                       onSubmitted: (_) => _busy ? null : _password.text.isEmpty ? null : _signIn(),

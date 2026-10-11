@@ -116,7 +116,8 @@ class LocalNotifier implements Notifier {
   Future<void> _init() async {
     if (_ready) return;
     await _plugin.initialize(
-      settings: const InitializationSettings(android: AndroidInitializationSettings('@mipmap/ic_launcher')),
+      // A white silhouette of the mark (scripts/make_android_assets.py), as Android draws status icons.
+      settings: const InitializationSettings(android: AndroidInitializationSettings('@drawable/ic_stat_truebex')),
     );
     _ready = true;
   }
