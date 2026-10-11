@@ -44,6 +44,7 @@ real searches, share-ready previews, and repeated distribution.
 | Reuse / consistency | reusable design assets architecture, update design across units | `/features/assets/` |
 | Drawings | automatic drawing sheets, architectural sheet set, vector PDF drawings | `/features/sheets/` |
 | Products (roadmap) | building products marketplace, furniture prices in design software | `/features/marketplace/` (future tense until it ships) |
+| Suppliers | sell on truebex, sell furniture to architects, list building products for designers | `/suppliers/` (PF13a: the portal in the present tense, the in-app marketplace "On the roadmap"; the portal `/supplier/` itself is noindex) |
 | Fresh content | truebex roadmap, truebex changelog, truebex release notes | `/roadmap/`, `/changelog/` (+ `/changelog/feed.xml`) |
 | Interior | interior design software with real lighting, wall panelling design | future `/use-cases/interior-design/` |
 | Developers | truebex api, architecture api | `/developers/` |
@@ -56,6 +57,7 @@ generic listicle: real captures, concrete numbers, a short how-to, an FAQ.
 
 Built (PF13, 2026-10-09): `/pricing/`, `/features/{daylight,surfaces,assets,sheets,marketplace}/`
 (copy in `FEATURE_PAGES`), `/roadmap/`, `/changelog/` with its Atom feed, and `/ar/`.
+PF13a (2026-10-11): `/suppliers/` (Sell on Truebex, copy in `SELL_PAGE`), linked from the footer and the marketplace page.
 
 1. Clean captures for the feature pages: put a clean frame per page in
    `T:\unreal5_7_4_projects\truebex_compact\Brand\Truebex\captures\<page>.png` and run

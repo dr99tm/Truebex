@@ -316,8 +316,16 @@ def test_webhooks_retry_schedule_and_disable(client, resolver, receiver, monkeyp
         assert db.get(WebhookEndpoint, eid).failing_since is None
 
 
-def test_webhooks_refuse_private_address_at_delivery(client, resolver, receiver, monkeypatch):
-    """A name that later resolves to a private address fails that attempt (DNS rebinding)."""
+def test_webhooks_refuse_private_address_at_delivery(client, resolver, monkeypatch):
+    """A name that later resolves to a private address fails that attempt (DNS
+    rebinding): the delivery's own connection (PF14b's, not a mock transport)
+    resolves it, refuses it and dials nothing. test_pf14b_outbound.py follows
+    a delivery over that connection end to end."""
+    from app.net import outbound
+
+    dialled = []
+    monkeypatch.setattr(outbound, "resolve", urls.resolve)  # the HOSTS table
+    monkeypatch.setattr(outbound, "connect", lambda address, port, *a: dialled.append(address))
     session = signup(client)
     key = make_key(client, session, ["webhooks:manage"])
     monkeypatch.setitem(HOSTS, "rebind.example.com", ["93.184.216.40"])
@@ -325,7 +333,7 @@ def test_webhooks_refuse_private_address_at_delivery(client, resolver, receiver,
     monkeypatch.setitem(HOSTS, "rebind.example.com", ["192.168.1.20"])
     client.post(f"/v1/webhooks/{made['endpoint_id']}/test", headers=kh(key))
     run()
-    assert receiver.requests == []
+    assert dialled == []
     row = deliveries(made["endpoint_id"])[0]
     assert row.status == "failed" and row.error.startswith("refused")
 
@@ -430,7 +438,8 @@ def test_webhooks_market_order_and_feed_events(client, resolver, receiver, monke
     assert client.post(f"/market/orders/{order_id}/cancel", headers=with_contract(buyer)).status_code == 200
     run()
     updates = [b["data"] for b in receiver.bodies() if b["type"] == "market.order.updated"]
-    assert [u["state"] for u in updates] == ["submitted", "cancelled"] and {u["order_id"] for u in updates} == {order_id}
+    # Deliveries go out in parallel (delivery.PARALLEL), so the two may arrive in either order.
+    assert sorted(u["state"] for u in updates) == ["cancelled", "submitted"] and {u["order_id"] for u in updates} == {order_id}
 
     # A supplier's members hear when a feed run ends.
     no_internet(monkeypatch)

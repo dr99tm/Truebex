@@ -28,7 +28,7 @@ function Ctas({
         {FEATURE_PAGE_UI.signup}
       </a>
       {supplier && (
-        <a href={supplier.href} className={secondary}>
+        <a href={supplier.href} data-cta="supplier" className={secondary}>
           {supplier.label}
         </a>
       )}

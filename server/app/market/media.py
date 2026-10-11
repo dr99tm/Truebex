@@ -8,14 +8,14 @@
 * Geometry is stored as sent: `market/geometry/<sha>.<format>`, served by a
   signed URL (1 h) with `Content-Disposition: attachment`.
 * Remote fetches (contract §6.4 `geometry_url`, `image_urls`) go through a
-  `Fetcher`: https only, private, loopback and link-local addresses refused
-  after DNS resolution, size and time capped (the request-forgery guard).
+  `Fetcher`: https only, size and time capped, and every hop over PF14b's
+  pinned connection (`app.net.outbound`): the host is resolved once, refused
+  unless every address is public, and connected to at a checked address (the
+  request-forgery guard, safe from DNS rebinding).
 """
 
 import hashlib
 import io
-import ipaddress
-import socket
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from pathlib import Path
@@ -23,6 +23,7 @@ from typing import Protocol
 from urllib.parse import urljoin, urlsplit
 
 from ..config import get_settings
+from ..net import outbound
 from ..storage import Store
 
 GEOMETRY_FORMATS = ("tbxa", "glb", "gltf", "obj", "fbx")
@@ -72,28 +73,20 @@ class Fetcher(Protocol):
 
 
 def _public_address(host: str) -> bool:
-    try:
-        infos = socket.getaddrinfo(host, 443, type=socket.SOCK_STREAM)
-    except OSError:
-        return False
-    for info in infos:
-        ip = ipaddress.ip_address(info[4][0])
-        if (
-            ip.is_private
-            or ip.is_loopback
-            or ip.is_link_local
-            or ip.is_multicast
-            or ip.is_reserved
-            or ip.is_unspecified
-        ):
-            return False
-    return bool(infos)
+    """True when every address `host` resolves to is public (one lookup; the
+    feed registration's check)."""
+    return outbound.public_host(host)
+
+
+NOT_PUBLIC = "the host is not a public internet address"
 
 
 class HttpFetcher:
-    """Fetches https URLs from the internet only (never this host's network)."""
+    """Fetches https URLs from the internet only (never this host's network).
+    `resolver` (tests) checks each hop's host name first; the pinned
+    connection checks every hop's addresses either way."""
 
-    def __init__(self, timeout: float = 20.0, max_redirects: int = 3, resolver: Callable[[str], bool] = _public_address):
+    def __init__(self, timeout: float = 20.0, max_redirects: int = 3, resolver: Callable[[str], bool] | None = None):
         self.timeout = timeout
         self.max_redirects = max_redirects
         self.resolver = resolver
@@ -104,10 +97,10 @@ class HttpFetcher:
         for _ in range(self.max_redirects + 1):
             if not is_https_url(url):
                 raise MediaError("bad_url", "only https URLs are fetched")
-            if not self.resolver(urlsplit(url).hostname or ""):
-                raise MediaError("bad_url", "the host is not a public internet address")
+            if self.resolver is not None and not self.resolver(urlsplit(url).hostname or ""):
+                raise MediaError("bad_url", NOT_PUBLIC)
             try:
-                with httpx.Client(timeout=self.timeout, follow_redirects=False) as client:
+                with outbound.client(timeout=self.timeout) as client:
                     with client.stream("GET", url, headers={"User-Agent": "Truebex-Marketplace/1"}) as res:
                         if res.status_code in (301, 302, 303, 307, 308) and res.headers.get("location"):
                             url = urljoin(url, res.headers["location"])
@@ -120,6 +113,8 @@ class HttpFetcher:
                             if len(body) > max_bytes:
                                 raise MediaError("too_large", f"over {max_bytes} bytes")
                         return bytes(body)
+            except outbound.Refused as exc:
+                raise MediaError("bad_url", NOT_PUBLIC) from exc
             except httpx.HTTPError as exc:
                 raise MediaError("fetch_failed", str(exc)[:200]) from exc
         raise MediaError("fetch_failed", "too many redirects")

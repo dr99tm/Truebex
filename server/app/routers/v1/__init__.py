@@ -1,9 +1,10 @@
 """The public developer API, authenticated and metered by API key (PF12).
 
 * `/v1/ping`, `/v1/account`: check a key; its owner, plan, scopes and usage.
-* `/v1/projects…` (project-log 5.1-5.18), `/v1/jobs…` (render-jobs 5.1-5.6),
-  `/v1/uploads…` and `/v1/shares…` (share-bundle 5.1-5.9): the contract
-  routes for API keys, through the contract routers' own handlers.
+* `/v1/projects…` (project-log 5.1-5.18, and the followed panorama sets of
+  PF9, PF12a), `/v1/jobs…` (render-jobs 5.1-5.6), `/v1/uploads…` and
+  `/v1/shares…` (share-bundle 5.1-5.9): the contract routes for API keys,
+  through the contract routers' own handlers.
 * `/v1/webhooks…`: endpoints, deliveries, re-send, secrets.
 
 The marketplace reads (`/market/…` 5.1-5.6, a key lifts the anonymous limit)

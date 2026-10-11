@@ -20,7 +20,7 @@ from app.projects import waiters
 from app.render import live, overage, pools, queue, quotas
 from app.render.models import OverageCharge, RenderJob, Worker
 
-from .conftest import signup
+from .conftest import signup, timing_window
 from .licence_helpers import Clock, error_of
 from .project_helpers import UPLOADS, Person, hex32
 from .render_helpers import (
@@ -402,12 +402,13 @@ def test_jobs_status_long_poll_rev(client, setup):
         res = client.get(f"/jobs/{rec['job_id']}", params={"rev": rev, "wait_s": 10}, headers=rj(a))
         got["res"], got["done"], got["took"] = res, time.monotonic(), time.monotonic() - started
 
-    t = threading.Thread(target=wait)
-    t.start()
-    time.sleep(0.5)
-    sent = time.monotonic()
-    assert heartbeat(client, token, c, 0.3).status_code == 200
-    t.join(10)
+    with timing_window():
+        t = threading.Thread(target=wait)
+        t.start()
+        time.sleep(0.5)
+        sent = time.monotonic()
+        assert heartbeat(client, token, c, 0.3).status_code == 200
+        t.join(10)
     assert got["res"].status_code == 200 and got["res"].json()["rev"] > rev
     assert got["done"] - sent < 1.0 and got["took"] < 5
     # An unchanged rev waits the whole wait_s.

@@ -2,6 +2,13 @@
 PKCE S256): discovery and JWKS from the issuer (cached 1 h, a new key id
 refetches once), `state` and `nonce` per sign-in, the ID token checked for
 signature, `iss`, `aud` (and `azp`), `exp`, `nonce` and `email_verified`.
+
+The discovery, JWKS and token calls go over PF14b's pinned connection
+(`app.net.outbound`): public addresses only, checked and connected to in one
+step. Loopback and private-network issuers are allowed only while this API
+itself runs on loopback (API_URL on 127.0.0.1 or localhost: local trials and
+the mock provider) or with SSO_ALLOW_PRIVATE_ISSUERS; otherwise they are
+refused when saved and answer `sso_failed` at sign-in.
 """
 
 import base64
@@ -16,17 +23,29 @@ from jose.exceptions import JOSEError
 
 from ..config import get_settings
 from ..contract_http import ContractError
+from ..net import outbound
 
 ALGORITHMS = ["RS256", "RS384", "RS512", "PS256", "PS384", "PS512", "ES256", "ES384", "ES512"]
 CACHE_TTL_S = 3600
 LEEWAY_S = 120
+# Plain http is accepted only for these issuer hosts (the local mock provider).
+LOCAL_HOSTS = ("127.0.0.1", "localhost", "::1")
+REFUSED = "The identity provider is not on a public internet address."
 _discovery: dict[str, tuple[float, dict]] = {}
 _jwks: dict[str, tuple[float, dict]] = {}
 
 
+def private_issuers_allowed() -> bool:
+    """Loopback and private-network issuers: only with this API on loopback
+    itself, or SSO_ALLOW_PRIVATE_ISSUERS."""
+    s = get_settings()
+    return s.sso_allow_private_issuers or (urlsplit(s.api_url).hostname or "").lower() in LOCAL_HOSTS
+
+
 def http_client() -> httpx.Client:
-    """The client for calls to identity providers (tests swap in the mock)."""
-    return httpx.Client(timeout=10.0, follow_redirects=False)
+    """The client for calls to identity providers (tests swap in the mock):
+    pinned to checked addresses, public ones unless private issuers are allowed."""
+    return outbound.client(timeout=10.0, private=private_issuers_allowed())
 
 
 def clear_caches() -> None:
@@ -43,11 +62,23 @@ def normalise_issuer(url: str) -> str:
 
 
 def issuer_is_acceptable(url: str) -> bool:
-    """https, or plain http to this computer (the local mock provider)."""
+    """https to a host whose every address is public (one lookup); with
+    private issuers allowed, any https host or plain http to this computer
+    (the local mock provider)."""
     parts = urlsplit(url)
-    if parts.scheme == "https" and parts.hostname:
-        return True
-    return parts.scheme == "http" and parts.hostname in ("127.0.0.1", "localhost")
+    host = (parts.hostname or "").lower()
+    if not host:
+        return False
+    if private_issuers_allowed():
+        return parts.scheme == "https" or (parts.scheme == "http" and host in LOCAL_HOSTS)
+    return parts.scheme == "https" and outbound.public_host(host)
+
+
+def issuer_requirement() -> str:
+    """What the SSO tab's issuer field must be, for the field error."""
+    if private_issuers_allowed():
+        return "an https URL (or http://127.0.0.1 for a local test provider)"
+    return "an https URL on a public internet address"
 
 
 def discover(issuer: str) -> dict:
@@ -60,6 +91,8 @@ def discover(issuer: str) -> dict:
             res = client.get(f"{issuer}/.well-known/openid-configuration")
         res.raise_for_status()
         data = res.json()
+    except outbound.Refused:
+        raise fail(REFUSED)
     except (httpx.HTTPError, ValueError):
         raise ContractError("sso_unavailable", 502, "The identity provider could not be reached. Try again.")
     if normalise_issuer(str(data.get("issuer", ""))) != issuer:
@@ -80,6 +113,8 @@ def _keys(uri: str, *, refresh: bool = False) -> list[dict]:
             res = client.get(uri)
         res.raise_for_status()
         data = res.json()
+    except outbound.Refused:
+        raise fail(REFUSED)
     except (httpx.HTTPError, ValueError):
         raise ContractError("sso_unavailable", 502, "The identity provider's keys could not be fetched.")
     _jwks[uri] = (time.monotonic(), data)
@@ -136,6 +171,8 @@ def exchange_code(issuer: str, client_id: str, client_secret: str, code: str, ve
         with http_client() as client:
             res = client.post(meta["token_endpoint"], data=form, auth=auth, headers={"Accept": "application/json"})
         data = res.json()
+    except outbound.Refused:
+        raise fail(REFUSED)
     except (httpx.HTTPError, ValueError):
         raise ContractError("sso_unavailable", 502, "The identity provider could not be reached. Try again.")
     if res.status_code != 200 or not isinstance(data.get("id_token"), str):

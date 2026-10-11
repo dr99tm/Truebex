@@ -19,7 +19,7 @@ from app.projects import hooks, presence, quotas, waiters
 from app.projects.models import Project, ProjectOp, ProjectSnapshot
 from app.storage import get_store
 
-from .conftest import signup
+from .conftest import signup, timing_window
 from .licence_helpers import Clock, error_of
 from .project_helpers import (
     CONTRACT,
@@ -274,15 +274,16 @@ def test_pull_long_poll_wakes_on_push(client):
         got["res"] = client.get(f"/projects/{pid}/ops", params={"after": 0, "wait_s": 10}, headers=a.dev)
         got["at"] = time.monotonic()
 
-    thread = threading.Thread(target=waiting_pull)
-    thread.start()
-    deadline = time.monotonic() + 5
-    while waiters.waiting_count(pid) == 0 and time.monotonic() < deadline:
-        time.sleep(0.02)
-    assert waiters.waiting_count(pid) == 1
-    pushed_at = time.monotonic()
-    pushed(client, a.dev, pid, a.replica, [delta_op(a.author_id, [hex32()])])
-    thread.join(timeout=10)
+    with timing_window():
+        thread = threading.Thread(target=waiting_pull)
+        thread.start()
+        deadline = time.monotonic() + 5
+        while waiters.waiting_count(pid) == 0 and time.monotonic() < deadline:
+            time.sleep(0.02)
+        assert waiters.waiting_count(pid) == 1
+        pushed_at = time.monotonic()
+        pushed(client, a.dev, pid, a.replica, [delta_op(a.author_id, [hex32()])])
+        thread.join(timeout=10)
     assert got["res"].status_code == 200, got["res"].text
     assert [op["server_seq"] for op in got["res"].json()["ops"]] == [1]
     assert got["at"] - pushed_at < 1.0

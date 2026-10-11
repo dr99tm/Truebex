@@ -4,9 +4,11 @@ models.py like PF1's; registered with `Base` by `database.init_db`.
 Money is always an integer of minor units with its ISO 4217 code and the
 currency's exponent (contract §6.3); no column holds a float amount.
 
-The text index `market_search_fts` (SQLite FTS5) is not a mapped table: it is
-created and dropped with the metadata by the DDL events at the bottom, so
-`create_all` / `drop_all` keep it in step with the products.
+The text index is not a mapped table: `market_search_fts` (SQLite FTS5) or
+`market_search_tsv` (Postgres full-text, PF7a) is created and dropped with
+the metadata by the DDL events at the bottom, so `create_all` / `drop_all`
+keep it in step with the products. It is derived data: the SQLite ->
+Postgres copy rebuilds it instead of copying it.
 """
 
 from datetime import datetime, timezone
@@ -505,7 +507,7 @@ class FeedRun(Base):
     finished_at: Mapped[datetime | None] = _ts(nullable=True)
 
 
-# --- The text index (SQLite FTS5; Postgres full-text after PF14) ----------------------
+# --- The text index (SQLite FTS5; Postgres full-text, PF7a) ----------------------------
 
 FTS_TABLE = "market_search_fts"
 
@@ -521,4 +523,32 @@ event.listen(
     Base.metadata,
     "before_drop",
     DDL(f"DROP TABLE IF EXISTS {FTS_TABLE}").execute_if(dialect="sqlite"),
+)
+
+# Postgres (PF7a): one row per product with the folded words of its name and
+# body (search.PgIndex writes them) and a tsvector weighting the name (A)
+# above the body (B), kept by Postgres itself, behind a GIN index. `simple`:
+# no stemming and no stop words, since catalogues are multilingual (GB, AE).
+PG_TABLE = "market_search_tsv"
+
+event.listen(
+    Base.metadata,
+    "after_create",
+    DDL(
+        f"CREATE TABLE IF NOT EXISTS {PG_TABLE} ("
+        "product_id VARCHAR(32) PRIMARY KEY, name TEXT NOT NULL, body TEXT NOT NULL, "
+        "tsv TSVECTOR GENERATED ALWAYS AS ("
+        "setweight(to_tsvector('simple'::regconfig, name), 'A') || "
+        "setweight(to_tsvector('simple'::regconfig, body), 'B')) STORED)"
+    ).execute_if(dialect="postgresql"),
+)
+event.listen(
+    Base.metadata,
+    "after_create",
+    DDL(f"CREATE INDEX IF NOT EXISTS ix_{PG_TABLE}_tsv ON {PG_TABLE} USING gin (tsv)").execute_if(dialect="postgresql"),
+)
+event.listen(
+    Base.metadata,
+    "before_drop",
+    DDL(f"DROP TABLE IF EXISTS {PG_TABLE}").execute_if(dialect="postgresql"),
 )

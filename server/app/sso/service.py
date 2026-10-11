@@ -117,7 +117,7 @@ def save(db: Session, org: Organisation, actor: int, body, now: datetime) -> dic
     if body.kind == "oidc":
         issuer = oidc.normalise_issuer(body.issuer or "")
         if not issuer or not oidc.issuer_is_acceptable(issuer):
-            raise _field_error("issuer", "an https URL (or http://127.0.0.1 for a local test provider)")
+            raise _field_error("issuer", oidc.issuer_requirement())
         if not body.client_id:
             raise _field_error("client_id", "required for OIDC")
         if not body.client_secret and not (conn.kind == "oidc" and conn.client_secret_enc):

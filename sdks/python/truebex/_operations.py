@@ -24,6 +24,8 @@ OPERATIONS: dict[str, dict[str, Any]] = {
     'projects_list': {'method': 'GET', 'path': '/v1/projects', 'path_params': [], 'query': ['cursor', 'limit'], 'headers': [], 'body': None, 'body_props': [], 'scope': 'projects:read', 'contract': 'project-log/1.0'},
     'projects_list_members': {'method': 'GET', 'path': '/v1/projects/{project_id}/members', 'path_params': ['project_id'], 'query': [], 'headers': [], 'body': None, 'body_props': [], 'scope': 'projects:read', 'contract': 'project-log/1.0'},
     'projects_list_versions': {'method': 'GET', 'path': '/v1/projects/{project_id}/versions', 'path_params': ['project_id'], 'query': [], 'headers': [], 'body': None, 'body_props': [], 'scope': 'projects:read', 'contract': 'project-log/1.0'},
+    'projects_panoramas_get': {'method': 'GET', 'path': '/v1/projects/{project_id}/panoramas/{set_id}', 'path_params': ['project_id', 'set_id'], 'query': ['rev', 'wait_s'], 'headers': [], 'body': None, 'body_props': [], 'scope': 'projects:read', 'contract': 'project-log/1.0'},
+    'projects_panoramas_list': {'method': 'GET', 'path': '/v1/projects/{project_id}/panoramas', 'path_params': ['project_id'], 'query': [], 'headers': [], 'body': None, 'body_props': [], 'scope': 'projects:read', 'contract': 'project-log/1.0'},
     'projects_presence': {'method': 'GET', 'path': '/v1/projects/{project_id}/presence', 'path_params': ['project_id'], 'query': [], 'headers': [], 'body': None, 'body_props': [], 'scope': 'projects:read', 'contract': 'project-log/1.0'},
     'projects_pull_ops': {'method': 'GET', 'path': '/v1/projects/{project_id}/ops', 'path_params': ['project_id'], 'query': ['after', 'limit', 'wait_s'], 'headers': [], 'body': None, 'body_props': [], 'scope': 'projects:read', 'contract': 'project-log/1.0'},
     'projects_push_ops': {'method': 'POST', 'path': '/v1/projects/{project_id}/ops', 'path_params': ['project_id'], 'query': [], 'headers': [], 'body': 'json', 'body_props': ['ops', 'replica_id'], 'scope': 'projects:write', 'contract': 'project-log/1.0'},
@@ -150,6 +152,18 @@ class Projects(Resource):
 
         GET /v1/projects/{project_id}/versions · scope: projects:read"""
         return self._call('projects_list_versions', project_id)
+
+    def panoramas_get(self, project_id: str, set_id: str, *, rev: int | None = UNSET, wait_s: float | None = UNSET) -> models.PanoramaSetState:
+        """A followed set's newest tile manifest; with `rev` and `wait_s` ≤ 25 it waits until the set's `rev` passes `rev`.
+
+        GET /v1/projects/{project_id}/panoramas/{set_id} · scope: projects:read"""
+        return self._call('projects_panoramas_get', project_id, set_id, values={'rev': rev, 'wait_s': wait_s})
+
+    def panoramas_list(self, project_id: str) -> models.PanoramaSetList:
+        """The project's followed panorama sets, kept current by its members' accounts (any role); never cached.
+
+        GET /v1/projects/{project_id}/panoramas · scope: projects:read"""
+        return self._call('projects_panoramas_list', project_id)
 
     def presence(self, project_id: str) -> models.PresenceList:
         """Who is in the project now (5.18).

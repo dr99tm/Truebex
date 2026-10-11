@@ -24,6 +24,7 @@ from ..config import get_settings
 from ..database import SessionLocal
 from ..licence import clock
 from ..models import User
+from ..net import outbound
 from . import signing, urls
 from .models import WebhookDelivery, WebhookEndpoint, WebhookEvent
 
@@ -49,8 +50,13 @@ def delay_before(attempt: int, *, rng: Callable[[], float] = random.random) -> t
 
 
 def client_factory() -> httpx.Client:
-    """Patched in tests (an httpx.MockTransport)."""
-    return httpx.Client(timeout=get_settings().webhooks_timeout_s, follow_redirects=False)
+    """The pinned connection (PF14b): the endpoint's name resolved once, every
+    address checked, a checked one connected to; loopback only for the local
+    names WEBHOOKS_ALLOW_HTTP_LOCAL lets through. Patched in tests (an
+    httpx.MockTransport)."""
+    s = get_settings()
+    local = urls.LOCAL_HOSTS if s.webhooks_allow_http_local else ()
+    return outbound.client(timeout=s.webhooks_timeout_s, loopback_names=local)
 
 
 def body_of(event: WebhookEvent) -> bytes:
@@ -61,7 +67,9 @@ def _post(endpoint: WebhookEndpoint, event: WebhookEvent, secret: str, now: date
     """(status code or None, milliseconds, error)."""
     host = (urlsplit(endpoint.url).hostname or "").lower()
     try:
-        urls.check(endpoint.url)  # again at each delivery: DNS may point elsewhere now
+        # The URL's form again; its addresses are checked by the connection
+        # itself below, so DNS that points elsewhere now (rebinding) is refused.
+        urls.check(endpoint.url, resolve_host=False)
     except urls.UrlRefused as exc:
         return None, 0, f"refused: {exc}"[:200]
     body = body_of(event)
@@ -76,6 +84,8 @@ def _post(endpoint: WebhookEndpoint, event: WebhookEvent, secret: str, now: date
             res = client.post(endpoint.url, content=body, headers=headers)
         ms = int((time.monotonic() - started) * 1000)
         return res.status_code, ms, None if 200 <= res.status_code < 300 else f"HTTP {res.status_code}"
+    except outbound.Refused as exc:
+        return None, int((time.monotonic() - started) * 1000), f"refused: {urls.refusal(exc)}"[:200]
     except httpx.TimeoutException:
         return None, int((time.monotonic() - started) * 1000), "timed out"
     except httpx.HTTPError as exc:

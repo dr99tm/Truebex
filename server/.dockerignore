@@ -9,3 +9,5 @@ __pycache__
 *.pyc
 .pytest_cache
 run.bat
+# PF7a: local picture-search model files (the VM keeps them in a volume)
+models

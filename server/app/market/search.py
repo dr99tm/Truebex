@@ -1,10 +1,11 @@
 """Catalogue search (5.3): text, category subtree, region, price range in
 minor units, availability, supplier, sort, facets and an opaque cursor.
 
-Text goes through the `SearchIndex` interface: SQLite FTS5 now
-(`Fts5Index`, the `market_search_fts` table), Postgres full-text after PF14
-(one more adapter; `LikeIndex` is the portable fallback). The importer and
-the admin tools call `reindex(db, product)` whenever a product's text
+Text goes through the `SearchIndex` interface: SQLite FTS5 (`Fts5Index`,
+the `market_search_fts` table) and Postgres full-text (`PgIndex`, the
+`market_search_tsv` table, PF7a) find the same products for the same words;
+`LikeIndex` is the portable fallback for any other database. The importer
+and the admin tools call `reindex(db, product)` whenever a product's text
 changes; status filters run in SQL, so approving or hiding a product needs
 no index change.
 
@@ -17,15 +18,16 @@ import base64
 import hashlib
 import json
 import re
+import unicodedata
 from dataclasses import dataclass
 from typing import Protocol
 
-from sqlalchemy import select, text
+from sqlalchemy import Engine, select, text
 from sqlalchemy.orm import Session
 
 from .catalogue import payments_ready, rating_json, thumbnail_url
 from .common import invalid, is_hex32
-from .models import FTS_TABLE, Product, ProductVariant, Supplier
+from .models import FTS_TABLE, PG_TABLE, Product, ProductVariant, Supplier
 from .prices import (
     Offer,
     availability_json,
@@ -88,6 +90,65 @@ class Fts5Index:
         return {pid: -float(r) for pid, r in rows}
 
 
+def fold(value: str) -> str:
+    """Lower case without accents: NFKD, combining marks dropped, NFC again
+    (FTS5's `remove_diacritics` does the same inside SQLite). PgIndex folds
+    in Python, so Postgres needs no `unaccent` extension and no superuser."""
+    marks = unicodedata.normalize("NFKD", (value or "").lower())
+    return unicodedata.normalize("NFC", "".join(c for c in marks if unicodedata.category(c) != "Mn"))
+
+
+class PgIndex:
+    """Postgres full-text on `market_search_tsv` (`models.PG_TABLE`).
+
+    The table holds the folded words of a product's name and body, split as
+    `tokens` splits a query (letters, digits and `_`), so both databases see
+    the same words; Postgres keeps the tsvector (name weight A, body B,
+    configuration `simple`) and its GIN index. A query needs every word,
+    each as a prefix, case- and accent-insensitive, as FTS5's `"word"*`
+    terms do.
+    """
+
+    # ts_rank's weights {D, C, B, A}: a name hit counts ten body hits (FTS5's
+    # bm25 column weights). Scaled so a name hit (about 12) outweighs the
+    # availability and rating boosts of 5.3's relevance sort (at most 1.5).
+    _WEIGHTS = "{0, 0, 0.1, 1}"
+    _SCALE = 20.0
+
+    @staticmethod
+    def words(value: str) -> str:
+        return " ".join(_TOKEN.findall(fold(value)))
+
+    def upsert(self, db: Session, product_id: str, name: str, body: str) -> None:
+        db.execute(
+            text(
+                f"INSERT INTO {PG_TABLE} (product_id, name, body) VALUES (:id, :name, :body) "
+                "ON CONFLICT (product_id) DO UPDATE SET name = excluded.name, body = excluded.body"
+            ),
+            {"id": product_id, "name": self.words(name), "body": self.words(body)},
+        )
+
+    def remove(self, db: Session, product_id: str) -> None:
+        db.execute(text(f"DELETE FROM {PG_TABLE} WHERE product_id = :id"), {"id": product_id})
+
+    def match(self, db: Session, query: str, limit: int = 5000) -> dict[str, float]:
+        # A word with no letter or digit ("___") would leave no lexeme.
+        words = [w for w in tokens(fold(query)) if any(c.isalnum() for c in w)]
+        if not words:
+            return {}
+        # These words hold no tsquery operator; a word Postgres splits
+        # ("pr_40") becomes a phrase, as FTS5 makes it.
+        rows = db.execute(
+            text(
+                f"SELECT product_id, ts_rank('{self._WEIGHTS}', tsv, q) AS r "
+                f"FROM {PG_TABLE}, to_tsquery('simple', :q) AS q WHERE tsv @@ q "
+                "ORDER BY r DESC, product_id LIMIT :n"
+            ),
+            {"q": " & ".join(f"{w}:*" for w in words), "n": limit},
+        )
+        return {pid: self._SCALE * float(r) for pid, r in rows}
+
+
 class LikeIndex:
     """Portable fallback: scans names and descriptions (no index table)."""
 
@@ -115,9 +176,11 @@ class LikeIndex:
 
 
 def index_for(db: Session) -> SearchIndex:
-    bind = db.get_bind()
-    if bind.dialect.name == "sqlite":
+    dialect = db.get_bind().dialect.name
+    if dialect == "sqlite":
         return Fts5Index()
+    if dialect == "postgresql":
+        return PgIndex()
     return LikeIndex()
 
 
@@ -150,15 +213,34 @@ def reindex(db: Session, product: Product, supplier: Supplier | None = None) -> 
 
 
 def rebuild(db: Session) -> int:
-    """Re-index every product (after a restore or an adapter change)."""
+    """Re-index every product (after a restore, the SQLite -> Postgres copy
+    or an adapter change). In key order, so two processes rebuilding at the
+    same start take the rows' locks in the same order."""
     index = index_for(db)
     n = 0
-    for product, supplier in db.execute(select(Product, Supplier).join(Supplier, Supplier.supplier_id == Product.supplier_id)):
+    rows = select(Product, Supplier).join(Supplier, Supplier.supplier_id == Product.supplier_id).order_by(Product.product_id)
+    for product, supplier in db.execute(rows):
         name, body = document(db, product, supplier)
         index.upsert(db, product.product_id, name, body)
         n += 1
     db.commit()
     return n
+
+
+def fill_if_empty(bind: Engine) -> int | None:
+    """Rebuild an index that is empty while products exist: a database from
+    before its index (the VM's first start with PF7a) or a restore.
+    `database.init_db` calls it after the migrations and the category seed;
+    an index that holds rows is left alone. Returns the products indexed."""
+    table = {"sqlite": FTS_TABLE, "postgresql": PG_TABLE}.get(bind.dialect.name)
+    if table is None:
+        return None
+    with Session(bind) as db:
+        if db.execute(text(f"SELECT 1 FROM {table} LIMIT 1")).first():
+            return None
+        if db.scalar(select(Product.product_id).limit(1)) is None:
+            return None
+        return rebuild(db)
 
 
 # --- 5.3 ------------------------------------------------------------------------------------

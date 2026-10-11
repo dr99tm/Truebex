@@ -1027,7 +1027,7 @@ export const FEATURE_PAGES: readonly FeaturePageCopy[] = [
       },
       {
         title: "For suppliers",
-        body: "Suppliers will manage their catalogue, stock, regional prices, leads and orders in a web app, with spreadsheet and feed import. The first suppliers will be onboarded by hand.",
+        body: "Suppliers manage their catalogue, stock, regional prices, leads and orders in the supplier portal, with spreadsheet and feed import. The first suppliers are onboarded by hand.",
       },
     ],
     faq: [
@@ -1041,12 +1041,12 @@ export const FEATURE_PAGES: readonly FeaturePageCopy[] = [
       },
       {
         q: "Can my company list products?",
-        a: "Yes, once it opens. Suppliers can register their interest today, and the first suppliers will be onboarded by hand.",
+        a: "Yes. Suppliers can apply and prepare their catalogue in the supplier portal now, and the first suppliers are onboarded by hand. Products reach designers once the marketplace opens.",
       },
     ],
     supplierCta: {
-      label: "Register supplier interest",
-      href: `mailto:${SITE.email}?subject=Supplier%20interest`,
+      label: "Sell on Truebex",
+      href: "/suppliers/",
     },
   },
 ] as const;
@@ -1177,6 +1177,7 @@ export const FOOTER = {
     { label: "Developer docs", href: "/developers/" },
     { label: "Changelog", href: "/changelog/" },
     { label: "Roadmap", href: "/roadmap/" },
+    { label: "Sell on Truebex", href: "/suppliers/" },
     { label: "Dashboard", href: "/dashboard/" },
     { label: "Create account", href: "/signup/" },
     { label: "Brand assets", href: "/brand/truebex-mark-grey.svg" },
@@ -2927,6 +2928,8 @@ export const APP = {
   conflict: "{name} changed this first — your edit was replaced",
   conflictSelf: "You changed this first on another device — your edit was replaced",
   someone: "Someone",
+  // PF9a: who made an agent's edit (the assistant, or an API key through /v1); the Android app says the same.
+  agentAuthor: "An assistant or script",
   dismiss: "Dismiss",
   project: {
     metaTitle: "Project",
@@ -3027,6 +3030,158 @@ export const ANDROID_APP_PRIVACY = {
     "The Truebex Android app signs in with your Truebex account, by e-mail and password or with Google. It keeps the session in the phone's encrypted storage, backed by the Android Keystore, and a copy of the projects you open — their history of changes, the newest room list and the panorama tiles you looked at, up to 500 MB — so they open without a network.",
     "The app sends no usage events, no crash reports and no advertising identifier, and it does not track you. It talks only to the Truebex service, over HTTPS. The edits you make on the phone are saved to the project with your name, as edits from the desktop app are, and the people on a shared project see that you have it open.",
     "The app's data is left out of phone backups. Signing out removes the session, the copies of your projects, edits not yet sent and the panorama tiles from the phone; uninstalling the app does the same.",
+  ],
+} as const;
+
+// --- Sell on Truebex (PF13a) --------------------------------------------------------------------
+// The public page for suppliers at /suppliers/ (indexable, in the sitemap),
+// which leads to the supplier portal's sign-up (/supplier/signup/, noindex).
+// What the portal does today is in the present tense; the catalogue inside
+// the app, its live cost and card payments for orders are "On the roadmap",
+// in the future tense, with no dates and no fees. English only: AR_HOME
+// covers the Arabic home page alone.
+
+export const SELL_PAGE = {
+  path: "/suppliers/",
+  nav: "Sell on Truebex",
+  title: "Sell on Truebex · Supplier portal for building products",
+  description:
+    "Sell on Truebex: run your catalogue of furniture, lighting and finishes with prices and stock per region, spreadsheet and feed import and one inbox for quotes.",
+  eyebrow: "For suppliers",
+  h1: "Sell your products on Truebex",
+  intro:
+    "Truebex is where architects and interior designers draw rooms and see their daylight measured. The supplier portal is open: apply, build your catalogue with prices and stock for every region you deliver to, and keep it current from a spreadsheet or a feed.",
+  cta: { label: "Apply as a supplier", href: "/supplier/signup/" },
+  ctaNote: "You apply with a Truebex account: sign in, or create one, on the next page.",
+  offerTitle: "What you get",
+  offer: [
+    {
+      id: "catalogue",
+      title: "Your catalogue",
+      body: "Products with their variants, dimensions in millimetres, materials, pictures and one 3D file per variant: GLB, glTF, OBJ, FBX or a Truebex object, up to 100 MB. Every 3D file is checked as it uploads.",
+    },
+    {
+      id: "regions",
+      title: "Prices and stock by region",
+      body: "A price list for every region you deliver to, in its own currency, with tax, delivery cost and days, stock and lead time. Set the stock or change the price of many rows at once.",
+    },
+    {
+      id: "imports",
+      title: "Spreadsheet and feed import",
+      body: "Fill in the spreadsheet template, or send CSV or JSON. A dry run shows what would be created, updated or rejected before you apply it, and a feed address you register is read every day.",
+    },
+    {
+      id: "inbox",
+      title: "Leads, quotes and orders in one inbox",
+      body: "Answer a request for quote with your prices and a message. Accept an order, mark it shipped with the carrier and reference, then delivered. A buyer's contact shows only on your own leads and orders.",
+    },
+    {
+      id: "numbers",
+      title: "Numbers on your products",
+      body: "Search impressions, product views, placements, requests for quote and orders, per product, region and day. Counts only: no buyer is named.",
+    },
+    {
+      id: "team",
+      title: "Your team and your systems",
+      body: "Invite colleagues as owner, catalogue editor, order handler or viewer, and give your own systems a supplier API key for feeds. Every page works on a phone as well as at a desk.",
+    },
+  ],
+  stepsTitle: "How onboarding works",
+  steps: [
+    {
+      title: "Apply with your company",
+      description:
+        "Send your company details, the regions you deliver to, a contact and one company document: a PDF of at most 10 MB.",
+    },
+    {
+      title: "We review it by hand",
+      description:
+        "The first suppliers are onboarded one by one. A person at Truebex checks your company and your document, then e-mails you the decision.",
+    },
+    {
+      title: "Prepare your catalogue",
+      description:
+        "While we review, build your range in the portal: import it, set your regional prices and fix any row the dry run rejects.",
+    },
+    {
+      title: "Every product is reviewed",
+      description:
+        "Once you are verified, submit your products. We review every product before it is listed.",
+    },
+  ],
+  roadmapTitle: "On the roadmap",
+  roadmapLabel: "On the roadmap",
+  roadmapIntro:
+    "The portal is open today. These parts of the marketplace are being built; the roadmap shows their status as they move.",
+  roadmap: [
+    {
+      title: "Your products inside Truebex",
+      body: "Designers will find your products in the catalogue inside the app, place them in the room they are drawing at their true size, and see your price for their region.",
+    },
+    {
+      title: "A cost that updates as designers draw",
+      body: "Your prices will flow into the project's live cost, so a product will be costed the moment it is placed.",
+    },
+    {
+      title: "Orders paid on Truebex",
+      body: "Card payments for orders will open once the marketplace terms are signed off. Until then every supplier is quote-only: you answer requests for quote, and sell and invoice on your own terms.",
+    },
+  ],
+  roadmapLink: "See the roadmap",
+  faqTitle: "Questions",
+  faq: [
+    {
+      q: "Who can sell on Truebex?",
+      a: "Companies that make or sell furniture, lighting, kitchens, bathrooms, paint, wallpaper or tiles; that can sign a contract and invoice as a company; that deliver in at least one region with their own price list there; and that hold the rights to their product pictures and 3D files.",
+    },
+    {
+      q: "Do I need 3D files?",
+      a: "Yes, for every object you sell: one file per variant, in GLB (preferred), glTF, OBJ, FBX or as a Truebex object, up to 100 MB. Finishes such as paint, wallpaper and tiles need no 3D file.",
+    },
+    {
+      q: "Can my catalogue stay current on its own?",
+      a: "Yes. Register a feed address and Truebex reads it every day, or send files from your own systems with a supplier API key. Every run leaves a report of the rows created, updated, unchanged and rejected.",
+    },
+    {
+      q: "Can designers pay by card?",
+      a: "Not yet: card payments for orders are on the roadmap. Until they open, you answer requests for quote, and sell and invoice on your own terms.",
+    },
+    {
+      q: "Can my team use the portal?",
+      a: "Yes. Invite colleagues by e-mail, each with a role: owner, catalogue editor, order handler or viewer. Every page works on a phone as well as at a desk.",
+    },
+  ],
+  closingTitle: "Start with your company details",
+  closingBody:
+    "Apply with your company details and one document. We review every application by hand and e-mail you the decision.",
+} as const;
+
+// --- Member usage (PF3b) ------------------------------------------------------------------------
+// The organisation console's Member usage tab (owners and admins). Every figure
+// is the member's own account: projects they own, panoramas they ran, credits
+// they spent (server/app/orgs/usage.py).
+
+export const MEMBER_USAGE = {
+  title: "Member usage",
+  description:
+    "What each member used in the month, from their own account: devices, last activity, API requests, floating-seat hours, cloud storage, panoramas and AI credits.",
+  month: "Month",
+  loading: "Loading…",
+  columns: {
+    member: "Member",
+    devices: "Devices",
+    lastActive: "Last active",
+    apiRequests: "API requests",
+    floatingHours: "Floating hours",
+    storage: "Cloud storage",
+    panoramas: "Panoramas",
+    aiCredits: "AI credits",
+  },
+  storageCurrentOnly: "Shown for the current month only",
+  notes: [
+    "Cloud storage is what the member's own projects hold now, so it is shown for the current month only.",
+    "Panoramas count the renders that finished in the month. Updates to a panorama that follows the project are not counted again.",
+    "AI credits are the credits spent in the month, less any refunded.",
   ],
 } as const;
 

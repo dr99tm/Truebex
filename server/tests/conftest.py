@@ -1,3 +1,5 @@
+import contextlib
+import gc
 import hashlib
 import json
 import os
@@ -226,3 +228,18 @@ def stripe_prices(client):
     with SessionLocal() as db:
         sync_prices.store(db, "stripe", synced)
     return {t.lookup_key: pid for t, pid, _ in synced}
+
+
+@contextlib.contextmanager
+def timing_window():
+    """For a test that times a wake-up (a long poll answering within 1 s): a
+    full garbage collection before the window and none inside it. Late in the
+    suite the process holds about 800k objects and a full collection, which
+    stops every thread, takes 0.3-0.7 s (longer while other suites share the
+    PC): inside the window it would be counted as the server's latency."""
+    gc.collect()
+    gc.disable()
+    try:
+        yield
+    finally:
+        gc.enable()
