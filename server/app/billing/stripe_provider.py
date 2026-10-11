@@ -76,11 +76,15 @@ def _id_of(value: Any) -> str | None:
 
 
 def _invoice_subscription(inv: Any) -> str | None:
-    # Newer API versions moved it under parent.subscription_details.
-    sub = inv.get("subscription")
-    if not sub:
-        sub = ((inv.get("parent") or {}).get("subscription_details") or {}).get("subscription")
-    return _id_of(sub)
+    """The subscription an invoice bills: a string id or an expanded
+    subscription, at the top level or (newer Stripe API versions) under
+    parent.subscription_details. Empty or missing is none (a one-off
+    payment's invoice)."""
+    sub = _id_of(inv.get("subscription"))
+    if sub is None:
+        details = (inv.get("parent") or {}).get("subscription_details") or {}
+        sub = _id_of(details.get("subscription"))
+    return sub
 
 
 def _period_end(sub: Any) -> datetime | None:
@@ -91,17 +95,6 @@ def _period_end(sub: Any) -> datetime | None:
         if items:
             ts = items[0].get("current_period_end")
     return parse_time(ts)
-
-
-def _invoice_subscription(inv: Any) -> str | None:
-    # Newer Stripe API versions moved it under parent.subscription_details.
-    sub = inv.get("subscription")
-    if sub is None:
-        details = (inv.get("parent") or {}).get("subscription_details") or {}
-        sub = details.get("subscription")
-    if isinstance(sub, Mapping):
-        sub = sub.get("id")
-    return str_or_none(sub)
 
 
 def _tax(inv: Any) -> int:
@@ -228,6 +221,9 @@ class StripeProvider(BillingProvider):
         customer = service.customer_id(db, user, "stripe")
         if customer:
             params["customer"] = customer
+            # As the subscription checkout: Stripe Tax refuses a saved customer
+            # without an address unless Checkout may save the one entered.
+            params["customer_update"] = {"address": "auto", "name": "auto"}
         else:
             params["customer_email"] = user.email
         try:

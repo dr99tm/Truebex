@@ -143,6 +143,10 @@ export interface Payment {
   business?: boolean | null;
   /** PF3a: the organisation the payment bought for, if any. */
   organisation_id?: string | null;
+  /** PF2c: a one-off item's payment names the item ("ai_credits"); null for a plan. */
+  item?: string | null;
+  /** PF2c: the credits an AI credit pack adds. */
+  credits?: number | null;
 }
 
 export interface Invoice {

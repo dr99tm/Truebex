@@ -388,6 +388,15 @@ export const BILLING = {
     amount: "Amount",
     status: "Status",
     card: "Card",
+    // PF2c: a one-off purchase is named by its item (the API's `item`), never
+    // by its id; {credits} is the size of an AI credit pack.
+    items: {
+      ai_credits: { name: "AI credits", sized: "{credits} AI credits" },
+    },
+    // An item without a name here yet.
+    otherItem: "Purchase",
+    // Beside an item, where a plan shows Monthly or Annual.
+    once: "One-off",
   },
   notices: {
     confirming: "Confirming your payment…",
