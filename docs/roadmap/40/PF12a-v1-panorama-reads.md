@@ -148,7 +148,7 @@ None. PF6's worker renders the sets; PF4's push hook queues their `tiles` jobs.
 4. `curl.exe -s -i -H "Authorization: Bearer $k" http://127.0.0.1:8000/v1/projects/$p/panoramas/<set_id>` → 200 with
    `Cache-Control: private, no-store` and a `manifest` with `"schema": "truebex-tiles/1"` and `tiles_base`.
 5. Long-poll: `curl.exe -s -H "Authorization: Bearer $k" "http://127.0.0.1:8000/v1/projects/$p/panoramas/<set_id>?rev=<rev>&wait_s=25"`
-   (it waits); in terminal 4, `cd server; .venv\Scripts\python.exe scripts\demo_mobile.py --token $k move --project $p --entity Oslo`
+   (it waits); in terminal 4 (set `$k` and `$p` there too), `cd server; .venv\Scripts\python.exe scripts\demo_mobile.py --token $k move --project $p --entity Oslo`
    → "Move Oslo 3-seater sofa: accepted as …"; within a few seconds terminal 3 prints the set with `rev` one higher.
    Run the step-5 call again without moving anything → it answers after 25 s with the same `rev`.
 6. `curl.exe -s http://127.0.0.1:8000/v1/projects/$p/panoramas` (no key) → 401 `unauthenticated`;
