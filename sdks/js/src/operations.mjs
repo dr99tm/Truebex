@@ -223,6 +223,40 @@ export const OPERATIONS = {
     "scope": "projects:read",
     "contract": "project-log/1.0"
   },
+  "projects_panoramas_get": {
+    "group": "projects",
+    "name": "panoramasGet",
+    "method": "GET",
+    "path": "/v1/projects/{project_id}/panoramas/{set_id}",
+    "pathParams": [
+      "project_id",
+      "set_id"
+    ],
+    "query": [
+      "rev",
+      "wait_s"
+    ],
+    "headers": [],
+    "body": null,
+    "bodyProps": [],
+    "scope": "projects:read",
+    "contract": "project-log/1.0"
+  },
+  "projects_panoramas_list": {
+    "group": "projects",
+    "name": "panoramasList",
+    "method": "GET",
+    "path": "/v1/projects/{project_id}/panoramas",
+    "pathParams": [
+      "project_id"
+    ],
+    "query": [],
+    "headers": [],
+    "body": null,
+    "bodyProps": [],
+    "scope": "projects:read",
+    "contract": "project-log/1.0"
+  },
   "projects_presence": {
     "group": "projects",
     "name": "presence",

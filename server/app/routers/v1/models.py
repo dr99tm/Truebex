@@ -271,6 +271,75 @@ class PresenceList(_Doc):
     present: list[Presence]
 
 
+# --- followed panorama sets (PF12a: PF9's member reads, a render-jobs §5 MINOR proposal) ----------------
+
+
+class PanoramaSet(_Doc):
+    """A followed panorama set of the project: a `follow: true` panorama job (render-jobs 5.1) that a member's
+    account keeps current from the log."""
+
+    set_id: str = Field(description="32 hex: the follow job's id")
+    rev: int = Field(description="Moves each time a render of the set finishes; wait for it with the set's read")
+    at_seq: int = Field(description="The log position the newest render shows")
+    views: list[str] = Field(description="The saved views (32 hex ids) the set renders")
+    following: bool = Field(description="false once the set stopped following; its last render still shows")
+    mine: bool = Field(description="true when the key's own account keeps the set")
+    updated_at: str
+
+
+class PanoramaSetList(_Doc):
+    """The sets of the project's active members, those still following first, then the newest first."""
+
+    sets: list[PanoramaSet]
+
+
+class TileFace(_Doc):
+    """One cube face: `tiles[L]` lists level L's tile hashes row by row from the top-left."""
+
+    rendered: bool
+    reason: str = Field(description="full, changed or light when this render drew the face; carried when it kept the last one")
+    tiles: list[list[str]]
+
+
+class TileView(_Doc):
+    """A saved view's cube: faces n, e, s and w look north (+Y), east, south and west from `eye_mm`; u looks up and
+    d down. Level L is `levels[L]` px square, cut into tiles of `tile_px`."""
+
+    view: str = Field(description="The saved view's id (32 hex)")
+    title: str | None = None
+    eye_mm: list[float]
+    face_px: int
+    tile_px: int
+    levels: list[int]
+    faces: dict[str, TileFace]
+
+
+class TileManifest(_Doc):
+    """The render's tile manifest (render-jobs §6.2): its `schema` is `truebex-tiles/1` (refuse a major version you
+    do not know). A tile is `<tiles_base>/<sha256>.jpg`: immutable and shared between renders, so a client fetches
+    only the hashes it has not seen."""
+
+    # `schema` is left out of the fields: the Python SDK's type generator would name it `schema_`.
+    job_id: str
+    project_id: str | None = None
+    at_seq: int
+    tiles_base: str
+    views: list[TileView]
+    faces_rendered: int | None = None
+    faces_reused: int | None = None
+
+
+class PanoramaSetState(_Doc):
+    """A set's newest render; `manifest` and `job_id` are null until its first render finishes."""
+
+    rev: int
+    job_id: str | None = Field(description="The job whose output is the newest manifest")
+    follow_job_id: str = Field(description="The set's id")
+    at_seq: int
+    following: bool
+    manifest: TileManifest | None
+
+
 # --- jobs (render-jobs 5.1-5.6) -------------------------------------------------------------
 
 

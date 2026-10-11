@@ -1422,6 +1422,133 @@
         "title": "Operation",
         "type": "object"
       },
+      "PanoramaSet": {
+        "additionalProperties": true,
+        "description": "A followed panorama set of the project: a `follow: true` panorama job (render-jobs 5.1) that a member's\naccount keeps current from the log.",
+        "properties": {
+          "at_seq": {
+            "description": "The log position the newest render shows",
+            "title": "At Seq",
+            "type": "integer"
+          },
+          "following": {
+            "description": "false once the set stopped following; its last render still shows",
+            "title": "Following",
+            "type": "boolean"
+          },
+          "mine": {
+            "description": "true when the key's own account keeps the set",
+            "title": "Mine",
+            "type": "boolean"
+          },
+          "rev": {
+            "description": "Moves each time a render of the set finishes; wait for it with the set's read",
+            "title": "Rev",
+            "type": "integer"
+          },
+          "set_id": {
+            "description": "32 hex: the follow job's id",
+            "title": "Set Id",
+            "type": "string"
+          },
+          "updated_at": {
+            "title": "Updated At",
+            "type": "string"
+          },
+          "views": {
+            "description": "The saved views (32 hex ids) the set renders",
+            "items": {
+              "type": "string"
+            },
+            "title": "Views",
+            "type": "array"
+          }
+        },
+        "required": [
+          "set_id",
+          "rev",
+          "at_seq",
+          "views",
+          "following",
+          "mine",
+          "updated_at"
+        ],
+        "title": "PanoramaSet",
+        "type": "object"
+      },
+      "PanoramaSetList": {
+        "additionalProperties": true,
+        "description": "The sets of the project's active members, those still following first, then the newest first.",
+        "properties": {
+          "sets": {
+            "items": {
+              "$ref": "#/components/schemas/PanoramaSet"
+            },
+            "title": "Sets",
+            "type": "array"
+          }
+        },
+        "required": [
+          "sets"
+        ],
+        "title": "PanoramaSetList",
+        "type": "object"
+      },
+      "PanoramaSetState": {
+        "additionalProperties": true,
+        "description": "A set's newest render; `manifest` and `job_id` are null until its first render finishes.",
+        "properties": {
+          "at_seq": {
+            "title": "At Seq",
+            "type": "integer"
+          },
+          "follow_job_id": {
+            "description": "The set's id",
+            "title": "Follow Job Id",
+            "type": "string"
+          },
+          "following": {
+            "title": "Following",
+            "type": "boolean"
+          },
+          "job_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The job whose output is the newest manifest",
+            "title": "Job Id"
+          },
+          "manifest": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TileManifest"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "rev": {
+            "title": "Rev",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "rev",
+          "job_id",
+          "follow_job_id",
+          "at_seq",
+          "following",
+          "manifest"
+        ],
+        "title": "PanoramaSetState",
+        "type": "object"
+      },
       "Ping": {
         "additionalProperties": true,
         "properties": {
@@ -2791,6 +2918,165 @@
           "verified"
         ],
         "title": "SupplierProfile",
+        "type": "object"
+      },
+      "TileFace": {
+        "additionalProperties": true,
+        "description": "One cube face: `tiles[L]` lists level L's tile hashes row by row from the top-left.",
+        "properties": {
+          "reason": {
+            "description": "full, changed or light when this render drew the face; carried when it kept the last one",
+            "title": "Reason",
+            "type": "string"
+          },
+          "rendered": {
+            "title": "Rendered",
+            "type": "boolean"
+          },
+          "tiles": {
+            "items": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "title": "Tiles",
+            "type": "array"
+          }
+        },
+        "required": [
+          "rendered",
+          "reason",
+          "tiles"
+        ],
+        "title": "TileFace",
+        "type": "object"
+      },
+      "TileManifest": {
+        "additionalProperties": true,
+        "description": "The render's tile manifest (render-jobs §6.2): its `schema` is `truebex-tiles/1` (refuse a major version you\ndo not know). A tile is `<tiles_base>/<sha256>.jpg`: immutable and shared between renders, so a client fetches\nonly the hashes it has not seen.",
+        "properties": {
+          "at_seq": {
+            "title": "At Seq",
+            "type": "integer"
+          },
+          "faces_rendered": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Faces Rendered"
+          },
+          "faces_reused": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Faces Reused"
+          },
+          "job_id": {
+            "title": "Job Id",
+            "type": "string"
+          },
+          "project_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Project Id"
+          },
+          "tiles_base": {
+            "title": "Tiles Base",
+            "type": "string"
+          },
+          "views": {
+            "items": {
+              "$ref": "#/components/schemas/TileView"
+            },
+            "title": "Views",
+            "type": "array"
+          }
+        },
+        "required": [
+          "job_id",
+          "at_seq",
+          "tiles_base",
+          "views"
+        ],
+        "title": "TileManifest",
+        "type": "object"
+      },
+      "TileView": {
+        "additionalProperties": true,
+        "description": "A saved view's cube: faces n, e, s and w look north (+Y), east, south and west from `eye_mm`; u looks up and\nd down. Level L is `levels[L]` px square, cut into tiles of `tile_px`.",
+        "properties": {
+          "eye_mm": {
+            "items": {
+              "type": "number"
+            },
+            "title": "Eye Mm",
+            "type": "array"
+          },
+          "face_px": {
+            "title": "Face Px",
+            "type": "integer"
+          },
+          "faces": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/TileFace"
+            },
+            "title": "Faces",
+            "type": "object"
+          },
+          "levels": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Levels",
+            "type": "array"
+          },
+          "tile_px": {
+            "title": "Tile Px",
+            "type": "integer"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "view": {
+            "description": "The saved view's id (32 hex)",
+            "title": "View",
+            "type": "string"
+          }
+        },
+        "required": [
+          "view",
+          "eye_mm",
+          "face_px",
+          "tile_px",
+          "levels",
+          "faces"
+        ],
+        "title": "TileView",
         "type": "object"
       },
       "Upload": {
@@ -6414,6 +6700,231 @@
         "x-truebex-scope": "projects:write"
       }
     },
+    "/v1/projects/{project_id}/panoramas": {
+      "get": {
+        "description": "The project's followed panorama sets, kept current by its members' accounts (any role); never cached.",
+        "operationId": "projects_panoramas_list",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PanoramaSetList",
+                  "title": "Response Projects Panoramas List",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Missing, malformed, invalid or revoked API key (`unauthenticated`)."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The key lacks the scope (`forbidden`, `data.needed`), the role is too low, or the plan lacks the feature."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unknown, or not visible to this key's account (`not_found`)."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Burst limit or monthly quota reached (`rate_limited`, `retry_after_s`)."
+          }
+        },
+        "security": [
+          {
+            "bearerKey": []
+          },
+          {
+            "headerKey": []
+          }
+        ],
+        "summary": "List Panoramas",
+        "tags": [
+          "projects"
+        ],
+        "x-truebex-contract": "project-log/1.0",
+        "x-truebex-scope": "projects:read"
+      }
+    },
+    "/v1/projects/{project_id}/panoramas/{set_id}": {
+      "get": {
+        "description": "A followed set's newest tile manifest; with `rev` and `wait_s` ≤ 25 it waits until the set's `rev` passes `rev`.",
+        "operationId": "projects_panoramas_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "set_id",
+            "required": true,
+            "schema": {
+              "title": "Set Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "rev",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Rev"
+            }
+          },
+          {
+            "in": "query",
+            "name": "wait_s",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "title": "Wait S",
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PanoramaSetState",
+                  "title": "Response Projects Panoramas Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Missing, malformed, invalid or revoked API key (`unauthenticated`)."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The key lacks the scope (`forbidden`, `data.needed`), the role is too low, or the plan lacks the feature."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unknown, or not visible to this key's account (`not_found`)."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Validation failed (`validation_failed`, `data.fields`), or a contract rule (`code`)."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Burst limit or monthly quota reached (`rate_limited`, `retry_after_s`)."
+          }
+        },
+        "security": [
+          {
+            "bearerKey": []
+          },
+          {
+            "headerKey": []
+          }
+        ],
+        "summary": "Panorama Set",
+        "tags": [
+          "projects"
+        ],
+        "x-truebex-contract": "project-log/1.0",
+        "x-truebex-scope": "projects:read"
+      }
+    },
     "/v1/projects/{project_id}/presence": {
       "get": {
         "description": "Who is in the project now (5.18).",
@@ -8894,7 +9405,7 @@
       "name": "account"
     },
     {
-      "description": "Cloud projects: the operation log, snapshots, versions, members and presence (contract project-log).",
+      "description": "Cloud projects: the operation log, snapshots, versions, members, presence and followed panorama sets (contract project-log).",
       "name": "projects"
     },
     {
