@@ -54,7 +54,9 @@ nothing here changes the website (GitHub Pages behind Cloudflare stays).
    staging rehearsal are not): drop and recreate the schema as in step 0.6, then
    `.venv\Scripts\python.exe -m scripts.sqlite_to_postgres --sqlite sqlite:///./auth.db --postgres postgresql+psycopg://truebex:<password>@127.0.0.1:15432/truebex`
 4. The output ends `ALL TABLES MATCH` (row counts and checksums per table). Anything else: stop,
-   start `start-server.bat` again (the PC still serves through the tunnel), investigate.
+   start `start-server.bat` again (the PC still serves through the tunnel), investigate. The line before
+   it, `search index rebuilt: <n> products`, is the marketplace's text index (PF7a): derived data, so it
+   is not copied but rebuilt on Postgres from the copied products; `<n>` is the number of products.
 5. `docker compose start api worker`; `https://api-staging.truebex.com/health/deep` → 200.
 
 ## 4. Switch the DNS

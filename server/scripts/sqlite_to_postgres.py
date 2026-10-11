@@ -13,6 +13,9 @@
 4. Postgres sequences are reset to max(id) + 1.
 5. Row counts and a per-table checksum (SHA-256 over every row in key order)
    are compared; the exit code is 0 only when every table matches.
+6. Derived tables (`DERIVED`: the marketplace's search index) are not
+   copied: the target's is rebuilt from the copied products
+   (`market.search.rebuild`, PF7a).
 """
 
 import argparse
@@ -24,11 +27,18 @@ from datetime import date, datetime, timezone
 from pathlib import Path
 
 from sqlalchemy import Integer, MetaData, String, Table, create_engine, exists, func, select, text
+from sqlalchemy.orm import Session
 
 if __package__ in (None, ""):  # run as a file: make `app` importable
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from app.database import Base, init_db, make_engine  # noqa: E402
+
+
+# Tables made from other tables, never copied: the marketplace's search index
+# (SQLite FTS5 with its shadow tables `market_search_fts_*`, or Postgres
+# full-text), rebuilt on the target after the copy.
+DERIVED = ("market_search_fts", "market_search_tsv")
 
 
 class CopyError(Exception):
@@ -51,6 +61,8 @@ class TableReport:
 @dataclass
 class Report:
     tables: list[TableReport] = field(default_factory=list)
+    # Products in the target's rebuilt search index (DERIVED).
+    indexed: int | None = None
 
     @property
     def ok(self) -> bool:
@@ -64,6 +76,8 @@ class Report:
                 f"{t.table:<24} {t.source_rows:>6} -> {t.target_rows:<6} {t.source_checksum[:12]} "
                 f"{t.target_checksum[:12]}  {mark}"
             )
+        if self.indexed is not None:
+            lines.append(f"search index rebuilt: {self.indexed} products")
         lines.append("ALL TABLES MATCH" if self.ok else "TABLES DIFFER")
         return "\n".join(lines)
 
@@ -223,6 +237,11 @@ def copy_database(source_url: str, target_url: str, batch: int = 1000) -> Report
                     dconn.execute(model.insert(), chunk)
                 if dst.dialect.name == "postgresql":
                     _reset_sequences(dconn, model)
+
+        from app.market import search  # DERIVED: rebuilt, not copied
+
+        with Session(dst) as db:
+            report.indexed = search.rebuild(db)
 
         with src.connect() as sconn, dst.connect() as dconn:
             for model in _models():

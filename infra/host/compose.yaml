@@ -8,7 +8,9 @@
 # Lives in /opt/truebex on the VM next to `.env` (API_IMAGE, written by
 # infra/deploy.ps1), `caddy.env` (Cloudflare's ranges) and `secrets/` (decrypted
 # from infra/secrets/*.sops.env at deploy, mode 0600). Postgres publishes no
-# port: it is reachable only on this Compose network.
+# port: it is reachable only on this Compose network. The `models` volume holds
+# the picture-search model files (PF7a: fetched once with
+# scripts/fetch_models.py, see the deploy skill), shared by api and worker.
 
 name: truebex
 
@@ -61,6 +63,10 @@ services:
       RATELIMIT_BACKEND: db
       # PF4: presence shared by the two uvicorn processes (the presence table).
       PROJECTS_PRESENCE_BACKEND: db
+      # PF7a: picture search reads its model files from the `models` volume.
+      EMBEDDING_DIR: /app/models
+    volumes:
+      - models:/app/models
     depends_on:
       postgres:
         condition: service_healthy
@@ -82,6 +88,10 @@ services:
       RATELIMIT_BACKEND: db
       PROJECTS_PRESENCE_BACKEND: db
       BACKUP_EXPECTED: "true"
+      # PF7a: the market.embeddings job embeds products with the same files.
+      EMBEDDING_DIR: /app/models
+    volumes:
+      - models:/app/models
     depends_on:
       postgres:
         condition: service_healthy
@@ -119,3 +129,4 @@ volumes:
   pgdata:
   caddy_data:
   caddy_config:
+  models:

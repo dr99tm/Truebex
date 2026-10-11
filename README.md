@@ -1164,3 +1164,31 @@ To try it on a local API, give a member some usage (in `server/`):
 
 It writes a project of that size, succeeded panorama jobs and two assistant turns through each feature's own
 models, and prints what the tab shows. Each run adds to what is there.
+
+## Marketplace search on Postgres (PF7a)
+
+Marketplace search finds the same products on the production stack (Postgres on the VM) as on SQLite, and
+picture search can be switched on there. Code: `server/app/market/search.py` (`PgIndex`, `fold`,
+`fill_if_empty`), the DDL at the end of `server/app/market/models.py`; doc
+`docs/roadmap/40/PF7a-marketplace-search-production.md`.
+
+- **Text search.** `index_for` picks SQLite FTS5 (`market_search_fts`) or Postgres full-text
+  (`market_search_tsv`: the folded words of each product's name and body, a tsvector weighting the name above
+  the body, `simple` configuration, GIN index); `LikeIndex` stays the fallback for other databases. Both find a
+  product by its name, description, brand, SKU, category labels, supplier, variant options, materials, GTINs
+  and classification codes; every word must match, as a prefix, ignoring case and accents. 5.3's answer is
+  unchanged.
+- **Derived data.** The index is created and dropped with the tables, filled at a start that finds it empty
+  beside products, and rebuilt by `scripts.sqlite_to_postgres` after the copy (`search index rebuilt: <n>
+  products`); `POST /admin/market/search/rebuild` rebuilds it by hand.
+- **Picture search on the VM.** `infra/host/compose.yaml` mounts the `models` volume in `api` and `worker` at
+  `EMBEDDING_DIR=/app/models`. Once per VM: `docker compose exec api python scripts/fetch_models.py --dir
+  /app/models`, then `EMBEDDING_MODEL=clip-vit-b32` in `server.sops.env` and a deploy; the worker embeds the
+  existing products (deploy skill, *API*).
+- **Tests on Postgres:**
+
+  ```powershell
+  cd server
+  $env:TEST_DATABASE_URL = 'postgresql+psycopg://truebex:<password>@127.0.0.1:<port>/<disposable db>'
+  .venv\Scripts\python.exe -m pytest -q -m postgres -k market
+  ```

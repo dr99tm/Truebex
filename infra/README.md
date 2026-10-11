@@ -17,7 +17,7 @@ Hosted uptime monitor ──▶ /health, /health/deep every 60 s, several region
 |---|---|
 | `tofu/` | OpenTofu: the VM and its firewall (`modules/vm`), buckets (`modules/buckets`), Cloudflare DNS, mail records and the origin certificate (`modules/dns`), uptime checks and the host heartbeat (`modules/monitoring`) |
 | `host/cloud-init.yaml` | first boot: the `truebex` user (SSH key only), Docker, unattended upgrades, journald 14 days, ufw |
-| `host/compose.yaml`, `host/Caddyfile` | the four services; `host/postgres/` adds wal-g to Postgres |
+| `host/compose.yaml`, `host/Caddyfile` | the four services; `host/postgres/` adds wal-g to Postgres; the `models` volume holds the picture-search model files (PF7a, deploy skill) |
 | `host/bin/` | `backup-base.sh` (nightly), `restore-test.sh` (weekly), `host-check.sh` (every minute) |
 | `host/systemd/` | the timers for those, and the monthly reboot window |
 | `host/compose.local.yaml`, `host/local/` | the same stack on a laptop, plain HTTP on 127.0.0.1:80 |
@@ -132,6 +132,7 @@ The verify gate runs the server tests on SQLite. Before a deploy, run them again
 cd server
 $env:TEST_DATABASE_URL = 'postgresql+psycopg://truebex:local-trial-only@127.0.0.1:5432/truebex_test'
 .venv\Scripts\python.exe -m pytest -q -m postgres            # init/migrate twice, upserts, the copy script
+.venv\Scripts\python.exe -m pytest -q -m postgres -k market  # the marketplace's full-text search (PF7a)
 $env:TEST_APP_DATABASE_URL = 'postgresql+psycopg://truebex:local-trial-only@127.0.0.1:5432/truebex_app'
 .venv\Scripts\python.exe -m pytest -q                        # the whole suite with the app on Postgres
 ```

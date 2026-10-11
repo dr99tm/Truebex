@@ -22,6 +22,10 @@ RUN pip install -r requirements.txt
 COPY --from=stackwalk /opt/stackwalk/bin/minidump-stackwalk /usr/local/bin/minidump-stackwalk
 COPY app ./app
 COPY scripts ./scripts
+# PF7a: the picture-search model files (EMBEDDING_DIR) live in the `models`
+# volume mounted here; a new volume takes this folder's owner, so the
+# non-root user can fetch into it (scripts/fetch_models.py).
+RUN mkdir -p /app/models && chown truebex:truebex /app/models
 USER truebex
 EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
