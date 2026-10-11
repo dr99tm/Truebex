@@ -46,7 +46,9 @@ def expire_founding(now: datetime) -> int:
 
 @periodic("billing.reconcile", 24 * 3600)
 def reconcile(now: datetime) -> int:
-    """Re-fetch pending checkouts of the last 48 h and every subscription that
+    """Re-fetch pending checkouts of the last 48 h, checkouts paid in that
+    window whose subscription is not stored (PF2d: its subscription event was
+    lost and the fetch when it was paid failed), and every subscription that
     is not long cancelled, from each enabled provider, and apply what the
     provider says."""
     since = now - RECONCILE_WINDOW
@@ -64,6 +66,19 @@ def reconcile(now: datetime) -> int:
                         Payment.provider_ref.is_not(None),
                         Payment.created_at >= since,
                     )
+                )
+            )
+            stored = select(Subscription.id).where(
+                Subscription.provider == name,
+                Subscription.provider_subscription_id == Payment.provider_subscription_id,
+            )
+            payments += db.scalars(
+                select(Payment).where(
+                    Payment.provider == name,
+                    Payment.status == "paid",
+                    Payment.provider_subscription_id.is_not(None),
+                    Payment.paid_at >= since,
+                    ~stored.exists(),
                 )
             )
             subs = list(

@@ -1192,3 +1192,22 @@ picture search can be switched on there. Code: `server/app/market/search.py` (`P
   $env:TEST_DATABASE_URL = 'postgresql+psycopg://truebex:<password>@127.0.0.1:<port>/<disposable db>'
   .venv\Scripts\python.exe -m pytest -q -m postgres -k market
   ```
+
+## Billing follow-ups (PF2d)
+
+A paid Paddle checkout always gets its subscription. When `subscription.created` is lost, `transaction.completed` fetches the
+subscription from Paddle itself, with our payment as its origin. If that fetch fails, or both webhooks are lost, the return
+page's refresh or the daily `billing.reconcile` does it (a checkout still pending, or paid in the last 48 h without a stored
+subscription). A supplier's listing plan checkout
+(Stripe) returns to `/supplier/billing/?checkout=…&ref=…`, which confirms the payment and shows the plan. Doc:
+`docs/roadmap/40/PF2d-billing-followups.md`.
+
+To try lost webhooks locally, start the Paddle mock with event types it should not send, and keep the buyer on its pay page:
+
+```powershell
+cd server
+$env:MOCK_PADDLE_DROP = "subscription.created"   # or "subscription.created,transaction.completed"
+$env:MOCK_PADDLE_NO_RETURN = "1"                 # "Paid", no return to the billing page
+.venv\Scripts\python.exe -m uvicorn tests.mock_paddle:app --port 8098
+.venv\Scripts\python.exe -m app.worker --run billing.reconcile   # the daily reconcile, now
+```

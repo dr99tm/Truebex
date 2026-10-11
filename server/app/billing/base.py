@@ -229,8 +229,9 @@ class BillingProvider(ABC):
         raise NotSupported(f"{self.name} cannot issue business invoices; use stripe")
 
     def reconcile(self, db: Session, subs: list[Subscription], payments: list[Payment]) -> int:
-        """Re-fetch these subscriptions and pending payments (missed webhooks).
-        Returns how many were checked."""
+        """Re-fetch these subscriptions and payments (missed webhooks): pending
+        checkouts, and paid ones whose subscription is not stored (PF2d), each
+        through `verify_payment`. Returns how many were checked."""
         return 0
 
 

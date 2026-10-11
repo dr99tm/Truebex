@@ -5,10 +5,14 @@ import { useSearchParams } from "next/navigation";
 import { ErrorNote, PageHeader, Panel } from "@/components/dashboard/DashboardShell";
 import { Button } from "@/components/ui/Button";
 import { Badge, OkNote, useMember } from "@/components/supplier/SupplierShell";
-import { SUPPLIER } from "@/lib/constants";
+import { SUPPLIER, SUPPLIER_CHECKOUT } from "@/lib/constants";
+import { refreshPayment } from "@/lib/developer";
 import { fill, formatMoney, supplierApi, type ListingView, type Statements } from "@/lib/supplier";
 
 const B = SUPPLIER.billing;
+const R = SUPPLIER_CHECKOUT;
+// A listing plan's payments carry its billing tier, `listing_<plan>` (PF8).
+const LISTING_TIER = "listing_";
 
 // The listing plan (paid through Truebex's billing), the monthly commission
 // statements with their invoices, and the Stripe payout connection.
@@ -20,6 +24,9 @@ function BillingInner() {
   const [error, setError] = useState("");
   const [note, setNote] = useState(params.get("connect") === "done" ? B.connecting : "");
   const [busy, setBusy] = useState(false);
+  const [back, setBack] = useState<{ ok: boolean; text: string } | null>(null);
+  const returned = params.get("checkout");
+  const ref = params.get("ref");
 
   useEffect(() => {
     let cancelled = false;
@@ -36,6 +43,42 @@ function BillingInner() {
       cancelled = true;
     };
   }, []);
+
+  // Back from a listing plan's checkout (PF2d): confirm the payment with the
+  // provider now, in case its webhook is late, then show the plan's state.
+  useEffect(() => {
+    if (returned === "canceled") {
+      setBack({ ok: false, text: R.canceled });
+      return;
+    }
+    if (returned !== "success" || !ref) return;
+    let cancelled = false;
+    setBack({ ok: true, text: R.confirming });
+    const attempt = async (n: number): Promise<void> => {
+      try {
+        const p = await refreshPayment(ref);
+        if (cancelled) return;
+        if (p.status === "pending" && n < 2) {
+          await new Promise((r) => setTimeout(r, 3000 * (n + 1)));
+          return attempt(n + 1);
+        }
+        const v = await supplierApi.listing();
+        if (cancelled) return;
+        setView(v);
+        const plan = v.plans.find((x) => LISTING_TIER + x.id === p.plan);
+        if (p.status === "paid" && plan && v.plan === plan.id) setBack({ ok: true, text: fill(R.active, { plan: plan.name }) });
+        else if (p.status === "paid") setBack({ ok: true, text: R.paid });
+        else if (p.status === "canceled") setBack({ ok: false, text: R.canceled });
+        else setBack({ ok: false, text: R.processing });
+      } catch {
+        if (!cancelled) setBack({ ok: false, text: R.unconfirmed });
+      }
+    };
+    void attempt(0);
+    return () => {
+      cancelled = true;
+    };
+  }, [returned, ref]);
 
   async function choose(plan: string) {
     setBusy(true);
@@ -73,6 +116,14 @@ function BillingInner() {
       <div className="space-y-6">
         {error && <ErrorNote message={error} />}
         {note && <OkNote message={note} />}
+        {back &&
+          (back.ok ? (
+            <OkNote message={back.text} />
+          ) : (
+            <p role="status" className="rounded-[var(--radius-button)] border border-border px-4 py-3 text-sm text-warn">
+              {back.text}
+            </p>
+          ))}
         {view && (
           <Panel>
             <h2 className="font-semibold">{B.plans}</h2>

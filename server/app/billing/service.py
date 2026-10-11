@@ -245,6 +245,17 @@ def find_subscription(db: Session, provider: str, provider_subscription_id: str)
     )
 
 
+def awaits_subscription(db: Session, payment: Payment) -> bool:
+    """PF2d: a paid checkout whose provider subscription is not stored yet
+    (its subscription event was lost and the fetch when it was paid failed).
+    The return-page refresh and the daily reconcile fetch it again."""
+    return (
+        payment.status == "paid"
+        and bool(payment.provider_subscription_id)
+        and find_subscription(db, payment.provider, payment.provider_subscription_id) is None
+    )
+
+
 def _same(old: object, new: object) -> bool:
     if isinstance(old, datetime) or isinstance(new, datetime):
         return _aware(old) == _aware(new)  # type: ignore[arg-type]
@@ -295,8 +306,10 @@ def upsert_subscription(
             provider_subscription_id=provider_subscription_id,
             organisation_id=organisation_id,
         )
+    # A supplier's listing plan keeps its own tier (PF8; PF2d): it is never an app plan.
+    listing = tier.startswith(LISTING_TIER_PREFIX)
     wanted: dict[str, object] = {
-        "plan": tier if tier in PLANS else "pro",
+        "plan": tier if tier in PLANS or listing else "pro",
         "interval": interval,
         "seats": max(1, int(seats or 1)),
         "status": status,
@@ -321,8 +334,8 @@ def upsert_subscription(
     if changed:
         sub.last_event_at = event_at
         db.add(sub)
-        if is_live(sub) and not sub.organisation_id:
-            # Buying for an organisation leaves the buyer's own trial alone.
+        if is_live(sub) and not sub.organisation_id and not listing:
+            # Buying for an organisation, or a listing plan, leaves the buyer's own trial alone.
             _end_trials(db, user_id)
         try:
             db.commit()

@@ -17,7 +17,9 @@ a payment row is matched only by its own transaction id. An organisation
 (PF3a, `custom_data.org_id`) is attached only from our payment row, matched
 by the subscription's originating transaction (`transaction_id` on
 subscription.created, `subscription_id` on our transaction), never from
-custom_data (billing/org_billing.py).
+custom_data (billing/org_billing.py). Every paid checkout of ours (PF2d)
+fetches the subscription its transaction names when it is not stored yet,
+so a lost subscription.created never leaves a buyer without their plan.
 """
 
 import hashlib
@@ -329,17 +331,24 @@ class PaddleProvider(BillingProvider):
             db.add(payment)
             db.commit()
 
+    def _unattached(self, db: Session, payment: Payment, sub_id: str | None) -> bool:
+        """True when our paid checkout names a subscription that is not
+        stored yet (for an organisation checkout: not yet with its
+        organisation). A one-off item (an AI credit pack) starts none."""
+        if not sub_id or payment.plan in service.ONE_OFF_ITEMS:
+            return False
+        local = service.find_subscription(db, "paddle", sub_id)
+        return local is None or (bool(payment.organisation_id) and not local.organisation_id)
+
     def _attach_from_transaction(
         self, db: Session, payment: Payment, sub_id: str | None
     ) -> None:
-        """PF3a: our organisation checkout was paid and Paddle names the
-        subscription it created. Apply it with the organisation now, unless it
-        already is, so a lost or late subscription.created never leaves the
-        organisation without its seats."""
-        if not payment.organisation_id or not sub_id:
-            return
-        local = service.find_subscription(db, "paddle", sub_id)
-        if local is not None and local.organisation_id:
+        """Our checkout was paid and Paddle names the subscription it created:
+        fetch it and apply it now, with the payment as its verified origin,
+        unless it is stored already. A lost or late subscription.created then
+        never leaves the buyer without the plan they paid for (PF3a for an
+        organisation's seats, PF2d for every checkout)."""
+        if not self._unattached(db, payment, sub_id):
             return
         try:
             self._fetch_subscription(db, sub_id, origin=payment)
@@ -423,9 +432,12 @@ class PaddleProvider(BillingProvider):
             return
         txn = self._api("GET", f"/transactions/{payment.provider_ref}")["data"]
         self._apply_transaction(db, txn)
-        if txn.get("status") in _PAID and txn.get("subscription_id"):
-            # Fetched for this payment's own transaction: the link is verified.
-            self._fetch_subscription(db, txn["subscription_id"], origin=payment)
+        sub_id = str_or_none(txn.get("subscription_id"))
+        if txn.get("status") in _PAID and self._unattached(db, payment, sub_id):
+            # Applying the transaction could not fetch it: again, and this time
+            # the error goes to the caller (the refresh and the reconcile log
+            # it). Fetched for this payment's own transaction: the link is verified.
+            self._fetch_subscription(db, sub_id, origin=payment)
 
     # --- Webhooks --------------------------------------------------------------------
 
