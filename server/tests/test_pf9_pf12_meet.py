@@ -14,7 +14,7 @@ import pytest
 
 from .licence_helpers import error_of
 from .pf12_helpers import PL, ROOT, SB, kh, make_key, sha
-from .project_helpers import FIXTURES, Person, hex32
+from .project_helpers import FIXTURES, Person, action_op, create, hex32, pushed
 from .test_mobile import _followed_set, digest_bytes
 from .test_pf12_openapi_sdks import live_api  # noqa: F401  (the fixture)
 from .test_site_pf13 import OUT, Doc, built  # noqa: F401  (built is a fixture)
@@ -87,6 +87,36 @@ def test_v1_snapshot_with_digest_round_trips(client):
     # The members PF9 names a conflict's winner from carry their author ids through /v1 too.
     members = client.get(f"/v1/projects/{pid}/members", headers=auth).json()["members"]
     assert members[0]["author_id"] == owner.author_id
+
+
+def test_api_key_edit_wins_over_a_phone_edit(client):
+    """A key's operation and the phone's `action` operation meet in one log: the later one is
+    rejected with the agent's as winning, which no member's author id names (the phone shows
+    "Someone changed this first"), and the key reads the phone's edits back through /v1."""
+    owner = Person(client, "owner@example.com")
+    key = make_key(client, owner.session, ["projects:read", "projects:write"])
+    auth = kh(key, **PL)
+    pid = create(client, owner.dev)["project_id"]
+    sofa = hex32()
+
+    agent = action_op(owner.author_id, [sofa], args={"refs": [sofa], "by_mm": [500, 0, 0]})
+    del agent["author"], agent["author_kind"]
+    res = client.post(f"/v1/projects/{pid}/ops", json={"replica_id": hex32(), "ops": [agent]}, headers=auth)
+    assert res.status_code == 200 and res.json()["results"][0]["status"] == "accepted", res.text
+
+    mine = action_op(owner.author_id, [sofa], args={"refs": [sofa], "by_mm": [-250, 0, 0]}, base_seq=0)
+    first = pushed(client, owner.web, pid, owner.replica, [mine])["results"][0]
+    assert first["status"] == "rejected" and first["reason"] == "conflict"
+    winner = first["winning"][0]
+    assert winner["author"] == format(key["id"], "032x") and winner["author_kind"] == "agent"
+    members = client.get(f"/projects/{pid}/members", headers=owner.web).json()["members"]
+    assert winner["author"] not in {m["author_id"] for m in members}
+
+    rug = hex32()
+    later = action_op(owner.author_id, [rug], tool="fill", args={"refs": [rug], "finish": "oak"}, base_seq=1)
+    assert pushed(client, owner.web, pid, owner.replica, [later])["results"][0]["status"] == "accepted"
+    via_key = client.get(f"/v1/projects/{pid}/ops", params={"after": 1}, headers=auth).json()["ops"]
+    assert [(o["kind"], o["author_kind"], o["author"]) for o in via_key] == [("action", "person", owner.author_id)]
 
 
 def test_v1_document_and_sdks_name_the_digest():
