@@ -45,15 +45,9 @@ class Replica implements OutboxStore {
 
   // --- projects ------------------------------------------------------------------------------
 
-  Stream<List<Project>> watchProjects() =>
-      (db.select(db.projects)..orderBy([(t) => OrderingTerm.desc(t.updatedAt)])).watch();
-
   Future<List<Project>> projects() => (db.select(db.projects)..orderBy([(t) => OrderingTerm.desc(t.updatedAt)])).get();
 
   Future<Project?> project(String pid) => (db.select(db.projects)..where((t) => t.projectId.equals(pid))).getSingleOrNull();
-
-  Stream<Project?> watchProject(String pid) =>
-      (db.select(db.projects)..where((t) => t.projectId.equals(pid))).watchSingleOrNull();
 
   /// The list of 5.2 (complete): new and changed records in, unshared ones out with their data.
   Future<void> putProjectList(List<ProjectRecord> records) => db.transaction(() async {
@@ -247,15 +241,6 @@ class Replica implements OutboxStore {
 
   @override
   Future<void> remove(String opId) => (db.delete(db.outboxEntries)..where((t) => t.opId.equals(opId))).go();
-
-  Stream<int> watchPending(String pid) {
-    final count = db.outboxEntries.opId.count();
-    return (db.selectOnly(db.outboxEntries)
-          ..addColumns([count])
-          ..where(db.outboxEntries.projectId.equals(pid) & db.outboxEntries.state.equals('pending')))
-        .map((row) => row.read(count) ?? 0)
-        .watchSingle();
-  }
 
   Future<Map<String, int>> pendingCounts() async {
     final count = db.outboxEntries.opId.count();

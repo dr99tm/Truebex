@@ -4,7 +4,16 @@
 
 ## Status
 
-No native client exists (`00-contract.md` P.1). What this builds on, verified with Grep on 2026-10-09:
+**Built 2026-10-11** on `ap/t13-pf10-android-native-app` (on PF9's branch with master merged: PF4, PF6, PF7, PF9,
+PF11 …): the Flutter app `com.truebex.app` in `mobile/android/` (replica, outbox, WorkManager sync, PF9's viewer in a
+web view served from the phone's tile cache, Keystore session, Google through Credential Manager), the light clients'
+OpenAPI document `openapi/clients.json` with both clients generated from it (`src/lib/api-clients.d.ts` for PF9,
+`mobile/android/lib/api/gen/` for PF10), the mobile gate `scripts/verify-mobile.ps1`, the store listing in
+`mobile/android/store/`, and a live run on an Android 16 emulator (debug and release builds). Waiting on others:
+CL1 / CL4 applying `action` operations on the desktop, CL3's real renders (the screenshots show the stand-in
+renderer), and the owner's GD4 actions (Play account, upload key, Android OAuth client). See As-built.
+
+Before this task no native client existed (`00-contract.md` P.1). What this builds on, verified with Grep on 2026-10-09:
 
 | Area | Where | Today |
 |---|---|---|
@@ -94,11 +103,15 @@ Retry and backoff follow `project-log.md` §8 (1, 2, 4 … 60 s ± 20 %, `Retry-
 
 ## Deliverables
 
-- [ ] `mobile/android/` Flutter project: `lib/` (`api/` generated client, `replica/`, `outbox/`, `sync/`, `viewer/` web view host with offline interception, `screens/`), `assets/viewer/` (PF9's built viewer bundle copied at build time), `test/`
-- [ ] `server/scripts/export_openapi.py`, `openapi/clients.json`; `scripts/gen-clients.ps1` (TypeScript types for PF9, the Dart client for PF10)
-- [ ] `scripts/verify-mobile.ps1`: `flutter analyze`, `flutter test`, `flutter build apk --debug` (a separate gate, so the main verify gate does not need the Flutter SDK)
-- [ ] `mobile/android/store/` (icon, feature graphic, screenshots, `listing.en.md`, `data-safety.md`, `content-rating.md`)
-- [ ] `eslint.config.mjs` ignores `mobile/**`; README section "Android app"
+- [x] `mobile/android/` Flutter project: `lib/` (`api/` generated client, `replica/`, `outbox/`, `sync/`, `viewer/` web view host with offline interception, `screens/`), `assets/viewer/` (PF9's built viewer bundle copied at build time), `test/`
+- [x] `server/scripts/export_openapi.py`, `openapi/clients.json`; `scripts/gen-clients.ps1` (TypeScript types for PF9, the Dart client for PF10)
+- [x] `scripts/verify-mobile.ps1`: `flutter analyze`, `flutter test`, `flutter build apk --debug` (a separate gate, so the main verify gate does not need the Flutter SDK)
+- [x] `mobile/android/store/` (icon, feature graphic, screenshots, `listing.en.md`, `data-safety.md`, `content-rating.md`)
+- [x] `eslint.config.mjs` ignores `mobile/**`; README section "Android app"
+- [x] Beyond the list: `server/app/mobile/clients.py` (the answers the document describes), `src/viewer/native.ts` +
+  `scripts/build-mobile-viewer.mjs` (the viewer's host page), `scripts/make_android_assets.py` (launcher, status and
+  store icons, screenshots, feature graphic), `scripts/try-android.ps1` + `scripts/android_relay.py` (the human test),
+  the privacy page's Android section (`ANDROID_APP_PRIVACY`)
 
 ## Tests
 
@@ -137,8 +150,97 @@ Retry and backoff follow `project-log.md` §8 (1, 2, 4 … 60 s ± 20 %, `Retry-
 
 ## As-built
 
-* Date, branch, commits:
-* Counts (pytest before → after; flutter tests; APK size):
-* Deviations from Design and why:
-* GD4 actions done by the owner (Play account, keys, OAuth client):
-* Carry-over → which feature (device link flow, iOS):
+* **Date, branch, commits:** 2026-10-11, `ap/t13-pf10-android-native-app`, made from T12's branch (PF9). Autopilot's
+  merge of master stopped on three conflicts, resolved by keeping both sides in `564d323` (README: PF9's "Mobile web
+  client" and PF11's "Analysis and AI services" sections; `server/app/main.py`: both routers; `constants.ts`: `APP`
+  and `CLOUD_AI` / `ADMIN_AI`). Nothing else needed reconciling: on the merged tree `pip install -r
+  requirements-dev.txt`, lint, build and pytest (480 passed, 5 skipped) were green before any PF10 change. Commits:
+  `a6032ae` (the app, the document, both clients, the tests), `6653498` (store, icons, try-android, privacy, fixes
+  from the emulator run) and the docs commit ticking this row.
+* **Counts:** pytest 480 → 489 passed (5 skipped): `tests/test_pf10_clients.py` 9 — the doc's three names, the
+  generated clients come from this document (`SPEC_SHA256`, the `.d.ts` header, a Dart method per operation), the
+  real routes answer exactly the documented shapes (one project walked through all 16 operations; no key the
+  document lacks), the contract fixtures are the shared vectors, the store assets (sizes, lengths, brand words),
+  the app's strings, the mobile gate and the lint ignore. Flutter: 39 tests (`flutter analyze` clean) — the doc's six
+  names (`action_builder_matches_fixture`, `outbox_reconcile_rules` on the in-memory and the SQLite store,
+  `replica_pull_pages_and_head`, `sync_backoff_matches_contract`, `tile_cache_lru_budget`,
+  `viewer_offline_interception`) plus the sync engine end to end (an offline edit sent by the background job; a
+  conflict notified as "Sam changed this first …"; "on another device"; silent Google renewal; prefetch of a starred
+  project; every view of an opened project kept for offline hotspots; an unshared project leaving the phone;
+  sign-out wiping; presence as `android`) and the screens.
+  `scripts/verify-mobile.ps1` green in 159 s. APKs: debug 186.4 MB (all ABIs); release, split per ABI: arm64-v8a
+  21.1 MB, armeabi-v7a 18.7 MB, x86_64 22.4 MB. The viewer bundle: 7.0 KB.
+  **Live run** (Android 16 emulator `Medium_Phone_API_36`, x86_64, headless and read-only; the local API with PF6's
+  worker and `fake_truebex.py`, `demo_mobile.py setup`, `seed_market.py`; reached through `adb reverse` and a relay):
+  sign-in by e-mail; "House (Owner)" listed and starred; the panorama drawn by PF9's viewer from the app's loopback
+  server, its Bedroom hotspot switching views; rooms by storey with "£1,299.00" from `/market/prices`; airplane mode +
+  relay down → Kitchen → West wall → Sage green reads "Waiting for connection"; app closed (home + process kill);
+  reconnect → WorkManager's `truebex.sync.now` (blocked only on CONNECTIVITY) sent it **17 s** later with the app
+  closed (operation 13, `fill`), no notification; the worker's `tiles` job → the open panorama read "Panorama at
+  operation 14 · 6 faces updated"; an offline edit of the same wall while Sam's device moved it (`demo_mobile.py
+  move`) → reconnect with the app closed → the notification "Edit replaced · House — Wall finish: Chalk white
+  (Kitchen, West wall): Sam changed this first — your edit was replaced" **15 s** later, the replaced edit never in
+  the log, the History tab listing it with Dismiss beside Sam's operation; Sam's `GET …/presence` listing Alex as
+  `client: "android"` with storey, eye and bearing; relaunch with no network → the cached panorama and the Offline
+  banner; Settings "Projects 92 KB · Panorama tiles 530 KB"; sign-out → 0 tiles, the Keystore-backed store an empty
+  map, the sign-in screen. The **release** x86_64 build (R8) repeated sign-in, the panorama and the closed-app
+  conflict (notification in 9 s). Not run on a physical phone here (none attached), and Google sign-in not run live
+  (no OAuth client, GD4): the human test does both.
+* **Deviations from Design and why:**
+  1. *The document is enriched, not only cut from FastAPI's schema.* PF4's and PF6's routes return dicts and 5.6
+     reads its body itself, so FastAPI's schema names no answer. `server/app/mobile/clients.py` holds Pydantic models
+     of the answers (and the existing `PushIn`, `PresenceIn`, `PricesRequest` for bodies); the export puts them into the
+     schema of the same routes, and `test_routes_answer_the_documented_shapes` fails on any key a route sends that the
+     document lacks (the marketplace models name only what the clients read). Every model allows unknown keys.
+  2. *One export script, PF12's CLI shape.* T8's `server/scripts/export_openapi.py` (PF12, `--v1`) is not in this
+     tree; this one has the same shape (`render()`, `--out`, `--check`, a `DOCUMENTS` table of flag → (file, builder))
+     with `--clients`. Merging the two: keep T8's `build()` and its constants, add `CLIENTS_OUT`, `build_clients()` and
+     the `--clients` flag, and put `"v1": (OUT, build)` in `DOCUMENTS` beside `"clients"`. Each document keeps its own
+     drift test (`test_pf12_openapi_sdks.py`, `test_pf10_clients.py`). `scripts/gen-clients.ps1` stays separate from
+     T8's `scripts/gen-sdks.ps1`; both pin openapi-typescript 7.13.0.
+  3. *Generators:* the Dart client by OpenAPI Generator 7.26.0 (`dart`, Apache-2.0; the jar is fetched into
+     `mobile/.tools/` and checked against Maven Central's SHA-1); PF9's types by openapi-typescript (MIT), as PF12 does
+     for its SDK, since PF9 needs types, not a second fetch layer. PF9 now reads `Me`, the snapshot, `PanoramaSet`,
+     5.6's and 5.7's answers, prices, search and product through `src/lib/api-clients.d.ts`; `src/viewer/outbox.ts`'s
+     `PushResult` accepts `null` where the document says the server may send it. The generated Dart code is in
+     `lib/api/gen/` (outside the analyzer) and carries the document's SHA-256.
+  4. *"Offline interception" is an in-app loopback server.* `webview_flutter` exposes no request interception, so the
+     page and every tile come from `TileServer` on 127.0.0.1 (a random port and a random path; another app on the phone
+     cannot read through it): cache first, then the manifest's `tiles_base`, with the bytes checked against the tile's
+     name. The release network security config allows cleartext only to 127.0.0.1; debug builds allow it everywhere
+     (the LAN test server).
+  5. *The replica:* pulled from operation 0 so the whole history is readable offline; a delta is kept as the base64
+     text that arrived (never decoded); `base_seq` is the highest operation the phone holds (PF9 uses its head the
+     same way). Rejected and failed edits the person dismisses stay as tombstones, so their `op_id` can never be queued
+     again.
+  6. *Notifications:* every rejection is notified once, also while the app is open (and listed in the history); an
+     accepted edit makes none. The status icon is a white mark (`ic_stat_truebex`).
+  7. *Robustness found on the device:* a push that finds no network sets the project offline at once ("Waiting for
+     connection"); empty long-polls are at least 2 s apart, so a server that answers at once never spins the loops;
+     presence carries the view on screen; an opened project's other views are fetched one at a time while online (as
+     PF9 does), so a hotspot opens offline too. The project list refreshes explicitly (after a sync, a star, a project
+     closing) instead of a database watch.
+  8. *Toolchain:* Kotlin incremental compilation is off (`kotlin.incremental=false`; the pub cache on C: and the
+     checkout on X: break its caches). `workmanager_android` 0.10.9 still applies the Kotlin Gradle plugin; Flutter
+     warns that a future release will refuse it (carry-over below). Release signing reads `android/key.properties`
+     (git-ignored); without it a release build is signed with the debug key and is not for the store.
+  9. *The human test path:* the phone reaches the local API through `adb reverse` (PF9's `try-mobile.ps1` binds
+     127.0.0.1); `adb reverse` keeps working in airplane mode, so `scripts/try-android.ps1` routes it through
+     `scripts/android_relay.py`, and going offline is airplane mode **and** stopping the relay.
+  10. *Also changed outside `mobile/`:* the privacy page gains "Android app: what stays on your phone"
+      (`ANDROID_APP_PRIVACY`, appended to `constants.ts`; Play requires the policy to cover the app); `eslint.config.mjs`
+      ignores `mobile/**`; README gains the "Android app" section.
+  11. *Store assets* were captured on the emulator: the panorama shows the stand-in renderer's test faces, so
+      `mobile/android/store/listing.en.md` lists a retake (and CL1 / CL4) before submission.
+* **GD4 actions by the owner (none done here):** the Play Console account; the upload key and
+  `mobile/android/android/key.properties`; an Android OAuth client for `com.truebex.app` with the upload key's SHA-1
+  (and the debug key's for test builds) in the Google Cloud project of the Web client id, then builds with
+  `--dart-define=GOOGLE_SERVER_CLIENT_ID=<the Web client id>`; Play's current target API level; the Data safety and
+  content-rating forms from `mobile/android/store/`.
+* **Carry-over → which feature:** the device link flow for light clients (a longer-lived credential) → needs a
+  fingerprint rule for Android in `licence-api.md` §6.2 first (owner, then a platform task); iOS → not in roadmap 40
+  (platform calls are behind interfaces: `SecretStore`, `GoogleTokens`, `SyncScheduler`, `Notifier`, `ViewerSurface`);
+  Arabic strings → LO1 (`lib/l10n/`); applying `action` operations and re-rendering → CL1, CL4; real renders for the
+  screenshots → CL3; `workmanager_android`'s built-in Kotlin migration → upgrade when the plugin ships it.
+  Contracts: PF10 is a client only — no §11 rows and no new proposals (it uses PF9's `digest`, `place.replace`,
+  members' `author_id` and the members' panorama read).

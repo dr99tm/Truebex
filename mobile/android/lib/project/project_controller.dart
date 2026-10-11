@@ -20,6 +20,7 @@ import '../replica/database.dart';
 import '../replica/replica.dart';
 import '../services.dart';
 import '../sync/backoff.dart';
+import '../sync/sync_engine.dart';
 
 enum ProjectStatus { loading, ready, missing, signedOut }
 
@@ -107,6 +108,7 @@ class ProjectController extends ChangeNotifier {
     }));
     await sync(first: true);
     if (_disposed || status != ProjectStatus.ready) return;
+    _keepViews(set);
     unawaited(_followLog());
     unawaited(_followSet());
     _scheduleBeat(Duration.zero);
@@ -231,6 +233,7 @@ class ProjectController extends ChangeNotifier {
           set = state;
           await _replica.putManifest(pid, setId, state);
           if (project?.starred ?? false) unawaited(services.scheduler.prefetchWhenIdle());
+          _keepViews(state);
           _changed();
         }
       } on ApiFailure catch (e) {
@@ -245,6 +248,17 @@ class ProjectController extends ChangeNotifier {
         await _sleep(backoff.next());
       }
     }
+  }
+
+  /// Every view's tiles at the level this phone shows, fetched one at a time
+  /// while online, so a hotspot leads to a room that opens offline too (as PF9).
+  void _keepViews(SetState? state) {
+    final m = state?.manifest;
+    if (m == null || offline || !manifestReadable(m)) return;
+    services.tileServer.remoteBase = m.tilesBase;
+    unawaited(services.tileServer
+        .prefetch(manifestTiles(m, services.engine.needPx), keepGoing: () => !_disposed && !offline)
+        .catchError((_) => 0));
   }
 
   /// Presence (5.17) as `client: "android"` with the view the person looks at.

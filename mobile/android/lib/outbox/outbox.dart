@@ -104,13 +104,6 @@ abstract class OutboxStore {
   Future<OutboxEntry?> get(String opId);
 }
 
-/// A push answered as a whole with an error; `retry` says whether sending it again may work.
-class PushFailure implements Exception {
-  PushFailure(this.failure);
-  final ApiFailure failure;
-  bool get retry => failure.retryable || failure.unauthenticated;
-}
-
 typedef PushFn = Future<PushAnswer> Function(String replicaId, List<Map<String, Object?>> ops);
 
 class FlushOutcome {

@@ -172,6 +172,23 @@ void main() {
     expect(log.tileRequests.length, asked);
   });
 
+  test('an opened project keeps every view at the phone level, so hotspots open offline', () async {
+    log.follow();
+    final services = await testServices(log, notifier: notices, scheduler: scheduler);
+    await services.auth.signInWithPassword('alex@example.com', 'password123');
+    final c = ProjectController(services, pid, connectivity: const Stream.empty());
+    await c.start();
+    final m = (await services.replica.manifest(pid, FakeLog.setId))!.manifest!;
+    final want = manifestTiles(m, services.engine.needPx).toSet();
+    for (var i = 0; i < 50 && !(await Future.wait(want.map(services.tiles.has))).every((x) => x); i++) {
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+    }
+    for (final sha in want) {
+      expect(await services.tiles.has(sha), isTrue);
+    }
+    c.dispose();
+  });
+
   test('a project no longer shared leaves the phone', () async {
     final services = await testServices(log, notifier: notices, scheduler: scheduler);
     await services.auth.signInWithPassword('alex@example.com', 'password123');
