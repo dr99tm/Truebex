@@ -131,6 +131,27 @@ void main() {
     expect(notices.shown.single, endsWith('You changed this first on another device — your edit was replaced'));
   });
 
+  test('a winner pushed with an API key (an agent through /v1) reads "Someone"', () async {
+    final services = await testServices(log, notifier: notices, scheduler: scheduler);
+    await services.auth.signInWithPassword('alex@example.com', 'password123');
+    final c = await openOffline(services);
+    await c.edit(wallEdit());
+    final mine = c.entries.single;
+    c.dispose();
+    // PF12: a key's push carries the key's own author id, which is no member's.
+    const keyAuthor = '0199c6a2f0007000a0000000000000aa';
+    log.append({'op_id': 'f0000000000000000000000000000011', 'author': keyAuthor, 'author_kind': 'agent',
+      'at': '2026-10-09T11:00:00.000Z', 'touched': [kitchenWall], 'kind': 'delta', 'name': 'Move wall', 'base_seq': 0,
+      'delta': 'VEJYRA==', 'delta_format': 'o5/38'}, replica: 'f1000000000000000000000000000002');
+    log.online = true;
+    final report = await services.engine.syncAll();
+    expect(report.rejected, 1);
+    expect(notices.shown, ['Wall finish: Sage green (Kitchen, North wall): Someone changed this first — your edit was replaced']);
+    expect((await services.replica.get(mine.opId))!.winning.single.author, keyAuthor);
+    final history = await services.replica.history(pid, me: alexAuthor);
+    expect(history.any((h) => h.author == keyAuthor && !h.mine), isTrue, reason: 'the agent operation is pulled and kept');
+  });
+
   test('a lapsed Google session is renewed silently; a password one signs out', () async {
     final google = FakeGoogle(token: 'google-id-token-for-web-client', silentToken: 'google-id-token-silent');
     final services = await testServices(log, notifier: notices, scheduler: scheduler, google: google);
