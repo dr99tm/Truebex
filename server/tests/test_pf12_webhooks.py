@@ -438,7 +438,8 @@ def test_webhooks_market_order_and_feed_events(client, resolver, receiver, monke
     assert client.post(f"/market/orders/{order_id}/cancel", headers=with_contract(buyer)).status_code == 200
     run()
     updates = [b["data"] for b in receiver.bodies() if b["type"] == "market.order.updated"]
-    assert [u["state"] for u in updates] == ["submitted", "cancelled"] and {u["order_id"] for u in updates} == {order_id}
+    # Deliveries go out in parallel (delivery.PARALLEL), so the two may arrive in either order.
+    assert sorted(u["state"] for u in updates) == ["cancelled", "submitted"] and {u["order_id"] for u in updates} == {order_id}
 
     # A supplier's members hear when a feed run ends.
     no_internet(monkeypatch)

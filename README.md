@@ -1130,3 +1130,65 @@ they are metered and burst-limited like every `/v1` call. The SDKs have
 Try it: `scripts\try-mobile.ps1` (the API on :8000, a render worker, the demo
 House with a followed set), a key from Dashboard → API keys, then
 `curl.exe -H "Authorization: Bearer tbx_live_…" http://127.0.0.1:8000/v1/projects/<project id>/panoramas`.
+
+## Sell on Truebex page (PF13a)
+
+`/suppliers/` is the public page for suppliers (`src/app/suppliers/page.tsx`, `src/components/suppliers/SellPage.tsx`,
+copy in `SELL_PAGE` in `src/lib/constants.ts`). It says what the supplier portal does today, how the first suppliers
+are onboarded (every application and every product reviewed by hand) and what is "On the roadmap" (the catalogue
+inside the app, its live cost, card payments for orders; no dates, no fees), and its one button, "Apply as a
+supplier", opens the portal's sign-up `/supplier/signup/`. The page is indexable, in the sitemap, with WebPage,
+BreadcrumbList and FAQPage JSON-LD built from the same copy; the portal under `/supplier/` stays noindex and
+disallowed (`robots.txt` rules are prefixes, so `/supplier/` does not cover `/suppliers/`). The footer and the
+marketplace feature page's "Sell on Truebex" button link to it. English only. Build checks:
+`server/tests/test_site_pf13a.py`. When a roadmap card ships, move it to "What you get" in the present tense.
+
+## Member usage (PF3b)
+
+The organisation console's Member usage tab (`/dashboard/organisation/usage/`, owners and admins) shows, per
+member and month, each member's own account: devices, last activity, API requests, floating-seat hours, and
+
+- **Cloud storage**: what the member's own projects hold now (PF4's `cloud_bytes` figure,
+  `projects.quotas.bytes_used`), for the current month only (storage is a level with no history; earlier months
+  show "—");
+- **Panoramas**: their `panorama` render jobs that succeeded in the month (PF6); a followed set's `tiles` updates
+  are not counted again;
+- **AI credits**: credits spent in the month (PF11's ledger: `usage` rows less `refund` rows).
+
+`GET /orgs/{id}/usage?month=YYYY-MM` reads each column with one grouped query (`server/app/orgs/usage.py`).
+To try it on a local API, give a member some usage (in `server/`):
+
+```powershell
+.venv\Scripts\python.exe scripts\seed_member_usage.py --email member@example.com [--bytes 268435456] [--panoramas 2] [--credits 1250]
+```
+
+It writes a project of that size, succeeded panorama jobs and two assistant turns through each feature's own
+models, and prints what the tab shows. Each run adds to what is there.
+
+## Marketplace search on Postgres (PF7a)
+
+Marketplace search finds the same products on the production stack (Postgres on the VM) as on SQLite, and
+picture search can be switched on there. Code: `server/app/market/search.py` (`PgIndex`, `fold`,
+`fill_if_empty`), the DDL at the end of `server/app/market/models.py`; doc
+`docs/roadmap/40/PF7a-marketplace-search-production.md`.
+
+- **Text search.** `index_for` picks SQLite FTS5 (`market_search_fts`) or Postgres full-text
+  (`market_search_tsv`: the folded words of each product's name and body, a tsvector weighting the name above
+  the body, `simple` configuration, GIN index); `LikeIndex` stays the fallback for other databases. Both find a
+  product by its name, description, brand, SKU, category labels, supplier, variant options, materials, GTINs
+  and classification codes; every word must match, as a prefix, ignoring case and accents. 5.3's answer is
+  unchanged.
+- **Derived data.** The index is created and dropped with the tables, filled at a start that finds it empty
+  beside products, and rebuilt by `scripts.sqlite_to_postgres` after the copy (`search index rebuilt: <n>
+  products`); `POST /admin/market/search/rebuild` rebuilds it by hand.
+- **Picture search on the VM.** `infra/host/compose.yaml` mounts the `models` volume in `api` and `worker` at
+  `EMBEDDING_DIR=/app/models`. Once per VM: `docker compose exec api python scripts/fetch_models.py --dir
+  /app/models`, then `EMBEDDING_MODEL=clip-vit-b32` in `server.sops.env` and a deploy; the worker embeds the
+  existing products (deploy skill, *API*).
+- **Tests on Postgres:**
+
+  ```powershell
+  cd server
+  $env:TEST_DATABASE_URL = 'postgresql+psycopg://truebex:<password>@127.0.0.1:<port>/<disposable db>'
+  .venv\Scripts\python.exe -m pytest -q -m postgres -k market
+  ```

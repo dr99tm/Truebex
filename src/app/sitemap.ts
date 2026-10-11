@@ -1,5 +1,5 @@
 import type { MetadataRoute } from "next";
-import { DEVELOPER_DOCS, FEATURE_PAGES, SITE } from "@/lib/constants";
+import { DEVELOPER_DOCS, FEATURE_PAGES, SELL_PAGE, SITE } from "@/lib/constants";
 import { HOME_LANGUAGES } from "@/lib/seo";
 
 export const dynamic = "force-static";
@@ -38,6 +38,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
         changeFrequency: "monthly" as const,
         priority: 0.5,
       })),
+    { url: `${SITE.url}${SELL_PAGE.path}`, lastModified: now, changeFrequency: "monthly", priority: 0.6 }, // PF13a
     { url: `${SITE.url}/signup/`, lastModified: now, changeFrequency: "yearly", priority: 0.4 },
     { url: `${SITE.url}/privacy/`, lastModified: now, changeFrequency: "yearly", priority: 0.2 },
     { url: `${SITE.url}/terms/`, lastModified: now, changeFrequency: "yearly", priority: 0.2 },

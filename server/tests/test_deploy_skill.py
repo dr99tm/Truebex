@@ -146,3 +146,24 @@ def test_deploy_skill_commands_exist():
     assert {"publish_release", "sync_prices", "upload_symbols"} <= py
     for name in py:
         assert (ROOT / "server" / "scripts" / f"{name}.py").exists() or (ROOT / "scripts" / f"{name}.py").exists(), name
+
+
+def test_deploy_skill_picture_search_steps():
+    """PF7a: the one-off steps that switch picture search on, on the VM, in
+    order, at the folder Compose mounts the `models` volume on."""
+    from app import tasks
+
+    compose = (ROOT / "infra" / "host" / "compose.yaml").read_text(encoding="utf-8")
+    folders = set(re.findall(r"EMBEDDING_DIR: (\S+)", compose))
+    assert len(folders) == 1, folders  # api and worker agree
+    folder = folders.pop()
+    api = _section(_skill(), "API")
+    fetch = re.search(r"docker compose exec api python scripts/fetch_models\.py --dir ([^\s`]+)", api)
+    assert fetch and fetch.group(1) == folder
+    switch = re.search(r"server\.sops\.env[^\n]*EMBEDDING_MODEL=clip-vit-b32", api)
+    assert switch
+    run = re.search(r"docker compose exec worker python -m app\.worker --run ([\w.]+)", api)
+    assert run and run.group(1) == "market.embeddings" and run.group(1) in tasks.registered()
+    assert fetch.start() < switch.start() < run.start()
+    # The search index needs no step: named as derived and how it is rebuilt.
+    assert "market_search_tsv" in api and "/admin/market/search/rebuild" in api

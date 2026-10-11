@@ -217,3 +217,10 @@ def init_db(bind: Engine | None = None, *, seed: bool = True) -> None:
 
         with Session(bind) as db:
             _market_taxonomy.seed(db)
+
+    # PF7a: the marketplace's search index is derived data. A start that finds
+    # it empty beside products fills it (the first start on a database from
+    # before the index, a restore); after the migrations and the seed above.
+    from .market import search as _market_search
+
+    _market_search.fill_if_empty(bind)
