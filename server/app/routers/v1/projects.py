@@ -1,8 +1,10 @@
-"""`/v1/projects…`: the project-log contract (5.1-5.18) for API keys (PF12).
+"""`/v1/projects…`: the project-log contract (5.1-5.18) for API keys (PF12),
+and a project's followed panorama sets (PF12a).
 
 Every route hands the call to the contract router's own handler
-(`app/routers/projects.py`) with the key as an `api_key` caller, so shapes,
-roles, quotas, idempotency and errors are the contract's. What the key adds:
+(`app/routers/projects.py`; for the panorama sets PF9's `app/routers/mobile.py`)
+with the key as an `api_key` caller, so shapes, roles, quotas, idempotency and
+errors are the contract's. What the key adds:
 its scope (`projects:read` / `projects:write`), metering and the burst limit
 (`deps.api_key_auth`). Deleting stays the website's (403 `session_required`),
 and operations a key pushes are `author_kind: "agent"` with the key's own
@@ -21,6 +23,7 @@ from ...deps import ApiCaller
 from ...idempotency import Idempotency, idempotent
 from ...projects import ops, service
 from ...scopes import author_for_key
+from .. import mobile
 from .. import projects as c
 from . import models as m
 from .common import AnyKey, carry, doc, project_caller, scope
@@ -240,3 +243,28 @@ def heartbeat(project_id: str, body: m.PresenceHeartbeat, api: ApiCaller = Write
 def who_is_here(project_id: str, api: ApiCaller = Read, db: Session = Depends(get_db)) -> dict:
     """Who is in the project now (5.18)."""
     return c.who_is_here(project_id=project_id, caller=project_caller(api), db=db)
+
+
+# --- followed panorama sets (PF12a: PF9's member reads, a render-jobs §5 MINOR proposal) -------------
+
+
+@router.get("/{project_id}/panoramas", operation_id="projects_panoramas_list", **doc("projects:read", m.PanoramaSetList, errors=(401, 403, 404, 429)))
+def list_panoramas(project_id: str, response: Response, api: ApiCaller = Read, db: Session = Depends(get_db)) -> dict:
+    """The project's followed panorama sets, kept current by its members' accounts (any role); never cached."""
+    return mobile.list_panoramas(project_id=project_id, response=response, caller=project_caller(api), db=db)
+
+
+@router.get("/{project_id}/panoramas/{set_id}", operation_id="projects_panoramas_get", **doc("projects:read", m.PanoramaSetState))
+async def panorama_set(
+    project_id: str,
+    set_id: str,
+    response: Response,
+    rev: int | None = None,
+    wait_s: float = 0,
+    api: ApiCaller = Read,
+    db: Session = Depends(get_db),
+) -> dict:
+    """A followed set's newest tile manifest; with `rev` and `wait_s` ≤ 25 it waits until the set's `rev` passes `rev`."""
+    return await mobile.panorama_set(
+        project_id=project_id, set_id=set_id, response=response, rev=rev, wait_s=wait_s, caller=project_caller(api), db=db
+    )

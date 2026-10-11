@@ -452,6 +452,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/projects/{project_id}/panoramas": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Panoramas
+         * @description The project's followed panorama sets, kept current by its members' accounts (any role); never cached.
+         */
+        get: operations["projects_panoramas_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/projects/{project_id}/panoramas/{set_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Panorama Set
+         * @description A followed set's newest tile manifest; with `rev` and `wait_s` ≤ 25 it waits until the set's `rev` passes `rev`.
+         */
+        get: operations["projects_panoramas_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/projects/{project_id}/presence": {
         parameters: {
             query?: never;
@@ -1441,6 +1481,82 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
+        /**
+         * PanoramaSet
+         * @description A followed panorama set of the project: a `follow: true` panorama job (render-jobs 5.1) that a member's
+         *     account keeps current from the log.
+         */
+        PanoramaSet: {
+            /**
+             * At Seq
+             * @description The log position the newest render shows
+             */
+            at_seq: number;
+            /**
+             * Following
+             * @description false once the set stopped following; its last render still shows
+             */
+            following: boolean;
+            /**
+             * Mine
+             * @description true when the key's own account keeps the set
+             */
+            mine: boolean;
+            /**
+             * Rev
+             * @description Moves each time a render of the set finishes; wait for it with the set's read
+             */
+            rev: number;
+            /**
+             * Set Id
+             * @description 32 hex: the follow job's id
+             */
+            set_id: string;
+            /** Updated At */
+            updated_at: string;
+            /**
+             * Views
+             * @description The saved views (32 hex ids) the set renders
+             */
+            views: string[];
+        } & {
+            [key: string]: unknown;
+        };
+        /**
+         * PanoramaSetList
+         * @description The sets of the project's active members, those still following first, then the newest first.
+         */
+        PanoramaSetList: {
+            /** Sets */
+            sets: components["schemas"]["PanoramaSet"][];
+        } & {
+            [key: string]: unknown;
+        };
+        /**
+         * PanoramaSetState
+         * @description A set's newest render; `manifest` and `job_id` are null until its first render finishes.
+         */
+        PanoramaSetState: {
+            /** At Seq */
+            at_seq: number;
+            /**
+             * Follow Job Id
+             * @description The set's id
+             */
+            follow_job_id: string;
+            /** Following */
+            following: boolean;
+            /**
+             * Job Id
+             * @description The job whose output is the newest manifest
+             */
+            job_id: string | null;
+            manifest: components["schemas"]["TileManifest"] | null;
+            /** Rev */
+            rev: number;
+        } & {
+            [key: string]: unknown;
+        };
         /** Ping */
         Ping: {
             /** Ok */
@@ -1932,6 +2048,75 @@ export interface components {
             verified: boolean;
             /** Website */
             website: string | null;
+        } & {
+            [key: string]: unknown;
+        };
+        /**
+         * TileFace
+         * @description One cube face: `tiles[L]` lists level L's tile hashes row by row from the top-left.
+         */
+        TileFace: {
+            /**
+             * Reason
+             * @description full, changed or light when this render drew the face; carried when it kept the last one
+             */
+            reason: string;
+            /** Rendered */
+            rendered: boolean;
+            /** Tiles */
+            tiles: string[][];
+        } & {
+            [key: string]: unknown;
+        };
+        /**
+         * TileManifest
+         * @description The render's tile manifest (render-jobs §6.2): its `schema` is `truebex-tiles/1` (refuse a major version you
+         *     do not know). A tile is `<tiles_base>/<sha256>.jpg`: immutable and shared between renders, so a client fetches
+         *     only the hashes it has not seen.
+         */
+        TileManifest: {
+            /** At Seq */
+            at_seq: number;
+            /** Faces Rendered */
+            faces_rendered?: number | null;
+            /** Faces Reused */
+            faces_reused?: number | null;
+            /** Job Id */
+            job_id: string;
+            /** Project Id */
+            project_id?: string | null;
+            /** Tiles Base */
+            tiles_base: string;
+            /** Views */
+            views: components["schemas"]["TileView"][];
+        } & {
+            [key: string]: unknown;
+        };
+        /**
+         * TileView
+         * @description A saved view's cube: faces n, e, s and w look north (+Y), east, south and west from `eye_mm`; u looks up and
+         *     d down. Level L is `levels[L]` px square, cut into tiles of `tile_px`.
+         */
+        TileView: {
+            /** Eye Mm */
+            eye_mm: number[];
+            /** Face Px */
+            face_px: number;
+            /** Faces */
+            faces: {
+                [key: string]: components["schemas"]["TileFace"];
+            };
+            /** Levels */
+            levels: number[];
+            /** Tile Px */
+            tile_px: number;
+            /** Title */
+            title?: string | null;
+            /**
+             * View
+             * @description The saved view's id (32 hex)
+             */
+            view: string;
         } & {
             [key: string]: unknown;
         };
@@ -4007,6 +4192,144 @@ export interface operations {
             };
             /** @description Too large (`too_large`). */
             413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Validation failed (`validation_failed`, `data.fields`), or a contract rule (`code`). */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Burst limit or monthly quota reached (`rate_limited`, `retry_after_s`). */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    projects_panoramas_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PanoramaSetList"];
+                };
+            };
+            /** @description Missing, malformed, invalid or revoked API key (`unauthenticated`). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The key lacks the scope (`forbidden`, `data.needed`), the role is too low, or the plan lacks the feature. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unknown, or not visible to this key's account (`not_found`). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Burst limit or monthly quota reached (`rate_limited`, `retry_after_s`). */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    projects_panoramas_get: {
+        parameters: {
+            query?: {
+                rev?: number | null;
+                wait_s?: number;
+            };
+            header?: never;
+            path: {
+                project_id: string;
+                set_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PanoramaSetState"];
+                };
+            };
+            /** @description Missing, malformed, invalid or revoked API key (`unauthenticated`). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The key lacks the scope (`forbidden`, `data.needed`), the role is too low, or the plan lacks the feature. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unknown, or not visible to this key's account (`not_found`). */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

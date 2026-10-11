@@ -6,6 +6,8 @@ GET /projects/{pid}/panoramas/{set_id}   one set's newest manifest; long-poll wi
 
 Auth as every project route (contract project-log §4): a session (the web
 client) or a device token; 404 for non-members. Answers are never cached.
+API keys read the same sets through `/v1/projects/{pid}/panoramas…`
+(`routers/v1/projects.py`, PF12a), which hands each call to these handlers.
 """
 
 import asyncio
