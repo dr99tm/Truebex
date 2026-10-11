@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- PF10: the brand's page colour behind the splash (the launcher icon shows on it). -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <color android:color="#161616" />
+    </item>
+</layer-list>

@@ -16,6 +16,8 @@ const eslintConfig = defineConfig([
     // generated clients), not the site.
     "sdks/**",
     "packages/**",
+    // PF10: the Android app (Flutter; its own analyzer in scripts/verify-mobile.ps1).
+    "mobile/**",
   ]),
 ]);
 

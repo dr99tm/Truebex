@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- PF10: HTTPS only. The one exception is the loopback address: the panorama
+     web view reads its viewer and the cached tiles from the app's own server on
+     127.0.0.1, which never leaves the phone. The debug build allows cleartext
+     to the LAN test server (src/debug/res/xml). -->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">127.0.0.1</domain>
+    </domain-config>
+</network-security-config>

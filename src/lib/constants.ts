@@ -3005,3 +3005,18 @@ export const APP = {
     session: "Your session ended. Sign in again to send your edits.",
   },
 } as const;
+
+// --- Android app (PF10) -------------------------------------------------------------------------
+// The privacy page's section on the Android app: what it keeps on the phone and
+// what it sends (the Play listing links to the page; its Data safety answers are
+// mobile/android/store/data-safety.md). The app's own strings live in its
+// localisation file (mobile/android/lib/l10n/app_en.arb).
+
+export const ANDROID_APP_PRIVACY = {
+  heading: "Android app: what stays on your phone",
+  paragraphs: [
+    "The Truebex Android app signs in with your Truebex account, by e-mail and password or with Google. It keeps the session in the phone's encrypted storage, backed by the Android Keystore, and a copy of the projects you open — their history of changes, the newest room list and the panorama tiles you looked at, up to 500 MB — so they open without a network.",
+    "The app sends no usage events, no crash reports and no advertising identifier, and it does not track you. It talks only to the Truebex service, over HTTPS. The edits you make on the phone are saved to the project with your name, as edits from the desktop app are, and the people on a shared project see that you have it open.",
+    "The app's data is left out of phone backups. Signing out removes the session, the copies of your projects, edits not yet sent and the panorama tiles from the phone; uninstalling the app does the same.",
+  ],
+} as const;

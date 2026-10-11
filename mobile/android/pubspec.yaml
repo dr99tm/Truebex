@@ -1,0 +1,48 @@
+name: truebex
+description: "Truebex for Android: open your projects, walk the panoramas, make light edits offline."
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.12.1
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  # The generated API client (lib/api/gen/) needs http, intl, meta and collection.
+  http: ^1.6.0
+  intl: any
+  meta: ^1.16.0
+  collection: ^1.19.1
+  # The replica: SQLite through drift.
+  drift: ^2.35.2
+  drift_flutter: ^0.3.1
+  path_provider: ^2.1.6
+  path: ^1.9.1
+  crypto: ^3.0.7
+  # Background sync, the session, the panorama web view, sign-in, notices.
+  workmanager: ^0.10.10
+  flutter_secure_storage: ^11.2.0
+  webview_flutter: ^4.14.1
+  connectivity_plus: ^7.0.0
+  flutter_local_notifications: ^22.0.0
+  google_sign_in: ^7.2.0
+  url_launcher: ^6.3.3
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  drift_dev: ^2.35.1
+  build_runner: ^2.15.1
+
+flutter:
+  uses-material-design: true
+  generate: true
+  assets:
+    # PF9's viewer (src/viewer/cube.ts) bundled by scripts/build-mobile-viewer.mjs.
+    - assets/viewer/
+    # The brand lockup (scripts/make_android_assets.py): the wordmark is never retyped in a font.
+    - assets/brand/

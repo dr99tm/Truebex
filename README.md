@@ -1044,3 +1044,49 @@ and the headset view need HTTPS or `localhost` (on an Android phone over USB:
 `demo_mobile.py --token tbx_dev_… move --project <id> --entity Oslo` moves the sofa
 as Sam's desktop; with an API key (`--token tbx_live_…`, PF12) it moves it as an
 agent through `/v1`.
+
+## Android app
+
+`mobile/android/` is the Flutter app `com.truebex.app` (PF10): the same light client as the mobile web app
+(PF9), native and built to work without a network. Contract: `project-log` v1.0.0 (it writes `action`
+operations, never deltas). Doc: `docs/roadmap/40/PF10-android-native-app.md`.
+
+- **One API description, two generated clients.** `server/app/mobile/clients.py` describes the routes both
+  light clients call and the answers they read; `server/scripts/export_openapi.py --clients` writes
+  `openapi/clients.json`, and `scripts/gen-clients.ps1` generates PF9's TypeScript types
+  (`src/lib/api-clients.d.ts`, openapi-typescript, MIT) and the app's Dart client (`mobile/android/lib/api/gen/`,
+  OpenAPI Generator, Apache-2.0). `server/tests/test_pf10_clients.py` fails when the document, either client
+  or the real answers drift apart. The contract fixtures (`server/tests/contracts/project-log/`) are the
+  shared test vectors.
+- **The replica.** SQLite (drift): every pulled operation (the delta kept as an opaque blob), `head_seq`, the
+  outbox of the phone's `action` operations (§6.3: accepted, duplicate, rejected with the winner and never
+  sent again, not_processed sent again unchanged), the newest digest and manifests, and the tile cache's
+  index (`tiles/<sha256>.jpg`, 500 MB, least recently used out). The session token and the per-project
+  replica ids sit in Keystore-backed encrypted storage; the app's data is excluded from backups; signing out
+  wipes it all.
+- **Panoramas.** PF9's cube viewer (`src/viewer/cube.ts`, hosted by `src/viewer/native.ts`, bundled by
+  `scripts/build-mobile-viewer.mjs` into `mobile/android/assets/viewer/`) runs in a web view served by the
+  app's own loopback server, which answers every tile from the cache first: a panorama seen once opens offline.
+- **Background sync.** WorkManager: `truebex.sync` every 15 minutes with a network, `truebex.sync.now` once
+  when the network returns (queued with every edit, so an offline edit goes out with the app closed),
+  `truebex.prefetch` (unmetered, charging) for starred projects' tiles. A replaced edit becomes a
+  notification ("Sam changed this first — your edit was replaced") and a line in the history. Retries follow
+  §8 (1, 2, 4 … 60 s ± 20 %, `Retry-After`; 409 and 422 never re-sent).
+- **Sign-in.** E-mail and password, or Google through Credential Manager with the Web client id as the
+  server client id (`--dart-define=GOOGLE_SERVER_CLIENT_ID=…`; `/auth/google` takes the token unchanged); a
+  Google session is renewed silently when the 24 h token lapses.
+
+Gate (separate from `scripts\autopilot-verify.ps1`, so no other task needs the Flutter SDK):
+`powershell -NoProfile -ExecutionPolicy Bypass -File scripts\verify-mobile.ps1` runs the viewer bundle,
+`flutter analyze`, `flutter test` and `flutter build apk --debug`
+(`mobile/android/build/app/outputs/flutter-apk/app-debug.apk`). Release builds are signed with the upload
+key named in `mobile/android/android/key.properties` (git-ignored; GD4).
+
+Try it on a phone (USB debugging on) or the emulator: `scripts\try-mobile.ps1 -NoBuild` in one terminal (the
+API on :8000, a render worker, the demo House), then `scripts\try-android.ps1` in another: it builds the APK
+against `http://127.0.0.1:8000`, installs it, routes the phone's `127.0.0.1:8000` through `adb reverse` to a
+relay on :8731 and keeps the relay running. The USB tunnel ignores airplane mode, so going offline is airplane
+mode **and** Ctrl+C on the relay; `scripts\try-android.ps1 -RelayOnly` brings the phone back.
+
+Store listing (text, Data safety and content-rating answers, icon, feature graphic, screenshots):
+`mobile/android/store/`, made with `scripts/make_android_assets.py`. Publishing is the owner's (GD4).

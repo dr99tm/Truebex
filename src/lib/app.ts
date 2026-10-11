@@ -7,7 +7,10 @@
 // operations, the head of the log, presence, and regional prices and
 // same-category products (PF7, contract marketplace-api). The session token
 // stays where the site keeps it (lib/api.ts); the service worker never sees it.
+// The answers' shapes come from openapi/clients.json, the document the Android
+// app's Dart client is generated from too (PF10, scripts/gen-clients.ps1).
 
+import type { components } from "@/lib/api-clients";
 import type { ActionOp, Finish } from "@/viewer/actions";
 import { PushError, retryable, type PushAnswer } from "@/viewer/outbox";
 import { ApiError, api } from "@/lib/api";
@@ -16,16 +19,13 @@ import type { TileManifest } from "@/lib/jobs";
 import type { Price } from "@/lib/market";
 import type { Presence } from "@/lib/projects";
 
+type Wire = components["schemas"];
+
 const LOG = { "X-Truebex-Contract": "project-log/1.0" };
 const MARKET = { "X-Truebex-Contract": "marketplace-api/1.1" };
 const path = (pid: string) => `/projects/${encodeURIComponent(pid)}`;
 
-export interface Me {
-  id: number;
-  email: string;
-  name: string | null;
-  author_id: string | null;
-}
+export type Me = Pick<Wire["UserOut"], "id" | "email" | "name" | "author_id">;
 
 export const getMe = () => api<Me>("/auth/me");
 
@@ -93,12 +93,7 @@ export interface DigestSnapshot {
   digest: ProjectDigest;
 }
 
-interface SnapshotAnswer {
-  snapshot_id: string;
-  at_seq: number;
-  created_at: string;
-  files: { digest?: { sha256: string; url: string } | null };
-}
+type SnapshotAnswer = Wire["Snapshot"];
 
 /** 5.9 and its digest file; null when the project has no snapshot or no digest yet. */
 export async function latestDigest(pid: string, known?: DigestSnapshot | null): Promise<DigestSnapshot | null> {
@@ -127,15 +122,7 @@ export async function latestDigest(pid: string, known?: DigestSnapshot | null): 
 
 // --- panoramas: the project's followed sets ------------------------------------------------------
 
-export interface PanoramaSet {
-  set_id: string;
-  rev: number;
-  at_seq: number;
-  views: string[];
-  following: boolean;
-  mine: boolean;
-  updated_at: string;
-}
+export type PanoramaSet = Wire["PanoramaSet"];
 
 export interface SetState {
   rev: number;
@@ -158,12 +145,12 @@ export const getSetState = (pid: string, setId: string, rev?: number, waitS = 0,
 
 /** 5.7 with limit 1: the client only follows head_seq, it never applies operations. */
 export const waitForHead = (pid: string, after: number, waitS: number, signal?: AbortSignal) =>
-  api<{ head_seq: number; more: boolean }>(`${path(pid)}/ops?after=${after}&limit=1&wait_s=${waitS}`, { headers: LOG, signal });
+  api<Pick<Wire["PullPage"], "head_seq" | "more">>(`${path(pid)}/ops?after=${after}&limit=1&wait_s=${waitS}`, { headers: LOG, signal });
 
 /** 5.6 for the outbox: errors become PushError (retry or give up, contract §8). */
 export async function pushOps(pid: string, replicaId: string, ops: ActionOp[]): Promise<PushAnswer> {
   try {
-    return await api<PushAnswer>(`${path(pid)}/ops`, { method: "POST", json: { replica_id: replicaId, ops }, headers: LOG });
+    return await api<Wire["PushAnswer"]>(`${path(pid)}/ops`, { method: "POST", json: { replica_id: replicaId, ops }, headers: LOG });
   } catch (err) {
     if (err instanceof ApiError) throw new PushError(retryable(err.status) || err.status === 401, err.message, err.status, err.code);
     throw new PushError(true, APP.errors.network);
@@ -199,7 +186,7 @@ export interface PricedItem {
 export async function regionPrices(region: string, items: DigestProduct[]): Promise<PricedItem[]> {
   if (!items.length) return [];
   const body = { region, items: items.map((p) => ({ ...p.product, qty: 1 })) };
-  const res = await api<{ items: PricedItem[] }>("/market/prices", { method: "POST", json: body, headers: MARKET, auth: false });
+  const res = await api<Wire["PricesAnswer"]>("/market/prices", { method: "POST", json: body, headers: MARKET, auth: false });
   return res.items;
 }
 
@@ -211,17 +198,8 @@ export interface SwapChoice {
   price: Price | null;
 }
 
-interface SearchAnswer {
-  results: { product_id: string; name: string }[];
-}
-
-interface ProductAnswer {
-  product_id: string;
-  supplier_id: string;
-  sku: string;
-  name: string;
-  variants: { variant_id: string; options?: Record<string, string>; price?: Price | null; availability?: { state: string } | null }[];
-}
+type SearchAnswer = Wire["SearchAnswer"];
+type ProductAnswer = Wire["ProductAnswer"];
 
 /** Same-category products (5.3 → 5.4) a placed product can be swapped for, its own variant left out. */
 export async function swapChoices(product: DigestProduct, region: string | null | undefined): Promise<SwapChoice[]> {

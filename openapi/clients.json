@@ -1,0 +1,3359 @@
+{
+  "components": {
+    "schemas": {
+      "Availability": {
+        "additionalProperties": true,
+        "properties": {
+          "state": {
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "state"
+        ],
+        "title": "Availability",
+        "type": "object"
+      },
+      "ErrorEnvelope": {
+        "additionalProperties": true,
+        "description": "The shared error body; clients branch on `code` (`http_<status>` when absent).",
+        "properties": {
+          "code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Code"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Data"
+          },
+          "detail": {
+            "title": "Detail",
+            "type": "string"
+          },
+          "request_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Request Id"
+          },
+          "retry_after_s": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Retry After S"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Status"
+          }
+        },
+        "required": [
+          "detail"
+        ],
+        "title": "ErrorEnvelope",
+        "type": "object"
+      },
+      "GoogleLogin": {
+        "properties": {
+          "credential": {
+            "maxLength": 8192,
+            "minLength": 20,
+            "title": "Credential",
+            "type": "string"
+          }
+        },
+        "required": [
+          "credential"
+        ],
+        "title": "GoogleLogin",
+        "type": "object"
+      },
+      "Member": {
+        "additionalProperties": true,
+        "description": "5.13; `author_id` names who wrote an operation (PF9's MINOR proposal).",
+        "properties": {
+          "accepted_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Accepted At"
+          },
+          "author_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Author Id"
+          },
+          "email": {
+            "title": "Email",
+            "type": "string"
+          },
+          "invite_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Invite Id"
+          },
+          "invited_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Invited At"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "role": {
+            "title": "Role",
+            "type": "string"
+          },
+          "state": {
+            "enum": [
+              "active",
+              "invited"
+            ],
+            "title": "State",
+            "type": "string"
+          },
+          "user_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User Id"
+          }
+        },
+        "required": [
+          "user_id",
+          "invite_id",
+          "email",
+          "name",
+          "role",
+          "state",
+          "invited_at",
+          "accepted_at",
+          "author_id"
+        ],
+        "title": "Member",
+        "type": "object"
+      },
+      "MemberList": {
+        "additionalProperties": true,
+        "properties": {
+          "members": {
+            "items": {
+              "$ref": "#/components/schemas/Member"
+            },
+            "title": "Members",
+            "type": "array"
+          }
+        },
+        "required": [
+          "members"
+        ],
+        "title": "MemberList",
+        "type": "object"
+      },
+      "OpIn": {
+        "properties": {
+          "action": {
+            "anyOf": [
+              {
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Action"
+          },
+          "at": {
+            "maxLength": 40,
+            "title": "At",
+            "type": "string"
+          },
+          "author": {
+            "maxLength": 32,
+            "title": "Author",
+            "type": "string"
+          },
+          "author_kind": {
+            "maxLength": 8,
+            "title": "Author Kind",
+            "type": "string"
+          },
+          "base_seq": {
+            "minimum": 0,
+            "title": "Base Seq",
+            "type": "integer"
+          },
+          "delta": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Delta"
+          },
+          "delta_format": {
+            "anyOf": [
+              {
+                "maxLength": 32,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Delta Format"
+          },
+          "kind": {
+            "maxLength": 16,
+            "title": "Kind",
+            "type": "string"
+          },
+          "name": {
+            "default": "",
+            "maxLength": 80,
+            "title": "Name",
+            "type": "string"
+          },
+          "op_id": {
+            "maxLength": 32,
+            "title": "Op Id",
+            "type": "string"
+          },
+          "replica_id": {
+            "anyOf": [
+              {
+                "maxLength": 32,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Replica Id"
+          },
+          "touched": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Touched",
+            "type": "array"
+          }
+        },
+        "required": [
+          "op_id",
+          "author",
+          "author_kind",
+          "at",
+          "kind",
+          "base_seq"
+        ],
+        "title": "OpIn",
+        "type": "object"
+      },
+      "OpenProject": {
+        "additionalProperties": true,
+        "description": "5.3: the record with the members listed and the owner's quota.",
+        "properties": {
+          "bytes": {
+            "title": "Bytes",
+            "type": "integer"
+          },
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "doc_version": {
+            "title": "Doc Version",
+            "type": "integer"
+          },
+          "head_seq": {
+            "title": "Head Seq",
+            "type": "integer"
+          },
+          "latest_snapshot": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SnapshotSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "members": {
+            "items": {
+              "$ref": "#/components/schemas/Member"
+            },
+            "title": "Members",
+            "type": "array"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "org_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Org Id"
+          },
+          "owner": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ProjectOwner"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "project_id": {
+            "title": "Project Id",
+            "type": "string"
+          },
+          "quota": {
+            "$ref": "#/components/schemas/ProjectQuota"
+          },
+          "role": {
+            "enum": [
+              "owner",
+              "editor",
+              "viewer"
+            ],
+            "title": "Role",
+            "type": "string"
+          },
+          "updated_at": {
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "project_id",
+          "name",
+          "role",
+          "owner",
+          "org_id",
+          "created_at",
+          "updated_at",
+          "head_seq",
+          "latest_snapshot",
+          "doc_version",
+          "members",
+          "bytes",
+          "quota"
+        ],
+        "title": "OpenProject",
+        "type": "object"
+      },
+      "Operation": {
+        "additionalProperties": true,
+        "description": "§6.2 as the server stores it. Light clients never decode `delta`.",
+        "properties": {
+          "action": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OperationAction"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "at": {
+            "title": "At",
+            "type": "string"
+          },
+          "author": {
+            "title": "Author",
+            "type": "string"
+          },
+          "author_kind": {
+            "enum": [
+              "person",
+              "agent"
+            ],
+            "title": "Author Kind",
+            "type": "string"
+          },
+          "base_seq": {
+            "title": "Base Seq",
+            "type": "integer"
+          },
+          "delta": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Delta"
+          },
+          "delta_format": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Delta Format"
+          },
+          "kind": {
+            "enum": [
+              "delta",
+              "action",
+              "restore"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "op_id": {
+            "title": "Op Id",
+            "type": "string"
+          },
+          "replica_id": {
+            "title": "Replica Id",
+            "type": "string"
+          },
+          "restore": {
+            "anyOf": [
+              {
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Restore"
+          },
+          "server_seq": {
+            "title": "Server Seq",
+            "type": "integer"
+          },
+          "touched": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Touched",
+            "type": "array"
+          }
+        },
+        "required": [
+          "op_id",
+          "server_seq",
+          "replica_id",
+          "author",
+          "author_kind",
+          "at",
+          "kind",
+          "name",
+          "base_seq",
+          "touched",
+          "delta_format",
+          "delta",
+          "action",
+          "restore"
+        ],
+        "title": "Operation",
+        "type": "object"
+      },
+      "OperationAction": {
+        "additionalProperties": true,
+        "description": "`FTruebexAgentAction` (agent-interface §6.4): a log-safe tool and its arguments.",
+        "properties": {
+          "args": {
+            "title": "Args",
+            "type": "object"
+          },
+          "permission": {
+            "title": "Permission",
+            "type": "string"
+          },
+          "request_id": {
+            "title": "Request Id",
+            "type": "string"
+          },
+          "session": {
+            "title": "Session",
+            "type": "string"
+          },
+          "tool": {
+            "title": "Tool",
+            "type": "string"
+          }
+        },
+        "required": [
+          "tool",
+          "args",
+          "permission",
+          "session",
+          "request_id"
+        ],
+        "title": "OperationAction",
+        "type": "object"
+      },
+      "PanoramaSet": {
+        "additionalProperties": true,
+        "properties": {
+          "at_seq": {
+            "title": "At Seq",
+            "type": "integer"
+          },
+          "following": {
+            "title": "Following",
+            "type": "boolean"
+          },
+          "mine": {
+            "title": "Mine",
+            "type": "boolean"
+          },
+          "rev": {
+            "title": "Rev",
+            "type": "integer"
+          },
+          "set_id": {
+            "title": "Set Id",
+            "type": "string"
+          },
+          "updated_at": {
+            "title": "Updated At",
+            "type": "string"
+          },
+          "views": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Views",
+            "type": "array"
+          }
+        },
+        "required": [
+          "set_id",
+          "rev",
+          "at_seq",
+          "views",
+          "following",
+          "mine",
+          "updated_at"
+        ],
+        "title": "PanoramaSet",
+        "type": "object"
+      },
+      "PanoramaSets": {
+        "additionalProperties": true,
+        "properties": {
+          "sets": {
+            "items": {
+              "$ref": "#/components/schemas/PanoramaSet"
+            },
+            "title": "Sets",
+            "type": "array"
+          }
+        },
+        "required": [
+          "sets"
+        ],
+        "title": "PanoramaSets",
+        "type": "object"
+      },
+      "Presence": {
+        "additionalProperties": true,
+        "description": "`client` is desktop, web, android, headset or worker.",
+        "properties": {
+          "client": {
+            "title": "Client",
+            "type": "string"
+          },
+          "editing": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Editing",
+            "type": "array"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "replica_id": {
+            "title": "Replica Id",
+            "type": "string"
+          },
+          "seen_at": {
+            "title": "Seen At",
+            "type": "string"
+          },
+          "selection": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Selection",
+            "type": "array"
+          },
+          "user_id": {
+            "title": "User Id",
+            "type": "integer"
+          },
+          "view": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PresenceView"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "user_id",
+          "name",
+          "replica_id",
+          "client",
+          "seen_at",
+          "view",
+          "selection",
+          "editing"
+        ],
+        "title": "Presence",
+        "type": "object"
+      },
+      "PresenceAnswer": {
+        "additionalProperties": true,
+        "properties": {
+          "others": {
+            "items": {
+              "$ref": "#/components/schemas/Presence"
+            },
+            "title": "Others",
+            "type": "array"
+          },
+          "ttl_s": {
+            "title": "Ttl S",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "ttl_s",
+          "others"
+        ],
+        "title": "PresenceAnswer",
+        "type": "object"
+      },
+      "PresenceIn": {
+        "properties": {
+          "client": {
+            "maxLength": 16,
+            "title": "Client",
+            "type": "string"
+          },
+          "editing": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 50,
+            "title": "Editing",
+            "type": "array"
+          },
+          "leaving": {
+            "default": false,
+            "title": "Leaving",
+            "type": "boolean"
+          },
+          "replica_id": {
+            "maxLength": 32,
+            "title": "Replica Id",
+            "type": "string"
+          },
+          "selection": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 50,
+            "title": "Selection",
+            "type": "array"
+          },
+          "view": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ViewIn"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "replica_id",
+          "client"
+        ],
+        "title": "PresenceIn",
+        "type": "object"
+      },
+      "PresenceList": {
+        "additionalProperties": true,
+        "properties": {
+          "present": {
+            "items": {
+              "$ref": "#/components/schemas/Presence"
+            },
+            "title": "Present",
+            "type": "array"
+          }
+        },
+        "required": [
+          "present"
+        ],
+        "title": "PresenceList",
+        "type": "object"
+      },
+      "PresenceView": {
+        "additionalProperties": true,
+        "properties": {
+          "eye_mm": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "number"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Eye Mm"
+          },
+          "storey": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Storey"
+          },
+          "yaw_deg": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Yaw Deg"
+          }
+        },
+        "title": "PresenceView",
+        "type": "object"
+      },
+      "Price": {
+        "additionalProperties": true,
+        "description": "Minor units: `amount` / 10^`exponent` in `currency`.",
+        "properties": {
+          "amount": {
+            "title": "Amount",
+            "type": "integer"
+          },
+          "at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "At"
+          },
+          "currency": {
+            "title": "Currency",
+            "type": "string"
+          },
+          "exponent": {
+            "title": "Exponent",
+            "type": "integer"
+          },
+          "includes_tax": {
+            "title": "Includes Tax",
+            "type": "boolean"
+          },
+          "region": {
+            "title": "Region",
+            "type": "string"
+          },
+          "tax_rate_bp": {
+            "title": "Tax Rate Bp",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "amount",
+          "currency",
+          "exponent",
+          "region",
+          "includes_tax",
+          "tax_rate_bp",
+          "at"
+        ],
+        "title": "Price",
+        "type": "object"
+      },
+      "PriceItem": {
+        "properties": {
+          "qty": {
+            "anyOf": [
+              {
+                "maximum": 100000.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Qty"
+          },
+          "sku": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Sku",
+            "type": "string"
+          },
+          "supplier_id": {
+            "pattern": "^[0-9a-f]{32}$",
+            "title": "Supplier Id",
+            "type": "string"
+          },
+          "variant_id": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Variant Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "supplier_id",
+          "sku",
+          "variant_id"
+        ],
+        "title": "PriceItem",
+        "type": "object"
+      },
+      "PricedItem": {
+        "additionalProperties": true,
+        "properties": {
+          "availability": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Availability"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "price": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Price"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "qty": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Qty"
+          },
+          "sku": {
+            "title": "Sku",
+            "type": "string"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Status"
+          },
+          "substitutes": {
+            "items": {
+              "type": "object"
+            },
+            "title": "Substitutes",
+            "type": "array"
+          },
+          "supplier_id": {
+            "title": "Supplier Id",
+            "type": "string"
+          },
+          "variant_id": {
+            "title": "Variant Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "supplier_id",
+          "sku",
+          "variant_id",
+          "price",
+          "availability",
+          "substitutes"
+        ],
+        "title": "PricedItem",
+        "type": "object"
+      },
+      "PricesAnswer": {
+        "additionalProperties": true,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/PricedItem"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "PricesAnswer",
+        "type": "object"
+      },
+      "PricesRequest": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/PriceItem"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "region": {
+            "maxLength": 8,
+            "minLength": 2,
+            "title": "Region",
+            "type": "string"
+          }
+        },
+        "required": [
+          "region",
+          "items"
+        ],
+        "title": "PricesRequest",
+        "type": "object"
+      },
+      "ProductAnswer": {
+        "additionalProperties": true,
+        "properties": {
+          "category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "product_id": {
+            "title": "Product Id",
+            "type": "string"
+          },
+          "sku": {
+            "title": "Sku",
+            "type": "string"
+          },
+          "supplier_id": {
+            "title": "Supplier Id",
+            "type": "string"
+          },
+          "variants": {
+            "items": {
+              "$ref": "#/components/schemas/ProductVariant"
+            },
+            "title": "Variants",
+            "type": "array"
+          }
+        },
+        "required": [
+          "product_id",
+          "supplier_id",
+          "sku",
+          "name",
+          "category",
+          "variants"
+        ],
+        "title": "ProductAnswer",
+        "type": "object"
+      },
+      "ProductVariant": {
+        "additionalProperties": true,
+        "properties": {
+          "availability": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Availability"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "options": {
+            "anyOf": [
+              {
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Options"
+          },
+          "price": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Price"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "variant_id": {
+            "title": "Variant Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "variant_id"
+        ],
+        "title": "ProductVariant",
+        "type": "object"
+      },
+      "ProjectList": {
+        "additionalProperties": true,
+        "properties": {
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          },
+          "projects": {
+            "items": {
+              "$ref": "#/components/schemas/ProjectRecord"
+            },
+            "title": "Projects",
+            "type": "array"
+          }
+        },
+        "required": [
+          "projects",
+          "next_cursor"
+        ],
+        "title": "ProjectList",
+        "type": "object"
+      },
+      "ProjectOwner": {
+        "additionalProperties": true,
+        "properties": {
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "user_id": {
+            "title": "User Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "user_id",
+          "name"
+        ],
+        "title": "ProjectOwner",
+        "type": "object"
+      },
+      "ProjectQuota": {
+        "additionalProperties": true,
+        "properties": {
+          "bytes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bytes"
+          },
+          "bytes_used": {
+            "title": "Bytes Used",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "bytes",
+          "bytes_used"
+        ],
+        "title": "ProjectQuota",
+        "type": "object"
+      },
+      "ProjectRecord": {
+        "additionalProperties": true,
+        "description": "5.1–5.4's record; `members` counts the active people.",
+        "properties": {
+          "bytes": {
+            "title": "Bytes",
+            "type": "integer"
+          },
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "doc_version": {
+            "title": "Doc Version",
+            "type": "integer"
+          },
+          "head_seq": {
+            "title": "Head Seq",
+            "type": "integer"
+          },
+          "latest_snapshot": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SnapshotSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "members": {
+            "title": "Members",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "org_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Org Id"
+          },
+          "owner": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ProjectOwner"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "project_id": {
+            "title": "Project Id",
+            "type": "string"
+          },
+          "role": {
+            "enum": [
+              "owner",
+              "editor",
+              "viewer"
+            ],
+            "title": "Role",
+            "type": "string"
+          },
+          "updated_at": {
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "project_id",
+          "name",
+          "role",
+          "owner",
+          "org_id",
+          "created_at",
+          "updated_at",
+          "head_seq",
+          "latest_snapshot",
+          "doc_version",
+          "members",
+          "bytes"
+        ],
+        "title": "ProjectRecord",
+        "type": "object"
+      },
+      "PullPage": {
+        "additionalProperties": true,
+        "properties": {
+          "head_seq": {
+            "title": "Head Seq",
+            "type": "integer"
+          },
+          "more": {
+            "title": "More",
+            "type": "boolean"
+          },
+          "ops": {
+            "items": {
+              "$ref": "#/components/schemas/Operation"
+            },
+            "title": "Ops",
+            "type": "array"
+          }
+        },
+        "required": [
+          "ops",
+          "head_seq",
+          "more"
+        ],
+        "title": "PullPage",
+        "type": "object"
+      },
+      "PushAnswer": {
+        "additionalProperties": true,
+        "properties": {
+          "head_seq": {
+            "title": "Head Seq",
+            "type": "integer"
+          },
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/PushResult"
+            },
+            "title": "Results",
+            "type": "array"
+          }
+        },
+        "required": [
+          "head_seq",
+          "results"
+        ],
+        "title": "PushAnswer",
+        "type": "object"
+      },
+      "PushIn": {
+        "properties": {
+          "ops": {
+            "items": {
+              "$ref": "#/components/schemas/OpIn"
+            },
+            "title": "Ops",
+            "type": "array"
+          },
+          "replica_id": {
+            "maxLength": 32,
+            "title": "Replica Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "replica_id",
+          "ops"
+        ],
+        "title": "PushIn",
+        "type": "object"
+      },
+      "PushResult": {
+        "additionalProperties": true,
+        "description": "One operation's fate (§6.3): `winning` and `more` come with `rejected`.",
+        "properties": {
+          "more": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "More"
+          },
+          "op_id": {
+            "title": "Op Id",
+            "type": "string"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Reason"
+          },
+          "server_seq": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Server Seq"
+          },
+          "status": {
+            "enum": [
+              "accepted",
+              "duplicate",
+              "rejected",
+              "not_processed"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "winning": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/Operation"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Winning"
+          }
+        },
+        "required": [
+          "op_id",
+          "status"
+        ],
+        "title": "PushResult",
+        "type": "object"
+      },
+      "SearchAnswer": {
+        "additionalProperties": true,
+        "properties": {
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Next Cursor"
+          },
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/SearchHit"
+            },
+            "title": "Results",
+            "type": "array"
+          }
+        },
+        "required": [
+          "results"
+        ],
+        "title": "SearchAnswer",
+        "type": "object"
+      },
+      "SearchHit": {
+        "additionalProperties": true,
+        "properties": {
+          "category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "price": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Price"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "product_id": {
+            "title": "Product Id",
+            "type": "string"
+          },
+          "supplier_id": {
+            "title": "Supplier Id",
+            "type": "string"
+          },
+          "variant_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Variant Id"
+          }
+        },
+        "required": [
+          "product_id",
+          "supplier_id",
+          "name",
+          "category",
+          "variant_id",
+          "price"
+        ],
+        "title": "SearchHit",
+        "type": "object"
+      },
+      "SetState": {
+        "additionalProperties": true,
+        "properties": {
+          "at_seq": {
+            "title": "At Seq",
+            "type": "integer"
+          },
+          "follow_job_id": {
+            "title": "Follow Job Id",
+            "type": "string"
+          },
+          "following": {
+            "title": "Following",
+            "type": "boolean"
+          },
+          "job_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Job Id"
+          },
+          "manifest": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TileManifest"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "rev": {
+            "title": "Rev",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "rev",
+          "job_id",
+          "follow_job_id",
+          "at_seq",
+          "following",
+          "manifest"
+        ],
+        "title": "SetState",
+        "type": "object"
+      },
+      "Snapshot": {
+        "additionalProperties": true,
+        "properties": {
+          "at_seq": {
+            "title": "At Seq",
+            "type": "integer"
+          },
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "created_by": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created By"
+          },
+          "doc_version": {
+            "title": "Doc Version",
+            "type": "integer"
+          },
+          "files": {
+            "$ref": "#/components/schemas/SnapshotFiles"
+          },
+          "snapshot_id": {
+            "title": "Snapshot Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "snapshot_id",
+          "at_seq",
+          "doc_version",
+          "created_by",
+          "created_at",
+          "files"
+        ],
+        "title": "Snapshot",
+        "type": "object"
+      },
+      "SnapshotFile": {
+        "additionalProperties": true,
+        "description": "A signed URL, valid 15 minutes; fetched without the session.",
+        "properties": {
+          "bytes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bytes"
+          },
+          "sha256": {
+            "title": "Sha256",
+            "type": "string"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          },
+          "url_expires_at": {
+            "title": "Url Expires At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "sha256",
+          "bytes",
+          "url",
+          "url_expires_at"
+        ],
+        "title": "SnapshotFile",
+        "type": "object"
+      },
+      "SnapshotFiles": {
+        "additionalProperties": true,
+        "properties": {
+          "digest": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SnapshotFile"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "tbxp": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SnapshotFile"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "tbxpack": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SnapshotFile"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "tbxp",
+          "tbxpack"
+        ],
+        "title": "SnapshotFiles",
+        "type": "object"
+      },
+      "SnapshotSummary": {
+        "additionalProperties": true,
+        "properties": {
+          "at_seq": {
+            "title": "At Seq",
+            "type": "integer"
+          },
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "doc_version": {
+            "title": "Doc Version",
+            "type": "integer"
+          },
+          "snapshot_id": {
+            "title": "Snapshot Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "snapshot_id",
+          "at_seq",
+          "doc_version",
+          "created_at"
+        ],
+        "title": "SnapshotSummary",
+        "type": "object"
+      },
+      "TileFace": {
+        "additionalProperties": true,
+        "description": "`tiles[level]` lists the face's tile hashes row by row (`<tiles_base>/<sha256>.jpg`).",
+        "properties": {
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Reason"
+          },
+          "rendered": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Rendered"
+          },
+          "tiles": {
+            "items": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "title": "Tiles",
+            "type": "array"
+          }
+        },
+        "required": [
+          "tiles"
+        ],
+        "title": "TileFace",
+        "type": "object"
+      },
+      "TileFaces": {
+        "additionalProperties": true,
+        "properties": {
+          "d": {
+            "$ref": "#/components/schemas/TileFace"
+          },
+          "e": {
+            "$ref": "#/components/schemas/TileFace"
+          },
+          "n": {
+            "$ref": "#/components/schemas/TileFace"
+          },
+          "s": {
+            "$ref": "#/components/schemas/TileFace"
+          },
+          "u": {
+            "$ref": "#/components/schemas/TileFace"
+          },
+          "w": {
+            "$ref": "#/components/schemas/TileFace"
+          }
+        },
+        "required": [
+          "n",
+          "e",
+          "s",
+          "w",
+          "u",
+          "d"
+        ],
+        "title": "TileFaces",
+        "type": "object"
+      },
+      "TileManifest": {
+        "additionalProperties": true,
+        "description": "`truebex-tiles/1`; a client refuses a MAJOR it does not know (\"Update needed\").",
+        "properties": {
+          "at_seq": {
+            "title": "At Seq",
+            "type": "integer"
+          },
+          "faces_rendered": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Faces Rendered"
+          },
+          "faces_reused": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Faces Reused"
+          },
+          "job_id": {
+            "title": "Job Id",
+            "type": "string"
+          },
+          "project_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Project Id"
+          },
+          "schema": {
+            "title": "Schema",
+            "type": "string"
+          },
+          "tiles_base": {
+            "title": "Tiles Base",
+            "type": "string"
+          },
+          "views": {
+            "items": {
+              "$ref": "#/components/schemas/TileView"
+            },
+            "title": "Views",
+            "type": "array"
+          }
+        },
+        "required": [
+          "schema",
+          "job_id",
+          "at_seq",
+          "tiles_base",
+          "views"
+        ],
+        "title": "TileManifest",
+        "type": "object"
+      },
+      "TileView": {
+        "additionalProperties": true,
+        "properties": {
+          "eye_mm": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "number"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Eye Mm"
+          },
+          "face_px": {
+            "title": "Face Px",
+            "type": "integer"
+          },
+          "faces": {
+            "$ref": "#/components/schemas/TileFaces"
+          },
+          "levels": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Levels",
+            "type": "array"
+          },
+          "tile_px": {
+            "title": "Tile Px",
+            "type": "integer"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Title"
+          },
+          "view": {
+            "title": "View",
+            "type": "string"
+          }
+        },
+        "required": [
+          "view",
+          "face_px",
+          "tile_px",
+          "levels",
+          "faces"
+        ],
+        "title": "TileView",
+        "type": "object"
+      },
+      "Token": {
+        "properties": {
+          "access_token": {
+            "title": "Access Token",
+            "type": "string"
+          },
+          "token_type": {
+            "default": "bearer",
+            "title": "Token Type",
+            "type": "string"
+          },
+          "user": {
+            "$ref": "#/components/schemas/UserOut"
+          }
+        },
+        "required": [
+          "access_token",
+          "user"
+        ],
+        "title": "Token",
+        "type": "object"
+      },
+      "UserLogin": {
+        "properties": {
+          "break_glass_code": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Break Glass Code"
+          },
+          "email": {
+            "format": "email",
+            "title": "Email",
+            "type": "string"
+          },
+          "password": {
+            "title": "Password",
+            "type": "string"
+          }
+        },
+        "required": [
+          "email",
+          "password"
+        ],
+        "title": "UserLogin",
+        "type": "object"
+      },
+      "UserOut": {
+        "properties": {
+          "author_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Author Id"
+          },
+          "avatar_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Avatar Url"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "email": {
+            "format": "email",
+            "title": "Email",
+            "type": "string"
+          },
+          "google_linked": {
+            "default": false,
+            "title": "Google Linked",
+            "type": "boolean"
+          },
+          "has_password": {
+            "default": true,
+            "title": "Has Password",
+            "type": "boolean"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "is_admin": {
+            "default": false,
+            "title": "Is Admin",
+            "type": "boolean"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Name"
+          },
+          "plan": {
+            "title": "Plan",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "email",
+          "created_at",
+          "plan"
+        ],
+        "title": "UserOut",
+        "type": "object"
+      },
+      "ViewIn": {
+        "properties": {
+          "eye_mm": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "number"
+                },
+                "maxItems": 3,
+                "minItems": 3,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Eye Mm"
+          },
+          "storey": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Storey"
+          },
+          "yaw_deg": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Yaw Deg"
+          }
+        },
+        "title": "ViewIn",
+        "type": "object"
+      }
+    },
+    "securitySchemes": {
+      "session": {
+        "bearerFormat": "JWT",
+        "description": "The 24 h session token.",
+        "scheme": "bearer",
+        "type": "http"
+      }
+    }
+  },
+  "info": {
+    "description": "The routes the mobile web client and the Android app call, with the answers they read. Both clients are generated from this document. A session token from /auth/login or /auth/google goes in `Authorization: Bearer …`. Errors use one envelope: `{detail, code, status, request_id, retry_after_s, data}`.",
+    "title": "Truebex light clients",
+    "version": "1.0.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/auth/google": {
+      "post": {
+        "operationId": "auth_google",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GoogleLogin"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Token"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The shared error envelope (`code` says what failed)."
+          }
+        },
+        "security": [],
+        "summary": "Sign in with a Google ID token minted for the Web client id (the Android app's server client id).",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/auth/login": {
+      "post": {
+        "operationId": "auth_login",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserLogin"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Token"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The shared error envelope (`code` says what failed)."
+          }
+        },
+        "security": [],
+        "summary": "Sign in with e-mail and password; the answer's token is the session (24 h).",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/auth/me": {
+      "get": {
+        "operationId": "auth_me",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserOut"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The shared error envelope (`code` says what failed)."
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "The signed-in person, with the author_id every operation they write carries.",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/market/prices": {
+      "post": {
+        "operationId": "market_prices",
+        "parameters": [
+          {
+            "description": "The contract and version the client speaks; a MAJOR the server does not serve is 400 `contract_version`.",
+            "in": "header",
+            "name": "X-Truebex-Contract",
+            "required": false,
+            "schema": {
+              "default": "marketplace-api/1.1",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PricesRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PricesAnswer"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The shared error envelope (`code` says what failed)."
+          }
+        },
+        "security": [
+          {},
+          {
+            "session": []
+          }
+        ],
+        "summary": "Prices and availability of the placed products for a region (5.5).",
+        "tags": [
+          "market"
+        ],
+        "x-truebex-contract": "marketplace-api/1.1"
+      }
+    },
+    "/market/products/{product_id}": {
+      "get": {
+        "operationId": "market_product",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "product_id",
+            "required": true,
+            "schema": {
+              "title": "Product Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "region",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 8,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Region"
+            }
+          },
+          {
+            "description": "The contract and version the client speaks; a MAJOR the server does not serve is 400 `contract_version`.",
+            "in": "header",
+            "name": "X-Truebex-Contract",
+            "required": false,
+            "schema": {
+              "default": "marketplace-api/1.1",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductAnswer"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The shared error envelope (`code` says what failed)."
+          }
+        },
+        "security": [
+          {},
+          {
+            "session": []
+          }
+        ],
+        "summary": "One product with its variants and the region's prices (5.4).",
+        "tags": [
+          "market"
+        ],
+        "x-truebex-contract": "marketplace-api/1.1"
+      }
+    },
+    "/market/search": {
+      "get": {
+        "operationId": "market_search",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 200,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Q"
+            }
+          },
+          {
+            "in": "query",
+            "name": "category",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 160,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Category"
+            }
+          },
+          {
+            "in": "query",
+            "name": "region",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 8,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Region"
+            }
+          },
+          {
+            "in": "query",
+            "name": "min",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Min"
+            }
+          },
+          {
+            "in": "query",
+            "name": "max",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Max"
+            }
+          },
+          {
+            "in": "query",
+            "name": "available",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Available"
+            }
+          },
+          {
+            "in": "query",
+            "name": "supplier",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 32,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Supplier"
+            }
+          },
+          {
+            "in": "query",
+            "name": "kind",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 16,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Kind"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "default": "relevance",
+              "maxLength": 16,
+              "title": "Sort",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 200,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 24,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "The contract and version the client speaks; a MAJOR the server does not serve is 400 `contract_version`.",
+            "in": "header",
+            "name": "X-Truebex-Contract",
+            "required": false,
+            "schema": {
+              "default": "marketplace-api/1.1",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SearchAnswer"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The shared error envelope (`code` says what failed)."
+          }
+        },
+        "security": [
+          {},
+          {
+            "session": []
+          }
+        ],
+        "summary": "Products by category and region (5.3), for a swap.",
+        "tags": [
+          "market"
+        ],
+        "x-truebex-contract": "marketplace-api/1.1"
+      }
+    },
+    "/projects": {
+      "get": {
+        "operationId": "projects_list",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 300,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "The contract and version the client speaks; a MAJOR the server does not serve is 400 `contract_version`.",
+            "in": "header",
+            "name": "X-Truebex-Contract",
+            "required": false,
+            "schema": {
+              "default": "project-log/1.0",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectList"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The shared error envelope (`code` says what failed)."
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "Projects I own or that are shared with me (5.2), newest activity first.",
+        "tags": [
+          "projects"
+        ],
+        "x-truebex-contract": "project-log/1.0"
+      }
+    },
+    "/projects/{project_id}": {
+      "get": {
+        "operationId": "projects_open",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "The contract and version the client speaks; a MAJOR the server does not serve is 400 `contract_version`.",
+            "in": "header",
+            "name": "X-Truebex-Contract",
+            "required": false,
+            "schema": {
+              "default": "project-log/1.0",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenProject"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The shared error envelope (`code` says what failed)."
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "Open a project (5.3): the record, its head, members and quota.",
+        "tags": [
+          "projects"
+        ],
+        "x-truebex-contract": "project-log/1.0"
+      }
+    },
+    "/projects/{project_id}/members": {
+      "get": {
+        "operationId": "members_list",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "The contract and version the client speaks; a MAJOR the server does not serve is 400 `contract_version`.",
+            "in": "header",
+            "name": "X-Truebex-Contract",
+            "required": false,
+            "schema": {
+              "default": "project-log/1.0",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemberList"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The shared error envelope (`code` says what failed)."
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "Members and invitations (5.13).",
+        "tags": [
+          "members"
+        ],
+        "x-truebex-contract": "project-log/1.0"
+      }
+    },
+    "/projects/{project_id}/ops": {
+      "get": {
+        "operationId": "ops_pull",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "after",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "title": "After",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 500,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "wait_s",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "title": "Wait S",
+              "type": "number"
+            }
+          },
+          {
+            "description": "The contract and version the client speaks; a MAJOR the server does not serve is 400 `contract_version`.",
+            "in": "header",
+            "name": "X-Truebex-Contract",
+            "required": false,
+            "schema": {
+              "default": "project-log/1.0",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PullPage"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The shared error envelope (`code` says what failed)."
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "Operations after a sequence number (5.7); long-polls up to wait_s (≤ 25).",
+        "tags": [
+          "ops"
+        ],
+        "x-truebex-contract": "project-log/1.0"
+      },
+      "post": {
+        "operationId": "ops_push",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "The contract and version the client speaks; a MAJOR the server does not serve is 400 `contract_version`.",
+            "in": "header",
+            "name": "X-Truebex-Contract",
+            "required": false,
+            "schema": {
+              "default": "project-log/1.0",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PushIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PushAnswer"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The shared error envelope (`code` says what failed)."
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "Push operations (5.6), at most 200; each answers accepted, duplicate, rejected or not_processed (§6.3).",
+        "tags": [
+          "ops"
+        ],
+        "x-truebex-contract": "project-log/1.0"
+      }
+    },
+    "/projects/{project_id}/panoramas": {
+      "get": {
+        "operationId": "panoramas_list",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "The contract and version the client speaks; a MAJOR the server does not serve is 400 `contract_version`.",
+            "in": "header",
+            "name": "X-Truebex-Contract",
+            "required": false,
+            "schema": {
+              "default": "project-log/1.0",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PanoramaSets"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The shared error envelope (`code` says what failed)."
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "The project's followed panorama sets (members' read).",
+        "tags": [
+          "panoramas"
+        ],
+        "x-truebex-contract": "project-log/1.0"
+      }
+    },
+    "/projects/{project_id}/panoramas/{set_id}": {
+      "get": {
+        "operationId": "panoramas_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "set_id",
+            "required": true,
+            "schema": {
+              "title": "Set Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "rev",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Rev"
+            }
+          },
+          {
+            "in": "query",
+            "name": "wait_s",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "title": "Wait S",
+              "type": "number"
+            }
+          },
+          {
+            "description": "The contract and version the client speaks; a MAJOR the server does not serve is 400 `contract_version`.",
+            "in": "header",
+            "name": "X-Truebex-Contract",
+            "required": false,
+            "schema": {
+              "default": "project-log/1.0",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SetState"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The shared error envelope (`code` says what failed)."
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "One set's newest tile manifest; with `rev` and `wait_s`, held until it moves past `rev`.",
+        "tags": [
+          "panoramas"
+        ],
+        "x-truebex-contract": "project-log/1.0"
+      }
+    },
+    "/projects/{project_id}/presence": {
+      "get": {
+        "operationId": "presence_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "The contract and version the client speaks; a MAJOR the server does not serve is 400 `contract_version`.",
+            "in": "header",
+            "name": "X-Truebex-Contract",
+            "required": false,
+            "schema": {
+              "default": "project-log/1.0",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PresenceList"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The shared error envelope (`code` says what failed)."
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "Who is in the project (5.18).",
+        "tags": [
+          "presence"
+        ],
+        "x-truebex-contract": "project-log/1.0"
+      },
+      "put": {
+        "operationId": "presence_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "The contract and version the client speaks; a MAJOR the server does not serve is 400 `contract_version`.",
+            "in": "header",
+            "name": "X-Truebex-Contract",
+            "required": false,
+            "schema": {
+              "default": "project-log/1.0",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PresenceIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PresenceAnswer"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The shared error envelope (`code` says what failed)."
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "Heartbeat (5.17) with the client kind and view; `leaving` removes it.",
+        "tags": [
+          "presence"
+        ],
+        "x-truebex-contract": "project-log/1.0"
+      }
+    },
+    "/projects/{project_id}/snapshots/latest": {
+      "get": {
+        "operationId": "snapshots_latest",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "The contract and version the client speaks; a MAJOR the server does not serve is 400 `contract_version`.",
+            "in": "header",
+            "name": "X-Truebex-Contract",
+            "required": false,
+            "schema": {
+              "default": "project-log/1.0",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Snapshot"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The shared error envelope (`code` says what failed)."
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "The newest snapshot (5.9) with signed URLs; `files.digest` is the project digest.",
+        "tags": [
+          "snapshots"
+        ],
+        "x-truebex-contract": "project-log/1.0"
+      }
+    }
+  },
+  "servers": [
+    {
+      "url": "https://api.truebex.com"
+    }
+  ]
+}

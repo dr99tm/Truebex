@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'">
+<title>Truebex panorama</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #161616; overflow: hidden; overscroll-behavior: none; }
+  #pano { position: fixed; inset: 0; }
+</style>
+</head>
+<body>
+<!-- PF10: the Android app's panorama. viewer.js is PF9's cube-tile viewer,
+     built from src/viewer/native.ts by scripts/build-mobile-viewer.mjs. -->
+<div id="pano"></div>
+<script src="viewer.js"></script>
+</body>
+</html>
