@@ -1090,3 +1090,15 @@ mode **and** Ctrl+C on the relay; `scripts\try-android.ps1 -RelayOnly` brings th
 
 Store listing (text, Data safety and content-rating answers, icon, feature graphic, screenshots):
 `mobile/android/store/`, made with `scripts/make_android_assets.py`. Publishing is the owner's (GD4).
+
+## Sell on Truebex page (PF13a)
+
+`/suppliers/` is the public page for suppliers (`src/app/suppliers/page.tsx`, `src/components/suppliers/SellPage.tsx`,
+copy in `SELL_PAGE` in `src/lib/constants.ts`). It says what the supplier portal does today, how the first suppliers
+are onboarded (every application and every product reviewed by hand) and what is "On the roadmap" (the catalogue
+inside the app, its live cost, card payments for orders; no dates, no fees), and its one button, "Apply as a
+supplier", opens the portal's sign-up `/supplier/signup/`. The page is indexable, in the sitemap, with WebPage,
+BreadcrumbList and FAQPage JSON-LD built from the same copy; the portal under `/supplier/` stays noindex and
+disallowed (`robots.txt` rules are prefixes, so `/supplier/` does not cover `/suppliers/`). The footer and the
+marketplace feature page's "Sell on Truebex" button link to it. English only. Build checks:
+`server/tests/test_site_pf13a.py`. When a roadmap card ships, move it to "What you get" in the present tense.
