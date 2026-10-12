@@ -166,9 +166,12 @@ def _fonts(text: str) -> list[str] | None:
     other letters in Open Sans; digits, spaces and marks in the font of the
     nearest letter before them (else after) when it has them, else the other.
     None when neither font has a character."""
-    strong = [rtl.bidi_class(ch) in ("L", "R", "AL") for ch in text]
+    strong = [rtl.bidi_class(ch) in ("L", "R", "AL") and not rtl.invisible(ch) for ch in text]
     out = []
     for i, ch in enumerate(text):
+        if rtl.invisible(ch):  # a mark like RLM steers the order and is never drawn
+            out.append(LATIN)
+            continue
         if rtl.arabic(ch):
             order: tuple[str, ...] = (ARABIC,)
         elif strong[i]:

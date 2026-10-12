@@ -84,6 +84,11 @@ def bidi_class(ch: str) -> str:
     return unicodedata.bidirectional(ch) or "L"
 
 
+def invisible(ch: str) -> bool:
+    """A format character (LRM, RLM, ALM, ZWJ ...): steers the layout, never drawn."""
+    return unicodedata.category(ch) == "Cf"
+
+
 def needs_bidi(text: str) -> bool:
     """True when the text holds right-to-left letters or Arabic digits."""
     return any(bidi_class(ch) in ("R", "AL", "AN") for ch in text)
@@ -319,7 +324,7 @@ def display(text: str, rtl: bool) -> list[tuple[int, str]]:
     out = []
     for i in reorder(lv):
         ch = text[i]
-        if unicodedata.category(ch) == "Cf":
+        if invisible(ch):
             continue
         out.append((i, _MIRROR.get(ch, ch) if lv[i] % 2 else ch))
     return out

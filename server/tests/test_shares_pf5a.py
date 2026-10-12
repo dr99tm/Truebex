@@ -164,6 +164,11 @@ def test_pf5a_number_keeps_bidi_order():
     assert rtl.visual(rtl.shape("شقة 12"), True) == "12 " + karrada
     shown = rtl.visual(rtl.shape("فيلا 3 – Villa 12B"), True)
     assert shown.startswith("Villa 12B – 3 ")
+    # Invisible marks pasted with a title (RLM, LRM, ZWJ) steer the order and are never drawn.
+    rlm, lrm, zwj = chr(0x200F), chr(0x200E), chr(0x200D)
+    assert card.title_lines("شقة" + rlm + " 2" + lrm) == card.title_lines("شقة 2")
+    # A zero-width joiner is not drawn, but it joins: the sheen takes its medial form.
+    assert card.title_lines(zwj + "شقة 2")[1] == [[("2 " + forms(0xFE94, 0xFED8, 0xFEB8), card.ARABIC)]]
     # Brackets are mirrored where the line runs right to left (L4).
     shown = rtl.visual(rtl.shape("(شقة)"), True)
     assert shown == "(" + karrada + ")"
