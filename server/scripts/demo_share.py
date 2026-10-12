@@ -16,6 +16,12 @@ share page shows the set's newest tiles and swaps them as edits re-render
 (`live_job_id`, a share-bundle MINOR proposal). The job is a `follow: true`
 panorama of the same account (server/scripts/demo_render.py submit --follow).
 The bundle gets its own bundle_id, so the plain share stays as it was.
+
+--title gives the share its own title (PF5a: an Arabic one shows on the card
+and the page right to left) and its own bundle_id, so shares with different
+titles sit side by side; running it again with the same title returns the
+same share. Every plan has one live share for now (GD7): end the other one
+first (Dashboard → Shares → End link), or use another account.
 """
 
 import argparse
@@ -97,6 +103,8 @@ def main(argv: list[str] | None = None) -> int:
         start = next((p for p in manifest["panoramas"] if p["id"] == manifest.get("start")), manifest["panoramas"][0])
         start["live_job_id"] = args.live
         manifest["bundle_id"] = hashlib.sha256(f"{manifest['bundle_id']}|live|{args.live}".encode()).hexdigest()[:32]
+    if args.title:
+        manifest["bundle_id"] = hashlib.sha256(f"{manifest['bundle_id']}|title|{args.title}".encode()).hexdigest()[:32]
     by_sha = {}
     for path in args.fixture.parent.iterdir():
         if path.is_file() and path.suffix.lower() in (".jpg", ".jpeg", ".png", ".pdf"):

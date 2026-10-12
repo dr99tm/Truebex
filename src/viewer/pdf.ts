@@ -53,7 +53,12 @@ export function buildDrawings(opts: {
   bar.className = "tbx-drawings-bar";
   const info = document.createElement("p");
   info.className = "tbx-drawings-info";
-  info.textContent = opts.titles.join(" · ");
+  // The designer's sheet names read in their own direction (PF5a): the line
+  // takes the first name's, and each name is isolated (FSI ... PDI) so an
+  // Arabic name and an English one never swap words across the separator.
+  const [fsi, pdi] = [String.fromCodePoint(0x2068), String.fromCodePoint(0x2069)];
+  info.textContent = opts.titles.map((t) => `${fsi}${t}${pdi}`).join(" · ");
+  info.dir = "auto";
   const download = document.createElement("a");
   download.className = "tbx-button";
   download.href = opts.url;

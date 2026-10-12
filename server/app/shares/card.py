@@ -6,6 +6,13 @@ Without a panorama the first render is used (cropped to fill); without
 either, the brand ground with the drafting grid. Type: Open Sans (OFL,
 assets/OpenSans-OFL.txt). A title with characters Open Sans cannot draw is
 left off the card rather than drawn as boxes.
+
+PF5a: a title with right-to-left letters (Arabic, Persian, Urdu, Hebrew) is
+joined and ordered by rtl.py and drawn right-aligned in the same band, its
+Arabic letters in Noto Sans Arabic (OFL, assets/NotoSansArabic-OFL.txt) and
+its other letters, digits and marks in Open Sans. If any letter cannot be
+joined or neither font has a character, the title is left off as before:
+never boxes, never unjoined or reversed letters.
 """
 
 import io
@@ -15,7 +22,7 @@ from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageFont
 
-from . import page
+from . import page, rtl
 
 W, H = 1200, 630
 ASSETS = Path(__file__).with_name("assets")
@@ -24,11 +31,25 @@ TEXT = (0xED, 0xED, 0xED)
 FG = (0xCB, 0xCB, 0xCB)
 HFOV = 90.0
 MAX_PITCH = 30.0
+PAD = 64
+LATIN = "OpenSans-Bold.ttf"
+ARABIC = "NotoSansArabic-Bold.ttf"
+TITLE_SIZE = 56
+LINE_PITCH = 68
+ELLIPSIS = chr(0x2026)
 
 
 @lru_cache
 def _font(name: str, size: int) -> ImageFont.FreeTypeFont:
     return ImageFont.truetype(str(ASSETS / name), size)
+
+
+@lru_cache
+def _basic(name: str, size: int) -> ImageFont.FreeTypeFont:
+    """Glyphs set one after another, left to right, on every machine: rtl.py has
+    already joined and ordered the text, so libraqm (where installed) must not
+    reorder it again."""
+    return ImageFont.truetype(str(ASSETS / name), size, layout_engine=ImageFont.Layout.BASIC)
 
 
 @lru_cache
@@ -110,11 +131,18 @@ def drawable(text: str, font: ImageFont.FreeTypeFont) -> bool:
     return all(ch.isspace() or _glyph(ch, font) != missing for ch in set(text))
 
 
-def _wrap(draw: ImageDraw.ImageDraw, text: str, font, width: int, lines: int) -> list[str]:
+@lru_cache(maxsize=4096)
+def _has(ch: str, name: str) -> bool:
+    return drawable(ch, _basic(name, TITLE_SIZE))
+
+
+def _wrap(text: str, width: float, lines: int, measure) -> list[str]:
+    """Up to `lines` lines of whole words no wider than `width` (as `measure`
+    finds them); words left over end the last line with an ellipsis."""
     words, out, line = text.split(), [], ""
     for word in words:
         trial = f"{line} {word}".strip()
-        if draw.textlength(trial, font=font) <= width:
+        if measure(trial) <= width:
             line = trial
             continue
         if line:
@@ -127,13 +155,82 @@ def _wrap(draw: ImageDraw.ImageDraw, text: str, font, width: int, lines: int) ->
     consumed = " ".join(out)
     if len(consumed) < len(" ".join(words)) and out:
         last = out[-1]
-        while last and draw.textlength(last + "…", font=font) > width:
+        while last and measure(last + ELLIPSIS) > width:
             last = last[:-1]
-        out[-1] = last.rstrip() + "…"
+        out[-1] = last.rstrip() + ELLIPSIS
     return out
 
 
-def compose(background: Image.Image | None, title: str) -> bytes:
+def _fonts(text: str) -> list[str] | None:
+    """The font of each character of a shaped line: Arabic in Noto Sans Arabic,
+    other letters in Open Sans; digits, spaces and marks in the font of the
+    nearest letter before them (else after) when it has them, else the other.
+    None when neither font has a character."""
+    strong = [rtl.bidi_class(ch) in ("L", "R", "AL") for ch in text]
+    out = []
+    for i, ch in enumerate(text):
+        if rtl.arabic(ch):
+            order: tuple[str, ...] = (ARABIC,)
+        elif strong[i]:
+            order = (LATIN,)
+        else:
+            near = next((text[j] for j in range(i - 1, -1, -1) if strong[j]), None)
+            near = near or next((text[j] for j in range(i + 1, len(text)) if strong[j]), None)
+            order = (ARABIC, LATIN) if near and rtl.arabic(near) else (LATIN, ARABIC)
+        name = next((n for n in order if _has(ch, n)), None)
+        if name is None:
+            return None
+        out.append(name)
+    return out
+
+
+def _runs(line: str, rtl_paragraph: bool) -> list[tuple[str, str]] | None:
+    """One line as drawn left to right: (text, font) runs, joined, in bidi order
+    and mirrored; None when a letter cannot be joined or drawn."""
+    shaped = rtl.shape(line)
+    fonts = _fonts(shaped) if shaped is not None else None
+    if fonts is None:
+        return None
+    runs: list[list[str]] = []
+    for i, ch in rtl.display(shaped, rtl_paragraph):
+        if runs and runs[-1][1] == fonts[i]:
+            runs[-1][0] += ch
+        else:
+            runs.append([ch, fonts[i]])
+    return [(text, name) for text, name in runs]
+
+
+def _width(runs: list[tuple[str, str]]) -> float:
+    return sum(_basic(name, TITLE_SIZE).getlength(text) for text, name in runs)
+
+
+def title_lines(title: str) -> tuple[bool, list[list[tuple[str, str]]]] | None:
+    """A title with right-to-left letters, laid out for the card: whether it reads
+    right to left (its first letter, as `dir="auto"` decides on the page) and up
+    to two lines of (text, font) runs left to right. None when it cannot be drawn."""
+    text = " ".join(rtl.clean(title).split())
+    rtl_paragraph = rtl.base_rtl(text)
+    laid: dict[str, list[tuple[str, str]] | None] = {}
+
+    def runs(line: str) -> list[tuple[str, str]] | None:
+        if line not in laid:
+            laid[line] = _runs(line, rtl_paragraph)
+        return laid[line]
+
+    if not text or runs(text) is None:
+        return None
+    def measure(line: str) -> float:
+        laid_out = runs(line)
+        return math.inf if laid_out is None else _width(laid_out)
+
+    lines = [runs(line) for line in _wrap(text, W - 2 * PAD, 2, measure)]
+    if not lines or any(line is None for line in lines):
+        return None
+    return rtl_paragraph, lines
+
+
+def render(background: Image.Image | None, title: str) -> Image.Image:
+    """The card as an image: the picture, the shade, the mark and the title."""
     img = (background.convert("RGB") if background is not None else _grid()).copy()
     if img.size != (W, H):
         img = _cover(img)
@@ -145,22 +242,41 @@ def compose(background: Image.Image | None, title: str) -> bytes:
     img.paste(Image.new("RGB", (W, H), PAGE), (0, 0), shade.resize((W, H)))
 
     d = ImageDraw.Draw(img)
-    pad = 64
+    pad = PAD
     mark = _mark(30)
     brand = _font("OpenSans-SemiBold.ttf", 28)
     y_brand = H - pad - mark.height
     img.paste(mark, (pad, y_brand), mark)
     d.text((pad + mark.width + 16, y_brand + mark.height / 2), page.DESIGNED_IN, font=brand, fill=FG, anchor="lm")
 
-    head = _font("OpenSans-Bold.ttf", 56)
-    if title and drawable(title, head):
-        lines = _wrap(d, title, head, W - 2 * pad, 2)
-        y = y_brand - 28 - 68 * len(lines)
-        for line in lines:
-            d.text((pad, y), line, font=head, fill=TEXT)
-            y += 68
+    head = _font(LATIN, TITLE_SIZE)
+    if title and not rtl.needs_bidi(title):
+        if drawable(title, head):
+            lines = _wrap(title, W - 2 * pad, 2, lambda s: d.textlength(s, font=head))
+            y = y_brand - 28 - LINE_PITCH * len(lines)
+            for line in lines:
+                d.text((pad, y), line, font=head, fill=TEXT)
+                y += LINE_PITCH
+    elif title and (laid := title_lines(title)):
+        # The same band and baseline as a Latin title; right-aligned when the
+        # title reads right to left.
+        rtl_paragraph, lines = laid
+        y = y_brand - 28 - LINE_PITCH * len(lines)
+        baseline = head.getmetrics()[0]
+        for runs in lines:
+            x = W - pad - _width(runs) if rtl_paragraph else pad
+            for text, name in runs:
+                font = _basic(name, TITLE_SIZE)
+                d.text((x, y + baseline), text, font=font, fill=TEXT, anchor="ls")
+                x += font.getlength(text)
+            y += LINE_PITCH
+    return img
+
+
+def compose(background: Image.Image | None, title: str) -> bytes:
+    """The card as the JPEG stored at publish (shares/{share_id}/card.jpg)."""
     out = io.BytesIO()
-    img.save(out, format="JPEG", quality=86, optimize=True)
+    render(background, title).save(out, format="JPEG", quality=86, optimize=True)
     return out.getvalue()
 
 

@@ -30,10 +30,21 @@ interface LiveLink {
   slug: string;
 }
 
-function el<K extends keyof HTMLElementTagNameMap>(tag: K, cls?: string, text?: string): HTMLElementTagNameMap[K] {
+/**
+ * `dir` "auto" is for a name the designer typed (the title, a room): it reads
+ * and aligns in its own direction, so an Arabic name runs right to left while
+ * the page's own words stay English (PF5a).
+ */
+function el<K extends keyof HTMLElementTagNameMap>(
+  tag: K,
+  cls?: string,
+  text?: string,
+  dir?: "auto",
+): HTMLElementTagNameMap[K] {
   const node = document.createElement(tag);
   if (cls) node.className = cls;
   if (text !== undefined) node.textContent = text;
+  if (dir) node.dir = dir;
   return node;
 }
 
@@ -131,7 +142,7 @@ function render(root: HTMLElement, data: PageData, site: string, base: URL, live
   const pdfFile = sheets ? m.files.find((f) => f.sha256 === sheets.file) : undefined;
 
   const header = el("header", "tbx-bar");
-  header.append(el("h1", "tbx-title", data.title));
+  header.append(el("h1", "tbx-title", data.title, "auto"));
   const tabs = el("nav", "tbx-tabs");
   tabs.setAttribute("role", "tablist");
   header.append(tabs);
@@ -284,7 +295,7 @@ function setupPanoramas(
   };
 
   for (const p of panoramas) {
-    const chip = el("button", "tbx-chip", p.title);
+    const chip = el("button", "tbx-chip", p.title, "auto");
     chip.type = "button";
     chip.dataset.id = p.id;
     chip.addEventListener("click", () => go(p.id, false));
