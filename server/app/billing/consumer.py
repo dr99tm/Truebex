@@ -14,6 +14,9 @@ the confirmation on a durable medium. Built now, switched off by default:
 
 The easy exit (cancel in Billing at the period end) needs no switch.
 
+None of it applies to a supplier's listing plan (PF8): it is a business
+contract, so every rule here asks service.is_consumer_plan first (PF8a).
+
 As everywhere in billing, a customer's request is recorded and the provider
 is asked, but a plan changes only from the provider's verified webhook
 (service.py). Wording comes from notices.py.
@@ -293,6 +296,8 @@ def _renewal_reminders(db: Session, now: datetime) -> int:
     ).all()
     sent = 0
     for sub in subs:
+        if not service.is_consumer_plan(sub.plan):
+            continue  # a supplier's listing plan is a business contract (PF8a)
         end = _aware(sub.current_period_end)
         annual = sub.interval == "year"
         lead = timedelta(days=s.renewal_reminder_days_year if annual else s.renewal_reminder_days_month)
@@ -371,8 +376,10 @@ def payment_paid(db: Session, payment: Payment) -> bool:
     one). Idempotent. Returns True when it was sent now."""
     if not wording_approved() or payment.status != "paid" or payment.confirmation_sent_at is not None:
         return False
-    if payment.plan in service.ONE_OFF_ITEMS:
-        return False  # not a subscription: its wording waits for QS-17 (PF11's As-built)
+    if not service.is_consumer_plan(payment.plan):
+        # A one-off item is not a subscription: its wording waits for QS-17
+        # (PF11's As-built). A listing plan is a business contract (PF8a).
+        return False
     paid = _aware(payment.paid_at)
     if paid is None or paid < _now() - CONFIRMATION_WINDOW:
         return False  # a late event about an old order: no confirmation out of the blue
@@ -453,17 +460,23 @@ def checkout_payment(db: Session, sub: Subscription) -> Payment | None:
         if found is not None:
             return found
     # Payments from before PF2b carry no subscription id: the user's latest
-    # paid checkout with this provider (one live subscription at a time),
-    # never a one-off item's (PF11's credit packs).
-    found = db.scalar(
+    # paid checkout with this provider (one live subscription at a time) of
+    # the same kind. An app plan's is never a one-off item's (PF11's credit
+    # packs) or a listing plan's, and a listing plan's is of its own tier
+    # (PF8a: one person can hold both).
+    consumer_plan = service.is_consumer_plan(sub.plan)
+    paid = db.scalars(
         select(Payment)
         .where(
             Payment.user_id == sub.user_id,
             Payment.provider == sub.provider,
             Payment.status == "paid",
-            Payment.plan.not_in(sorted(service.ONE_OFF_ITEMS)),
         )
         .order_by(Payment.paid_at.desc())
+    )
+    found = next(
+        (p for p in paid if (service.is_consumer_plan(p.plan) if consumer_plan else p.plan == sub.plan)),
+        None,
     )
     created = _aware(sub.created_at)
     if found is None or (created and _aware(found.paid_at) and _aware(found.paid_at) < created - timedelta(days=1)):
@@ -494,7 +507,14 @@ def pending_exit(db: Session, sub: Subscription, now: datetime | None = None) ->
 
 
 def _managed_live(sub: Subscription | None, now: datetime) -> bool:
-    return sub is not None and sub.provider in service.MANAGED_PROVIDERS and service.is_live(sub, now)
+    """A live Paddle or Stripe subscription the exits apply to: a
+    consumer's, never a supplier's listing plan (PF8a)."""
+    return (
+        sub is not None
+        and sub.provider in service.MANAGED_PROVIDERS
+        and service.is_consumer_plan(sub.plan)
+        and service.is_live(sub, now)
+    )
 
 
 def can_cancel(db: Session, sub: Subscription | None, now: datetime | None = None) -> bool:

@@ -169,6 +169,15 @@ ONE_OFF_ITEMS: set[str] = set()
 ONE_OFF_DETAILS: dict[str, Callable[[Session, list[Payment]], dict[str, dict]]] = {}
 
 
+def is_consumer_plan(plan: str | None) -> bool:
+    """PF8a: whether PF2b's consumer rules (billing/consumer.py: reminders,
+    the order confirmation, the exits and Billing's offers of them) apply to
+    a subscription or a checkout of this plan. A supplier's listing plan
+    (`listing_<plan>`, PF8) is a business contract, and a one-off item
+    (ONE_OFF_ITEMS) starts no subscription: neither is one."""
+    return bool(plan) and not plan.startswith(LISTING_TIER_PREFIX) and plan not in ONE_OFF_ITEMS
+
+
 def one_off_details(db: Session, payments: list[Payment]) -> dict[str, dict]:
     """reference -> `item` and what its feature adds, for each payment of a
     one-off item among `payments`; a plan's payment is left out."""
