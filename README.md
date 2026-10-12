@@ -1211,3 +1211,24 @@ $env:MOCK_PADDLE_NO_RETURN = "1"                 # "Paid", no return to the bill
 .venv\Scripts\python.exe -m uvicorn tests.mock_paddle:app --port 8098
 .venv\Scripts\python.exe -m app.worker --run billing.reconcile   # the daily reconcile, now
 ```
+
+## SSO endpoints over https (PF3c)
+
+An organisation's OpenID Connect provider must give https URLs for its `authorization_endpoint`, `token_endpoint`
+and `jwks_uri`, as its issuer already must. "Continue with SSO" refuses a discovery document that names a plain-http
+one (401 `sso_failed`, naming the field) before the API sends the client secret or fetches the keys, and the
+document is not cached. The exception is the issuer's: plain http only to 127.0.0.1, localhost or ::1, and only while
+`API_URL` is on loopback or `SSO_ALLOW_PRIVATE_ISSUERS=true` (the local mock provider). The provider's other
+endpoints (`userinfo_endpoint`, `end_session_endpoint`) are not used. Doc:
+`docs/roadmap/40/PF3c-sso-endpoints-https.md`.
+
+To see the refusal locally, start the mock provider with the endpoints it should give as http on another host
+(`localtest.me`):
+
+```powershell
+cd server
+$env:MOCK_OIDC_HTTP_ENDPOINT = "token_endpoint"   # or jwks_uri, authorization_endpoint; comma-separated
+.venv\Scripts\python.exe -m uvicorn tests.mock_oidc:app --port 8098
+```
+
+Tests: `server/tests/test_pf3c_sso_https.py`.
