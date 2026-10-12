@@ -9,6 +9,13 @@ step. Loopback and private-network issuers are allowed only while this API
 itself runs on loopback (API_URL on 127.0.0.1 or localhost: local trials and
 the mock provider) or with SSO_ALLOW_PRIVATE_ISSUERS; otherwise they are
 refused when saved and answer `sso_failed` at sign-in.
+
+The endpoints the discovery document names (ENDPOINTS) must be https like the
+issuer (PF3c), with the issuer's one exception: plain http to this computer
+while private issuers are allowed. A document that breaks the rule answers
+`sso_failed` naming the field and is not cached, so neither the token
+endpoint (the client secret and the code) nor the keys are ever called over
+plain http.
 """
 
 import base64
@@ -28,8 +35,12 @@ from ..net import outbound
 ALGORITHMS = ["RS256", "RS384", "RS512", "PS256", "PS384", "PS512", "ES256", "ES384", "ES512"]
 CACHE_TTL_S = 3600
 LEEWAY_S = 120
-# Plain http is accepted only for these issuer hosts (the local mock provider).
+# Plain http is accepted only for these hosts, issuer and endpoints (the local mock provider).
 LOCAL_HOSTS = ("127.0.0.1", "localhost", "::1")
+# Every URL this module takes from the discovery document: the browser is sent
+# to the first, the API calls the other two. An endpoint the code starts to use
+# (userinfo_endpoint, end_session_endpoint: none today) is added here.
+ENDPOINTS = ("authorization_endpoint", "token_endpoint", "jwks_uri")
 REFUSED = "The identity provider is not on a public internet address."
 _discovery: dict[str, tuple[float, dict]] = {}
 _jwks: dict[str, tuple[float, dict]] = {}
@@ -74,6 +85,22 @@ def issuer_is_acceptable(url: str) -> bool:
     return parts.scheme == "https" and outbound.public_host(host)
 
 
+def endpoint_is_acceptable(url: str) -> bool:
+    """A URL from the discovery document: https, like the issuer; plain http
+    only to this computer while private issuers are allowed (the local mock
+    provider). Its address is checked when it is called (`http_client`)."""
+    try:
+        parts = urlsplit(url)
+    except ValueError:
+        return False
+    host = (parts.hostname or "").lower()
+    if not host:
+        return False
+    if parts.scheme == "https":
+        return True
+    return parts.scheme == "http" and host in LOCAL_HOSTS and private_issuers_allowed()
+
+
 def issuer_requirement() -> str:
     """What the SSO tab's issuer field must be, for the field error."""
     if private_issuers_allowed():
@@ -97,9 +124,11 @@ def discover(issuer: str) -> dict:
         raise ContractError("sso_unavailable", 502, "The identity provider could not be reached. Try again.")
     if normalise_issuer(str(data.get("issuer", ""))) != issuer:
         raise fail("The identity provider's discovery document names another issuer.")
-    for field in ("authorization_endpoint", "token_endpoint", "jwks_uri"):
+    for field in ENDPOINTS:
         if not isinstance(data.get(field), str):
             raise fail(f"The identity provider's discovery document has no {field}.")
+        if not endpoint_is_acceptable(data[field]):
+            raise fail(f"The identity provider's discovery document must give {field} as an https URL.")
     _discovery[issuer] = (time.monotonic(), data)
     return data
 
