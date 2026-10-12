@@ -19,6 +19,7 @@ from app.shares import card, rtl
 from app.shares.models import Share
 from app.storage import get_store
 
+from .licence_helpers import FP2
 from .share_helpers import SHARE_FIXTURES, device_token, house, published
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -319,3 +320,14 @@ def test_pf5a_demo_share_title(client, monkeypatch, capsys):
     shares = client.get("/shares", headers={"Authorization": f"Bearer {token}", "X-Truebex-Contract": "share-bundle/1.0"})
     (share,) = shares.json()["shares"]
     assert share["title"] == REVIEW and share["bundle_id"] != house()["bundle_id"]
+
+    # --rooms names the panoramas (and the hotspots that lead to them) in Arabic.
+    other, _ = device_token(client, email="rooms@example.com", fingerprint=FP2)
+    rooms = "غرفة المعيشة, المطبخ, الممر"
+    argv = ["--token", other, "--fixture", fixture, "--api", "http://testserver", "--title", REVIEW, "--rooms", rooms]
+    assert demo.main(argv) == 0
+    slug = capsys.readouterr().out.split("/view/")[-1].strip()
+    data = client.get(f"/s/{slug}", headers={"X-Truebex-Contract": "share-bundle/1.0"}).json()
+    panoramas = data["manifest"]["panoramas"]
+    assert [p["title"] for p in panoramas] == ["غرفة المعيشة", "المطبخ", "الممر"]
+    assert [h["label"] for h in panoramas[0]["hotspots"]] == ["المطبخ", "الممر"]

@@ -20,7 +20,9 @@ The bundle gets its own bundle_id, so the plain share stays as it was.
 --title gives the share its own title (PF5a: an Arabic one shows on the card
 and the page right to left) and its own bundle_id, so shares with different
 titles sit side by side; running it again with the same title returns the
-same share. Every plan has one live share for now (GD7): end the other one
+same share. --rooms renames the panoramas (comma-separated, in the
+manifest's order) and the hotspots that lead to them, for trying room names
+in Arabic. Every plan has one live share for now (GD7): end the other one
 first (Dashboard → Shares → End link), or use another account.
 """
 
@@ -94,6 +96,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--fixture", required=True, type=Path, help="the bundle's manifest.json")
     parser.add_argument("--api", default=os.environ.get("TRUEBEX_API", "http://127.0.0.1:8000"))
     parser.add_argument("--title", default=None, help="share title (default: '<project> — client review')")
+    parser.add_argument("--rooms", default=None, help="the panoramas' names, comma-separated in the manifest's order")
     parser.add_argument("--days", type=int, default=30)
     parser.add_argument("--live", metavar="JOB_ID", help="show this followed render set live (PF6)")
     args = parser.parse_args(argv)
@@ -103,8 +106,15 @@ def main(argv: list[str] | None = None) -> int:
         start = next((p for p in manifest["panoramas"] if p["id"] == manifest.get("start")), manifest["panoramas"][0])
         start["live_job_id"] = args.live
         manifest["bundle_id"] = hashlib.sha256(f"{manifest['bundle_id']}|live|{args.live}".encode()).hexdigest()[:32]
-    if args.title:
-        manifest["bundle_id"] = hashlib.sha256(f"{manifest['bundle_id']}|title|{args.title}".encode()).hexdigest()[:32]
+    if args.rooms:
+        names = dict(zip((p["id"] for p in manifest["panoramas"]), (n.strip() for n in args.rooms.split(","))))
+        for p in manifest["panoramas"]:
+            p["title"] = names.get(p["id"]) or p["title"]
+            for spot in p.get("hotspots") or []:
+                spot["label"] = names.get(spot["target"]) or spot.get("label")
+    if args.title or args.rooms:
+        key = f"{manifest['bundle_id']}|title|{args.title}" + (f"|rooms|{args.rooms}" if args.rooms else "")
+        manifest["bundle_id"] = hashlib.sha256(key.encode()).hexdigest()[:32]
     by_sha = {}
     for path in args.fixture.parent.iterdir():
         if path.is_file() and path.suffix.lower() in (".jpg", ".jpeg", ".png", ".pdf"):
