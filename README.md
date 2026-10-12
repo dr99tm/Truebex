@@ -1211,3 +1211,21 @@ $env:MOCK_PADDLE_NO_RETURN = "1"                 # "Paid", no return to the bill
 .venv\Scripts\python.exe -m uvicorn tests.mock_paddle:app --port 8098
 .venv\Scripts\python.exe -m app.worker --run billing.reconcile   # the daily reconcile, now
 ```
+
+## SSO: providers that omit email_verified (PF3d)
+
+Some OpenID Connect providers (Microsoft Entra ID) never put `email_verified` in their ID tokens. The SSO tab's
+OpenID Connect form has a switch, "Trust the e-mail address from your identity provider" (`trust_idp_email` on
+`PUT /orgs/{id}/sso`, owner only, audited as `sso.trust_email_on` / `_off`): with it on, an ID token without the
+claim signs in. Entra's `xms_edov: true` signs in without it. An explicit `email_verified: false` is always refused,
+and every address must still be in one of the organisation's verified domains. Doc:
+`docs/roadmap/40/PF3d-oidc-trust-idp-email.md`.
+
+To play such a provider locally:
+
+```powershell
+cd server
+$env:MOCK_OIDC_EMAIL_VERIFIED = "absent"   # true (default) | false | absent
+$env:MOCK_OIDC_XMS_EDOV = "1"              # optional: Entra's "email domain owner verified"
+.venv\Scripts\python.exe -m uvicorn tests.mock_oidc:app --port 8098
+```

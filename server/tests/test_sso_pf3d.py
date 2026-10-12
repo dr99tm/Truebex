@@ -404,8 +404,9 @@ def test_pf3d_site_sso_tab_chunk_has_checkbox_copy():
     scripts = sorted(set(re.findall(r'"(/_next/static/[^"]+?\.js)"', html)))
     assert scripts, "the SSO tab names no script chunks"
     chunks = {s: (OUT / s.lstrip("/")).read_text(encoding="utf-8", errors="ignore") for s in scripts}
+    # The copy ships in the constants chunk and the form that sends the switch
+    # in the page's own chunk; both load with the SSO tab.
     copy = _site_copy()
-    page_chunks = [s for s, body in chunks.items() if copy["label"] in body]
-    assert page_chunks, "the checkbox label is in none of the SSO tab's chunks"
-    assert any(copy["help"] in chunks[s] for s in page_chunks)
-    assert any("trust_idp_email" in chunks[s] for s in page_chunks)
+    assert any(copy["label"] in body and copy["help"] in body for body in chunks.values()), \
+        "the checkbox copy is in none of the SSO tab's chunks"
+    assert any("trust_idp_email" in body for body in chunks.values())
