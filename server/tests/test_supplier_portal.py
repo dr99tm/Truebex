@@ -646,7 +646,10 @@ def test_supplier_listing_checkout_via_billing(client, monkeypatch):
         assert (row.supplier_id, row.plan, row.provider, row.amount) == (sid, "standard", "stripe", 4900)
         payment = db.scalar(select(Payment).where(Payment.reference == row.payment_ref))
         assert payment.plan == "listing_standard" and payment.status == "pending"
-        # PF2's webhook writes the subscription; the sync job follows it.
+        # PF2's webhook marks the checkout paid, naming the subscription it
+        # started, and writes that subscription; the sync job follows it by
+        # that id (PF8a: an unpaid checkout matches nothing).
+        payment.status, payment.provider_subscription_id = "paid", "sub_nord"
         db.add(Subscription(user_id=payment.user_id, plan="listing_standard", provider="stripe", status="active",
                             provider_customer_id="cus_nord", provider_subscription_id="sub_nord"))  # fmt: skip
         db.commit()
