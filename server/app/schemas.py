@@ -1,11 +1,12 @@
 """Pydantic request/response schemas."""
 
-from datetime import date, datetime, timezone
+from datetime import date
 from typing import Annotated, Literal
 
-from pydantic import AfterValidator, BaseModel, ConfigDict, EmailStr, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator, model_validator
 
 from . import scopes as _scopes
+from .utc import UtcDateTime  # PF14c: every time a response model answers
 
 
 class UserCreate(BaseModel):
@@ -30,7 +31,7 @@ class UserOut(BaseModel):
 
     id: int
     email: EmailStr
-    created_at: datetime
+    created_at: UtcDateTime
     plan: str
     name: str | None = None
     avatar_url: str | None = None
@@ -76,9 +77,9 @@ class ApiKeyOut(BaseModel):
     id: int
     name: str
     prefix: str
-    created_at: datetime
-    last_used_at: datetime | None
-    revoked_at: datetime | None
+    created_at: UtcDateTime
+    last_used_at: UtcDateTime | None
+    revoked_at: UtcDateTime | None
     # PF12: the key's scopes; `legacy` = made before scopes (every read scope).
     scopes: list[str] = []
     legacy: bool = False
@@ -131,16 +132,6 @@ Provider = Literal["paddle", "stripe"]
 Interval = Literal["month", "year"]
 # PF3a: an organisation's id (licence contract §6.1 `account.org_id`, 32 hex).
 OrgId = Annotated[str, Field(pattern=r"^[0-9a-f]{32}$")]
-
-
-def _utc(dt: datetime) -> datetime:
-    # SQLite hands back naive UTC; Postgres answers in the session's time zone.
-    return dt.replace(tzinfo=timezone.utc) if dt.tzinfo is None else dt.astimezone(timezone.utc)
-
-
-# PF2c: every billing time leaves the API as RFC 3339 UTC with `Z` (pydantic
-# writes a UTC time with Z), whatever the database session's zone is.
-UtcDateTime = Annotated[datetime, AfterValidator(_utc)]
 
 
 class PriceOut(BaseModel):

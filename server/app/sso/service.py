@@ -76,6 +76,7 @@ def connection_json(db: Session, org: Organisation) -> dict:
         "issuer": conn.issuer if conn else None,
         "client_id": conn.client_id if conn else None,
         "has_client_secret": bool(conn and conn.client_secret_enc),
+        "trust_idp_email": bool(conn and conn.trust_idp_email),  # PF3d
         "idp_entity_id": conn.idp_entity_id if conn else None,
         "idp_sso_url": conn.idp_sso_url if conn else None,
         "idp_cert_sha256": None,
@@ -114,6 +115,7 @@ def save(db: Session, org: Organisation, actor: int, body, now: datetime) -> dic
     """PUT /orgs/{id}/sso. Returns the connection JSON (plus a break-glass
     code, once, when the policy first turns on)."""
     conn = connection(db, org.id) or SsoConnection(org_id=org.id, kind=body.kind)
+    trusted_before = bool(conn.trust_idp_email)
     if body.kind == "oidc":
         issuer = oidc.normalise_issuer(body.issuer or "")
         if not issuer or not oidc.issuer_is_acceptable(issuer):
@@ -126,7 +128,11 @@ def save(db: Session, org: Organisation, actor: int, body, now: datetime) -> dic
         if body.client_secret:
             conn.client_secret_enc = crypto.seal(body.client_secret)
         conn.idp_entity_id = conn.idp_sso_url = conn.idp_cert_pem = None
+        if body.trust_idp_email is not None:
+            conn.trust_idp_email = body.trust_idp_email
     else:
+        if body.trust_idp_email:
+            raise _field_error("trust_idp_email", "applies to OpenID Connect only")
         if body.idp_metadata_xml:
             idp = saml.parse_idp_metadata(body.idp_metadata_xml)
             entity, sso_url, cert = idp.entity_id, idp.sso_url, idp.cert_pem
@@ -144,6 +150,7 @@ def save(db: Session, org: Organisation, actor: int, body, now: datetime) -> dic
             raise _field_error("idp_metadata_xml", "the metadata needs an entityID and an https sign-in URL")
         conn.idp_entity_id, conn.idp_sso_url, conn.idp_cert_pem = entity, sso_url, cert
         conn.issuer = conn.client_id = conn.client_secret_enc = None
+        conn.trust_idp_email = False
     conn.kind = body.kind
     conn.enabled = body.enabled
     db.add(conn)
@@ -151,6 +158,12 @@ def save(db: Session, org: Organisation, actor: int, body, now: datetime) -> dic
         db, org.id, "sso.configured", actor=actor, target_kind="org", target_id=org.id, at=now,
         protocol=conn.kind, enabled=conn.enabled, issuer=conn.issuer or conn.idp_entity_id,
     )
+    # PF3d: each change of the "trust the provider's e-mail" switch.
+    if bool(conn.trust_idp_email) != trusted_before:
+        audit.record(
+            db, org.id, "sso.trust_email_on" if conn.trust_idp_email else "sso.trust_email_off",
+            actor=actor, target_kind="org", target_id=org.id, at=now, protocol=conn.kind,
+        )
     code = None
     if body.required != bool(org.sso_required):
         if body.required:
@@ -253,7 +266,8 @@ def finish_oidc(db: Session, *, code: str, state: str, now: datetime) -> tuple[U
         raise oidc.fail("The organisation's SSO client secret must be entered again.")
     tokens = oidc.exchange_code(conn.issuer, conn.client_id, secret, code, row.code_verifier or "")
     claims = oidc.verify_id_token(
-        conn.issuer, conn.client_id, tokens["id_token"], nonce=row.nonce or "", access_token=tokens.get("access_token")
+        conn.issuer, conn.client_id, tokens["id_token"], nonce=row.nonce or "", access_token=tokens.get("access_token"),
+        trust_idp_email=bool(conn.trust_idp_email),
     )
     user = sign_in(db, org, claims["email"], claims.get("name"), "oidc", now)
     return user, row.next

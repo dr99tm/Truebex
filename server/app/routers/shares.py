@@ -5,7 +5,6 @@
 `url`: this share's link-preview tags around the static viewer shell.
 """
 
-from datetime import datetime
 from typing import Any
 
 from fastapi import APIRouter, Depends, Query, Response
@@ -23,6 +22,7 @@ from ..shares import manifest, page
 from ..shares import service as shares
 from ..storage import get_store
 from ..uploads.credentials import UploadCaller
+from ..utc import UtcDateTime
 
 router = APIRouter(tags=["shares"], dependencies=[contract("share-bundle", 1, 0)])
 public = APIRouter(include_in_schema=False)
@@ -46,7 +46,8 @@ class CreateShareIn(BaseModel):
 
 class PatchShareIn(BaseModel):
     title: str | None = Field(default=None, min_length=1, max_length=120)
-    expires_at: datetime | None = None
+    # Any RFC 3339 time; held in UTC from here on (PF14c), zone-less = UTC.
+    expires_at: UtcDateTime | None = None
 
     @field_validator("title")
     @classmethod

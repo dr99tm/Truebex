@@ -2,13 +2,14 @@
 §10 feed tests first, then limits, the JSON feed, the daily pull and GD1's
 template through the endpoint."""
 
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 
 import pytest
 from sqlalchemy import select
 
 from app import mail
 from app.database import SessionLocal
+from app.licence.clock import aware
 from app.market import importer, media
 from app.market.models import FeedRun, Product, VariantPrice
 from app.supplier import feeds
@@ -286,7 +287,8 @@ def test_feed_source_daily_pull(client, monkeypatch):
         assert feeds.pull_due(db, nxt + timedelta(seconds=30), fetch=fake) == 1
         row = db.get(FeedSource, sid)
         assert (row.last_status, row.etag) == ("queued", '"v1"')
-        assert row.next_pull_at.replace(tzinfo=timezone.utc) == nxt + timedelta(days=1)
+        # Compared as aware times: Postgres answers in the session's zone.
+        assert aware(row.next_pull_at) == nxt + timedelta(days=1)
         run = db.get(FeedRun, row.last_feed_id)
         assert (run.state, run.source, run.mode) == ("queued", "pull", "replace")
     assert fake.calls == [("https://feeds.example.com/feed.csv", None)]

@@ -40,7 +40,8 @@ def put_sso(
     org_id: str, body: SsoSettings, current: User = Depends(get_current_user), db: Session = Depends(get_db)
 ) -> dict:
     """Secrets are write-only. The first time SSO becomes required the answer
-    carries `break_glass_code`, shown once."""
+    carries `break_glass_code`, shown once. `trust_idp_email` (PF3d) is OIDC's:
+    left out it keeps its value, and SAML refuses it on (422)."""
     org, _ = orgs.require(db, org_id, current, "owner")
     return service.save(db, org, current.id, body, clock.now())
 
