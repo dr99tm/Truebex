@@ -16,8 +16,6 @@ adds the dashboard's `/webhooks` routes and the shapes the document names
 without a route of their own.
 """
 
-from datetime import datetime, timezone
-
 from fastapi import APIRouter, Depends, FastAPI
 from pydantic.json_schema import models_json_schema
 from sqlalchemy.orm import Session
@@ -26,6 +24,7 @@ from ...billing.service import effective_plan
 from ...contract_http import enveloped
 from ...database import get_db
 from ...deps import ApiCaller, api_key_auth
+from ...licence import clock
 from ...plans import get_plan
 from ...scopes import author_for_key
 from ...usage import used_this_month
@@ -38,7 +37,7 @@ router = APIRouter(prefix="/v1", tags=["developer api"], dependencies=[enveloped
 @router.get("/ping", operation_id="account_ping", **doc(None, models.Ping, errors=(401, 429)))
 def ping(caller: ApiCaller = Depends(api_key_auth)) -> dict:
     """Check that a key works. Counts toward usage like any call."""
-    return {"ok": True, "time": datetime.now(timezone.utc).isoformat()}
+    return {"ok": True, "time": clock.rfc3339(clock.now())}
 
 
 @router.get("/account", operation_id="account_get", **doc(None, models.Account, errors=(401, 429)))
