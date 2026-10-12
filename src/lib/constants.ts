@@ -3198,3 +3198,18 @@ export const SUPPLIER_CHECKOUT = {
   unconfirmed: "We couldn't confirm the payment yet. Your listing plan changes here once the provider confirms it.",
   canceled: "Checkout was cancelled — you haven't been charged. Your listing plan is unchanged.",
 } as const;
+
+// --- SSO: trust the identity provider's e-mail (PF3d) ------------------------------------------
+// The SSO tab's OpenID Connect form (owners). Some providers never mark an address as
+// verified; with this on, the address they send is accepted, still only in the organisation's
+// verified domains. `label` is the name the API's refusal points owners to
+// (server/app/sso/oidc.py NOT_MARKED_VERIFIED): keep the two the same.
+
+export const SSO_TRUST_EMAIL = {
+  label: "Trust the e-mail address from your identity provider",
+  help: "Some providers never mark addresses as verified. Only addresses in your verified domains can sign in.",
+  audit: {
+    "sso.trust_email_on": "Trusted the identity provider's e-mail",
+    "sso.trust_email_off": "Stopped trusting the identity provider's e-mail",
+  },
+} as const;

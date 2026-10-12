@@ -205,9 +205,40 @@ def token(
         "name": email.split("@")[0].title(),
         "at_hash": _b64(hashlib.sha256(access.encode()).digest()[:16]),
     }
+    _env_email_claims(claims)  # PF3d
     claims.update({k: v for k, v in TWEAKS.items() if not k.startswith("_")})
     for key in TWEAKS.get("_drop", ()):
         claims.pop(key, None)
     key_pem = TWEAKS.get("_key_pem", KEY_PEM)
     id_token = jwt.encode(claims, key_pem, algorithm="RS256", headers={"kid": TWEAKS.get("_kid", KID)})
     return {"access_token": access, "token_type": "Bearer", "expires_in": 300, "id_token": id_token}
+
+
+# --- PF3d: play a provider that omits email_verified ------------------------------------------
+# Read at each token, so a test's monkeypatch.setenv applies (TWEAKS still win):
+#   MOCK_OIDC_EMAIL_VERIFIED=true|false|absent   the claim as JSON true (default), false, or left out
+#                                                 (Microsoft Entra ID sends none)
+#   MOCK_OIDC_XMS_EDOV=1                          adds Entra's "xms_edov": true (email domain owner verified)
+def _env_email_claims(claims: dict) -> None:
+    import os
+
+    mode = os.environ.get("MOCK_OIDC_EMAIL_VERIFIED", "true").strip().lower()
+    if mode not in ("true", "false", "absent"):
+        raise HTTPException(500, f"MOCK_OIDC_EMAIL_VERIFIED={mode!r}: use true, false or absent")
+    if mode == "absent":
+        claims.pop("email_verified", None)
+    elif mode == "false":
+        claims["email_verified"] = False
+    if os.environ.get("MOCK_OIDC_XMS_EDOV", "").strip().lower() in ("1", "true"):
+        claims["xms_edov"] = True
+
+
+def _env_note() -> str | None:
+    import os
+
+    said = [f"{k}={os.environ[k]}" for k in ("MOCK_OIDC_EMAIL_VERIFIED", "MOCK_OIDC_XMS_EDOV") if os.environ.get(k)]
+    return f"mock oidc: ID tokens follow {', '.join(said)}" if said else None
+
+
+if _env_note():
+    print(_env_note(), flush=True)

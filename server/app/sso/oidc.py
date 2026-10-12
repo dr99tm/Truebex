@@ -209,9 +209,34 @@ def exchange_code(issuer: str, client_id: str, client_secret: str, code: str, ve
     return data
 
 
+# PF3d: the ID token's word on its e-mail address. Some providers never send
+# `email_verified` (Microsoft Entra ID); the connection's `trust_idp_email`
+# switch accepts their address. The SSO tab labels the switch with
+# SSO_TRUST_EMAIL.label (src/lib/constants.ts), which NOT_MARKED_VERIFIED names.
+NOT_VERIFIED = "The identity provider did not confirm this e-mail address."
+NOT_MARKED_VERIFIED = (
+    "Your identity provider did not mark this address as verified. An owner can turn on "
+    "“Trust the e-mail address from your identity provider” in Organisation → SSO."
+)
+
+
+def _says_true(value) -> bool:
+    """A claim that answers yes: JSON true, or the "true", "1" or 1 some providers send."""
+    return value is True or str(value).strip().lower() in ("true", "1")
+
+
 def verify_id_token(
-    issuer: str, client_id: str, id_token: str, *, nonce: str, access_token: str | None
+    issuer: str, client_id: str, id_token: str, *, nonce: str, access_token: str | None,
+    trust_idp_email: bool = False,
 ) -> dict:
+    """The ID token's claims, or 401 `sso_failed`. Its address is accepted when
+    `email_verified` is true, when Entra's `xms_edov` ("email domain owner
+    verified") is true, or when `email_verified` is absent (or null) and the
+    connection trusts its provider's addresses (`trust_idp_email`). An
+    explicit `email_verified` that is not true (false, "false", 0) is refused
+    even with the switch on, and even beside `xms_edov`: the provider says the
+    address is not verified. Every address must still be in one of the
+    organisation's verified domains (`service.sign_in`)."""
     meta = discover(issuer)
     try:
         header = jwt.get_unverified_header(id_token)
@@ -247,8 +272,11 @@ def verify_id_token(
         raise fail("The ID token was issued to another application.")
     if not nonce or not secrets.compare_digest(str(claims.get("nonce", "")), nonce):
         raise fail("The ID token does not answer this sign-in (nonce).")
-    if claims.get("email_verified") is not True and str(claims.get("email_verified")).lower() != "true":
-        raise fail("The identity provider did not confirm this e-mail address.")
     if not isinstance(claims.get("email"), str) or "@" not in claims["email"]:
         raise fail("The identity provider sent no e-mail address.")
+    verified = claims.get("email_verified")
+    if verified is not None and not _says_true(verified):
+        raise fail(NOT_VERIFIED)
+    if not (_says_true(verified) or _says_true(claims.get("xms_edov")) or trust_idp_email):
+        raise fail(NOT_MARKED_VERIFIED)
     return claims

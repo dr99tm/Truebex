@@ -8,6 +8,7 @@ import { dangerButton, errorText, inputClass, linkButton } from "@/components/da
 import { useApiData } from "@/components/dashboard/useApiData";
 import { Button } from "@/components/ui/Button";
 import { formatDate } from "@/lib/api";
+import { SSO_TRUST_EMAIL } from "@/lib/constants";
 import {
   addDomain,
   getSso,
@@ -158,6 +159,7 @@ function Connection({ org, sso, onSaved }: { org: OrgSummary; sso: SsoSettings; 
   const [clientId, setClientId] = useState(sso.client_id ?? "");
   const [secret, setSecret] = useState("");
   const [metadata, setMetadata] = useState("");
+  const [trustEmail, setTrustEmail] = useState(sso.trust_idp_email ?? false);
   const [enabled, setEnabled] = useState(sso.configured ? sso.enabled : true);
   const [required, setRequired] = useState(sso.required);
   const [busy, setBusy] = useState(false);
@@ -176,7 +178,12 @@ function Connection({ org, sso, onSaved }: { org: OrgSummary; sso: SsoSettings; 
         enabled,
         required,
         ...(kind === "oidc"
-          ? { issuer: issuer.trim(), client_id: clientId.trim(), client_secret: secret || undefined }
+          ? {
+              issuer: issuer.trim(),
+              client_id: clientId.trim(),
+              client_secret: secret || undefined,
+              trust_idp_email: trustEmail,
+            }
           : { idp_metadata_xml: metadata.trim() || undefined }),
       });
       if (out.break_glass_code) setCode(out.break_glass_code);
@@ -257,6 +264,21 @@ function Connection({ org, sso, onSaved }: { org: OrgSummary; sso: SsoSettings; 
               className={`font-mono text-xs ${inputClass}`}
             />
             {sso.idp_cert_sha256 && <span className="text-xs text-text-muted">Signing certificate SHA-256 {sso.idp_cert_sha256}</span>}
+          </label>
+        )}
+        {kind === "oidc" && (
+          <label className="flex items-start gap-2">
+            <input
+              type="checkbox"
+              name="trust_idp_email"
+              checked={trustEmail}
+              onChange={(e) => setTrustEmail(e.target.checked)}
+              className="mt-1"
+            />
+            <span>
+              {SSO_TRUST_EMAIL.label}
+              <span className="block text-text-muted">{SSO_TRUST_EMAIL.help}</span>
+            </span>
           </label>
         )}
 
