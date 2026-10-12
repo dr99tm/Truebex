@@ -11,10 +11,18 @@ and configures the SSO tab with issuer http://127.0.0.1:8098, client id
 `truebex-local`, client secret `mock-oidc-secret`. /authorize signs in
 whoever the login hint names (the work e-mail typed on the site), or
 `?email=` when given, without asking for a password: it is a test stand-in.
+
+PF3c, for trying the https rule by hand: MOCK_OIDC_HTTP_ENDPOINT names the
+discovery fields (comma-separated: authorization_endpoint, token_endpoint,
+jwks_uri) the document gives as plain http on another host, HTTP_HOST
+(`localtest.me`, a public name that answers 127.0.0.1), on the mock's own
+port and path, e.g. `MOCK_OIDC_HTTP_ENDPOINT=token_endpoint`. Every request
+the mock answers is kept in CALLS ("METHOD /path") and printed by uvicorn.
 """
 
 import base64
 import hashlib
+import os
 import secrets
 import time
 from pathlib import Path
@@ -38,12 +46,37 @@ DEFAULT_EMAIL = "c@example.com"
 CODES: dict[str, dict] = {}
 TWEAKS: dict = {}
 SEEN: list[dict] = []
+# "METHOD /path" of every request, oldest first.
+CALLS: list[str] = []
+
+# The discovery fields that name an endpoint, and its path here.
+ENDPOINT_PATHS = {"authorization_endpoint": "/authorize", "token_endpoint": "/token", "jwks_uri": "/jwks"}
+# Not this computer by name, so the API's local exception (plain http to
+# 127.0.0.1, localhost or ::1) does not cover it.
+HTTP_HOST = "localtest.me"
+
+
+def endpoint_list(value: str) -> set[str]:
+    """The fields in MOCK_OIDC_HTTP_ENDPOINT's comma-separated list."""
+    fields = {field.strip() for field in value.split(",") if field.strip()}
+    unknown = sorted(fields - ENDPOINT_PATHS.keys())
+    if unknown:
+        raise ValueError(f"MOCK_OIDC_HTTP_ENDPOINT: {', '.join(unknown)} is not one of {', '.join(ENDPOINT_PATHS)}")
+    return fields
+
+
+# Fields the discovery document gives as http on HTTP_HOST (PF3c).
+HTTP_ENDPOINTS: set[str] = endpoint_list(os.environ.get("MOCK_OIDC_HTTP_ENDPOINT", ""))
+if HTTP_ENDPOINTS:
+    named = ", ".join(sorted(HTTP_ENDPOINTS))
+    print(f"mock oidc: discovery gives {named} as http://{HTTP_HOST} (MOCK_OIDC_HTTP_ENDPOINT)", flush=True)
 
 
 def reset() -> None:
     CODES.clear()
     TWEAKS.clear()
     SEEN.clear()
+    CALLS.clear()
 
 
 def public_jwk() -> dict:
@@ -58,18 +91,31 @@ def _b64(raw: bytes) -> str:
 app = FastAPI(title="Mock OIDC provider (tests only)")
 
 
+@app.middleware("http")
+async def _record(request: Request, call_next):
+    CALLS.append(f"{request.method} {request.url.path}")
+    return await call_next(request)
+
+
 def _issuer(request: Request) -> str:
     return str(request.base_url).rstrip("/")
 
 
+def _endpoint(request: Request, field: str) -> str:
+    """The issuer's URL for `field`, or plain http on HTTP_HOST (same port
+    and path) when MOCK_OIDC_HTTP_ENDPOINT names it."""
+    path = ENDPOINT_PATHS[field]
+    if field not in HTTP_ENDPOINTS:
+        return f"{_issuer(request)}{path}"
+    port = request.url.port
+    return f"http://{HTTP_HOST}{f':{port}' if port else ''}{path}"
+
+
 @app.get("/.well-known/openid-configuration")
 def discovery(request: Request) -> dict:
-    iss = _issuer(request)
     return {
-        "issuer": iss,
-        "authorization_endpoint": f"{iss}/authorize",
-        "token_endpoint": f"{iss}/token",
-        "jwks_uri": f"{iss}/jwks",
+        "issuer": _issuer(request),
+        **{field: _endpoint(request, field) for field in ENDPOINT_PATHS},
         "response_types_supported": ["code"],
         "subject_types_supported": ["public"],
         "id_token_signing_alg_values_supported": ["RS256"],
