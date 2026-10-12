@@ -36,6 +36,10 @@ class SsoConnection(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=_utcnow, onupdate=_utcnow, nullable=False
     )
+    # PF3d (OIDC only): accept the provider's address when its ID token has no
+    # `email_verified` (oidc.verify_id_token). NULL (rows from before PF3d) = off.
+    # Added to existing databases by `database._ADDED_COLUMNS`.
+    trust_idp_email: Mapped[bool | None] = mapped_column(Boolean, default=False, nullable=True)
 
 
 class SsoRequest(Base):

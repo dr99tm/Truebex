@@ -7,6 +7,7 @@ import { OrgGate } from "@/components/dashboard/OrgContext";
 import { errorText, inputClass, linkButton, tableClass, tdClass, thClass } from "@/components/dashboard/orgUi";
 import { Button } from "@/components/ui/Button";
 import { parseServerDate } from "@/lib/api";
+import { SSO_TRUST_EMAIL } from "@/lib/constants";
 import { downloadAuditCsv, getAudit, type AuditEvent, type OrgSummary } from "@/lib/orgs";
 
 export default function AuditPage() {
@@ -59,6 +60,7 @@ const LABELS: Record<string, string> = {
   "sso.break_glass_created": "Made a break-glass code",
   "sso.break_glass_used": "Used the break-glass code",
   "sso.break_glass_refused": "Break-glass code refused",
+  ...SSO_TRUST_EMAIL.audit,
   "domain.added": "Added a domain",
   "domain.verified": "Verified a domain",
   "domain.removed": "Removed a domain",

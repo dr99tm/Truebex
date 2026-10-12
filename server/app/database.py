@@ -137,6 +137,10 @@ _ADDED_COLUMNS.setdefault("project_snapshots", []).extend(
 # PF12 (public API): API key scopes, a JSON list; NULL = every read scope.
 _ADDED_COLUMNS.setdefault("api_keys", []).append(("scopes", "TEXT"))
 
+# PF3d (SSO): trust the OIDC provider's e-mail when its ID token has no
+# email_verified; NULL = off.
+_ADDED_COLUMNS.setdefault("sso_connections", []).append(("trust_idp_email", "BOOLEAN"))
+
 
 def _migrate(bind: Engine) -> None:
     insp = inspect(bind)
