@@ -135,7 +135,7 @@ Set-up, in the worktree, PowerShell (two windows):
 ## As-built
 
 * **Date, branch, commits:** 2026-10-12, `ap/t57-pf5a-share-pages-arabic-titles-d` from `master` 6ef7928 (Claude Autopilot T57): `14abd4e` the card (`rtl.py`, `card.py`, Noto Sans Arabic), the page (`dir="auto"`, CSS), `serve-out.py`, `bidi_conformance.py` and the tests; `ff7275c` `demo_share.py --rooms`; then this documentation.
-* **Counts:** pytest 622 → 632 collected (10 new in `test_shares_pf5a.py`). The verify gate's result is below. `viewer.js` 28.4 KB, `viewer.css` 10.0 KB (budget 250 KB). Noto Sans Arabic Bold adds 255 KB to the API image.
+* **Counts:** pytest 622 → 632 collected (10 new in `test_shares_pf5a.py`, all run in the gate, the build check included). `scripts/autopilot-verify.ps1` green in 777 s: lint, build, pytest 616 passed and 16 skipped (the Postgres-only tests) in 502 s. `viewer.js` 28.4 KB, `viewer.css` 10.0 KB (budget 250 KB). Noto Sans Arabic Bold adds 255 KB to the API image.
 * **Self-tests:**
   * `scripts/bidi_conformance.py` on Unicode 15.0.0's files: BidiTest.txt 92,898 cases, BidiCharacterTest.txt 91,605 cases (every case without explicit embeddings, isolates or paragraph separators), 0 failures. Joining types derived for the 248 Arabic-block letters and marks with forms agree with ArabicShaping.txt (after the three exceptions in the table); 193 letters with no presentation forms answer None.
   * Card pixels: 16 cards composed by PF5's code before any change (8 titles × the grid and the living room: English, a wrapping one, HTML-like, Greek and Cyrillic, empty, CJK, Arabic, Hebrew) and again after: the 12 non-Arabic, non-Hebrew cards are byte-identical JPEGs; the Arabic and Hebrew ones now carry their titles.
