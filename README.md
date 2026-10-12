@@ -1211,3 +1211,21 @@ $env:MOCK_PADDLE_NO_RETURN = "1"                 # "Paid", no return to the bill
 .venv\Scripts\python.exe -m uvicorn tests.mock_paddle:app --port 8098
 .venv\Scripts\python.exe -m app.worker --run billing.reconcile   # the daily reconcile, now
 ```
+
+## Arabic share titles (PF5a)
+
+A share titled in Arabic, Persian or Urdu shows that title on its link-preview card (`/s/{slug}/card.jpg`), joined and
+right to left at the right edge, in Noto Sans Arabic Bold (OFL, `server/app/shares/assets/`). Latin and digits inside
+keep their order, and an English title's card is unchanged. `server/app/shares/rtl.py` shapes the letters into their
+presentation forms and runs the Unicode bidi algorithm in pure Python, so the card needs no libraqm or FriBiDi. A title
+it cannot join or draw (CJK, letters with no presentation forms) is left off the card, and harakat are not drawn. On
+the share page, the title, room chips, captions, sheet names and hotspots carry `dir="auto"`. Doc:
+`docs/roadmap/40/PF5a-arabic-share-titles.md`.
+
+```powershell
+cd server
+.venv\Scripts\python.exe scripts\demo_share.py --email you@example.com --password ... --fixture tests\contracts\share-bundle\manifest-house.json --title "شقة الكرادة — مراجعة العميل" --rooms "غرفة المعيشة, المطبخ, الممر"
+.venv\Scripts\python.exe scripts\bidi_conformance.py <folder with BidiTest.txt and BidiCharacterTest.txt>   # after a Python upgrade
+```
+
+`scripts/serve-out.py` listens with a backlog of 128, so a page's burst of requests is not refused.
