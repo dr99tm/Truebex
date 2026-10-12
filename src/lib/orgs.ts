@@ -122,6 +122,8 @@ export interface SsoSettings {
   issuer: string | null;
   client_id: string | null;
   has_client_secret: boolean;
+  /** PF3d: accept the provider's address when its ID token has no email_verified (OIDC). */
+  trust_idp_email: boolean;
   idp_entity_id: string | null;
   idp_sso_url: string | null;
   idp_cert_sha256: string | null;
@@ -144,6 +146,8 @@ export interface SsoSettingsInput {
   idp_metadata_xml?: string;
   enabled: boolean;
   required: boolean;
+  /** OIDC only; left out keeps the saved value. */
+  trust_idp_email?: boolean;
 }
 
 export interface InvitePreview {

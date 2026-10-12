@@ -23,6 +23,9 @@ class SsoSettings(_Body):
     idp_cert_pem: Annotated[str, Field(max_length=20_000)] | None = None
     enabled: bool = True
     required: bool = False
+    # PF3d, OIDC only: accept the address when the ID token has no
+    # email_verified. Left out keeps the stored value; SAML refuses true.
+    trust_idp_email: bool | None = None
 
 
 class DomainAdd(_Body):
