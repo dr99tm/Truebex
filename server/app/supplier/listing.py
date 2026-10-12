@@ -14,8 +14,9 @@ A paid plan is a Stripe subscription opened with PF2's
 listing price (`provider_prices` tier `listing_<plan>`, interval `month`);
 its checkout returns to `/supplier/billing/?checkout=…&ref=…`, whose page
 calls PF2's refresh (PF2d). PF2's webhook or that refresh writes the
-subscription; `supplier.listing.sync` (and each read of the plan) copies its
-state into `listing_subscriptions` and the customer into
+subscription and names it on the paid payment; `supplier.listing.sync` (and
+each read of the plan) finds it by that id (PF8a) and copies its state into
+`listing_subscriptions` and the customer into
 `suppliers.billing_customer_id`, which PF7's statements invoice through
 `create_invoice(db, customer, lines)`. A plan billed by its subscription
 leaves the listing fee off the monthly statement.
@@ -226,35 +227,61 @@ def choose(db: Session, m: Member, plan_id: str) -> dict:
 _STATUS = {"active": "active", "trialing": "active", "past_due": "past_due", "canceled": "canceled", "paused": "past_due"}
 
 
+def _stripe_subscription(db: Session, provider_subscription_id: str) -> Subscription | None:
+    return db.scalar(
+        select(Subscription).where(
+            Subscription.provider == "stripe", Subscription.provider_subscription_id == provider_subscription_id
+        )
+    )
+
+
+def subscription_of(db: Session, row: ListingSubscription, payment: Payment | None) -> Subscription | None:
+    """PF2's subscription that pays this listing row (PF8a): the one the row
+    names, else the one its checkout's payment names (set when PF2 marks a
+    Stripe checkout paid, PF2d). Owner and tier are only the fallback for a
+    paid checkout whose payment names none (rows from before PF2d), and never
+    take a subscription another checkout or listing row names. An unpaid
+    checkout matches nothing: it expires after CHECKOUT_TTL."""
+    if row.provider_subscription_id:
+        return _stripe_subscription(db, row.provider_subscription_id)
+    if payment is None or payment.status != "paid":
+        return None
+    if payment.provider_subscription_id:
+        return _stripe_subscription(db, payment.provider_subscription_id)
+    db.flush()  # rows matched earlier in this sync name theirs
+    named_by_payment = select(Payment.provider_subscription_id).where(
+        Payment.provider == "stripe", Payment.provider_subscription_id.is_not(None)
+    )
+    named_by_row = select(ListingSubscription.provider_subscription_id).where(
+        ListingSubscription.id != row.id, ListingSubscription.provider_subscription_id.is_not(None)
+    )
+    return db.scalar(
+        select(Subscription)
+        .where(
+            Subscription.provider == "stripe",
+            Subscription.user_id == payment.user_id,
+            Subscription.plan == tier_of(row.plan),
+            Subscription.provider_subscription_id.not_in(named_by_payment),
+            Subscription.provider_subscription_id.not_in(named_by_row),
+        )
+        .order_by(Subscription.updated_at.desc(), Subscription.id.desc())
+    )
+
+
 def sync(db: Session, at: datetime, supplier_id: str | None = None) -> int:
     """Keep listing_subscriptions in step with PF2's subscriptions (every
-    supplier's, or only `supplier_id`'s)."""
+    supplier's, or only `supplier_id`'s), each row with its own
+    (subscription_of)."""
     n = 0
     query = select(ListingSubscription).where(
         ListingSubscription.provider == "stripe", ListingSubscription.status.in_(("checkout", "active", "past_due"))
     )
     if supplier_id is not None:
         query = query.where(ListingSubscription.supplier_id == supplier_id)
-    rows = list(db.scalars(query))
+    rows = list(db.scalars(query.order_by(ListingSubscription.id)))
     for row in rows:
         payment = db.scalar(select(Payment).where(Payment.reference == row.payment_ref)) if row.payment_ref else None
-        sub = None
-        if row.provider_subscription_id:
-            sub = db.scalar(
-                select(Subscription).where(
-                    Subscription.provider == "stripe", Subscription.provider_subscription_id == row.provider_subscription_id
-                )
-            )
-        elif payment is not None:
-            sub = db.scalar(
-                select(Subscription)
-                .where(
-                    Subscription.provider == "stripe",
-                    Subscription.user_id == payment.user_id,
-                    Subscription.plan == tier_of(row.plan),
-                )
-                .order_by(Subscription.updated_at.desc())
-            )
+        sub = subscription_of(db, row, payment)
         supplier = db.get(Supplier, row.supplier_id)
         if sub is None:
             created = row.created_at if row.created_at.tzinfo else row.created_at.replace(tzinfo=at.tzinfo)
