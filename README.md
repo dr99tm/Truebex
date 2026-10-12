@@ -1211,3 +1211,26 @@ $env:MOCK_PADDLE_NO_RETURN = "1"                 # "Paid", no return to the bill
 .venv\Scripts\python.exe -m uvicorn tests.mock_paddle:app --port 8098
 .venv\Scripts\python.exe -m app.worker --run billing.reconcile   # the daily reconcile, now
 ```
+
+## Listing plans and the consumer rules (PF8a)
+
+A supplier's listing plan (`listing_<plan>`) is a business contract, so none of the consumer rules apply to it: no
+renewal reminder, no order confirmation, and no cancel, cooling-off refund or withdrawal offer. The owner's own app
+plan keeps them all. Every rule in `server/app/billing/consumer.py` asks `billing.service.is_consumer_plan(plan)`.
+Each listing checkout follows its own subscription (`supplier/listing.py` `subscription_of`): the one its paid
+payment names. An unpaid checkout matches nothing and expires after 24 hours. Doc:
+`docs/roadmap/40/PF8a-listing-plans-and-consumer-rules.md`.
+
+To try it on a scratch database with the notice switches on (in `server/`):
+
+```powershell
+$env:DATABASE_URL="sqlite:///./pf8a-test.db"; $env:MAIL_BACKEND="console"; $env:LEGAL_WORDING_APPROVED="true"
+$env:SUBSCRIPTION_NOTICES_ENABLED="true"; $env:SUBSCRIPTION_RULES_FROM="2020-01-01"
+.venv\Scripts\python.exe scripts\seed_listing_checkouts.py --email pf8a@example.com
+.venv\Scripts\python.exe -m app.worker --run billing.subscription_notices supplier.listing.sync
+.venv\Scripts\python.exe scripts\seed_listing_checkouts.py --email pf8a@example.com --show
+```
+
+The seed script writes a verified supplier with a paid and an unpaid Standard listing checkout, and the owner's own
+Pro plan; the paid listing plan and Pro both renew in 2 days. Only Pro's mails are printed, and `--show` lists one
+active listing checkout.
