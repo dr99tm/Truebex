@@ -1211,3 +1211,17 @@ $env:MOCK_PADDLE_NO_RETURN = "1"                 # "Paid", no return to the bill
 .venv\Scripts\python.exe -m uvicorn tests.mock_paddle:app --port 8098
 .venv\Scripts\python.exe -m app.worker --run billing.reconcile   # the daily reconcile, now
 ```
+
+## API times in UTC (PF14c)
+
+Every time the API answers is RFC 3339 UTC ending in `Z`, on SQLite and on Postgres whatever the session's time
+zone: `/auth/*` and `/auth/me` (`created_at`), `/keys` (`created_at`, `last_used_at`, `revoked_at`), the session
+token inside `/licence/link/poll`, `/v1/ping` and, as before, billing and every contract endpoint. Response models
+type their times as `UtcDateTime` (`server/app/utc.py`: a naive value is UTC, an aware one is converted); handlers
+that answer a dict format them with `app.licence.clock.rfc3339`. A share's `expires_at` may be sent with any
+offset and is held in UTC. Doc: `docs/roadmap/40/PF14c-utc-times.md`.
+
+- **Gate:** `server/tests/test_pf14c_utc_times.py::test_response_models_use_utc_datetime` walks every route's
+  response model and fails on a plain `datetime`, naming the field.
+- **Postgres in another zone:** `test_user_and_key_times_are_utc_postgres` (and PF2c's billing twin) run with
+  `TEST_DATABASE_URL` and set the session to Asia/Baghdad; leave `PGTZ` unset for them.
