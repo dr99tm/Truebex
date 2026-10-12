@@ -1287,3 +1287,21 @@ offset and is held in UTC. Doc: `docs/roadmap/40/PF14c-utc-times.md`.
   response model and fails on a plain `datetime`, naming the field.
 - **Postgres in another zone:** `test_user_and_key_times_are_utc_postgres` (and PF2c's billing twin) run with
   `TEST_DATABASE_URL` and set the session to Asia/Baghdad; leave `PGTZ` unset for them.
+
+## Arabic share titles (PF5a)
+
+A share titled in Arabic, Persian or Urdu shows that title on its link-preview card (`/s/{slug}/card.jpg`), joined and
+right to left at the right edge, in Noto Sans Arabic Bold (OFL, `server/app/shares/assets/`). Latin and digits inside
+keep their order, and an English title's card is unchanged. `server/app/shares/rtl.py` shapes the letters into their
+presentation forms and runs the Unicode bidi algorithm in pure Python, so the card needs no libraqm or FriBiDi. A title
+it cannot join or draw (CJK, letters with no presentation forms) is left off the card, and harakat are not drawn. On
+the share page, the title, room chips, captions, sheet names and hotspots carry `dir="auto"`. Doc:
+`docs/roadmap/40/PF5a-arabic-share-titles.md`.
+
+```powershell
+cd server
+.venv\Scripts\python.exe scripts\demo_share.py --email you@example.com --password ... --fixture tests\contracts\share-bundle\manifest-house.json --title "شقة الكرادة — مراجعة العميل" --rooms "غرفة المعيشة, المطبخ, الممر"
+.venv\Scripts\python.exe scripts\bidi_conformance.py <folder with BidiTest.txt and BidiCharacterTest.txt>   # after a Python upgrade
+```
+
+`scripts/serve-out.py` listens with a backlog of 128, so a page's burst of requests is not refused.

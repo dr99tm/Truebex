@@ -177,6 +177,7 @@ export class CubeTileViewer {
       const el = document.createElement("button");
       el.type = "button";
       el.textContent = spot.label;
+      el.dir = "auto"; // a room name reads in its own direction (PF5a)
       el.dataset.hotspot = spot.id;
       el.className = "tbx-hotspot";
       Object.assign(el.style, {

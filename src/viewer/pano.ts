@@ -322,6 +322,7 @@ export class PanoViewer {
       const text = document.createElement("span");
       text.className = "tbx-hotspot-label";
       text.textContent = label;
+      text.dir = "auto"; // a room name reads in its own direction (PF5a)
       el.append(dot, text);
       el.addEventListener("click", (e) => {
         e.stopPropagation();

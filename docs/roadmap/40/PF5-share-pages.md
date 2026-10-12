@@ -201,7 +201,7 @@ The first nine names are the contract's §10 platform tests.
   * PF14: the `s3` storage adapter (parts → S3 multipart uploads, presigned file URLs; derivatives are already stored with `immutable` cache headers for a CDN), `share.truebex.com` DNS with `SHARE_BASE_URL`, and Pillow on the API VM (it is in `requirements.txt`).
   * PF6: install the worker-token lookup with `uploads.credentials.set_worker_resolver` and open `job-output` sessions at claim with `uploads.service.open_session`.
   * PF4: snapshots upload through `uploads` (purpose `snapshot`) and take refs on their blobs.
-  * PF13 (Arabic): a share title in a script Open Sans lacks is left off the preview card (never drawn as boxes); add Noto with shaping then.
+  * PF13 (Arabic): a share title in a script Open Sans lacks is left off the preview card (never drawn as boxes); add Noto with shaping then. **Done in PF5a** (2026-10-12, Autopilot T57, `PF5a-arabic-share-titles.md`): Arabic, Persian and Urdu titles joined and drawn right to left in Noto Sans Arabic; the page's names `dir="auto"`.
   * GD7: `share_days` / `share_bytes` per tier in `catalogue.json`.
   * App PR4: the Share command and Shares panel against these endpoints and fixtures.
   * Owner: Lighthouse on a phone (≤ 3 s to the first panorama on 4G) and the gyroscope on a real phone (human test steps 5 and 6).

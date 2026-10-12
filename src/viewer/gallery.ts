@@ -26,6 +26,7 @@ export function buildGallery(renders: { render: Render; url: string }[], labels:
     img.decoding = "async";
     const caption = document.createElement("figcaption");
     caption.textContent = render.title;
+    caption.dir = "auto"; // the designer's name for it reads in its own direction (PF5a)
     figure.append(img, caption);
     track.append(figure);
   }
