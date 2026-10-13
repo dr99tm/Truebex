@@ -43,7 +43,7 @@ from sqlalchemy.orm import Session
 
 from ..storage import Store, get_store
 from . import media
-from .common import KINDS, new_id, now, parse_major, parse_percent_bp, rfc3339
+from .common import KINDS, is_hex32, new_id, now, parse_major, parse_percent_bp, rfc3339
 from .models import (
     FeedRun,
     MarketRegion,
@@ -645,14 +645,17 @@ def import_rows(
             product.status, product.prev_status = product.prev_status, None
             product_changed = True
         if includes and sku in includes:
+            # By supplier, SKU and variant, or (PF7c) by product id as the app writes them.
             refs = [
                 {
                     "supplier_id": str(i.get("supplier_id") or supplier.supplier_id),
                     "sku": str(i.get("sku", ""))[:64],
                     "variant_id": str(i.get("variant_id") or "default")[:64],
                 }
+                if isinstance(i, dict)
+                else i
                 for i in includes[sku]
-                if isinstance(i, dict) and i.get("sku")
+                if (isinstance(i, dict) and i.get("sku")) or is_hex32(i)
             ]
             if not _same(product.includes, refs):
                 product.includes = refs

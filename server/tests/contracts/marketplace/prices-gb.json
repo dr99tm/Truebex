@@ -1,157 +1,177 @@
 {
-  "request": {
-    "method": "POST",
-    "path": "/market/prices",
-    "body": {
-      "region": "GB",
-      "items": [
-        {
-          "supplier_id": "f8afe1ba2b0bf97f23ef888f040cf46a",
-          "sku": "SOFA-OSLO-3",
-          "variant_id": "oat-linen",
-          "qty": 1
-        },
-        {
-          "supplier_id": "f8afe1ba2b0bf97f23ef888f040cf46a",
-          "sku": "SOFA-OSLO-3",
-          "variant_id": "charcoal-wool",
-          "qty": 1
-        },
-        {
-          "supplier_id": "f8afe1ba2b0bf97f23ef888f040cf46a",
-          "sku": "TABLE-AKER-CT",
-          "variant_id": "default",
-          "qty": 1
-        },
-        {
-          "supplier_id": "f8afe1ba2b0bf97f23ef888f040cf46a",
-          "sku": "PAINT-CHALK",
-          "variant_id": "2-5l",
-          "qty": 4
-        }
+  "region": "GB",
+  "at": "2026-10-09T10:00:00Z",
+  "stale_after": "2026-10-10T10:00:00Z",
+  "items": [
+    {
+      "supplier_id": "4e6f72644c6976696e67000000000001",
+      "sku": "SOFA-OSLO-3",
+      "variant_id": "oat-linen",
+      "price": {
+        "amount": 109900,
+        "currency": "GBP",
+        "exponent": 2,
+        "region": "GB",
+        "includes_tax": true,
+        "tax_rate_bp": 2000,
+        "at": "2026-10-09T10:00:00Z"
+      },
+      "availability": {
+        "state": "in_stock",
+        "stock": 12,
+        "lead_time_days": null,
+        "updated_at": "2026-10-09T10:00:00Z"
+      },
+      "substitutes": []
+    },
+    {
+      "supplier_id": "4e6f72644c6976696e67000000000001",
+      "sku": "SOFA-OSLO-3",
+      "variant_id": "charcoal-wool",
+      "price": {
+        "amount": 119900,
+        "currency": "GBP",
+        "exponent": 2,
+        "region": "GB",
+        "includes_tax": true,
+        "tax_rate_bp": 2000,
+        "at": "2026-10-09T10:00:00Z"
+      },
+      "availability": {
+        "state": "made_to_order",
+        "stock": null,
+        "lead_time_days": 42,
+        "updated_at": "2026-10-09T10:00:00Z"
+      },
+      "substitutes": []
+    },
+    {
+      "supplier_id": "4e6f72644c6976696e67000000000001",
+      "sku": "CHAIR-BERGEN",
+      "variant_id": "default",
+      "price": {
+        "amount": 54900,
+        "currency": "GBP",
+        "exponent": 2,
+        "region": "GB",
+        "includes_tax": true,
+        "tax_rate_bp": 2000,
+        "at": "2026-10-09T10:00:00Z"
+      },
+      "availability": {
+        "state": "in_stock",
+        "stock": 4,
+        "lead_time_days": null,
+        "updated_at": "2026-10-09T10:00:00Z"
+      },
+      "substitutes": []
+    },
+    {
+      "supplier_id": "4e6f72644c6976696e67000000000001",
+      "sku": "TABLE-HALDEN",
+      "variant_id": "walnut",
+      "price": {
+        "amount": 39900,
+        "currency": "GBP",
+        "exponent": 2,
+        "region": "GB",
+        "includes_tax": true,
+        "tax_rate_bp": 2000,
+        "at": "2026-10-09T10:00:00Z"
+      },
+      "availability": {
+        "state": "discontinued",
+        "stock": null,
+        "lead_time_days": null,
+        "updated_at": "2026-10-09T10:00:00Z"
+      },
+      "substitutes": [
+        "3f6c1e2a9b0d4c8e9a1b2c3d4e5f6a04"
       ]
+    },
+    {
+      "supplier_id": "4e6f72644c6976696e67000000000001",
+      "sku": "TABLE-FJORD",
+      "variant_id": "oak",
+      "price": {
+        "amount": 42900,
+        "currency": "GBP",
+        "exponent": 2,
+        "region": "GB",
+        "includes_tax": true,
+        "tax_rate_bp": 2000,
+        "at": "2026-10-09T10:00:00Z"
+      },
+      "availability": {
+        "state": "low_stock",
+        "stock": 2,
+        "lead_time_days": null,
+        "updated_at": "2026-10-09T10:00:00Z"
+      },
+      "substitutes": []
+    },
+    {
+      "supplier_id": "4174656c6965724c756d656e00000002",
+      "sku": "LIGHT-ARC-W",
+      "variant_id": "brass",
+      "price": {
+        "amount": 12900,
+        "currency": "GBP",
+        "exponent": 2,
+        "region": "GB",
+        "includes_tax": true,
+        "tax_rate_bp": 2000,
+        "at": "2026-10-09T10:00:00Z"
+      },
+      "availability": {
+        "state": "in_stock",
+        "stock": 30,
+        "lead_time_days": null,
+        "updated_at": "2026-10-09T10:00:00Z"
+      },
+      "substitutes": []
+    },
+    {
+      "supplier_id": "4e6f72644c6976696e67000000000001",
+      "sku": "SIDEBOARD-NORD",
+      "variant_id": "2400",
+      "price": {
+        "amount": 149900,
+        "currency": "GBP",
+        "exponent": 2,
+        "region": "GB",
+        "includes_tax": true,
+        "tax_rate_bp": 2000,
+        "at": "2026-10-09T10:00:00Z"
+      },
+      "availability": {
+        "state": "in_stock",
+        "stock": 3,
+        "lead_time_days": null,
+        "updated_at": "2026-10-09T10:00:00Z"
+      },
+      "substitutes": []
+    },
+    {
+      "supplier_id": "4e6f72644c6976696e67000000000001",
+      "sku": "SIDEBOARD-NORD",
+      "variant_id": "1800",
+      "price": {
+        "amount": 119900,
+        "currency": "GBP",
+        "exponent": 2,
+        "region": "GB",
+        "includes_tax": true,
+        "tax_rate_bp": 2000,
+        "at": "2026-10-09T10:00:00Z"
+      },
+      "availability": {
+        "state": "made_to_order",
+        "stock": null,
+        "lead_time_days": 28,
+        "updated_at": "2026-10-09T10:00:00Z"
+      },
+      "substitutes": []
     }
-  },
-  "http_status": 200,
-  "body": {
-    "region": "GB",
-    "at": "2026-10-09T10:00:00Z",
-    "stale_after": "2026-10-10T10:00:00Z",
-    "items": [
-      {
-        "supplier_id": "f8afe1ba2b0bf97f23ef888f040cf46a",
-        "sku": "SOFA-OSLO-3",
-        "variant_id": "oat-linen",
-        "price": {
-          "amount": 129900,
-          "currency": "GBP",
-          "exponent": 2,
-          "region": "GB",
-          "includes_tax": true,
-          "tax_rate_bp": 2000,
-          "at": "2026-10-09T10:00:00Z"
-        },
-        "availability": {
-          "state": "in_stock",
-          "stock": 12,
-          "lead_time_days": null,
-          "updated_at": "2026-10-09T10:00:00Z"
-        },
-        "substitutes": [],
-        "qty": 1
-      },
-      {
-        "supplier_id": "f8afe1ba2b0bf97f23ef888f040cf46a",
-        "sku": "SOFA-OSLO-3",
-        "variant_id": "charcoal-wool",
-        "price": {
-          "amount": 144900,
-          "currency": "GBP",
-          "exponent": 2,
-          "region": "GB",
-          "includes_tax": true,
-          "tax_rate_bp": 2000,
-          "at": "2026-10-09T10:00:00Z"
-        },
-        "availability": {
-          "state": "made_to_order",
-          "stock": null,
-          "lead_time_days": 42,
-          "updated_at": "2026-10-09T10:00:00Z"
-        },
-        "substitutes": [],
-        "qty": 1
-      },
-      {
-        "supplier_id": "f8afe1ba2b0bf97f23ef888f040cf46a",
-        "sku": "TABLE-AKER-CT",
-        "variant_id": "default",
-        "price": {
-          "amount": 24900,
-          "currency": "GBP",
-          "exponent": 2,
-          "region": "GB",
-          "includes_tax": true,
-          "tax_rate_bp": 2000,
-          "at": "2026-10-09T10:00:00Z"
-        },
-        "availability": {
-          "state": "discontinued",
-          "stock": null,
-          "lead_time_days": null,
-          "updated_at": "2026-10-09T10:00:00Z"
-        },
-        "substitutes": [
-          {
-            "product_id": "520a4dc6012477c516f811506f74873a",
-            "supplier_id": "f8afe1ba2b0bf97f23ef888f040cf46a",
-            "supplier_name": "Nord Living",
-            "sku": "TABLE-FJORD-CT",
-            "variant_id": "default",
-            "name": "Fjord coffee table",
-            "category": "furniture/tables/coffee-tables",
-            "thumbnail_url": "https://api.truebex.com/market/media/thumbs/9d002c2d71d385cc3a968329a460a2aa0ce187158d9d190d62b73ca040941c86.jpg",
-            "price": {
-              "amount": 27900,
-              "currency": "GBP",
-              "exponent": 2,
-              "region": "GB",
-              "includes_tax": true,
-              "tax_rate_bp": 2000,
-              "at": "2026-10-09T10:00:00Z"
-            },
-            "availability": {
-              "state": "in_stock",
-              "stock": 20,
-              "lead_time_days": null,
-              "updated_at": "2026-10-09T10:00:00Z"
-            }
-          }
-        ],
-        "qty": 1
-      },
-      {
-        "supplier_id": "f8afe1ba2b0bf97f23ef888f040cf46a",
-        "sku": "PAINT-CHALK",
-        "variant_id": "2-5l",
-        "price": {
-          "amount": 4200,
-          "currency": "GBP",
-          "exponent": 2,
-          "region": "GB",
-          "includes_tax": true,
-          "tax_rate_bp": 2000,
-          "at": "2026-10-09T10:00:00Z"
-        },
-        "availability": {
-          "state": "in_stock",
-          "stock": 120,
-          "lead_time_days": null,
-          "updated_at": "2026-10-09T10:00:00Z"
-        },
-        "substitutes": [],
-        "qty": 4
-      }
-    ]
-  }
+  ]
 }

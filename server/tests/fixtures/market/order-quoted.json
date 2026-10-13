@@ -1,0 +1,132 @@
+{
+  "request": {
+    "method": "GET",
+    "path": "/market/orders/2d971a428383c0ca871de509b5f702be",
+    "note": "after the supplier quoted"
+  },
+  "http_status": 200,
+  "body": {
+    "order_id": "2d971a428383c0ca871de509b5f702be",
+    "kind": "quote",
+    "state": "quoted",
+    "payment": "platform",
+    "region": "AE",
+    "currency": "AED",
+    "exponent": 2,
+    "checkout_url": null,
+    "project": {
+      "name": "House",
+      "project_id": null,
+      "project_uid": null
+    },
+    "delivery": {
+      "country": "AE",
+      "city": "Dubai",
+      "postcode": null,
+      "address": null
+    },
+    "suppliers": [
+      {
+        "supplier_id": "f8afe1ba2b0bf97f23ef888f040cf46a",
+        "supplier_name": "Nord Living",
+        "state": "quoted",
+        "lines": 1,
+        "subtotal": {
+          "amount": 118000,
+          "currency": "AED",
+          "exponent": 2
+        },
+        "delivery": {
+          "amount": 15000,
+          "currency": "AED",
+          "exponent": 2
+        },
+        "tax": {
+          "amount": 6333,
+          "currency": "AED",
+          "exponent": 2
+        },
+        "total": {
+          "amount": 133000,
+          "currency": "AED",
+          "exponent": 2
+        },
+        "delivery_days": {
+          "min": 7,
+          "max": 14
+        },
+        "quote": {
+          "quoted_at": "2026-10-09T10:00:00Z",
+          "valid_until": "2026-11-08T10:00:00Z",
+          "message": "Delivered and assembled in Dubai within 10 days."
+        },
+        "reason": null
+      }
+    ],
+    "lines": [
+      {
+        "supplier_id": "f8afe1ba2b0bf97f23ef888f040cf46a",
+        "product_id": "00e167c6f66b6daa824878b7cb698fa9",
+        "sku": "SOFA-OSLO-3",
+        "variant_id": "oat-linen",
+        "name": "Oslo 3-seater sofa",
+        "qty": 1,
+        "price": {
+          "amount": 129900,
+          "currency": "AED",
+          "exponent": 2,
+          "region": "AE",
+          "includes_tax": true,
+          "tax_rate_bp": 500,
+          "at": "2026-10-09T10:00:00Z"
+        },
+        "quoted_price": {
+          "amount": 118000,
+          "currency": "AED",
+          "exponent": 2,
+          "region": "AE",
+          "includes_tax": true,
+          "tax_rate_bp": 500,
+          "at": "2026-10-09T10:00:00Z"
+        },
+        "total": {
+          "amount": 118000,
+          "currency": "AED",
+          "exponent": 2
+        }
+      }
+    ],
+    "subtotal": {
+      "amount": 118000,
+      "currency": "AED",
+      "exponent": 2
+    },
+    "delivery_total": {
+      "amount": 15000,
+      "currency": "AED",
+      "exponent": 2
+    },
+    "tax": {
+      "amount": 6333,
+      "currency": "AED",
+      "exponent": 2
+    },
+    "total": {
+      "amount": 133000,
+      "currency": "AED",
+      "exponent": 2
+    },
+    "quote_id": null,
+    "order_ref": null,
+    "expires_at": "2026-11-08T10:00:00Z",
+    "paid_at": null,
+    "created_at": "2026-10-09T10:00:00Z",
+    "updated_at": "2026-10-09T10:00:00Z",
+    "contact": {
+      "name": "Layla Haddad",
+      "email": "buyer@example.com",
+      "phone": null,
+      "message": "Delivery after 1 Dec"
+    }
+  }
+}
