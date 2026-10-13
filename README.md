@@ -1305,3 +1305,23 @@ cd server
 ```
 
 `scripts/serve-out.py` listens with a backlog of 128, so a page's burst of requests is not refused.
+
+## MCP package: the app's bridge (PF12b)
+
+`packages/mcp/` (`@truebex/mcp`, bin `truebex-mcp`) is now the MCP server the app ships (AI1): `truebex-mcp.mjs`,
+`lib/`, `tools.json` and `instructions.md`, copied byte for byte from the app repo's `Tools/mcp/` together with the
+app's fake app and node tests (`test/`) and the wire fixture scripts (`test/fixtures/`). PF12's stand-in is gone (the
+PF12 section above still mentions it). Only `package.json`, `README.md` (the npm install notes) and `LICENSE` are the
+platform's; `truebex.mcpb` stays with the app. Never edit the copies: a fix goes to the app first, then
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts\sync-mcp.ps1   # -AppRepo T:\unreal5_7_4_projects\truebex_compact
+server\.venv\Scripts\python.exe -m pytest -q server\tests\test_pf12_mcp_package.py
+```
+
+The script refuses a layout without `truebex-mcp.mjs` or a `tools.json` whose `"schema"` is not `truebex-tools/1`,
+and also copies `tools.json` to `src/content/tools.json`, from which `/developers/mcp/` is generated. Run the bridge
+from a checkout with `node packages\mcp\truebex-mcp.mjs` (Node 20+); it talks to a running Truebex only while Tools >
+AI > Agent > Allow AI apps to connect is on, and answers `app_not_running` otherwise. The package tests never reach a
+real app: each bridge gets a scratch `LOCALAPPDATA`, the app's fake app or `server/tests/mcp_wire_replay.mjs` (the
+fake pipe that plays the app's side of a wire script). Doc: `docs/roadmap/40/PF12b-mcp-package-adopts-ai1-bridge.md`.
