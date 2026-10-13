@@ -42,6 +42,7 @@ from .shares import jobs as _share_jobs  # noqa: F401  (PF5: shares.expire, shar
 from .uploads import jobs as _upload_jobs  # noqa: F401  (PF5: uploads.expire)
 from .routers import shares, uploads  # PF5
 from .routers import mobile as mobile_router  # PF9: a project's panorama sets for members
+from .routers import market_basket  # PF7b: the Buy this look basket page's route
 
 settings = get_settings()
 
@@ -164,3 +165,4 @@ app.include_router(analysis_ai_router.router)
 # PF12: the dashboard's webhook routes (/v1 is registered above with the other routers)
 v1.install(app)
 app.include_router(mobile_router.router)  # PF9
+app.include_router(market_basket.router)  # PF7b

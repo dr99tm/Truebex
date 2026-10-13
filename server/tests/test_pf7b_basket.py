@@ -163,9 +163,10 @@ def test_basket_lines_named_and_default_resolved(client):
     assert "variants" not in lamp
     # A variant literally named `default`.
     assert rug["variant"]["variant_id"] == "default" and rug["variant"]["resolved"] == "asked"
-    # An explicit variant is kept as asked.
+    # An explicit variant is kept as asked; its product's other versions are offered too.
     assert sand["variant"] == {"variant_id": "sand", "options": {"colour": "Sand"}, "resolved": "asked"}
-    assert old["status"] == "found" and old["variant"]["variant_id"] == "grey"
+    assert [v["variant_id"] for v in sand["variants"]] == ["moss", "rust", "sand"]
+    assert old["status"] == "found" and old["variant"]["variant_id"] == "grey" and "variants" not in old
     # Withdrawn after publication: named, so the page can say what is gone.
     assert gone["status"] == "withdrawn" and gone["name"] == "Tor shelf"
     # Never published, unknown variant, unknown product: not found; a
