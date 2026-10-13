@@ -161,6 +161,17 @@ def load_config() -> dict:
     return json.loads(CONFIG_PATH.read_text(encoding="utf-8"))
 
 
+@lru_cache
+def allowed_index() -> dict[str, tuple[str, dict[str, str]]]:
+    """The allow-list keyed without case: {name: (name, {prop: prop})} in §6.1's
+    spelling. The app's names, keys and enum values are FNames, which a
+    Shipping build spells as the engine first registered them."""
+    return {
+        name.lower(): (name, {prop.lower(): prop for prop in props})
+        for name, props in load_config()["allowed"].items()
+    }
+
+
 def public_config() -> dict:
     """5.1: the allow-list, sampling and the kill switch."""
     if not settings.telemetry_ingestion_enabled:
@@ -212,8 +223,10 @@ def _limit_install(install_id: Any) -> None:
 
 
 def install_id_from_secret(secret: str) -> str:
-    """§4: the first 32 hex of SHA-256 over the secret's 32 raw bytes."""
-    return hashlib.sha256(bytes.fromhex(secret)).hexdigest()[:32]
+    """§4 as the app derives it (OP1's FTruebexTelemetry::LoadInstall, MintSecret
+    and its stub's 5.5): the first 32 hex of SHA-256 over the secret's 64
+    lower-case hex characters, so 5.5 reaches the id the app's events carry."""
+    return hashlib.sha256(secret.lower().encode("ascii")).hexdigest()[:32]
 
 
 # --- crash identity (§6.3) -------------------------------------------------------
@@ -308,16 +321,21 @@ def ingest_events(db: Session, raw: bytes) -> dict:
     if not settings.telemetry_events_enabled:
         return {"accepted": 0, "dropped": len(batch.events)}
 
-    allowed: dict[str, list[str]] = load_config()["allowed"]
+    allowed = allowed_index()
     now = _now()
     accepted = dropped = 0
     rows = []
     for ev in batch.events:
-        keys = allowed.get(ev.name)
-        if keys is None:
+        entry = allowed.get(ev.name.lower())
+        if entry is None:
             dropped += 1
             continue
-        props = {k: v for k, v in ev.props.items() if k in keys}
+        name, keys = entry
+        props: dict[str, Any] = {}
+        for key, value in ev.props.items():
+            prop = keys.get(key.lower())
+            if prop is not None and prop not in props:
+                props[prop] = scanner.canonical_enum(name, prop, value) or value
         dropped += len(ev.props) - len(props)
         accepted += 1
         rows.append(
@@ -335,7 +353,7 @@ def ingest_events(db: Session, raw: bytes) -> dict:
                 hw=batch.hw.model_dump(exclude_none=True) if batch.hw else None,
                 seq=ev.seq,
                 at=_aware(ev.at),
-                name=ev.name,
+                name=name,
                 props=props,
             )
         )
@@ -476,6 +494,8 @@ def ingest_feedback(
     if hit:
         raise privacy(hit)
     log_text = _decode_log(log_raw)
+    if isinstance(data.get("kind"), str):
+        data["kind"] = data["kind"].lower()  # an FName in the app, like the event names
     fb: FeedbackIn = _validate(FeedbackIn, data)
 
     existing = db.get(Feedback, fb.feedback_id)

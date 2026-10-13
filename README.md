@@ -1306,6 +1306,50 @@ cd server
 
 `scripts/serve-out.py` listens with a backlog of 128, so a page's burst of requests is not refused.
 
+## Listing plans on the supplier's own Stripe customer (PF8b)
+
+A supplier's listing plan (`listing_<plan>`) is paid on the supplier's own Stripe customer:
+* the checkout opens on `suppliers.billing_customer_id` when it is set;
+* otherwise it opens on a new customer made from the member's e-mail.
+
+It never opens on the customer the member pays their own plan on. So the company's VAT id, which Checkout saves onto
+that customer, never makes the member's own Pro a business purchase, and Billing keeps their EU withdrawal.
+`billing.service.customer_id` (Pro and top-up checkouts, the personal invoice list and its PDF links) skips listing
+plans. The listing sync fills only an empty `billing_customer_id`: one the admin set wins. A commission statement's
+invoice PDF opens on the supplier's customer for any of its owners. Doc:
+`docs/roadmap/40/PF8b-listing-stripe-customer.md`.
+
+To see which customer each checkout opens on, without Stripe keys (Stripe's side is stood in for in-process):
+
+```powershell
+cd server
+$env:DATABASE_URL="sqlite:///./pf8b-test.db"; $env:EU_WITHDRAWAL_ENABLED="true"
+.venv\Scripts\python.exe scripts\seed_listing_checkouts.py --email pf8b@example.com --pf8b
+.venv\Scripts\python.exe scripts\seed_listing_checkouts.py --email pf8b@example.com --checkouts
+```
+
+The listing checkout opens on a new customer and the owner's Pro checkout on `cus_seed_pro`. The Pro payment is not
+business, and the EU withdrawal is offered.
+
+## Buy this look basket (PF7b)
+
+The app's room themes open `https://truebex.com/market/basket?region=<r>&items=<supplier hex>:<sku>:<variant>:<qty>,...`
+("Buy this look", contract `marketplace-api` §3, the PR2 line). `/market/basket/` (noindex, not in the sitemap, no
+canonical) reads that link in the browser, names every line and resolves the app's `default` variant through
+`POST /market/basket` (a platform route: no credential, the catalogue reads' rate limit, ≤ 100 lines), prices the lines
+through 5.5, and sends what can be ordered through 5.7 (sign in first, `Idempotency-Key`, `price_seen`) to
+`/market/checkout/?order=<id>`. While the suppliers take requests for quote only (`MARKET_PAYMENTS_ENABLED` off), the
+button sends a request for quote instead. Code: `server/app/market/basket.py`, `server/app/routers/market_basket.py`,
+`src/components/market/BasketPanel.tsx`, `src/lib/basket.ts` (the link's parser, tested through Node),
+`src/lib/basket-api.ts`; copy in `MARKET_BASKET`. Doc: `docs/roadmap/40/PF7b-buy-this-look-basket-page.md`.
+
+```powershell
+cd server
+.venv\Scripts\python.exe scripts\seed_market.py --fixture tests\contracts\marketplace --payments-ready
+# then, with the site built against the local API and served:
+# http://127.0.0.1:<port>/market/basket?region=GB&items=f8afe1ba2b0bf97f23ef888f040cf46a%3ASOFA-OSLO-3%3Aoat-linen%3A1%2Cf8afe1ba2b0bf97f23ef888f040cf46a%3APAINT-CHALK%3Adefault%3A4
+```
+
 ## MCP package: the app's bridge (PF12b)
 
 `packages/mcp/` (`@truebex/mcp`, bin `truebex-mcp`) is now the MCP server the app ships (AI1): `truebex-mcp.mjs`,
