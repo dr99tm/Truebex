@@ -1,11 +1,12 @@
-import contextlib
-import gc
 import hashlib
 import json
 import os
 import shutil
 import sqlite3
 import tempfile
+import threading
+import time
+from collections import defaultdict
 from contextlib import closing
 from pathlib import Path
 
@@ -230,16 +231,120 @@ def stripe_prices(client):
     return {t.lookup_key: pid for t, pid, _ in synced}
 
 
-@contextlib.contextmanager
-def timing_window():
-    """For a test that times a wake-up (a long poll answering within 1 s): a
-    full garbage collection before the window and none inside it. Late in the
-    suite the process holds about 800k objects and a full collection, which
-    stops every thread, takes 0.3-0.7 s (longer while other suites share the
-    PC): inside the window it would be counted as the server's latency."""
-    gc.collect()
-    gc.disable()
-    try:
-        yield
-    finally:
-        gc.enable()
+# --- Long-poll wake-ups (PF14e) -----------------------------------------------------
+#
+# A test of a long poll's wake-up proves it by the wake-up, not by a clock: the
+# re-check is patched above the wait (so only a notify or the deadline ends a
+# wait), the read starts with the route's longest wait_s, the change is made
+# only once the read is inside its wait, and the test asserts that a notify
+# ended it. That holds on a starved CPU and fails when the wake-up is missing.
+# (PF14b's `timing_window()`, a GC-free sub-second window, is gone with the
+# sub-second windows.)
+
+from app.projects import waiters  # noqa: E402
+
+# Above every route's longest wait_s (25 s): with this re-check a wait ends only
+# when a notify wakes it or at its own deadline.
+RECHECK_OFF_S = 60.0
+
+
+class Wakeups:
+    """Every `Waiter.wait` of the test's long polls, by waiter key (a project id,
+    or `queue.job_key(...)`): True when a notify ended it, False when its
+    timeout did."""
+
+    def __init__(self) -> None:
+        self._lock = threading.Lock()
+        self._ended: dict[str, list[bool]] = defaultdict(list)
+        self._inside: dict[str, int] = defaultdict(int)
+
+    def entered(self, key: str) -> None:
+        with self._lock:
+            self._inside[key] += 1
+
+    def left(self, key: str, woken: bool) -> None:
+        with self._lock:
+            self._inside[key] -= 1
+            self._ended[key].append(woken)
+
+    def ended(self, key: str) -> list[bool]:
+        with self._lock:
+            return list(self._ended[key])
+
+    def clear(self) -> None:
+        with self._lock:
+            self._ended.clear()
+
+    def until_waiting(self, key: str, timeout: float = 20.0) -> None:
+        """Until a read waits on `key`: its waiter is registered (PF12a's
+        `_until_waiting`) and it is inside `Waiter.wait`, past the read that
+        follows the registration. A change made earlier could be answered by
+        that read, without any wake-up."""
+        deadline = time.monotonic() + timeout
+        while True:
+            with self._lock:
+                inside = self._inside[key] > 0
+            if inside and waiters.waiting_count(key) >= 1:
+                return
+            assert time.monotonic() < deadline, f"the read never started waiting on {key}"
+            time.sleep(0.01)
+
+    def assert_woken(self, key: str, by: str) -> None:
+        ended = self.ended(key)
+        assert ended and all(ended), (
+            f"the read was not woken by {by}: its waits on {key} ended {ended} "
+            "(True = woken by a notify, False = at its deadline, [] = it never waited)"
+        )
+
+    def assert_deadline(self, key: str) -> None:
+        ended = self.ended(key)
+        assert ended and not any(ended), f"only the deadline should end this read: its waits on {key} ended {ended}"
+
+
+@pytest.fixture()
+def wakeups(monkeypatch):
+    """Records every `Waiter.wait` (see `Wakeups`), with `waiters.RECHECK_S`
+    patched above the wait."""
+    log = Wakeups()
+    original = waiters.Waiter.wait
+
+    async def wait(waiter, timeout):
+        log.entered(waiter.project_id)
+        woken = False
+        try:
+            woken = await original(waiter, timeout)
+            return woken
+        finally:
+            log.left(waiter.project_id, woken)
+
+    monkeypatch.setattr(waiters, "RECHECK_S", RECHECK_OFF_S)
+    monkeypatch.setattr(waiters.Waiter, "wait", wait)
+    return log
+
+
+class LongPoll:
+    """One request on its own thread, started at once (the test client takes
+    calls from any thread); `answer()` joins it with a hang guard."""
+
+    def __init__(self, call) -> None:
+        self.res = None
+        self.took: float | None = None
+        self._error: BaseException | None = None
+        self._thread = threading.Thread(target=self._run, args=(call,), daemon=True)
+        self._thread.start()
+
+    def _run(self, call) -> None:
+        started = time.monotonic()
+        try:
+            self.res = call()
+        except BaseException as exc:  # raised again in the test by answer()
+            self._error = exc
+        finally:
+            self.took = time.monotonic() - started
+
+    def answer(self, guard_s: float = 40.0):
+        self._thread.join(guard_s)
+        assert not self._thread.is_alive(), f"the long poll had not answered after {guard_s:.0f} s"
+        if self._error is not None:
+            raise self._error
+        return self.res

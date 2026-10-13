@@ -10,10 +10,12 @@ which still refuses a key."""
 import json
 import re
 import sys
-import threading
 
 import pytest
 
+from app.render import queue
+
+from .conftest import LongPoll
 from .licence_helpers import error_of
 from .pf12_helpers import PL, ROOT, SB, kh, make_key, sha
 from .project_helpers import FIXTURES, Person, action_op, create, delta_op, hex32, invite_and_accept, pushed
@@ -194,7 +196,7 @@ def test_python_sdk_registers_a_snapshot_with_a_digest(client, live_api):  # noq
             del sys.modules[name]
 
 
-def test_key_reads_a_followed_set_after_its_own_edit(client):
+def test_key_reads_a_followed_set_after_its_own_edit(client, wakeups):
     """A key's agent edit through /v1 re-renders the owner's followed set (PF6); the key's /v1 read (PF12a) waits
     for it and answers what a viewer's phone reads through the session route (PF9)."""
     owner = Person(client, "owner@example.com")
@@ -215,18 +217,16 @@ def test_key_reads_a_followed_set_after_its_own_edit(client):
     assert res.status_code == 200 and res.json()["results"][0]["status"] == "accepted", res.text
     tiles = claimed(client, token)
     assert tiles["job"]["kind"] == "tiles" and tiles["job"]["at_seq"] == head + 1
-    got: dict = {}
-
-    def wait() -> None:
-        got["res"] = client.get(url, params={"rev": 1, "wait_s": 10}, headers=kh(key, **PL))
-
-    t = threading.Thread(target=wait)
-    t.start()
+    waiting_on, wait_s = queue.job_key(set_id), queue.STATUS_WAIT_MAX_S
+    reader = LongPoll(lambda: client.get(url, params={"rev": 1, "wait_s": wait_s}, headers=kh(key, **PL)))
+    wakeups.until_waiting(waiting_on)
     finish(client, token, tiles, "manifest-tiles.json", wall_s=20)
-    t.join(15)
-    after = got["res"].json()
-    assert got["res"].status_code == 200 and after["rev"] == 2 and after["at_seq"] == head + 1
+    res = reader.answer()
+    after = res.json()
+    assert res.status_code == 200 and after["rev"] == 2 and after["at_seq"] == head + 1
     assert after["manifest"]["faces_rendered"] == 2 and after["job_id"] == tiles["job"]["job_id"]
+    wakeups.assert_woken(waiting_on, "the tiles job")
+    assert reader.took < wait_s / 2
 
     # A viewer's phone reads the same render through the session route; the viewer's own key lists the same sets.
     assert client.get(f"/projects/{pid}/panoramas/{set_id}", headers=sam.web).json() == after

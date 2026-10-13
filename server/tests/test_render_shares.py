@@ -8,14 +8,14 @@ view. `live_job_id` and `/s/{slug}/live` are PF6's share-bundle MINOR proposal.
 """
 
 import copy
-import threading
 
 import pytest
 
 from app.config import get_settings
 from app.projects import waiters
-from app.render import live, pools
+from app.render import live, pools, queue
 
+from .conftest import LongPoll
 from .licence_helpers import error_of
 from .project_helpers import Person
 from .render_helpers import WALL, admin, claimed, finish, issue_worker, project, push_touch, rj, submitted
@@ -61,7 +61,7 @@ def test_share_manifest_live_job_id_rule(client, followed):
     assert res.status_code == 201, res.text
 
 
-def test_published_share_follows_the_set(client, followed, monkeypatch):
+def test_published_share_follows_the_set(client, followed, monkeypatch, wakeups):
     a, token, pid = followed["a"], followed["token"], followed["pid"]
     monkeypatch.setattr(get_settings(), "tiles_base_url", "https://cdn.example.com/tiles")
     share = published(client, a.token, live_house(followed["job_id"]))
@@ -87,19 +87,18 @@ def test_published_share_follows_the_set(client, followed, monkeypatch):
     assert "https://cdn.example.com" in img.split()
     assert "cdn.example.com" not in csp.replace(img, "")
 
-    # An edit re-renders two faces; a waiting viewer sees the new rev.
-    got: dict = {}
-
-    def wait() -> None:
-        got["res"] = client.get(f"/s/{slug}/live", params={"rev": state["rev"], "wait_s": 10}, headers=CONTRACT)
-
-    t = threading.Thread(target=wait)
-    t.start()
+    # An edit re-renders two faces; the tiles job's finish wakes a waiting viewer with the new rev.
+    key, wait_s = queue.job_key(followed["job_id"]), queue.STATUS_WAIT_MAX_S
+    reader = LongPoll(lambda: client.get(f"/s/{slug}/live", params={"rev": state["rev"], "wait_s": wait_s}, headers=CONTRACT))
+    wakeups.until_waiting(key)
     push_touch(client, a, pid, [WALL])
     finish(client, token, claimed(client, token), "manifest-tiles.json")
-    t.join(10)
-    moved = got["res"].json()
+    res = reader.answer()
+    assert res.status_code == 200, res.text
+    moved = res.json()
     assert moved["rev"] > state["rev"] and moved["manifest"]["faces_rendered"] == 2
+    wakeups.assert_woken(key, "the tiles job")
+    assert reader.took < wait_s / 2
 
     # Ending the share ends its live view (410, as the share page answers).
     assert client.delete(f"/shares/{share['share_id']}", headers=web(a.session)).status_code == 200

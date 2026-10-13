@@ -4,7 +4,6 @@ failure, validation failure on each)."""
 
 import hashlib
 import json
-import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
 from datetime import timedelta
@@ -20,7 +19,7 @@ from app.projects import waiters
 from app.render import live, overage, pools, queue, quotas
 from app.render.models import OverageCharge, RenderJob, Worker
 
-from .conftest import signup, timing_window
+from .conftest import LongPoll, signup
 from .licence_helpers import Clock, error_of
 from .project_helpers import UPLOADS, Person, hex32
 from .render_helpers import (
@@ -390,31 +389,28 @@ def test_jobs_submit_validation(client, setup):
 # --- 5.2, 5.3 ------------------------------------------------------------------------------
 
 
-def test_jobs_status_long_poll_rev(client, setup):
+def test_jobs_status_long_poll_rev(client, setup, wakeups):
     a, token = setup["a"], setup["token"]
     rec = submitted(client, rj(a), project_id=setup["pid"], at_seq=setup["head"])
     c = claimed(client, token)
     rev = job(client, rj(a), rec["job_id"])["rev"]
-    got: dict = {}
+    key, wait_s = queue.job_key(rec["job_id"]), queue.STATUS_WAIT_MAX_S
 
-    def wait() -> None:
-        started = time.monotonic()
-        res = client.get(f"/jobs/{rec['job_id']}", params={"rev": rev, "wait_s": 10}, headers=rj(a))
-        got["res"], got["done"], got["took"] = res, time.monotonic(), time.monotonic() - started
-
-    with timing_window():
-        t = threading.Thread(target=wait)
-        t.start()
-        time.sleep(0.5)
-        sent = time.monotonic()
-        assert heartbeat(client, token, c, 0.3).status_code == 200
-        t.join(10)
-    assert got["res"].status_code == 200 and got["res"].json()["rev"] > rev
-    assert got["done"] - sent < 1.0 and got["took"] < 5
-    # An unchanged rev waits the whole wait_s.
+    # A heartbeat while the read waits: its notify ends the wait, long before the deadline.
+    reader = LongPoll(lambda: client.get(f"/jobs/{rec['job_id']}", params={"rev": rev, "wait_s": wait_s}, headers=rj(a)))
+    wakeups.until_waiting(key)
+    assert heartbeat(client, token, c, 0.3).status_code == 200
+    res = reader.answer()
+    assert res.status_code == 200 and res.json()["rev"] > rev
+    wakeups.assert_woken(key, "the heartbeat")
+    assert reader.took < wait_s / 2
+    # An unchanged rev waits the whole wait_s: its deadline ends the wait, not a wake-up.
+    wakeups.clear()
     started = time.monotonic()
-    same = client.get(f"/jobs/{rec['job_id']}", params={"rev": got["res"].json()["rev"], "wait_s": 1}, headers=rj(a))
+    same = client.get(f"/jobs/{rec['job_id']}", params={"rev": res.json()["rev"], "wait_s": 1}, headers=rj(a))
     assert same.status_code == 200 and time.monotonic() - started >= 0.9
+    assert same.json()["rev"] == res.json()["rev"]
+    wakeups.assert_deadline(key)
     error_of(client.get(f"/jobs/{rec['job_id']}", params={"wait_s": 26}, headers=rj(a)), 422, "validation_failed")
     error_of(client.get(f"/jobs/{rec['job_id']}", headers=RJ), 401, "unauthenticated")
     error_of(client.get(f"/jobs/{rec['job_id']}", headers=rj(Person(client, "b@example.com"))), 404, "not_found")
@@ -812,7 +808,7 @@ def test_tiles_gc_keeps_named_tiles(client, setup, monkeypatch):
     assert store.list("tiles/") == []
 
 
-def test_share_live_follows_the_set(client, setup):
+def test_share_live_follows_the_set(client, setup, wakeups):
     a, token, pid = setup["a"], setup["token"], setup["pid"]
     error_of(client.get("/s/k3J9xQ2aTf/live", headers={"X-Truebex-Contract": "share-bundle/1.0"}), 404, "not_found")
     follow = submitted(client, rj(a), project_id=pid, at_seq=setup["head"], follow=True)
@@ -832,18 +828,18 @@ def test_share_live_follows_the_set(client, setup):
     data = first.json()
     assert data["following"] is True and data["job_id"] == follow["job_id"]
     assert data["manifest"]["tiles_base"] == "http://testserver/tiles" and data["manifest"]["faces_rendered"] == 6
-    got: dict = {}
-
-    def wait() -> None:
-        got["res"] = client.get("/s/k3J9xQ2aTf/live", params={"rev": data["rev"], "wait_s": 10})
-
-    t = threading.Thread(target=wait)
-    t.start()
+    # An edit while a viewer waits: the tiles job's finish wakes the read with the two re-rendered faces.
+    key, wait_s = queue.job_key(follow["job_id"]), queue.STATUS_WAIT_MAX_S
+    reader = LongPoll(lambda: client.get("/s/k3J9xQ2aTf/live", params={"rev": data["rev"], "wait_s": wait_s}))
+    wakeups.until_waiting(key)
     push_touch(client, a, pid, [WALL])
     finish(client, token, claimed(client, token), "manifest-tiles.json", wall_s=20)
-    t.join(10)
-    moved = got["res"].json()
+    res = reader.answer()
+    assert res.status_code == 200, res.text
+    moved = res.json()
     assert moved["rev"] > data["rev"] and moved["manifest"]["faces_rendered"] == 2
+    wakeups.assert_woken(key, "the tiles job")
+    assert reader.took < wait_s / 2
     # Only the share's own account's set; another panorama id is not live.
     shares["k3J9xQ2aTf"]["account_id"] = a.user_id + 1000
     error_of(client.get("/s/k3J9xQ2aTf/live"), 404, "not_found")
