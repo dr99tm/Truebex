@@ -224,6 +224,7 @@ def test_categories_like_the_stub(client):
     res = client.get("/market/categories", headers=CONTRACT)
     assert res.status_code == 200, res.text
     body, want = res.json(), stub("categories.json")
+    # D16: equal, but both are the hash of the app's taxonomy file as checked out with CRLF.
     assert body["taxonomy_sha256"] == want["taxonomy_sha256"]
     got = {c["path"]: c for c in body["categories"]}
     counts = counts_of(STUB["products"])
