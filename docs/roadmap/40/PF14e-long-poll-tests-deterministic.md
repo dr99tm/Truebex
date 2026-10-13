@@ -98,9 +98,9 @@ def test_x(client, wakeups):                      # RECHECK_S is 60 s for this t
 
 No page or endpoint changed, so there is nothing to click on the served site (`scripts\autopilot-serve.ps1` serves the same `out/` as before). The test is two commands in PowerShell, in the worktree:
 
-1. `cd server`, then `.venv\Scripts\python.exe scripts\starved_pytest.py --runs 3 -p no:warnings`. It takes about 2 minutes. **See:** first `core 5 only, shared with a busy loop (pid …); 3 run(s); wake-up on`. Then a `starved runs per test` section with eight lines, each `3/3 passed`. Then `24 passed` and `pytest exit 0 after … s on core 5`. While it runs, Task Manager shows one CPU (CPU 5) at 100 % and the others at their usual load.
-2. `.venv\Scripts\python.exe scripts\starved_pytest.py --no-wakeup -p no:warnings`. It takes about 3 minutes, because each read now waits its whole 25 s. **See:** `wake-up OFF (waiters.notify is a no-op)`, then six failures. Each failure has a line `AssertionError: the read was not woken by the heartbeat` (or `the tiles job`, or `the push`) `: its waits on … ended [False] …`. The summary has `0/1 passed` for the six rewritten tests and `1/1 passed` for the two `test_pf14e_long_poll.py` guards. Then `6 failed, 2 passed` and `pytest exit 1`.
-3. Optional: `--core 2` runs on CPU 2 instead. `--runs 20` repeats the self-test's 20-run loop (about 10 minutes).
+1. `cd server`, then `.venv\Scripts\python.exe scripts\starved_pytest.py --runs 3 -p no:warnings`. It takes about 5 minutes (loading the app on a starved core alone takes 2 to 3). **See:** first `core 5 only, shared with a busy loop (pid …); 3 run(s); wake-up on`. Then a `starved runs per test` section with eight lines, each `3/3 passed`. Then `24 passed` and `pytest exit 0 after … s on core 5`. While it runs, Task Manager shows one CPU (CPU 5) at 100 % and the others at their usual load.
+2. `.venv\Scripts\python.exe scripts\starved_pytest.py --no-wakeup -p no:warnings`. It takes about 6 minutes, because each of the six reads now waits its whole 25 s. **See:** `wake-up OFF (waiters.notify is a no-op)`, then six failures. Each failure has a line `AssertionError: the read was not woken by the heartbeat` (or `the tiles job`, or `the push`) `: its waits on … ended [False] …`. The summary has `0/1 passed` for the six rewritten tests and `1/1 passed` for the two `test_pf14e_long_poll.py` guards. Then `6 failed, 2 passed` and `pytest exit 1`.
+3. Optional: `--core 2` runs on CPU 2 instead. `--runs 20` repeats the self-test's 20-run loop (about 12 minutes).
 
 ## Risks / traps
 
