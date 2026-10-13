@@ -28,6 +28,30 @@ console mail backend, only Pro's order confirmation is printed.
 
 --show prints the listing checkouts, the supplier's plan, the renewal
 reminders sent and the order confirmations.
+
+PF8b (a separate block, its own supplier): which Stripe customer a listing
+checkout and the owner's own Pro checkout open on, with Stripe's side stood
+in for in this process (no keys, nothing sent anywhere):
+
+    $env:DATABASE_URL="sqlite:///./pf8b-test.db"; $env:EU_WITHDRAWAL_ENABLED="true"
+    .venv\Scripts\python.exe scripts\seed_listing_checkouts.py --email pf8b@example.com --pf8b
+    .venv\Scripts\python.exe scripts\seed_listing_checkouts.py --email pf8b@example.com --checkouts
+
+--pf8b writes the account, a verified supplier "PF8b Listing" (GB, VAT id
+GB123456789, no billing customer yet), the owner's earlier Pro plan on their
+own Stripe customer `cus_seed_pro` (ended 10 days ago, so they can buy it
+again), and Stripe prices for Standard's listing fee and for Pro.
+
+--checkouts runs the app's own code: the portal's listing checkout for
+Standard (`supplier.listing.choose`, with GD7's fee stood in as GBP 49.00),
+completed from GB with the VAT id; the listing sync; then the owner's Pro
+checkout (PF2's Stripe `create_checkout`), completed from Germany without a
+VAT id. Stripe's stand-in runs each session on the customer it names, else on
+a new one, saves a VAT id onto that customer, and reports a customer's saved
+tax ids on its later sessions, as Stripe Checkout does. It prints the
+customer each checkout opens on, each payment's business flag, the
+supplier's billing customer and whether Pro offers the EU withdrawal. Run it
+once per scratch database.
 """
 
 import argparse
@@ -161,14 +185,179 @@ def show(db: Session, email: str) -> None:
     print(f"order confirmations sent: {', '.join(confirmed) or 'none'}")
 
 
+# --- PF8b: the listing plan on the supplier's own Stripe customer ------------------------------------
+
+PF8B_SUPPLIER = "PF8b Listing"
+PF8B_VAT_ID = "GB123456789"
+PF8B_PRO_CUSTOMER = "cus_seed_pro"
+PF8B_PRO_PRICE = "price_seed_pro_gbp"
+
+
+def seed_pf8b(db: Session, email: str, password: str) -> dict:
+    now = datetime.now(timezone.utc)
+    user = _user(db, email)
+    if user is None:
+        user = User(email=email.strip().lower(), hashed_password=hash_password(password))
+        db.add(user)
+        db.flush()
+    if _supplier_of(db, user) is not None:
+        raise SystemExit(f"{email} already owns a supplier: delete the scratch database to seed again")
+    supplier = Supplier(
+        supplier_id=secrets.token_hex(16), name=PF8B_SUPPLIER, legal_name=f"{PF8B_SUPPLIER} Ltd", country="GB",
+        vat_id=PF8B_VAT_ID, contact_email=user.email, status="verified", verified_at=now, created_at=now, updated_at=now,
+    )  # fmt: skip
+    db.add(supplier)
+    db.flush()
+    db.add(SupplierMember(supplier_id=supplier.supplier_id, user_id=user.id, role="owner", created_at=now))
+    pro_amount = PLANS["pro"].price("month", "GBP").amount_minor
+    for tier, amount, price_id in (("listing_standard", FEE, PRICE_ID), ("pro", pro_amount, PF8B_PRO_PRICE)):
+        if db.scalar(select(ProviderPrice).where(ProviderPrice.provider_price_id == price_id)) is None:
+            db.add(ProviderPrice(provider="stripe", tier=tier, interval="month", currency="GBP", amount_minor=amount,
+                                 provider_price_id=price_id))  # fmt: skip
+    ended = now - timedelta(days=10)
+    db.add(
+        Subscription(
+            user_id=user.id, plan="pro", provider="stripe", status="canceled", interval="month", currency="GBP",
+            seats=1, provider_subscription_id=f"sub_seed_pro_{secrets.token_hex(4)}", provider_customer_id=PF8B_PRO_CUSTOMER,
+            provider_price_id=PF8B_PRO_PRICE, current_period_end=ended, updated_at=ended,
+        )
+    )  # fmt: skip
+    db.commit()
+    return {"supplier": supplier.supplier_id}
+
+
+class _StripeStandIn:
+    """Stripe's side of the Checkout Sessions, in this process only. A
+    session runs on the customer it names, else on a new one; a VAT id
+    entered at checkout is saved onto that customer (Checkout asks a customer
+    that has one for none), and a session reports its customer's saved tax
+    ids (`customer_details.tax_ids`)."""
+
+    def __init__(self) -> None:
+        import stripe
+
+        self.params: dict[str, dict] = {}
+        self.sessions: dict[str, dict] = {}
+        self.subscriptions: dict[str, dict] = {}
+        self.tax_ids: dict[str, list[dict]] = {PF8B_PRO_CUSTOMER: []}
+        stripe.checkout.Session.create = self._create
+        stripe.checkout.Session.retrieve = lambda session_id, **_kw: self.sessions[session_id]
+        stripe.Subscription.retrieve = lambda sub_id, **_kw: self.subscriptions[sub_id]
+
+    def _create(self, **params):
+        session_id = f"cs_seed_pf8b_{len(self.params) + 1}"
+        self.params[session_id] = params
+        return {"id": session_id, "url": f"https://checkout.stripe.test/{session_id}"}
+
+    def opens_on(self, payment: Payment) -> str:
+        params = self.params[payment.provider_ref]
+        if params.get("customer"):
+            return f"customer {params['customer']}"
+        return f"a new customer (customer_email {params['customer_email']})"
+
+    def pay(self, payment: Payment, *, country: str, vat_id: str | None = None) -> tuple[str, str]:
+        """Complete the payment's session; returns (the customer, its subscription)."""
+        params = self.params[payment.provider_ref]
+        customer = params.get("customer") or f"cus_sim_{len(self.tax_ids)}"
+        if vat_id and not self.tax_ids.get(customer):
+            self.tax_ids[customer] = [{"type": "gb_vat", "value": vat_id}]
+        self.tax_ids.setdefault(customer, [])
+        sub_id = f"sub_sim_{len(self.subscriptions) + 1}"
+        item = {"id": f"si_{sub_id}", "quantity": 1, "price": {"id": params["line_items"][0]["price"], "recurring": {"interval": "month"}},
+                "current_period_end": int((datetime.now(timezone.utc) + timedelta(days=30)).timestamp())}  # fmt: skip
+        self.subscriptions[sub_id] = {
+            "id": sub_id, "object": "subscription", "customer": customer, "currency": "gbp", "status": "active",
+            "cancel_at_period_end": False, "metadata": params["metadata"], "items": {"data": [item]},
+        }  # fmt: skip
+        self.sessions[payment.provider_ref] = {
+            "id": payment.provider_ref, "object": "checkout.session", "client_reference_id": payment.reference,
+            "status": "complete", "payment_status": "paid", "subscription": sub_id, "invoice": f"in_{sub_id}",
+            "customer": customer, "metadata": params["metadata"],
+            "customer_details": {"address": {"country": country}, "tax_ids": list(self.tax_ids[customer])},
+        }  # fmt: skip
+        return customer, sub_id
+
+
+def checkouts(db: Session, email: str) -> None:
+    from app.billing import service
+    from app.billing.consent import CONSENT_VERSION
+    from app.billing.providers import get_provider
+    from app.config import get_settings
+    from app.market import listing as market_listing
+    from app.supplier import listing
+    from app.supplier.common import Member
+
+    user = _user(db, email)
+    supplier = _supplier_of(db, user) if user else None
+    if supplier is None or supplier.name != PF8B_SUPPLIER:
+        raise SystemExit(f"seed {email} with --pf8b first")
+    if db.scalar(select(ListingSubscription).where(ListingSubscription.supplier_id == supplier.supplier_id)) is not None:
+        raise SystemExit("--checkouts already ran here: delete the scratch database to run it again")
+    s = get_settings()
+    if not (s.stripe_secret_key and s.stripe_webhook_secret):
+        s.stripe_secret_key, s.stripe_webhook_secret = "sk_test_seed_pf8b", "whsec_seed_pf8b"  # this process only
+    stripe = _StripeStandIn()
+    provider = get_provider("stripe", s)
+    every = dict(market_listing.plans())
+    every["standard"] = market_listing.ListingPlan("standard", every["standard"].name, every["standard"].commission_bp, {"GBP": FEE})
+    market_listing.plans = lambda: every  # GD7's fee, stood in
+    market_listing.plan_of = lambda sup: every.get(sup.listing_plan or "founding") or every["founding"]
+
+    print(f"owner {user.email}: earlier Pro on {PF8B_PRO_CUSTOMER}; supplier {supplier.name}, VAT id {supplier.vat_id}, "
+          f"billing customer {supplier.billing_customer_id or '-'}")  # fmt: skip
+    listing.choose(db, Member(user=user, supplier=supplier, role="owner"), "standard")
+    row = listing.current(db, supplier)
+    paid = db.scalar(select(Payment).where(Payment.reference == row.payment_ref))
+    print(f"listing checkout {paid.reference}: opens on {stripe.opens_on(paid)}")
+    customer, _ = stripe.pay(paid, country="GB", vat_id=PF8B_VAT_ID)
+    provider.verify_payment(db, paid)
+    db.refresh(paid)
+    print(f"  paid from GB with VAT id {PF8B_VAT_ID} on {customer}: business {paid.business}")
+    listing.sync(db, datetime.now(timezone.utc), supplier.supplier_id)
+    db.refresh(supplier)
+    print(f"  supplier billing customer after the sync: {supplier.billing_customer_id}")
+
+    price = db.scalar(select(ProviderPrice).where(ProviderPrice.provider_price_id == PF8B_PRO_PRICE))
+    now = datetime.now(timezone.utc)
+    pro = Payment(
+        user_id=user.id, provider="stripe", plan="pro", reference=f"tbx_{secrets.token_hex(12)}", amount=price.amount_minor,
+        currency="GBP", status="pending", interval="month", seats=1, consent_version=CONSENT_VERSION, consent_at=now,
+        business=False,  # as PF2's checkout sets it: the business box unticked
+    )  # fmt: skip
+    provider.create_checkout(db, user, pro, price, 1, None)
+    db.add(pro)
+    db.commit()
+    print(f"Pro checkout {pro.reference}: opens on {stripe.opens_on(pro)}")
+    customer, sub_id = stripe.pay(pro, country="DE")
+    provider.verify_payment(db, pro)
+    db.refresh(pro)
+    tax = ", ".join(t["value"] for t in stripe.tax_ids[customer]) or "none"
+    print(f"  paid from DE without a VAT id on {customer} (its saved tax ids: {tax}): business {pro.business}")
+    until = consumer.withdrawal_until(db, service.find_subscription(db, "stripe", sub_id))
+    switch = "" if s.eu_withdrawal_enabled else " (EU_WITHDRAWAL_ENABLED is off)"
+    print(f"  EU withdrawal: {'offered until ' + until.strftime('%Y-%m-%d %H:%M UTC') if until else 'not offered'}{switch}")
+    print("Stripe customers: " + "; ".join(
+        f"{c} ({', '.join(t['value'] for t in ids) or 'no tax id'})" for c, ids in stripe.tax_ids.items()
+    ))  # fmt: skip
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--email", required=True, help="the supplier owner's sign-in address")
     ap.add_argument("--password", default="password123", help="for a new account (default password123)")
     ap.add_argument("--show", action="store_true", help="print what was seeded and what the jobs did")
+    ap.add_argument("--pf8b", action="store_true", help="seed PF8b's supplier and the owner's earlier Pro instead")
+    ap.add_argument("--checkouts", action="store_true", help="PF8b: open and pay the listing and Pro checkouts")
     args = ap.parse_args(argv)
     init_db()
     with SessionLocal() as db:
+        if args.checkouts:
+            checkouts(db, args.email)
+            return 0
+        if args.pf8b:
+            out = seed_pf8b(db, args.email, args.password)
+            print(f"seeded supplier {out['supplier']} ({PF8B_SUPPLIER}) for {args.email}, Pro ended on {PF8B_PRO_CUSTOMER}")
+            return 0
         if args.show:
             show(db, args.email)
             return 0
