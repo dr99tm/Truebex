@@ -1,20 +1,27 @@
 # Telemetry contract fixtures (`contracts/telemetry.md` §9)
 
-Copied, never edited: the app side is authoritative for these files.
+Copied, never edited: the app side is authoritative for these files (C.9).
 
-On 2026-10-09 the app repository had no `Docs/roadmap/fixtures/contracts/telemetry/` folder yet, so PF14
-authored this set to the letter of `telemetry.md` v1.0.0 (§5, §6, §9) and staged it here. OP1 copies the
-folder into `Docs/roadmap/fixtures/contracts/telemetry/` (or replaces it with its own, after which this
-folder is re-copied from there).
+This set is OP1's, from the app repository's `Docs/roadmap/fixtures/contracts/telemetry/` on `main` at
+`90799860` (2026-10-13, Autopilot T158; `telemetry.md` 1.0.1). It replaced the set PF14 authored here on
+2026-10-09 (PF14d). Re-copy after the app changes the folder:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts\sync-contract-fixtures.ps1 -Contract telemetry
+```
+
+The script reads the files as committed on the app's `main` (`git archive`; the app checkout on the owner's PC
+has `core.autocrlf=true`, so its working tree holds CRLF copies of these LF files), checks every copy against
+the app's git blob id, and keeps this README. `.gitattributes` keeps the folder `-text`.
 
 | File | Holds |
 |---|---|
-| `config.json`, `config-off.json` | 5.1 with the allow-list of §6.1; the kill switch on |
+| `config.json`, `config-off.json` | 5.1 with the allow-list of §6.1; the kill switch on and off |
 | `events-batch.json`, `crash-report.json`, `feedback.json` | valid bodies of 5.2, 5.3's `report`, 5.4's `feedback` |
-| `minidump-stub.dmp`, `screenshot.png` | a 44-byte synthetic minidump (header and one unused stream, no memory); a 320 × 200 window capture |
-| `log-tail-raw.txt`, `log-tail-scrubbed.txt` | a tail holding a profile path, two project paths and an email, and the scrubber's exact expected output |
-| `privacy-violations.json` | payloads the scanner must reject, each with the `data.field` it must name |
+| `minidump-stub.dmp`, `screenshot.png` | a 746-byte synthetic minidump (4 streams, no memory); a 64 × 36 window capture |
+| `log-tail-raw.txt`, `log-tail-scrubbed.txt` | a tail holding a profile path, project paths, an email, the machine and the user, and the scrubber's exact output |
+| `scrub-context.json` | the profile folder, user, machine and project folders `log-tail-raw.txt` was written with |
+| `privacy-violations.json` | `{"cases": [{name, endpoint, field, payload}]}`: payloads the scanner must refuse, each with the `data.field` it must name |
 
-`install_id` in the bodies is derived from the install secret
-`7d4e1f0a9b3c2d5e6f708192a3b4c5d6e7f8091a2b3c4d5e6f708192a3b4c5d6`: the first 32 hex of SHA-256 over
-the secret's 32 raw bytes (`4a1ffea151643db7fe803e815865e053`).
+The bodies name the installation `3f2a9c1e7b4d4e0f8a6b5c4d3e2f1a0b`, not derived from a secret here; the 5.5
+tests use their own secret and derive its id as the app does (SHA-256 over the 64 hex characters).

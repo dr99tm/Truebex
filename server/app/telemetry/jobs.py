@@ -260,11 +260,12 @@ def symbolicate_pending(now: datetime, limit: int = 50) -> int:
                         symbols[f.key.removeprefix("symbols/")] = fh.read()
                 frames = symbolicate.run_stackwalk(settings.minidump_stackwalk, dump, symbols)
             if not frames:
-                tables = {}
-                for f in files:
-                    table = _table(f.key)
-                    if table and table.code_file:
-                        tables[table.code_file.lower()] = table
+                loaded = [t for t in (_table(f.key) for f in files) if t and t.code_file]
+                tables = {t.code_file.lower(): t for t in loaded}
+                # The app names a module without its extension (OP1's crash reporter).
+                for table in loaded:
+                    for name in symbolicate.short_names(table):
+                        tables.setdefault(name, table)
                 frames, _changed = symbolicate.symbolicate_frames(list(report.frames), tables)
             title = frames[0].split("+0x")[0] if frames else report.signature
             move_report(db, report, frames, title)

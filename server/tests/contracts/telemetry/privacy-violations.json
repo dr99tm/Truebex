@@ -1,27 +1,164 @@
 {
-  "about": "Payloads the server's scanner must reject with 422 privacy_violation naming data.field. Each case takes the valid body in `base`, sets the RFC 6901 JSON Pointer `pointer` to `value`, and sends it to `endpoint` (events = 5.2 body; crashes = 5.3's report part; feedback = 5.4's feedback part).",
-  "cases": [
-    {"name": "windows path in a prop value", "endpoint": "events", "base": "events-batch.json",
-     "pointer": "/events/2/props/command", "value": "C:\\Users\\sara\\Documents\\Villa.tbxp", "field": "events[2].props.command"},
-    {"name": "forward-slash path in a prop value", "endpoint": "events", "base": "events-batch.json",
-     "pointer": "/events/1/props/tool", "value": "projects/villa", "field": "events[1].props.tool"},
-    {"name": "email in a prop value", "endpoint": "events", "base": "events-batch.json",
-     "pointer": "/events/6/props/feature", "value": "sara@example.com", "field": "events[6].props.feature"},
-    {"name": "email in an unknown prop", "endpoint": "events", "base": "events-batch.json",
-     "pointer": "/events/2/props/note", "value": "ask sara@example.com", "field": "events[2].props.note"},
-    {"name": "free text instead of an enum", "endpoint": "events", "base": "events-batch.json",
-     "pointer": "/events/4/props/kind", "value": "Ground floor plan", "field": "events[4].props.kind"},
-    {"name": "a number with a fraction", "endpoint": "events", "base": "events-batch.json",
-     "pointer": "/events/3/props/ms", "value": 9.5, "field": "events[3].props.ms"},
-    {"name": "an object as a prop value", "endpoint": "events", "base": "events-batch.json",
-     "pointer": "/events/2/props/command", "value": {"room": "Kitchen"}, "field": "events[2].props.command"},
-    {"name": "email in a common block", "endpoint": "events", "base": "events-batch.json",
-     "pointer": "/hw/gpu", "value": "sara@example.com", "field": "hw.gpu"},
-    {"name": "path in a callstack frame", "endpoint": "crashes", "base": "crash-report.json",
-     "pointer": "/callstack/0", "value": "C:\\Users\\sara\\Truebex\\Truebex-CadCore.dll+0x1a2b3c", "field": "callstack[0]"},
-    {"name": "email in the exception module", "endpoint": "crashes", "base": "crash-report.json",
-     "pointer": "/exception/module", "value": "sara@example.com", "field": "exception.module"},
-    {"name": "email in the os block of feedback", "endpoint": "feedback", "base": "feedback.json",
-     "pointer": "/os", "value": "windows 10.0.26200 sara@example.com", "field": "os"}
-  ]
+ "comment": "Payloads contract 6.4's scanner must reject (the platform answers 422 privacy_violation naming data.field; the app never sends them). Each case: the endpoint whose payload it is, the field the scanner must name, the payload.",
+ "cases": [
+  {
+   "name": "path-in-prop",
+   "endpoint": "events",
+   "field": "events[0].props.command",
+   "payload": {
+    "schema": "truebex-telemetry/1",
+    "install_id": "3f2a9c1e7b4d4e0f8a6b5c4d3e2f1a0b",
+    "events": [
+     {
+      "seq": 1,
+      "at": "2026-10-09T12:00:00Z",
+      "name": "command.run",
+      "props": {
+       "command": "C:\\Users\\alex\\Kitchen.tbxp",
+       "ms": 12
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "forward-slash-path-in-prop",
+   "endpoint": "events",
+   "field": "events[0].props.tool",
+   "payload": {
+    "schema": "truebex-telemetry/1",
+    "install_id": "3f2a9c1e7b4d4e0f8a6b5c4d3e2f1a0b",
+    "events": [
+     {
+      "seq": 1,
+      "at": "2026-10-09T12:00:00Z",
+      "name": "tool.open",
+      "props": {
+       "tool": "projects/smith-house"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "email-in-prop",
+   "endpoint": "events",
+   "field": "events[0].props.plan",
+   "payload": {
+    "schema": "truebex-telemetry/1",
+    "install_id": "3f2a9c1e7b4d4e0f8a6b5c4d3e2f1a0b",
+    "events": [
+     {
+      "seq": 1,
+      "at": "2026-10-09T12:00:00Z",
+      "name": "licence.state",
+      "props": {
+       "plan": "alex.morgan@example.com",
+       "seat_kind": "named",
+       "offline_days": 0
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "free-text-in-prop",
+   "endpoint": "events",
+   "field": "events[0].props.tool",
+   "payload": {
+    "schema": "truebex-telemetry/1",
+    "install_id": "3f2a9c1e7b4d4e0f8a6b5c4d3e2f1a0b",
+    "events": [
+     {
+      "seq": 1,
+      "at": "2026-10-09T12:00:00Z",
+      "name": "tool.open",
+      "props": {
+       "tool": "Smith House kitchen plan"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "object-in-prop",
+   "endpoint": "events",
+   "field": "events[0].props.ms",
+   "payload": {
+    "schema": "truebex-telemetry/1",
+    "install_id": "3f2a9c1e7b4d4e0f8a6b5c4d3e2f1a0b",
+    "events": [
+     {
+      "seq": 1,
+      "at": "2026-10-09T12:00:00Z",
+      "name": "command.run",
+      "props": {
+       "command": "Wall",
+       "ms": {
+        "value": 12
+       }
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "fraction-in-prop",
+   "endpoint": "events",
+   "field": "events[0].props.ms",
+   "payload": {
+    "schema": "truebex-telemetry/1",
+    "install_id": "3f2a9c1e7b4d4e0f8a6b5c4d3e2f1a0b",
+    "events": [
+     {
+      "seq": 1,
+      "at": "2026-10-09T12:00:00Z",
+      "name": "command.run",
+      "props": {
+       "command": "Wall",
+       "ms": 12.5
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "email-in-common-block",
+   "endpoint": "events",
+   "field": "locale",
+   "payload": {
+    "schema": "truebex-telemetry/1",
+    "install_id": "3f2a9c1e7b4d4e0f8a6b5c4d3e2f1a0b",
+    "locale": "alex.morgan@example.com",
+    "events": []
+   }
+  },
+  {
+   "name": "path-in-callstack",
+   "endpoint": "crashes",
+   "field": "callstack[0]",
+   "payload": {
+    "schema": "truebex-crash/1",
+    "crash_id": "5d41402abc4b2a76b9719d911017c592",
+    "install_id": "3f2a9c1e7b4d4e0f8a6b5c4d3e2f1a0b",
+    "kind": "crash",
+    "callstack": [
+     "D:\\src\\Truebex\\CadWall.cpp:412"
+    ]
+   }
+  },
+  {
+   "name": "email-in-feedback-text",
+   "endpoint": "feedback",
+   "field": "text",
+   "payload": {
+    "schema": "truebex-feedback/1",
+    "feedback_id": "a3f1c2d4e5b60718293a4b5c6d7e8f90",
+    "install_id": "3f2a9c1e7b4d4e0f8a6b5c4d3e2f1a0b",
+    "kind": "bug",
+    "text": "Please write to alex.morgan@example.com",
+    "reply": false
+   }
+  }
+ ]
 }
