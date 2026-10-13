@@ -180,4 +180,4 @@ Local API only; the site is unchanged. In PowerShell, from the worktree root (`X
 * **Carry-over:**
   * **OP1 (app):** write PATCH lines A, B, C and G; in `SendFeedback`, scrub the text before cutting it to 5,000 characters; trim the feedback log part to 256 KiB after scrubbing (as `CrashLogPart` does); serialise names, keys and enum values from the allow-list's strings rather than `FName::ToString` (the server copes either way).
   * **Owner:** the §11 rows; contract questions D, E and F to whichever side next touches the contract.
-* **Verify gate:** `scripts/autopilot-verify.ps1` green on `a3c392f`: lint, build, pytest 658 passed + 17 skipped (675 collected; `test_site_pf14.py` 2 of 2 on the built `out/`), 1,241 s in all, pytest 779 s.
+* **Verify gate:** `scripts/autopilot-verify.ps1` green on `a3c392f`: lint, build, pytest 658 passed + 17 skipped (675 collected; `test_site_pf14.py` 2 of 2 on the built `out/`), 1,241 s in all, pytest 779 s. The token check's full match came after it (`3123ab0`, Python only): `test_telemetry.py` 25 of 25.
