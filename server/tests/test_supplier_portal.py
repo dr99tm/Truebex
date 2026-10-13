@@ -3,6 +3,7 @@ geometry checks, the price grid, spreadsheet imports and the template, the
 inbox, analytics, the listing plan through PF2's interface, the team and
 supplier keys, and every route's auth."""
 
+import hashlib
 import io
 import sys
 import types
@@ -30,6 +31,7 @@ from .conftest import signup
 from .licence_helpers import Clock, error_of
 from .market_helpers import (
     CONTRACT,
+    CONTRACT_FIXTURES,
     FIXTURES,
     SOFA,
     SUPPLIER_ID,
@@ -71,7 +73,7 @@ def _join(client, owner: dict, email: str, role: str) -> dict:
 
 
 def _fixture_supplier(client, email: str = "owner@nord.example.com", **kw) -> dict:
-    """The contract fixtures' supplier (verified, six products) with a portal owner."""
+    """PF7's fixture supplier (verified, six products) with a portal owner."""
     h = signup(client, email=email)
     with SessionLocal() as db:
         owner = db.scalar(select(User).where(User.email == email))
@@ -257,8 +259,11 @@ def test_supplier_geometry_checks(client, monkeypatch):
     # OBJ by its bytes; a Truebex object (.tbxa).
     res = up(b"# chair\nv 0 0 0\nv 1 0 0\nv 0 1 0\nv 1 1 0\nf 1 2 3 4\n", "chair.obj")
     assert res.status_code == 200 and res.json()["check"]["triangles"] == 2
-    res = up((FIXTURES / "geometry" / "sofa-oslo.tbxa").read_bytes(), "sofa.tbxa")
-    assert res.status_code == 200 and res.json()["geometry"]["format"] == "tbxa"
+    # The app's own Oslo sofa (MK1's serializer; PF7c), and PF7's JSON stand-in.
+    for tbxa in (CONTRACT_FIXTURES / "geometry" / "sofa-oslo.tbxa", FIXTURES / "geometry" / "sofa-oslo.tbxa"):
+        res = up(tbxa.read_bytes(), "sofa.tbxa")
+        assert res.status_code == 200 and res.json()["geometry"]["format"] == "tbxa"
+        assert res.json()["geometry"]["sha256"] == hashlib.sha256(tbxa.read_bytes()).hexdigest()
     # Over 100 MB: 413.
     monkeypatch.setattr(geometry_check, "MAX_BYTES", 1000)
     error_of(up(glb() + b" " * 2000, "chair.glb"), 413, "too_large")

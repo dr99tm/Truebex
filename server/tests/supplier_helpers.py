@@ -87,7 +87,7 @@ def post_feed(client, key: str, data: bytes, fmt: str = "csv", mode: str = "upse
 
 
 def no_internet(monkeypatch, fetcher=None) -> None:
-    """Feed media come from the contract fixtures, never the internet."""
+    """Feed media come from the fixture files (PF7's by default), never the internet."""
     monkeypatch.setattr(media, "HttpFetcher", lambda: fetcher or seed.media_fetcher(FIXTURES))
 
 

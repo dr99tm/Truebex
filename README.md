@@ -1331,6 +1331,67 @@ $env:DATABASE_URL="sqlite:///./pf8b-test.db"; $env:EU_WITHDRAWAL_ENABLED="true"
 The listing checkout opens on a new customer and the owner's Pro checkout on `cus_seed_pro`. The Pro payment is not
 business, and the EU withdrawal is offered.
 
+## Buy this look basket (PF7b)
+
+The app's room themes open `https://truebex.com/market/basket?region=<r>&items=<supplier hex>:<sku>:<variant>:<qty>,...`
+("Buy this look", contract `marketplace-api` §3, the PR2 line). `/market/basket/` (noindex, not in the sitemap, no
+canonical) reads that link in the browser, names every line and resolves the app's `default` variant through
+`POST /market/basket` (a platform route: no credential, the catalogue reads' rate limit, ≤ 100 lines), prices the lines
+through 5.5, and sends what can be ordered through 5.7 (sign in first, `Idempotency-Key`, `price_seen`) to
+`/market/checkout/?order=<id>`. While the suppliers take requests for quote only (`MARKET_PAYMENTS_ENABLED` off), the
+button sends a request for quote instead. Code: `server/app/market/basket.py`, `server/app/routers/market_basket.py`,
+`src/components/market/BasketPanel.tsx`, `src/lib/basket.ts` (the link's parser, tested through Node),
+`src/lib/basket-api.ts`; copy in `MARKET_BASKET`. Doc: `docs/roadmap/40/PF7b-buy-this-look-basket-page.md`.
+
+```powershell
+cd server
+.venv\Scripts\python.exe scripts\seed_market.py --fixture tests\fixtures\market --payments-ready   # PF7's catalogue (moved there by PF7c)
+# then, with the site built against the local API and served:
+# http://127.0.0.1:<port>/market/basket?region=GB&items=f8afe1ba2b0bf97f23ef888f040cf46a%3ASOFA-OSLO-3%3Aoat-linen%3A1%2Cf8afe1ba2b0bf97f23ef888f040cf46a%3APAINT-CHALK%3Adefault%3A4
+```
+
+## MCP package: the app's bridge (PF12b)
+
+`packages/mcp/` (`@truebex/mcp`, bin `truebex-mcp`) is now the MCP server the app ships (AI1): `truebex-mcp.mjs`,
+`lib/`, `tools.json` and `instructions.md`, copied byte for byte from the app repo's `Tools/mcp/` together with the
+app's fake app and node tests (`test/`) and the wire fixture scripts (`test/fixtures/`). PF12's stand-in is gone (the
+PF12 section above still mentions it). Only `package.json`, `README.md` (the npm install notes) and `LICENSE` are the
+platform's; `truebex.mcpb` stays with the app. Never edit the copies: a fix goes to the app first, then
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts\sync-mcp.ps1   # -AppRepo T:\unreal5_7_4_projects\truebex_compact
+server\.venv\Scripts\python.exe -m pytest -q server\tests\test_pf12_mcp_package.py
+```
+
+The script refuses a layout without `truebex-mcp.mjs` or a `tools.json` whose `"schema"` is not `truebex-tools/1`,
+and also copies `tools.json` to `src/content/tools.json`, from which `/developers/mcp/` is generated. Run the bridge
+from a checkout with `node packages\mcp\truebex-mcp.mjs` (Node 20+); it talks to a running Truebex only while Tools >
+AI > Agent > Allow AI apps to connect is on, and answers `app_not_running` otherwise. The package tests never reach a
+real app: each bridge gets a scratch `LOCALAPPDATA`, the app's fake app or `server/tests/mcp_wire_replay.mjs` (the
+fake pipe that plays the app's side of a wire script). Doc: `docs/roadmap/40/PF12b-mcp-package-adopts-ai1-bridge.md`.
+
+## Marketplace fixtures from MK1 (PF7c)
+
+`server/tests/contracts/marketplace/` is the app's own marketplace fixture set (MK1, the app repo's
+`Docs/roadmap/fixtures/contracts/marketplace/`), copied byte for byte from the app's committed blobs and never
+edited: three suppliers and nine products in the stub's shape, the stub's 5.1, 5.2, 5.5, 5.7 and 5.9 answers, the
+feed and its report, and the app's own `.tbxa` and `.glb` geometry. `server/tests/test_market_contract_fixtures.py`
+seeds the platform from it and checks the platform's answers against the app's files; the readings the two sides
+disagree on are listed in `docs/roadmap/40/PF7c-marketplace-fixtures-from-mk1.md` (As-built, D1–D16). PF7's own
+catalogue, which the older marketplace and supplier tests count on, moved to `server/tests/fixtures/market/`
+(`scripts\make_market_fixtures.py` writes and `--check`s it there); where an earlier section names
+`tests\contracts\marketplace` for PF7's catalogue or its feed, it is now `tests\fixtures\market`.
+
+```powershell
+cd server
+.venv\Scripts\python.exe scripts\seed_market.py --fixture tests\contracts\marketplace   # the app's catalogue
+.venv\Scripts\python.exe scripts\seed_market.py                                         # PF7's (the default)
+```
+
+With `MARKET_MEDIA_FIXTURES=tests/contracts/marketplace`, a local trial serves the app's feed URLs
+(`https://market.truebex.com/files/...`) from that folder, so its `feed-two-regions.csv` imports in the portal.
+An app build reads the local API with `-mwmarket=live -mwapi=http://127.0.0.1:8000`.
+
 ## Long-poll tests on a starved core (PF14e)
 
 The server tests that time a long poll's wake-up (job status, the share live view, the pull, the `/v1` panorama

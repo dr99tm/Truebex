@@ -5,3 +5,5 @@ infra/tofu/** text eol=lf
 # Contract fixtures are byte-exact copies of the app repo's (never edited).
 server/tests/contracts/** -text
 server/tests/fixtures/** -text
+# PF12b: the site's copy of the app's tools.json stays byte-exact (scripts/sync-mcp.ps1).
+src/content/tools.json text eol=lf

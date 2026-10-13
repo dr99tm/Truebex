@@ -1,0 +1,13 @@
+MODULE windows x86_64 9E3B6A1C2D4F4E5A8B7C6D5E4F3A2B1C1 Truebex-Win64-Shipping.pdb
+INFO CODE_ID 6720A1B2A3C000 Truebex-Win64-Shipping.exe
+FILE 0 CadWall.cpp
+FILE 1 CadWallSystem.cpp
+FILE 2 CadDocument.cpp
+FUNC 1a2a00 40 0 FCadWallSystem::Tick(float)
+1a2a00 40 88 1
+FUNC 1a2b00 80 0 FCadWall::RebuildMesh(FCadWallBuildContext&)
+1a2b00 3c 402 0
+1a2b3c 44 405 0
+FUNC 88f100 200 0 FCadDocument::ApplyEdit(FCadEdit const&)
+88f100 200 211 2
+PUBLIC 1000 0 WinMain

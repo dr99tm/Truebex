@@ -1,73 +1,100 @@
 # @truebex/mcp — the Truebex MCP server
 
-Lets an MCP client (a desktop AI assistant, a coding agent, any client that
-launches MCP servers over stdio) read and edit the model open in the Truebex
-desktop app: find walls, rooms and products, explain an entity, place, move and
-resize, set finishes, apply room themes, export the sheets or a panorama, and
-undo its own steps. Eleven tools, listed even while the app is closed.
+Lets your own AI app (Claude Desktop, Claude Code or any MCP client that
+launches a local stdio server) read and edit the project you have open in
+Truebex: find walls, rooms and openings, explain an entity, place, move and
+resize, set finishes, export the sheets as a PDF, and undo its own steps.
+Eleven tools and three resources, listed even while Truebex is closed.
 
-How it works: the client starts `truebex-mcp` and speaks MCP over stdio (one
-JSON-RPC message per line). The server answers `server/discover`, `initialize`
-and `tools/list` itself and passes each tool call to the running app over a
-per-user named pipe (`\\.\pipe\truebex-agent-<USERNAME>`). The app asks you to
-allow each kind of action (read, edit, export) in its Agent panel, runs every
-call as one undoable step and lists it. The server never sees a Truebex sign-in
-or API key, and nothing leaves your computer through it.
+How it works: your client starts the server and speaks MCP with it over stdio
+(one JSON-RPC message per line; logs go to stderr). The server answers
+discovery and the tool and resource lists itself, and passes each tool call
+and resource read to the running Truebex app over that app's private named
+pipe (`\\.\pipe\truebex-agent-<pid>`, reachable by your Windows user only,
+with a per-instance token). It never sees a Truebex sign-in, an API key or
+your AI account's credentials, and nothing leaves your computer through it.
 
-Requires the Truebex app with the Agent panel, and Node 18 or later for `npx`
-(the app also installs `truebex-mcp.exe`, which needs no Node).
+This package is the same server the Truebex app installs beside itself
+(`<install>\MultiWindow\Tools\mcp\truebex-mcp.mjs`). Needs Node 20 or newer.
 
-## Install
+## Before you start
 
-### Claude Desktop
+1. In Truebex: ribbon **Tools > AI > Agent**, then turn on **Allow AI apps to
+   connect**. It is off by default and stays on until you turn it off.
+2. The first time your AI app calls a tool, Truebex asks what it may do:
+   **read**, **read + edit** or **read + edit + export** (or **Deny**), and
+   waits up to 30 s for your answer. The answer lasts for that connection only;
+   change or revoke it in the Agent panel at any time. Every call is listed
+   there, every edit is one undo step (Ctrl+Z), and nothing can quit Truebex,
+   delete a project or write outside the project's export folder.
 
-Add an entry to `mcpServers` in its config file (Settings → Developer → Edit
-Config, `claude_desktop_config.json`), then restart it:
+## Claude Desktop
+
+* **The extension:** in the Agent panel click **Install in Claude Desktop**, or
+  open `truebex.mcpb` in the Truebex install folder
+  (`<install>\MultiWindow\Tools\mcp\`). Claude Desktop shows its install dialog
+  and brings its own Node.
+* **Or by hand:** Claude Desktop > Settings > Developer > Edit Config, add the
+  entry below to `%APPDATA%\Claude\claude_desktop_config.json`, then restart
+  Claude Desktop:
 
 ```json
-{
-  "mcpServers": {
-    "truebex": {
-      "command": "npx",
-      "args": ["-y", "@truebex/mcp"]
-    }
-  }
-}
+{ "mcpServers": { "truebex": { "command": "node", "args": ["<install>\\MultiWindow\\Tools\\mcp\\truebex-mcp.mjs"] } } }
 ```
 
-Or point `command` at the installed `truebex-mcp.exe`: the Agent panel in
-Truebex shows its full path, ready to paste.
+  or, from npm: `{ "mcpServers": { "truebex": { "command": "npx", "args": ["-y", "@truebex/mcp"] } } }`.
 
-### Claude Code
+## Claude Code
 
-```bash
+```
+claude mcp add --scope user truebex -- node "<install>\MultiWindow\Tools\mcp\truebex-mcp.mjs"
+```
+
+or, from npm:
+
+```
 claude mcp add --scope user truebex -- npx -y @truebex/mcp
 ```
 
-Then `/mcp` lists `truebex` with its eleven tools. With the app open, ask
-"how many walls are on the ground floor?" and it answers through `find`.
+Then `/mcp` lists `truebex` with its eleven tools. With Truebex open and
+connections on, ask "how many walls are on the ground floor?" and allow read
+when Truebex asks: it answers through `find`.
 
-### Any other MCP client
+## Any other MCP client
 
-Launch the same command over stdio: `npx -y @truebex/mcp` (or the path of
-`truebex-mcp.exe`). Protocol revisions: 2026-07-28 (`server/discover`) and the
-`initialize` handshake of 2025-11-25 and 2025-06-18. Capabilities: tools only.
+A stdio server with the command `node` and the argument
+`<install>\MultiWindow\Tools\mcp\truebex-mcp.mjs` (the Agent panel shows the
+exact path), or the command `npx -y @truebex/mcp`. MCP revisions 2026-07-28
+(`server/discover`, metadata on every request) and the `initialize` handshake
+of 2025-11-25 and 2025-06-18; capabilities: tools and resources.
 
-## The tools
+## What it offers
 
-`read_state`, `find`, `explain` (read) · `place`, `move`, `resize`, `fill`,
-`apply_theme`, `undo` (edit) · `export_pdf`, `export_panorama` (export). Their
-schemas are in `tools.json`; the reference is at
-https://truebex.com/developers/mcp/.
+* Tools (`tools.json` is the single source): `read_state`, `find`, `explain`
+  (class read); `place`, `move`, `resize`, `fill`, `apply_theme`, `undo`
+  (edit); `export_pdf`, `export_panorama` (export). `apply_theme` and
+  `export_panorama` answer `feature_absent` until room themes and the panorama
+  export arrive in Truebex. Reference: https://truebex.com/developers/mcp/.
+* Resources: `truebex://state/digest`, `truebex://project/summary`,
+  `truebex://entity/{kind}/{id}` (reading one needs the read class).
+* With Truebex closed or connections off, a tool call answers the tool error
+  `app_not_running` ("Truebex is not running, or Agent connections are off").
 
-When the app is not running, a tool call answers `app_not_running`. A call that
-needs a permission you have not granted answers `permission_required` while the
-app asks you; the client retries after you choose.
+## Several Truebex windows
+
+The server picks the newest running Truebex (a released build before a
+development one). To pin one, set `TRUEBEX_AGENT_PIPE` and
+`TRUEBEX_AGENT_TOKEN` in the client's server entry;
+`%LOCALAPPDATA%\Truebex\agent\instances\<pid>.json` lists every running app's
+pipe and token.
 
 ## For maintainers
 
-`server.js` and `tools.json` are copied from the app repository's `Tools/mcp/`
-at each app release by `scripts/sync-mcp.ps1`, never edited here; a fix goes to
-the app first. `test/fake-pipe.mjs` stands in for the app in the package tests
-(`server/tests/test_pf12_mcp_package.py`). Publish with `npm publish --access public`
-from this folder.
+Everything here except this README, `LICENSE` and `package.json` is copied
+from the app repository's `Tools/mcp/` (and its wire fixture scripts) by
+`scripts\sync-mcp.ps1`, never edited: a fix goes to the app first, then the
+script. Run the bridge from a checkout with `node packages\mcp\truebex-mcp.mjs`
+(the same file the `truebex-mcp` bin runs). The package tests are
+`server/tests/test_pf12_mcp_package.py` (they also run the app's own
+`node --test` on `test/`); `truebex.mcpb` is not in this package (it ships with
+the app). Publish with `npm publish --access public` from this folder.

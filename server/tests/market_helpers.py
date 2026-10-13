@@ -20,7 +20,11 @@ from app.models import User
 from .conftest import signup
 from .licence_helpers import activated
 
-FIXTURES = Path(__file__).parent / "contracts" / "marketplace"
+# PF7's own catalogue (exact rows and counts the older tests rely on; made by
+# scripts/make_market_fixtures.py). PF7c: the contract's set is the app's,
+# copied byte for byte into CONTRACT_FIXTURES (test_market_contract_fixtures.py).
+FIXTURES = Path(__file__).parent / "fixtures" / "market"
+CONTRACT_FIXTURES = Path(__file__).parent / "contracts" / "marketplace"
 CONTRACT = {"X-Truebex-Contract": "marketplace-api/1.1"}
 PRODUCTS = json.loads((FIXTURES / "products.json").read_text(encoding="utf-8"))
 SUPPLIER_ID = PRODUCTS["supplier"]["supplier_id"]

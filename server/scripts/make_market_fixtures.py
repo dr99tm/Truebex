@@ -1,11 +1,14 @@
-"""Write the marketplace contract's §9 fixtures (marketplace-api.md v1.1.0).
+"""Write PF7's own marketplace catalogue (tests/fixtures/market/), the rows
+and counts the older marketplace tests rely on.
 
     cd server
     .venv\\Scripts\\python.exe scripts\\make_market_fixtures.py [--out DIR] [--check]
 
-The app repo's Docs/roadmap/fixtures/contracts/marketplace/ is the master copy
-(the app side is authoritative); MK1 owns it, but PF7 landed first, so this
-script made the first version (as PF1 did for the licence fixtures).
+PF7 landed before MK1, so this script made the first version of the
+contract's §9 fixtures. Since PF7c (2026-10-13) the contract's set is the
+app's own (Docs/roadmap/fixtures/contracts/marketplace/, MK1), copied byte for
+byte into tests/contracts/marketplace/ and checked by
+test_market_contract_fixtures.py; this catalogue stays the platform's.
 
 * Inputs, written from the tables below: `products.json` (the stub's
   catalogue: one supplier, the Oslo sofa with two variants priced in GB and
@@ -40,7 +43,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 SERVER = Path(__file__).resolve().parents[1]
-OUT = SERVER / "tests" / "contracts" / "marketplace"
+OUT = SERVER / "tests" / "fixtures" / "market"
 GD1_TEMPLATE = Path(r"T:\unreal5_7_4_projects\truebex_compact\Docs\roadmap\40\guides\GD1-supplier-catalogue-template.csv")
 
 AT = "2026-10-09T10:00:00Z"
@@ -465,12 +468,13 @@ def picture(size, background, colour, shape) -> bytes:
     return out.getvalue()
 
 
-README = """# Marketplace contract fixtures (marketplace-api.md v1.1.0, §9)
+README = """# PF7's marketplace catalogue (platform tests; marketplace-api.md v1.1.0)
 
 Made by PF7 on 2026-10-09 with `server/scripts/make_market_fixtures.py` (deterministic: re-running
-reproduces the text files; `--check` compares them). From the merge on, the master copy is the app repo's
-`Docs/roadmap/fixtures/contracts/marketplace/` (MK1 owns it); the platform keeps a copy here, copied,
-never edited. Fixture data, never public copy.
+reproduces the text files; `--check` compares them) as the first version of the contract's §9 fixtures.
+Since PF7c (2026-10-13) the contract's set is the app's own (MK1), copied byte for byte into
+`server/tests/contracts/marketplace/`; this catalogue moved here and stays the platform's: the marketplace
+and supplier tests count on its rows. Fixture data, never public copy.
 
 | File | Holds |
 |---|---|

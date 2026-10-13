@@ -1,11 +1,10 @@
 {
   "name": "@truebex/mcp",
   "version": "1.0.0",
-  "description": "The Truebex MCP server: lets an MCP client read and edit the model open in the Truebex app, over stdio.",
-  "bin": { "truebex-mcp": "bin/truebex-mcp.js" },
-  "main": "server.js",
-  "files": ["bin", "server.js", "tools.json", "README.md", "LICENSE"],
-  "engines": { "node": ">=18" },
+  "description": "The Truebex MCP server: lets an MCP client read and edit the project open in the Truebex app on this computer, over stdio.",
+  "bin": { "truebex-mcp": "truebex-mcp.mjs" },
+  "files": ["truebex-mcp.mjs", "lib/*.mjs", "tools.json", "instructions.md"],
+  "engines": { "node": ">=20" },
   "license": "MIT",
   "homepage": "https://truebex.com/developers/mcp/",
   "keywords": ["truebex", "mcp", "model-context-protocol"]

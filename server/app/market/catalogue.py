@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 from ..contract_http import ContractError
 from ..models import User
 from . import media
-from .common import new_id, not_found, now, rfc3339
+from .common import is_hex32, new_id, not_found, now, rfc3339
 from .models import (
     MarketCategory,
     MarketRegion,
@@ -290,6 +290,28 @@ def variant_json(product: Product, v: ProductVariant, offer: Offer | None, *, re
     return out
 
 
+def includes_json(db: Session, product: Product) -> list[str]:
+    """A theme's `includes` as product ids: the app reads each with 5.4
+    (contract §3 Changes, 2026-10-11, PR2). Stored ids pass through; a feed's
+    reference by supplier, SKU and variant becomes that product's id, and one
+    naming no product is left out (PF7c D15)."""
+    out: list[str] = []
+    for ref in product.includes or []:
+        if isinstance(ref, str):
+            pid = ref if is_hex32(ref) else None
+        elif isinstance(ref, dict) and ref.get("sku"):
+            pid = db.scalar(
+                select(Product.product_id).where(
+                    Product.supplier_id == (ref.get("supplier_id") or product.supplier_id), Product.sku == ref["sku"]
+                )
+            )
+        else:
+            pid = None
+        if pid and pid not in out:
+            out.append(pid)
+    return out
+
+
 def product_json(db: Session, product: Product, supplier: Supplier, region: MarketRegion | None) -> dict:
     variants = visible_variants(db, [product.product_id])[product.product_id]
     offs = offers(db, [product.product_id], region.region) if region else {}
@@ -305,7 +327,7 @@ def product_json(db: Session, product: Product, supplier: Supplier, region: Mark
         "description": product.description or "",
         "images": [media.image_url(sha) for sha in product.images],
         "thumbnail_url": thumbnail_url(product),
-        "includes": product.includes or [],
+        "includes": includes_json(db, product),
         "variants": [
             variant_json(product, v, offs.get((product.product_id, v.variant_id)), region=region.region if region else None)
             for v in variants

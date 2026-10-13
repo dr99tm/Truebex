@@ -1,23 +1,33 @@
-# Marketplace contract fixtures (marketplace-api.md v1.1.0, §9)
+# Marketplace stub fixtures (contracts/marketplace-api.md §9)
 
-Made by PF7 on 2026-10-09 with `server/scripts/make_market_fixtures.py` (deterministic: re-running
-reproduces the text files; `--check` compares them). From the merge on, the master copy is the app repo's
-`Docs/roadmap/fixtures/contracts/marketplace/` (MK1 owns it); the platform keeps a copy here, copied,
-never edited. Fixture data, never public copy.
+What `-mwmarket=stub[:price-changed|offline|withdrawn]` answers from (roadmap 40 / MK1,
+`Plugins/CADTOOL/Source/TruebexMarket/Private/CadMarketStub.cpp`). The platform copies the same files
+into `server/tests/contracts/marketplace/`. Staged loose into every NON-Shipping package
+(`TruebexMarket.Build.cs`); the Shipping release carries none.
 
 | File | Holds |
 |---|---|
-| `products.json` | the stub's catalogue: supplier Nord Living (verified, GB and AE) and its products — the Oslo sofa (`oat-linen`, `charcoal-wool`), the discontinued Aker coffee table, the Fjord coffee table that substitutes for it, a paint, a wallpaper and a theme that includes the sofa, the paint and the wallpaper; each variant's §6.3 price, delivery and availability per region under `regions` |
-| `geometry/sofa-oslo.tbxa`, `geometry/chair-bergen.glb` | the sofa's object asset (a stand-in with an S1 id until MK1 writes the real one) and the smallest valid GLB for the feed's chair |
-| `thumbs/*.png` | one picture per product (≥ 512 px, as §6.4 asks) |
-| `media-map.json` | the https URLs the feeds name → these files (nothing is fetched from the internet) |
-| `categories.json`, `regions.json` | 5.1 and 5.2 after loading `products.json` |
-| `prices-gb.json`, `prices-ae.json` | 5.5 for the sofa's two variants, the Aker table (discontinued: substitutes) and the paint |
-| `order-awaiting-payment.json` | 5.7: an order in AE (sofa and paint), payments on and the supplier onboarded |
-| `order-quoted.json` | 5.9: a request for quote in AE after the supplier quoted AED 1,180.00 for the sofa |
-| `feed-two-regions.csv`, `feed-two-regions.json` | a feed with GB and AE price lists: the sofa's two variants and the Bergen lounge chair (6 rows) |
-| `feed-report.json` | 5.13 for `feed-two-regions.csv` imported into an empty catalogue |
-| `GD1-supplier-catalogue-template.csv` | a byte copy of `guides/GD1-supplier-catalogue-template.csv` (contract 1.1.0) |
+| `categories.json` | 5.1: 16 categories rooted on the app's taxonomy (`app_path` is always a row of `CAD/taxonomy/categories.json`; `taxonomy_sha256` is that file's) |
+| `regions.json` | 5.2: GB (GBP, VAT 20 %) and AE (AED, VAT 5 %) |
+| `products.json` | the catalogue: 3 suppliers and 9 products -- the **Oslo 3-seater sofa** (two variants, Oat / Charcoal, a `.tbxa` each, GB and AE prices), the Bergen armchair (`.tbxa`), the **discontinued Halden coffee table** (GLB; substitute: Fjord), the Fjord coffee table (GLB), the Arc wall light (GLB, `lighting/wall`: wall-mounted), the Nord sideboard (a parametric `.tbxa`: O1's cabinet recipe; variants 2400 x 900 x 750 and 1800 x 450 x 750), a paint and a wallpaper (`finish`), and the Calm lounge **theme** (includes the sofa, the coffee table and the paint) |
+| `geometry/*.tbxa` | the four object assets, each with its S1 id, written by the 2D scenario `mk1-fixture-geometry` from the app's own serializer (single-line JSON, no newline: no checkout can change their sha256) |
+| `geometry/*.glb` | three small box meshes (glTF 2.0, metres, +Y up) |
+| `thumbs/*.png` | one 512 px thumbnail per product (the feed's minimum) |
+| `prices-gb.json`, `prices-ae.json` | 5.5 answers: every placeable variant re-priced for the region (MK2) |
+| `order-awaiting-payment.json`, `order-quoted.json` | 5.7 / 5.9 answers (MK4) |
+| `feed-two-regions.csv`, `feed-two-regions.json`, `feed-report.json` | the Oslo sofa as a supplier feed with a GB and an AE price list, and its expected import report (PF8) |
 
-Answers are `{request, http_status, body}` as this server gives them (fixed clock `2026-10-09T10:00:00Z`,
-fixed ids). Image URLs carry the SHA-256 of the stored JPEG and are masked when `--check` compares.
+**products.json is the stub's own shape**: each product is written once, and each variant carries
+per-region lists -- `"prices": {"GB": {...}, "AE": {...}}` and `"deliveries"` -- plus `"substitutes"` on
+the product. The stub projects them to §6.1's `price` / `delivery` for the region a request names and
+drops `substitutes` / `supplier_name` / `thumbnail_url` from 5.4 (5.3 hits carry `supplier_name` and
+`thumbnail_url`), so the client only ever sees shapes the contract names. File URLs are
+`https://market.truebex.com/files/<path>`; the stub serves any URL whose path holds `/files/` from this
+folder.
+
+Variants: `offline` -- every call fails as if the network were down; `withdrawn` -- 5.4 answers 410
+`product_withdrawn` with the product's `substitutes`; `price-changed` -- the first 5.7 answers 409.
+
+Regenerate: `python Scripts/gen_market_fixtures.py` (deterministic). After a change to the `.tbxa`
+geometry (`CadSelfTest_MK1.cpp` `GeometryFixtures`): delete the file, run `mk1-fixture-geometry` (it
+writes it and fails once), then the script again (it re-stamps every `sha256` / `bytes`).

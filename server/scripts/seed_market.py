@@ -1,17 +1,24 @@
-"""Load the marketplace fixture into the local database (a trial catalogue).
+r"""Load a marketplace fixture into the local database (a trial catalogue).
 
     cd server
-    .venv\\Scripts\\python.exe scripts\\seed_market.py --fixture tests\\contracts\\marketplace
+    .venv\Scripts\python.exe scripts\seed_market.py [--fixture tests\fixtures\market]
         [--owner you@example.com] [--payments-ready] [--no-feed]
+    .venv\Scripts\python.exe scripts\seed_market.py --fixture tests\contracts\marketplace
 
-* The fixture's supplier (Nord Living), verified, with its regions GB and AE,
-  and the products of products.json, approved, with their prices.
-* Then feed-two-regions.csv is imported for that supplier (upsert): the
-  sofa's rows come out unchanged and the Bergen lounge chair is new, so it
-  waits in the admin review queue (Admin → Market → Products).
-* `--owner` makes that account the supplier's owner; `--payments-ready`
-  marks the supplier as onboarded to Stripe Connect (orders, not only
-  quotes, once MARKET_PAYMENTS_ENABLED=true).
+* PF7's catalogue (the default, tests/fixtures/market): its supplier (Nord
+  Living), verified, with its regions GB and AE, and the products of
+  products.json, approved, with their prices. Then feed-two-regions.csv is
+  imported for that supplier (upsert): the sofa's rows come out unchanged and
+  the Bergen lounge chair is new, so it waits in the admin review queue
+  (Admin → Market → Products).
+* The app's set (PF7c, tests/contracts/marketplace, MK1's stub catalogue):
+  its three suppliers, verified, and nine products, approved, with their GB
+  and AE prices and deliveries; categories the stub uses that the platform's
+  tree lacks are added. Its feed is not imported (it is the Oslo sofa the
+  catalogue already holds; upload it in the portal or through 5.11).
+* `--owner` makes that account every loaded supplier's owner;
+  `--payments-ready` marks them as onboarded to Stripe Connect (orders, not
+  only quotes, once MARKET_PAYMENTS_ENABLED=true).
 
 Uses server/.env like the API (DATABASE_URL, STORAGE_DIR, API_URL). Run it
 again at any time: it updates the same rows.
@@ -29,7 +36,7 @@ import app  # noqa: E402, F401  (before SQLAlchemy: keeps platform off WMI on Wi
 
 def main(argv: list[str]) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
-    ap.add_argument("--fixture", default=str(SERVER / "tests" / "contracts" / "marketplace"))
+    ap.add_argument("--fixture", default=str(SERVER / "tests" / "fixtures" / "market"))
     ap.add_argument("--owner", help="e-mail of an existing account to make the supplier's owner")
     ap.add_argument("--payments-ready", action="store_true")
     ap.add_argument("--no-feed", action="store_true", help="skip importing feed-two-regions.csv")
@@ -54,18 +61,23 @@ def main(argv: list[str]) -> int:
             if owner is None:
                 print(f"no account {args.owner}: sign up on the site first")
                 return 2
-        supplier = seed.load_fixture(db, folder, payments_ready=args.payments_ready, owner=owner)
-        print(f"supplier {supplier.name} ({supplier.supplier_id}): {supplier.status}")
-        if not args.no_feed:
+        stub = seed.is_stub(folder)
+        suppliers = seed.load_catalogue(db, folder, payments_ready=args.payments_ready, owner=owner)
+        for supplier in suppliers:
+            print(f"supplier {supplier.name} ({supplier.supplier_id}): {supplier.status}")
+        if stub:
+            print("feed: not imported (the app's feed is the Oslo sofa loaded above)")
+        elif not args.no_feed:
             run = importer.run_feed(
-                db, supplier, (folder / "feed-two-regions.csv").read_bytes(), "csv", "upsert",
+                db, suppliers[0], (folder / "feed-two-regions.csv").read_bytes(), "csv", "upsert",
                 fetcher=seed.media_fetcher(folder),
             )  # fmt: skip
             print(
                 f"feed {run.feed_id}: {run.state}, {run.rows} rows, {run.created} created, "
                 f"{run.updated} updated, {run.unchanged} unchanged, {run.rejected} rejected"
             )
-        for p in db.scalars(select(Product).where(Product.supplier_id == supplier.supplier_id).order_by(Product.sku)):
+        ids = [s.supplier_id for s in suppliers]
+        for p in db.scalars(select(Product).where(Product.supplier_id.in_(ids)).order_by(Product.supplier_id, Product.sku)):
             print(f"  {p.status:<15} {p.sku:<22} {p.name}")
     return 0
 

@@ -21,7 +21,7 @@ from pathlib import Path
 
 import httpx
 
-FIXTURES = Path(__file__).resolve().parents[1] / "tests" / "contracts" / "marketplace"
+FIXTURES = Path(__file__).resolve().parents[1] / "tests" / "fixtures" / "market"  # PF7's catalogue (seed_market.py's default)
 CONTRACT = {"X-Truebex-Contract": "marketplace-api/1.1"}
 
 
