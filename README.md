@@ -1305,3 +1305,25 @@ cd server
 ```
 
 `scripts/serve-out.py` listens with a backlog of 128, so a page's burst of requests is not refused.
+
+## Marketplace fixtures from MK1 (PF7c)
+
+`server/tests/contracts/marketplace/` is the app's own marketplace fixture set (MK1, the app repo's
+`Docs/roadmap/fixtures/contracts/marketplace/`), copied byte for byte from the app's committed blobs and never
+edited: three suppliers and nine products in the stub's shape, the stub's 5.1, 5.2, 5.5, 5.7 and 5.9 answers, the
+feed and its report, and the app's own `.tbxa` and `.glb` geometry. `server/tests/test_market_contract_fixtures.py`
+seeds the platform from it and checks the platform's answers against the app's files; the readings the two sides
+disagree on are listed in `docs/roadmap/40/PF7c-marketplace-fixtures-from-mk1.md` (As-built, D1–D16). PF7's own
+catalogue, which the older marketplace and supplier tests count on, moved to `server/tests/fixtures/market/`
+(`scripts\make_market_fixtures.py` writes and `--check`s it there); where an earlier section names
+`tests\contracts\marketplace` for PF7's catalogue or its feed, it is now `tests\fixtures\market`.
+
+```powershell
+cd server
+.venv\Scripts\python.exe scripts\seed_market.py --fixture tests\contracts\marketplace   # the app's catalogue
+.venv\Scripts\python.exe scripts\seed_market.py                                         # PF7's (the default)
+```
+
+With `MARKET_MEDIA_FIXTURES=tests/contracts/marketplace`, a local trial serves the app's feed URLs
+(`https://market.truebex.com/files/...`) from that folder, so its `feed-two-regions.csv` imports in the portal.
+An app build reads the local API with `-mwmarket=live -mwapi=http://127.0.0.1:8000`.

@@ -573,9 +573,15 @@ def test_theme_includes_are_product_ids(client):
     assert body["includes"] == [calm["includes"][0], PRODUCT["PAINT-CHALK"]["product_id"]]
 
 
-def test_stub_media_fetcher_serves_only_the_files_folder(tmp_path):
+def test_stub_media_fetcher_serves_only_the_files_folder(monkeypatch):
     """A folder without media-map.json (the app's set) is served by the
-    stub's rule: any https URL whose path holds /files/ → that file there."""
+    stub's rule: any https URL whose path holds /files/ → that file there,
+    also as a local trial's MARKET_MEDIA_FIXTURES."""
+    from app.config import get_settings
+
+    monkeypatch.setattr(get_settings(), "market_media_fixtures", str(CONTRACT_FIXTURES))
+    geometry = SOFA["variants"][0]["geometry"]
+    assert hashlib.sha256(media.default_fetcher().get(geometry["url"], 10_000_000)).hexdigest() == geometry["sha256"]
     fetcher = seed.media_fetcher(CONTRACT_FIXTURES)
     assert fetcher.get(SOFA["images"][0], 10_000_000) == stub_file(SOFA["images"][0])
     assert fetcher.get("https://cdn.example.com/files/geometry/sofa-oslo.tbxa", 10_000_000) == (CONTRACT_FIXTURES / "geometry" / "sofa-oslo.tbxa").read_bytes()
