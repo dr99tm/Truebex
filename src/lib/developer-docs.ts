@@ -206,20 +206,24 @@ export function camel(name: string): string {
 
 // --- the MCP tools ---------------------------------------------------------------------------
 
+// tools.json (schema truebex-tools/1, agent-interface §6.5) as AI1 ships it. The page shows
+// `permission`, `logSafe` and what `requires` means in words; `router` and `surfaces` stay
+// Truebex's own and are never rendered.
 export interface Tool {
   name: string;
   title: string;
   description: string;
   inputSchema: Schema;
-  annotations: { readOnlyHint: boolean };
-  _meta: { "com.truebex/permission": string; "com.truebex/logSafe": boolean };
+  outputSchema?: Schema;
+  annotations: { readOnlyHint: boolean; destructiveHint?: boolean; idempotentHint?: boolean; openWorldHint?: boolean };
+  _meta: { "com.truebex/permission": string; "com.truebex/logSafe"?: boolean; "com.truebex/requires"?: string };
 }
 
-export function toolsDocument(): { version: string; tools: Tool[] } {
+export function toolsDocument(): { schema: string; version: string; tools: Tool[] } {
   return JSON.parse(fs.readFileSync(path.join(ROOT, "src", "content", "tools.json"), "utf8"));
 }
 
-/** A tool argument's rules in words: range, length, pattern, default. */
+/** A tool argument's rules in words: items, range, length, pattern, default. */
 export function rulesOf(schema: Schema): string {
   const parts: string[] = [];
   const s = schema.type === "array" && schema.items ? schema.items : schema;
@@ -229,6 +233,7 @@ export function rulesOf(schema: Schema): string {
     );
   }
   if (s.minimum !== undefined || s.maximum !== undefined) parts.push(`${s.minimum ?? "−∞"} to ${s.maximum ?? "∞"}`);
+  if (s.minLength !== undefined) parts.push(`≥ ${s.minLength} chars`);
   if (s.maxLength !== undefined) parts.push(`≤ ${s.maxLength} chars`);
   if (s.pattern) parts.push(`pattern ${s.pattern}`);
   if (schema.default !== undefined) parts.push(`default ${JSON.stringify(schema.default)}`);

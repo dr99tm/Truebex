@@ -306,6 +306,6 @@ The first four names are `agent-interface.md` §10's platform tests.
   (project `truebex`); npm — `npm login` with the `@truebex` organisation, then `npm publish --access public` in
   `sdks\js` and in `packages\mcp`. Then set `sdksPublished` and `mcpPublished` to `true` in `src/lib/constants.ts`.
   Production also needs `WEBHOOK_SECRET_KEY` in `server.sops.env` (the deploy skill's secrets table names it).
-* **Carry-over:** AI1 → the real bridge, `tools.json` and the agent fixture scripts (then `scripts\sync-mcp.ps1`);
+* **Carry-over:** ~~AI1 → the real bridge, `tools.json` and the agent fixture scripts (then `scripts\sync-mcp.ps1`)~~ done 2026-10-13 by [PF12b](PF12b-mcp-package-adopts-ai1-bridge.md) (Autopilot T63: AI1's bridge copied, the stand-in removed);
   CL1 → API projects open in the app; CL3 → jobs run (the pack's real PDF); IO2/IO4 → the `export` job kind; the owner →
   publishing, `WEBHOOK_SECRET_KEY`, and the licence choice for the SDKs.

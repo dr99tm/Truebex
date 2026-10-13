@@ -314,7 +314,7 @@ The eight `telemetry.md` §10 platform tests come first. Postgres tests carry `@
     server venv (`pip install -r requirements-dev.txt`: psycopg, boto3, moto, PyYAML).
   * **PF1:** `publish_release.py --symbols <dir>` → `scripts.upload_symbols.upload()`; keep one copy of the
     shared files listed in deviation 3.
-  * **OP1 (app):** copy the fixtures; adopt deviation 2 in the contract and the client.
+  * **OP1 (app):** copy the fixtures: **done** (OP1 replaced the set; PF14d re-copied it on 2026-10-13); adopt deviation 2 in the contract and the client: OP1 took neither the raw-byte `install_id` nor the feedback-text exemption, and the platform now follows the app on both (PF14d As-built lists every reading).
   * **GD5:** processor names and the legal wording of the telemetry section on `/privacy/`.
   * **PF5 / PF6:** `share_target` and `cdn_target` in `terraform.tfvars`; PF6's queue depth as
     `/opt/truebex/bin/queue-depth`.
