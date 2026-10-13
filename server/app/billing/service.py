@@ -125,17 +125,37 @@ def managed_subscription(db: Session, user: User) -> Subscription | None:
 
 
 def customer_id(db: Session, user: User, provider: str) -> str | None:
-    """The provider's customer id from the user's latest subscription there."""
+    """The provider's customer id from the user's latest subscription there:
+    the customer their own checkouts, top-ups and invoices use. A supplier's
+    listing plan (PF8) is on the supplier's own customer (listing_customer),
+    never this one (PF8b)."""
     sub = db.scalar(
         select(Subscription)
         .where(
             Subscription.user_id == user.id,
             Subscription.provider == provider,
             Subscription.provider_customer_id.is_not(None),
+            ~Subscription.plan.startswith(LISTING_TIER_PREFIX, autoescape=True),
         )
         .order_by(Subscription.updated_at.desc())
     )
     return sub.provider_customer_id if sub else None
+
+
+def listing_customer(db: Session, payment: Payment) -> str | None:
+    """PF8b: the Stripe customer a listing plan's checkout (`listing_<plan>`)
+    opens on: its supplier's own (`suppliers.billing_customer_id`, found
+    through the listing row that names this payment), or None for a new one.
+    Never the person's own (customer_id): a supplier's VAT id saved there
+    would make that person's own plan a business purchase."""
+    from ..market.models import Supplier
+    from ..supplier.models import ListingSubscription
+
+    return db.scalar(
+        select(Supplier.billing_customer_id)
+        .join(ListingSubscription, ListingSubscription.supplier_id == Supplier.supplier_id)
+        .where(ListingSubscription.payment_ref == payment.reference)
+    )
 
 
 def stripe_customer_id(db: Session, user: User) -> str | None:

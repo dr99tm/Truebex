@@ -20,6 +20,14 @@ each read of the plan) finds it by that id (PF8a) and copies its state into
 `suppliers.billing_customer_id`, which PF7's statements invoice through
 `create_invoice(db, customer, lines)`. A plan billed by its subscription
 leaves the listing fee off the monthly statement.
+
+PF8b: the checkout opens on the supplier's own Stripe customer
+(`billing_customer_id`, found by PF2 through the listing row that names the
+checkout's payment), or on a new one made from the member's e-mail, never on
+the customer the member pays their own plan on. So the sync copies the
+supplier's own customer, and only into an empty `billing_customer_id`: one
+already set (by the admin, or by an earlier checkout) wins. A statement's
+invoice PDF is opened on that customer, for any of the supplier's owners.
 """
 
 import logging
@@ -54,11 +62,18 @@ def tier_of(plan: str) -> str:
 
 
 def billing_interface() -> SimpleNamespace:
-    """PF2's billing interface (imported here, so tests can stand in for it)."""
+    """PF2's billing interface (imported here, so tests can stand in for it;
+    a stand-in without `InvoiceScope` gets the member-scoped invoice call)."""
     from ..billing.base import InvoiceLine, ProviderError
     from ..billing.providers import get_provider
 
-    return SimpleNamespace(InvoiceLine=InvoiceLine, ProviderError=ProviderError, get_provider=get_provider)
+    try:
+        from ..billing.base import InvoiceScope
+    except ImportError:
+        InvoiceScope = None
+    return SimpleNamespace(
+        InvoiceLine=InvoiceLine, ProviderError=ProviderError, InvoiceScope=InvoiceScope, get_provider=get_provider
+    )
 
 
 def listing_price(db: Session, plan: str, currency: str, amount: int):
@@ -210,16 +225,18 @@ def choose(db: Session, m: Member, plan_id: str) -> dict:
     for column, value in (("interval", "month"), ("seats", 1)):  # PF2's columns
         if hasattr(Payment, column):
             setattr(payment, column, value)
+    # The row names its payment before the checkout opens: PF2's Stripe
+    # checkout finds the supplier's own customer through it (PF8b).
+    row.status, row.payment_ref = "checkout", payment.reference
     db.add(payment)
+    db.add(row)
     db.flush()
     try:
         url = provider.create_checkout(db, m.user, payment, price, 1, None)
     except bi.ProviderError:
         db.rollback()
         raise ContractError("provider_error", 502, "The payment provider didn't respond. Please try again.")
-    row.status, row.payment_ref = "checkout", payment.reference
     db.add(payment)
-    db.add(row)
     db.commit()
     return {"state": "checkout", "plan": plan_id, "checkout_url": url}
 
@@ -291,17 +308,23 @@ def sync(db: Session, at: datetime, supplier_id: str | None = None) -> int:
                 n += 1
             continue
         status = _STATUS.get(sub.status, "canceled")
-        changed = (
-            row.status != status
-            or row.provider_subscription_id != sub.provider_subscription_id
-            or row.current_period_end != sub.current_period_end
-        )
+        matched = row.provider_subscription_id != sub.provider_subscription_id
+        changed = matched or row.status != status or row.current_period_end != sub.current_period_end
         row.status, row.provider_subscription_id = status, sub.provider_subscription_id
         row.current_period_end = sub.current_period_end
         if supplier is not None:
-            if sub.provider_customer_id and supplier.billing_customer_id != sub.provider_customer_id:
-                supplier.billing_customer_id = sub.provider_customer_id
+            customer = sub.provider_customer_id
+            if customer and not supplier.billing_customer_id:
+                supplier.billing_customer_id = customer
                 changed = True
+            elif customer and supplier.billing_customer_id != customer and matched:
+                # PF8b: the billing customer already set wins (the admin's, or
+                # the one an earlier listing checkout made). Listing checkouts
+                # open on it, so they differ only after the admin changed it.
+                log.warning(
+                    "supplier %s: listing subscription %s is on %s; statements stay on %s",
+                    supplier.supplier_id, sub.provider_subscription_id, customer, supplier.billing_customer_id,
+                )  # fmt: skip
             if status == "active" and supplier.listing_plan != row.plan:
                 supplier.listing_plan = row.plan
                 changed = True
@@ -342,8 +365,14 @@ def invoice_url(db: Session, m: Member, statement_id: str) -> str:
     bi = billing_interface()
     if bi is None:
         raise ContractError("unavailable", 503, "Invoices open here once billing is connected.")
+    provider = bi.get_provider("stripe")
     try:
-        return bi.get_provider("stripe").invoice_pdf_url(db, m.user, s.invoice_ref)
+        if bi.InvoiceScope is None:
+            return provider.invoice_pdf_url(db, m.user, s.invoice_ref)
+        # PF8b: invoiced to the supplier's own customer (PF7), not to the
+        # customer the member pays their own plan on.
+        customers = (m.supplier.billing_customer_id,) if m.supplier.billing_customer_id else ()
+        return provider.invoice_pdf_url(db, m.user, s.invoice_ref, bi.InvoiceScope(customers=customers))
     except bi.ProviderError:
         raise not_found("That invoice")
 
