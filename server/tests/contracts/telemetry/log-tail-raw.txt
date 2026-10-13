@@ -1,7 +1,10 @@
-[2026.10.09-12.34.50:120][  0]LogInit: Base directory: C:\Users\sara.khalil\AppData\Local\Truebex\
-[2026.10.09-12.34.51:002][  0]LogCad: Opening project D:\Work\Villa Hamra\Villa Hamra.tbxp
-[2026.10.09-12.34.51:870][  4]LogCad: Loaded 1,204 entities in 212 ms
-[2026.10.09-12.34.52:417][ 12]LogCad: Autosave to C:\Users\sara.khalil\Documents\Truebex\Autosave\Villa Hamra.tbxp
-[2026.10.09-12.34.53:900][ 30]LogLicence: Signed in as sara.khalil@example.com
-[2026.10.09-12.34.55:031][ 64]LogCadCore: Warning: Wall rebuild took 41 ms
-[2026.10.09-12.34.56:250][ 70]LogCrash: Unhandled exception 0xC0000005 in Truebex-CadCore.dll
+[2026.10.09-12.00.01:123][  0]LogInit: Display: Running Truebex 1.1.0 on DESK-7Q2KX (Windows 10.0.26200)
+[2026.10.09-12.00.01:200][  0]LogInit: Display: Base directory: C:/Program Files/Truebex/Windows/MultiWindow/Binaries/Win64/
+[2026.10.09-12.00.02:010][  0]LogCad: Display: Library root C:\Users\alex.morgan\AppData\Local\MultiWindow\Saved\CadTool
+[2026.10.09-12.00.02:011][  0]LogCad: Display: Theme file c:/users/alex.morgan/appdata/local/MultiWindow/Saved/Themes/dark.json
+[2026.10.09-12.00.05:500][ 42]LogCad: Display: Opened D:\Clients\Smith House\plans\Smith House v3.tbxp (412 elements)
+[2026.10.09-12.00.07:000][ 88]LogCad: Display: Saved "C:\Users\alex.morgan\Documents\Truebex\Kitchen.tbxp"
+[2026.10.09-12.00.08:000][ 90]LogCadTool: Display: MWCADPDF pages=3 bytes=48211 file=D:/Clients/Smith House/out/Sheets A1.pdf
+[2026.10.09-12.00.09:000][ 91]LogLicence: Display: Signed in as alex.morgan@example.com on DESK-7Q2KX
+[2026.10.09-12.00.10:000][ 92]LogTemp: Warning: Texture folder D:\Clients\Smith House\textures is missing
+[2026.10.09-12.00.11:000][ 93]LogWindows: Display: Machine desk-7q2kx, user alex.morgan, imported kitchen.glb

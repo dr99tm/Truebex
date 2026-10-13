@@ -2,13 +2,15 @@
 dashboard API, retention and deletion jobs, and API crashes in the crash store.
 
 The first eight tests are the contract's §10 platform tests, run against the
-§9 fixtures in tests/contracts/telemetry/.
+§9 fixtures in tests/contracts/telemetry/ (PF14d: the app's own set, copied
+from OP1 with scripts/sync-contract-fixtures.ps1 -Contract telemetry).
 """
 
 import copy
 import hashlib
 import json
 import re
+import secrets
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -39,30 +41,49 @@ SYMBOLS = Path(__file__).parent / "fixtures" / "symbols"
 H = {"X-Truebex-Contract": "telemetry/1.0"}
 HEX32 = re.compile(r"^[0-9a-f]{32}$")
 HEX16 = re.compile(r"^[0-9a-f]{16}$")
+# The installation every body of the app's fixtures names.
+INSTALL = "3f2a9c1e7b4d4e0f8a6b5c4d3e2f1a0b"
+# An install secret and its id as the app derives it (§4; OP1's LoadInstall /
+# MintSecret and its stub's 5.5): the first 32 hex of SHA-256 over the 64 hex
+# characters of the secret.
 SECRET = "7d4e1f0a9b3c2d5e6f708192a3b4c5d6e7f8091a2b3c4d5e6f708192a3b4c5d6"
-INSTALL = "4a1ffea151643db7fe803e815865e053"
+SECRET_INSTALL = "116cea6cd6478818630f1281498f01ca"
+# The app's crash-report.json callstack, normalised for the signature (§6.3).
+APP_FRAMES = [
+    "Truebex-Win64-Shipping!0x1a2b3c",
+    "Truebex-Win64-Shipping!0x1a2a10",
+    "Truebex-Win64-Shipping!0x88f201",
+    "KERNEL32!0x2ccb7",
+    "ntdll!0xaad6c",
+]
 
 
 def load(name: str):
-    return json.loads((FIX / name).read_text(encoding="utf-8"))
+    return json.loads(fixture_bytes(name).decode("utf-8"))
 
 
 def fixture_bytes(name: str) -> bytes:
     return (FIX / name).read_bytes()
 
 
-def set_pointer(doc, pointer: str, value):
-    """Apply an RFC 6901 JSON Pointer assignment (privacy-violations.json)."""
-    parts = [p.replace("~1", "/").replace("~0", "~") for p in pointer.lstrip("/").split("/")]
-    node = doc
-    for part in parts[:-1]:
-        node = node[int(part)] if isinstance(node, list) else node[part]
-    last = parts[-1]
-    if isinstance(node, list):
-        node[int(last)] = value
-    else:
-        node[last] = value
-    return doc
+def fixture_text(name: str) -> str:
+    """A text fixture exactly as stored (no newline translation)."""
+    return fixture_bytes(name).decode("utf-8")
+
+
+def app_multipart(parts: list[tuple[str, str, str, bytes]]) -> tuple[bytes, str]:
+    """A multipart/form-data body byte for byte as the app writes it
+    (OP1's TelemetryMultipart::Build in TelemetryPlatform.cpp): a
+    `truebex-<24 hex>` boundary, every part with a filename and a type."""
+    boundary = "truebex-" + secrets.token_hex(12)
+    body = bytearray()
+    for name, content_type, filename, data in parts:
+        body += f"--{boundary}\r\n".encode()
+        body += f'Content-Disposition: form-data; name="{name}"; filename="{filename}"\r\n'.encode()
+        body += f"Content-Type: {content_type}\r\n\r\n".encode()
+        body += data + b"\r\n"
+    body += f"--{boundary}--\r\n".encode()
+    return bytes(body), f"multipart/form-data; boundary={boundary}"
 
 
 def post_crash(client, report=None, *, minidump=None, log=None, headers=H):
@@ -94,8 +115,6 @@ def post_feedback(client, fb=None, *, screenshot=None, log=None, headers=H):
 
 
 def new_id() -> str:
-    import secrets
-
     return secrets.token_hex(16)
 
 
@@ -181,15 +200,18 @@ def test_events_keep_allowlisted_drop_rest(client):
 
 
 def test_privacy_violations_rejected(client):
+    # The app's shape (telemetry.md 1.0.1, §9): {"cases": [{name, endpoint, field, payload}]}.
     cases = load("privacy-violations.json")["cases"]
-    assert len(cases) >= 10
+    assert len(cases) >= 9
+    assert {"path-in-callstack", "email-in-feedback-text"} <= {c["name"] for c in cases}
     for case in cases:
-        payload = set_pointer(copy.deepcopy(load(case["base"])), case["pointer"], case["value"])
+        payload = case["payload"]
         if case["endpoint"] == "events":
             res = client.post("/telemetry/events", json=payload, headers=H)
         elif case["endpoint"] == "crashes":
             res = post_crash(client, payload)
         else:
+            assert case["endpoint"] == "feedback", case["name"]
             res = post_feedback(client, payload)
         body = assert_envelope(res, 422, "privacy_violation")
         assert body["data"]["field"] == case["field"], case["name"]
@@ -206,7 +228,7 @@ def test_no_ip_stored(client, monkeypatch):
     monkeypatch.setattr(ratelimit.settings, "ratelimit_backend", "db")
     with TestClient(at_address(address)) as c:
         assert c.post("/telemetry/events", json=load("events-batch.json"), headers=H).status_code == 202
-        assert post_crash(c, log=(FIX / "log-tail-scrubbed.txt").read_text("utf-8")).status_code == 202
+        assert post_crash(c, log=fixture_text("log-tail-scrubbed.txt")).status_code == 202
         assert post_feedback(c).status_code == 202
 
     hits = []
@@ -220,20 +242,12 @@ def test_no_ip_stored(client, monkeypatch):
 
 def test_crash_multipart_signature_and_duplicate(client):
     report = load("crash-report.json")
-    res = post_crash(client, report, log=(FIX / "log-tail-scrubbed.txt").read_text("utf-8"))
+    res = post_crash(client, report, log=fixture_text("log-tail-scrubbed.txt"))
     assert res.status_code == 202, res.text
     body = res.json()
     assert body["crash_id"] == report["crash_id"]
     assert HEX16.match(body["signature"])
-    assert body["signature"] == expected_signature(
-        [
-            "Truebex-CadCore.dll!0x1a2b3c",
-            "Truebex-CadCore.dll!0x1a0f10",
-            "Truebex-CadCore.dll!0xc4410",
-            "Truebex.exe!GuardedMain",
-            "kernel32.dll!BaseThreadInitThunk",
-        ]
-    )
+    assert body["signature"] == expected_signature(APP_FRAMES)
     assert body["duplicate"] is False and body["known_issue"] is None
 
     again = post_crash(client, report)
@@ -313,20 +327,24 @@ def test_feedback_reply_with_a_device_from_the_licence_api(client):
 
 
 def test_delete_by_install_secret(client):
-    assert service.install_id_from_secret(SECRET) == INSTALL
-    other = load("events-batch.json")
-    other.update(install_id=new_id(), batch_id=new_id())
-    assert client.post("/telemetry/events", json=load("events-batch.json"), headers=H).status_code == 202
+    # The id the app puts on everything it sends is the one 5.5 derives (PF14d:
+    # SHA-256 over the secret's 64 hex characters, as OP1 does).
+    assert service.install_id_from_secret(SECRET) == SECRET_INSTALL
+    mine = dict(load("events-batch.json"), install_id=SECRET_INSTALL)
+    other = dict(load("events-batch.json"), install_id=new_id(), batch_id=new_id())
+    assert client.post("/telemetry/events", json=mine, headers=H).status_code == 202
     assert client.post("/telemetry/events", json=other, headers=H).status_code == 202
-    assert post_crash(client, log=(FIX / "log-tail-scrubbed.txt").read_text("utf-8")).status_code == 202
-    assert post_feedback(client, log="a scrubbed tail\n").status_code == 202
+    crash = dict(load("crash-report.json"), install_id=SECRET_INSTALL)
+    assert post_crash(client, crash, log=fixture_text("log-tail-scrubbed.txt")).status_code == 202
+    fb = dict(load("feedback.json"), install_id=SECRET_INSTALL)
+    assert post_feedback(client, fb, log="a scrubbed tail\n").status_code == 202
     store = storage.get_store()
     assert len(store.list("telemetry/")) == 4
 
     res = client.post("/telemetry/delete", json={"install_secret": SECRET}, headers=H)
     assert res.status_code == 202, res.text
     body = res.json()
-    assert body["install_id"] == INSTALL
+    assert body["install_id"] == SECRET_INSTALL
     complete_by = datetime.fromisoformat(body["complete_by"].replace("Z", "+00:00"))
     assert timedelta(days=29) < complete_by - datetime.now(timezone.utc) <= timedelta(days=30)
 
@@ -343,12 +361,12 @@ def test_delete_by_install_secret(client):
 
     with SessionLocal() as db:
         for model in (TelemetryEvent, TelemetryBatch, CrashReport, Feedback):
-            assert db.scalars(select(model).where(model.install_id == INSTALL)).first() is None
+            assert db.scalars(select(model).where(model.install_id == SECRET_INSTALL)).first() is None
         assert db.scalars(
             select(TelemetryEvent).where(TelemetryEvent.install_id == other["install_id"])
         ).first() is not None
         done = db.scalars(
-            select(TelemetryDeletion).where(TelemetryDeletion.install_id == INSTALL)
+            select(TelemetryDeletion).where(TelemetryDeletion.install_id == SECRET_INSTALL)
         ).one()
         assert done.completed_at is not None
     assert store.list("telemetry/") == []
@@ -363,7 +381,7 @@ def test_retention_job(client):
 
     old_crash = load("crash-report.json")
     new_crash = dict(old_crash, crash_id=new_id())
-    log = (FIX / "log-tail-scrubbed.txt").read_text("utf-8")
+    log = fixture_text("log-tail-scrubbed.txt")
     assert post_crash(client, old_crash, log=log).status_code == 202
     assert post_crash(client, new_crash, log=log).status_code == 202
 
@@ -406,7 +424,7 @@ def test_retention_job(client):
                 TelemetryDaily.name == "command.run", TelemetryDaily.app_version == "*"
             )
         ).one()
-        assert daily.events == 4
+        assert daily.events == 2  # one command.run in each of the two batches
 
         old_row = db.get(CrashReport, old_crash["crash_id"])
         assert old_row is not None and old_row.minidump_key is None and old_row.log_key is None
@@ -548,17 +566,73 @@ def test_telemetry_known_issue_returned(client):
 
 
 def test_telemetry_scrub_matches_fixture(client):
-    raw = (FIX / "log-tail-raw.txt").read_text("utf-8")
-    scrubbed = (FIX / "log-tail-scrubbed.txt").read_text("utf-8")
-    assert scanner.scrub_log(raw) == scrubbed
+    raw = fixture_text("log-tail-raw.txt")
+    scrubbed = fixture_text("log-tail-scrubbed.txt")
+    # The machine the app wrote the raw tail on (telemetry.md 1.0.1, §9): with it
+    # the server's scrubber gives the app's expected output exactly.
+    context = scanner.ScrubContext.from_json(load("scrub-context.json"))
+    assert scanner.scrub_log(raw, context) == scrubbed
+    # Line endings stay as they were (the app's checkout holds these files with CRLF).
+    lf, crlf = chr(10), chr(13) + chr(10)
+    assert scanner.scrub_log(raw.replace(lf, crlf), context) == scrubbed.replace(lf, crlf)
+    assert scanner.scrub_log(scrubbed, context) == scrubbed
+
+    # Production knows no machine: the context-free scrubber leaves the app's
+    # scrubbed tail alone and would still change the raw one.
     assert scanner.scrub_log(scrubbed) == scrubbed
+    assert scanner.scrub_log(raw) != raw
 
     # The server re-runs the rules: an unscrubbed tail is refused, a scrubbed one kept.
     body = assert_envelope(post_crash(client, log=raw), 422, "privacy_violation")
     assert body["data"]["field"] == "log"
     fb = dict(load("feedback.json"), feedback_id=new_id())
-    assert post_feedback(client, fb, log=raw).status_code == 422
+    body = assert_envelope(post_feedback(client, fb, log=raw), 422, "privacy_violation")
+    assert body["data"]["field"] == "log"
     assert post_crash(client, log=scrubbed).status_code == 202
+    assert post_feedback(client, fb, log=scrubbed).status_code == 202
+
+
+def test_telemetry_scrub_rules_follow_the_app():
+    """OP1's TelemetryPrivacy::Scrub rule by rule (TelemetryPrivacy.cpp)."""
+    scrub = scanner.scrub_log
+    ctx = scanner.ScrubContext(
+        profile_dir=r"C:\Users\sara", user_name="sara", host_name="WS-01", project_dirs=(r"E:\Jobs\Villa",)
+    )
+    # 1. emails, with the sentence's full stop left outside
+    assert scrub("mail sara.k@studio.co.uk.") == "mail <email>."
+    assert scrub("not one: a@b.c, x@host.c0m, @example.com") == "not one: a@b.c, x@host.c0m, @example.com"
+    # 2. the profile folder, either separator, any case; without a context any
+    #    X:/Users/<name> except the shared ones
+    assert scrub("C:/USERS/SARA/AppData/x.ini", ctx) == "%USERPROFILE%/AppData/x.ini"
+    assert scrub(r"C:\Users\omar\AppData") == r"%USERPROFILE%\AppData"
+    shared = r"C:\Users\Public\Documents and C:/Users/Default/NTUSER.DAT"
+    assert scrub(shared) == shared
+    # 3. a path ending in a project or export file, from its root, or a bare file name
+    assert scrub(r"wrote \\nas\share\Villa A.dwg ok") == "wrote <project> ok"
+    assert scrub(r"Saved (%USERPROFILE%\Desktop\v2.TBXP)") == "Saved (<project>)"
+    assert scrub("imported kitchen.glb and plan.PDF; kept dark.json") == "imported <project> and <project>; kept dark.json"
+    assert scrub("file=out/Sheets A1.pdf") == "file=out/Sheets <project>"
+    assert scrub("x.tbxpack y.tbxpacks") == "<project> y.tbxpacks"
+    # 4. the known project folders, 5. the machine and 6. the user, whole words only
+    assert scrub("E:/jobs/villa/textures on WS-01 for sara, not sarah", ctx) == (
+        "<project>/textures on <host> for <user>, not sarah"
+    )
+    # Names shorter than three characters are left (they would hit ordinary words).
+    assert scrub("al at PC", scanner.ScrubContext(user_name="al", host_name="PC")) == "al at PC"
+
+    # The production check refuses exactly the tails the context-free scrubber changes.
+    tails = [
+        fixture_text("log-tail-raw.txt"),
+        fixture_text("log-tail-scrubbed.txt"),
+        shared,
+        "a.pdf " * 3000,
+        "<project>.pdf <email> %USERPROFILE%/x",
+        r"C:\Users\omar",
+        "mail me@x.io",
+        "kept dark.json",
+    ]
+    for tail in tails:
+        assert (scanner.scan_log(tail) is not None) == (scrub(tail) != tail), tail[:40]
 
 
 ADMIN_ROUTES = [
@@ -618,7 +692,7 @@ def test_server_exception_recorded_as_crash(client):
 def test_telemetry_admin_flow(client):
     admin = admin_headers(client)
     assert client.post("/telemetry/events", json=load("events-batch.json"), headers=H).status_code == 202
-    crash = post_crash(client, log=(FIX / "log-tail-scrubbed.txt").read_text("utf-8")).json()
+    crash = post_crash(client, log=fixture_text("log-tail-scrubbed.txt")).json()
     fb = dict(load("feedback.json"), reply=True)
     signup(client, "sara@example.com")
     add_device("sara@example.com", "tbx_dev_" + "c" * 43)
@@ -634,16 +708,16 @@ def test_telemetry_admin_flow(client):
     assert {"day": "2026-10-09", "count": 1} in summary["installs_per_day"]
     assert summary["versions"] == [{"version": "1.1.0", "installs": 1}]
     top = {row["name"]: row["events"] for row in summary["top_events"]}
-    assert top["command.run"] == 2 and top["app.start"] == 1
+    assert top["command.run"] == 1 and top["app.start"] == 1
     timing = {row["name"]: row for row in summary["timings"]}
-    assert timing["command.run"]["p50_ms"] == 9 and timing["command.run"]["p95_ms"] == 12
+    assert timing["command.run"]["p50_ms"] == 12 and timing["command.run"]["p95_ms"] == 12
     assert summary["crash_free_sessions"] == 0.0  # one start, one crash
 
     groups = client.get("/admin/telemetry/crashes", headers=admin).json()
     assert [g["signature"] for g in groups] == [crash["signature"]]
     detail = client.get(f"/admin/telemetry/crashes/{crash['signature']}", headers=admin).json()
     assert detail["reports"][0]["crash_id"] == crash["crash_id"]
-    assert detail["reports"][0]["frames"][0] == "Truebex-CadCore.dll+0x1a2b3c"
+    assert detail["reports"][0]["frames"][0] == "Truebex-Win64-Shipping+0x1a2b3c"
     assert client.get("/admin/telemetry/crashes/ffffffffffffffff", headers=admin).status_code == 404
     assert client.patch(
         f"/admin/telemetry/crashes/{crash['signature']}", json={"status": "sideways"}, headers=admin
@@ -671,7 +745,7 @@ def test_telemetry_admin_flow(client):
     assert len(mail.OUTBOX) == 1
     sent = mail.OUTBOX[0]
     assert sent.to == "sara@example.com" and "Fixed in 1.1.2" in sent.text
-    assert "section cut flickers" in sent.text
+    assert "gap at the corner" in sent.text
     assert client.post(
         f"/admin/feedback/{quiet['feedback_id']}/reply", json={"text": "Thanks"}, headers=admin
     ).status_code == 409
@@ -688,6 +762,25 @@ def test_telemetry_admin_flow(client):
         assert needle in csv.text
         assert "sara@example.com" not in csv.text
     assert client.get("/admin/telemetry/export.csv?tab=secrets", headers=admin).status_code == 422
+
+
+def cadcore_report(**changes) -> dict:
+    """PF14's own crash in a DLL, whose .sym is tests/fixtures/symbols/Truebex-CadCore.sym
+    (the app's fixture crashes in the Shipping executable; see
+    test_telemetry_app_crash_end_to_end)."""
+    return dict(
+        load("crash-report.json"),
+        exception={"code": "0xC0000005", "module": "Truebex-CadCore.dll", "offset": "0x1a2b3c"},
+        callstack=[
+            "Truebex-CadCore.dll+0x1a2b3c",
+            "Truebex-CadCore.dll+0x1a0f10",
+            "Truebex-CadCore.dll+0xc4410",
+            "Truebex.exe!GuardedMain+0x1c",
+            "kernel32.dll!BaseThreadInitThunk+0x14",
+            "ntdll.dll!RtlUserThreadStart+0x21",
+        ],
+        **changes,
+    )
 
 
 def test_symbols_upload_and_symbolicate_regroups(client):
@@ -710,7 +803,7 @@ def test_symbols_upload_and_symbolicate_regroups(client):
     )
     assert bad.status_code == 422
 
-    first = post_crash(client).json()
+    first = post_crash(client, cadcore_report()).json()
     assert jobs.symbolicate_pending(datetime.now(timezone.utc)) == 1
 
     symbolic = expected_signature(
@@ -732,7 +825,7 @@ def test_symbols_upload_and_symbolicate_regroups(client):
         assert alias.count == 0 and alias.merged_into == symbolic
         assert db.get(CrashGroup, symbolic).count == 1
     # Later reports of the same crash land in the corrected group at once.
-    again = post_crash(client, dict(load("crash-report.json"), crash_id=new_id())).json()
+    again = post_crash(client, cadcore_report(crash_id=new_id())).json()
     assert again["signature"] == symbolic
     listed = client.get("/admin/telemetry/crashes", headers=admin).json()
     assert [(g["signature"], g["count"]) for g in listed] == [(symbolic, 2)]
@@ -783,3 +876,222 @@ def test_upload_symbols_and_make_admin_scripts(client, tmp_path, capsys):
         assert db.scalar(select(User).where(User.email == "boss@example.com")).is_admin is True
     assert make_admin.main(["boss@example.com", "--revoke"]) == 0
     assert make_admin.main(["nobody@example.com"]) == 1
+
+
+# --- PF14d: the app's payloads end to end (OP1's fixtures, sent as OP1 sends them) ---
+
+
+def set_in(doc: dict, path: list, value) -> dict:
+    """A copy of `doc` with the value at `path` (keys and list indexes) replaced."""
+    doc = copy.deepcopy(doc)
+    node = doc
+    for part in path[:-1]:
+        node = node[part]
+    node[path[-1]] = value
+    return doc
+
+
+def test_telemetry_feedback_text_email_refused(client):
+    case = next(c for c in load("privacy-violations.json")["cases"] if c["name"] == "email-in-feedback-text")
+    assert (case["endpoint"], case["field"]) == ("feedback", "text")
+    # The app's case as it stands (no app or os block): the scanner answers first.
+    body = assert_envelope(post_feedback(client, case["payload"]), 422, "privacy_violation")
+    assert body["data"] == {"field": "text", "reason": "email"}
+
+    # The address in a whole message, with "reply to me" and a device token too:
+    # refused before the account's e-mail is looked up, and nothing stored.
+    signup(client, "sara@example.com")
+    token = "tbx_dev_" + "d" * 43
+    add_device("sara@example.com", token)
+    with_token = {**H, "Authorization": f"Bearer {token}"}
+    fb = dict(load("feedback.json"), text="Please write to alex.morgan@example.com", reply=True)
+    body = assert_envelope(post_feedback(client, fb, headers=with_token), 422, "privacy_violation")
+    assert body["data"]["field"] == "text"
+    with SessionLocal() as db:
+        assert db.scalars(select(Feedback)).first() is None
+
+    # What OP1 sends: its scrubber has turned the address into <email>. The reply
+    # flow is unchanged: the account's e-mail is attached from the token.
+    scrubbed = dict(fb, text="Please write to <email>")
+    assert post_feedback(client, scrubbed, headers=with_token).status_code == 202
+    # 6.4's separator rule is for prop values: a person's message may hold a slash.
+    slashes = dict(fb, feedback_id=new_id(), reply=False, text=r"The 1/2 wall and/or the \ key do nothing")
+    assert post_feedback(client, slashes).status_code == 202
+    with SessionLocal() as db:
+        assert db.get(Feedback, fb["feedback_id"]).email == "sara@example.com"
+        assert db.get(Feedback, slashes["feedback_id"]).text == slashes["text"]
+
+
+def test_telemetry_scanner_platform_cases(client):
+    """Rules the app's privacy-violations.json leaves out (PF14's own former
+    cases), on the app's valid bodies."""
+    events, crash, fb = load("events-batch.json"), load("crash-report.json"), load("feedback.json")
+    cases = [
+        ("events", set_in(events, ["events", 2, "props", "note"], "ask sara@example.com"), "events[2].props.note"),
+        ("events", set_in(events, ["hw", "gpu"], "sara@example.com"), "hw.gpu"),
+        ("events", set_in(events, ["events", 3, "props", "kind"], "Ground floor plan"), "events[3].props.kind"),
+        ("events", set_in(events, ["events", 6, "props", "clean"], "yes"), "events[6].props.clean"),
+        ("crashes", set_in(crash, ["exception", "module"], r"C:\Users\sara\Truebex.exe"), "exception.module"),
+        ("crashes", set_in(crash, ["gpu_driver"], "sara@example.com"), "gpu_driver"),
+        ("feedback", set_in(fb, ["os"], "windows 10.0.26200 sara@example.com"), "os"),
+    ]
+    for endpoint, payload, field in cases:
+        if endpoint == "events":
+            res = client.post("/telemetry/events", json=payload, headers=H)
+        elif endpoint == "crashes":
+            res = post_crash(client, payload)
+        else:
+            res = post_feedback(client, payload)
+        body = assert_envelope(res, 422, "privacy_violation")
+        assert body["data"]["field"] == field, field
+
+
+def test_telemetry_app_events_batch_end_to_end(client):
+    raw = fixture_bytes("events-batch.json")
+    sent = json.loads(raw)
+    res = client.post("/telemetry/events", content=raw, headers={**H, "Content-Type": "application/json"})
+    assert res.status_code == 202, res.text
+    assert res.json() == {"accepted": len(sent["events"]), "dropped": 0}
+    with SessionLocal() as db:
+        rows = db.scalars(select(TelemetryEvent).order_by(TelemetryEvent.seq)).all()
+        assert [(r.seq, r.name, r.props) for r in rows] == [(e["seq"], e["name"], e["props"]) for e in sent["events"]]
+        for row, event in zip(rows, sent["events"]):
+            assert service.iso(row.at) == event["at"]
+            assert (row.install_id, row.session_id, row.batch_id) == (
+                sent["install_id"], sent["session_id"], sent["batch_id"]
+            )
+            assert (row.app_version, row.channel, row.build, row.os, row.locale, row.plan) == (
+                "1.1.0", "stable", "shipping", "windows 10.0.26200", "en-GB", "pro"
+            )
+            assert row.hw == sent["hw"]
+
+    # A Shipping build spells an FName as the engine first registered it (names
+    # are case-preserving only with editor data, UE's NameTypes.h), so the same
+    # events may arrive spelled like this: kept, in the contract's spelling.
+    shipping = json.loads(raw)
+    shipping["batch_id"] = new_id()
+    ev = shipping["events"]
+    ev[1]["name"] = "Tool.Open"
+    ev[2]["props"] = {"Command": "Wall", "MS": 12}
+    ev[3]["props"]["kind"] = "PDF"
+    ev[4]["props"]["mode"] = "lit"
+    ev[5]["props"] = {"Category": "LogCad3D", "Verbosity": "Warning", "Count": 2}
+    res = client.post("/telemetry/events", json=shipping, headers=H)
+    assert res.status_code == 202, res.text
+    assert res.json() == {"accepted": len(ev), "dropped": 0}
+    with SessionLocal() as db:
+        rows = db.scalars(
+            select(TelemetryEvent)
+            .where(TelemetryEvent.batch_id == shipping["batch_id"])
+            .order_by(TelemetryEvent.seq)
+        ).all()
+        assert [(r.name, r.props) for r in rows] == [(e["name"], e["props"]) for e in sent["events"]]
+
+
+def test_telemetry_app_crash_end_to_end(client):
+    admin = admin_headers(client)
+    report = fixture_bytes("crash-report.json")
+    dump = fixture_bytes("minidump-stub.dmp")
+    log = fixture_bytes("log-tail-scrubbed.txt")
+    sent = json.loads(report)
+    parts = [
+        ("report", "application/json", "report.json", report),
+        ("minidump", "application/octet-stream", "minidump.dmp", dump),
+        ("log", "text/plain; charset=utf-8", "log.txt", log),
+    ]
+    body, content_type = app_multipart(parts)
+    res = client.post("/telemetry/crashes", content=body, headers={**H, "Content-Type": content_type})
+    assert res.status_code == 202, res.text
+    assert res.json() == {
+        "crash_id": sent["crash_id"],
+        "signature": expected_signature(APP_FRAMES),
+        "duplicate": False,
+        "known_issue": None,
+    }
+    store = storage.get_store()
+    with SessionLocal() as db:
+        row = db.get(CrashReport, sent["crash_id"])
+        assert (row.kind, row.install_id, row.app_version, row.os) == ("crash", INSTALL, "1.1.0", sent["os"])
+        assert row.frames == sent["callstack"] and row.exception == sent["exception"]
+        assert (row.uptime_s, row.gpu_driver, row.hw) == (sent["uptime_s"], sent["gpu_driver"], sent["hw"])
+        assert service.iso(row.at) == sent["at"]
+        with store.open(row.minidump_key) as fh:
+            assert fh.read() == dump
+        with store.open(row.log_key) as fh:
+            assert fh.read() == log
+
+    # The app sends a report again at the next start until it is answered: a duplicate.
+    body, content_type = app_multipart(parts)
+    again = client.post("/telemetry/crashes", content=body, headers={**H, "Content-Type": content_type})
+    assert again.status_code == 202 and again.json()["duplicate"] is True
+
+    # OP1 names a module without its extension (FPaths::GetBaseFilename:
+    # "Truebex-Win64-Shipping"); the symbols name the executable it was built as.
+    sym = (SYMBOLS / "Truebex-Win64-Shipping.sym").read_bytes()
+    res = client.post(
+        "/admin/symbols",
+        data={"version": "1.1.0"},
+        files={"file": ("Truebex-Win64-Shipping.sym", sym, "text/plain")},
+        headers=admin,
+    )
+    assert res.status_code == 201, res.text
+    assert res.json()["code_file"] == "Truebex-Win64-Shipping.exe"
+    assert jobs.symbolicate_pending(datetime.now(timezone.utc)) == 1
+    with SessionLocal() as db:
+        row = db.get(CrashReport, sent["crash_id"])
+        assert row.symbolicated is True
+        assert row.frames == [
+            "Truebex-Win64-Shipping!FCadWall::RebuildMesh(FCadWallBuildContext&)+0x3c",
+            "Truebex-Win64-Shipping!FCadWallSystem::Tick(float)+0x10",
+            "Truebex-Win64-Shipping!FCadDocument::ApplyEdit(FCadEdit const&)+0x101",
+            "KERNEL32+0x2ccb7",
+            "ntdll+0xaad6c",
+        ]
+        assert row.signature == expected_signature(
+            [
+                "Truebex-Win64-Shipping!FCadWall::RebuildMesh",
+                "Truebex-Win64-Shipping!FCadWallSystem::Tick",
+                "Truebex-Win64-Shipping!FCadDocument::ApplyEdit",
+                "KERNEL32!0x2ccb7",
+                "ntdll!0xaad6c",
+            ]
+        )
+
+
+def test_telemetry_app_feedback_end_to_end(client):
+    feedback = fixture_bytes("feedback.json")
+    shot = fixture_bytes("screenshot.png")
+    log = fixture_bytes("log-tail-scrubbed.txt")
+    sent = json.loads(feedback)
+    parts = [
+        ("feedback", "application/json", "feedback.json", feedback),
+        ("screenshot", "image/png", "screenshot.png", shot),
+        ("log", "text/plain; charset=utf-8", "log.txt", log),
+    ]
+    body, content_type = app_multipart(parts)
+    res = client.post("/telemetry/feedback", content=body, headers={**H, "Content-Type": content_type})
+    assert res.status_code == 202, res.text
+    answer = res.json()
+    assert answer["feedback_id"] == sent["feedback_id"] and answer["received_at"].endswith("Z")
+    store = storage.get_store()
+    with SessionLocal() as db:
+        row = db.get(Feedback, sent["feedback_id"])
+        assert (row.kind, row.text, row.reply, row.email) == ("bug", sent["text"], False, None)
+        assert (row.install_id, row.app_version, row.os) == (INSTALL, "1.1.0", sent["os"])
+        with store.open(row.screenshot_key) as fh:
+            assert fh.read() == shot
+        with store.open(row.log_key) as fh:
+            assert fh.read() == log
+
+    # Feedback that waited offline goes again at the next start: a duplicate.
+    body, content_type = app_multipart(parts)
+    again = client.post("/telemetry/feedback", content=body, headers={**H, "Content-Type": content_type})
+    assert again.status_code == 202 and again.json()["duplicate"] is True
+
+    # The kind is an FName in the app too: a Shipping build may send "Bug".
+    shipping = json.dumps(dict(sent, feedback_id=new_id(), kind="Bug")).encode()
+    body, content_type = app_multipart([("feedback", "application/json", "feedback.json", shipping)])
+    res = client.post("/telemetry/feedback", content=body, headers={**H, "Content-Type": content_type})
+    assert res.status_code == 202, res.text
+    with SessionLocal() as db:
+        assert db.get(Feedback, res.json()["feedback_id"]).kind == "bug"
