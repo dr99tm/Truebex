@@ -1345,7 +1345,7 @@ button sends a request for quote instead. Code: `server/app/market/basket.py`, `
 
 ```powershell
 cd server
-.venv\Scripts\python.exe scripts\seed_market.py --fixture tests\contracts\marketplace --payments-ready
+.venv\Scripts\python.exe scripts\seed_market.py --fixture tests\fixtures\market --payments-ready   # PF7's catalogue (moved there by PF7c)
 # then, with the site built against the local API and served:
 # http://127.0.0.1:<port>/market/basket?region=GB&items=f8afe1ba2b0bf97f23ef888f040cf46a%3ASOFA-OSLO-3%3Aoat-linen%3A1%2Cf8afe1ba2b0bf97f23ef888f040cf46a%3APAINT-CHALK%3Adefault%3A4
 ```

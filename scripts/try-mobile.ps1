@@ -63,7 +63,7 @@ try {
         & $Py scripts\demo_mobile.py setup --email alex@example.com --password password123 --editor-email sam@example.com --site "http://127.0.0.1:$SitePort" | Tee-Object -FilePath (Join-Path $State 'setup.txt')
         if ($LASTEXITCODE -ne 0) { throw 'demo_mobile.py setup failed' }
         Write-Host '=== Marketplace fixture (prices and swaps) ==='
-        & $Py scripts\seed_market.py --fixture tests\contracts\marketplace | Out-Null
+        & $Py scripts\seed_market.py --fixture tests\fixtures\market | Out-Null
         & $Py scripts\make_admin.py alex@example.com | Out-Null
     } finally { Pop-Location }
 
