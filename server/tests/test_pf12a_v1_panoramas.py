@@ -12,7 +12,6 @@ document, the SDK and the burst limit."""
 import json
 import re
 import sys
-import threading
 import time
 
 import pytest
@@ -22,6 +21,7 @@ from app.database import engine
 from app.projects import presence, waiters
 from app.render import queue
 
+from .conftest import LongPoll
 from .licence_helpers import error_of
 from .pf12_helpers import PL, ROOT, kh, make_key, make_legacy
 from .project_helpers import CONTRACT, Person, create, hex32, invite_and_accept
@@ -122,10 +122,10 @@ def test_v1_panoramas_need_projects_read(client):
     error_of(client.get(f"/projects/{pid}/panoramas/{set_id}", headers=kh(reader, **PL)), 401, "unauthenticated")
 
 
-def test_v1_panorama_set_long_poll(client, monkeypatch):
+def test_v1_panorama_set_long_poll(client, wakeups):
     """PF6's loop: a followed set rendered by a worker; the key's read waits on `rev`, wakes when an edit's
-    `tiles` job finishes, and otherwise returns at `wait_s` with no database connection held meanwhile."""
-    monkeypatch.setattr(waiters, "RECHECK_S", 30.0)  # only a wake-up (or the deadline) ends a wait here
+    `tiles` job finishes, and otherwise returns at `wait_s` with no database connection held meanwhile.
+    `wakeups` patches the re-check above the wait: only a wake-up (or the deadline) ends a wait here."""
     owner = Person(client, "owner@example.com")
     pid, head = project(client, owner)
     token = issue_worker(client, admin(client))
@@ -135,52 +135,39 @@ def test_v1_panorama_set_long_poll(client, monkeypatch):
     url = f"/v1/projects/{pid}/panoramas/{set_id}"
     first = client.get(url, headers=kh(key, **PL)).json()
     assert first["rev"] == 1 and first["manifest"]["faces_rendered"] == 6
+    waiting_on, wait_s = queue.job_key(set_id), queue.STATUS_WAIT_MAX_S
 
     # An edit while the key waits: the worker's tiles job moves the set's rev and wakes the read.
-    got: dict = {}
-
-    def wait() -> None:
-        started = time.monotonic()
-        got["res"] = client.get(url, params={"rev": 1, "wait_s": 10}, headers=kh(key, **PL))
-        got["done"], got["took"] = time.monotonic(), time.monotonic() - started
-
-    t = threading.Thread(target=wait)
-    t.start()
-    _until_waiting(set_id)
+    reader = LongPoll(lambda: client.get(url, params={"rev": 1, "wait_s": wait_s}, headers=kh(key, **PL)))
+    wakeups.until_waiting(waiting_on)
     push_touch(client, owner, pid, [WALL])
     finish(client, token, claimed(client, token), "manifest-tiles.json", wall_s=20)
-    sent = time.monotonic()
-    t.join(15)
-    moved = got["res"]
+    moved = reader.answer()
     assert moved.status_code == 200, moved.text
     assert moved.headers["cache-control"] == "private, no-store"
     assert moved.json()["rev"] == 2 and moved.json()["manifest"]["faces_rendered"] == 2
-    assert got["done"] - sent < 2.0 and got["took"] < 8
+    wakeups.assert_woken(waiting_on, "the tiles job")
+    assert reader.took < wait_s / 2
     assert moved.json() == client.get(f"/projects/{pid}/panoramas/{set_id}", headers=owner.web).json()
 
     # Nothing newer than rev 2: the read returns the same state at wait_s, holding no connection meanwhile.
-    held: list[int] = []
+    wakeups.clear()
+    reader = LongPoll(lambda: client.get(url, params={"rev": 2, "wait_s": 1.5}, headers=kh(key, **PL)))
+    wakeups.until_waiting(waiting_on)  # inside its wait, past the read made right after the waiter registered
+    held = engine.pool.checkedout()
+    same = reader.answer()
+    assert same.status_code == 200 and same.json()["rev"] == 2
+    assert reader.took >= 1.4
+    wakeups.assert_deadline(waiting_on)
+    assert held == 0, "a waiting /v1 panorama read held a database connection"
 
-    def wait_out() -> None:
-        started = time.monotonic()
-        got["same"] = client.get(url, params={"rev": 2, "wait_s": 1.5}, headers=kh(key, **PL))
-        got["took"] = time.monotonic() - started
-
-    t = threading.Thread(target=wait_out)
-    t.start()
-    _until_waiting(set_id)
-    time.sleep(0.3)  # past the read made right after the waiter registered
-    held.append(engine.pool.checkedout())
-    t.join(10)
-    assert got["same"].status_code == 200 and got["same"].json()["rev"] == 2
-    assert got["took"] >= 1.4
-    assert held == [0], "a waiting /v1 panorama read held a database connection"
-
-    # A rev already passed, or no rev: answered at once.
+    # A rev already passed, or no rev: answered at once, without a wait (one would last the whole wait_s).
+    wakeups.clear()
     started = time.monotonic()
-    assert client.get(url, params={"rev": 0, "wait_s": 10}, headers=kh(key, **PL)).json()["rev"] == 2
-    assert client.get(url, params={"wait_s": 10}, headers=kh(key, **PL)).json()["rev"] == 2
-    assert time.monotonic() - started < 3
+    assert client.get(url, params={"rev": 0, "wait_s": wait_s}, headers=kh(key, **PL)).json()["rev"] == 2
+    assert client.get(url, params={"wait_s": wait_s}, headers=kh(key, **PL)).json()["rev"] == 2
+    assert wakeups.ended(waiting_on) == []
+    assert time.monotonic() - started < wait_s / 2
 
 
 def test_v1_panoramas_non_member_404(client):
@@ -301,11 +288,3 @@ def test_v1_panoramas_burst_limit(client, monkeypatch):
     assert used[LIST_ROUTE] == 1 and used[SET_ROUTE] == 1  # the refused call is not counted
     # The session route is not a key call: no burst limit, no metering.
     assert client.get(f"/projects/{pid}/panoramas", headers={**owner.web, **CONTRACT}).status_code == 200
-
-
-def _until_waiting(set_id: str, timeout: float = 10.0) -> None:
-    """Until a read waits on the set (its waiter is registered)."""
-    deadline = time.monotonic() + timeout
-    while waiters.waiting_count(queue.job_key(set_id)) < 1:
-        assert time.monotonic() < deadline, "the read never started waiting"
-        time.sleep(0.02)

@@ -1391,3 +1391,22 @@ cd server
 With `MARKET_MEDIA_FIXTURES=tests/contracts/marketplace`, a local trial serves the app's feed URLs
 (`https://market.truebex.com/files/...`) from that folder, so its `feed-two-regions.csv` imports in the portal.
 An app build reads the local API with `-mwmarket=live -mwapi=http://127.0.0.1:8000`.
+
+## Long-poll tests on a starved core (PF14e)
+
+The server tests that time a long poll's wake-up (job status, the share live view, the pull, the `/v1` panorama
+read) prove the wake-up itself. The `wakeups` fixture in `server/tests/conftest.py` raises the 1 s re-check above
+the wait and records whether each wait ended by a notify or at its deadline. The test makes its change only once the
+read is waiting, and then asserts that a notify ended the wait. They pass on a starved CPU and fail with "the read was
+not woken by ..." when the wake-up is missing. Doc: `docs/roadmap/40/PF14e-long-poll-tests-deterministic.md`.
+
+To run them on one core shared with a busy loop (only that core is loaded), and then with the wake-up switched off:
+
+```powershell
+cd server
+.venv\Scripts\python.exe scripts\starved_pytest.py --runs 3 -p no:warnings
+.venv\Scripts\python.exe scripts\starved_pytest.py --no-wakeup -p no:warnings
+```
+
+The first ends `pytest exit 0`. The second fails the six wake-up tests (each read waits its whole 25 s first) and
+passes the two guards.

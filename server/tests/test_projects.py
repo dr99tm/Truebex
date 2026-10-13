@@ -5,7 +5,6 @@ failure, validation failure on each)."""
 import base64
 import json
 import random
-import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
 from datetime import timedelta
@@ -19,7 +18,7 @@ from app.projects import hooks, presence, quotas, waiters
 from app.projects.models import Project, ProjectOp, ProjectSnapshot
 from app.storage import get_store
 
-from .conftest import signup, timing_window
+from .conftest import LongPoll, signup
 from .licence_helpers import Clock, error_of
 from .project_helpers import (
     CONTRACT,
@@ -265,35 +264,31 @@ def test_two_client_reconciliation(client):
     assert ra.conflicts + rb.conflicts > 0  # the interleaving did collide
 
 
-def test_pull_long_poll_wakes_on_push(client):
+def test_pull_long_poll_wakes_on_push(client, wakeups):
+    from app.projects.ops import WAIT_MAX_S as wait_s
+
     a = Person(client, "a@example.com")
     pid = create(client, a.dev)["project_id"]
-    got: dict = {}
 
-    def waiting_pull() -> None:
-        got["res"] = client.get(f"/projects/{pid}/ops", params={"after": 0, "wait_s": 10}, headers=a.dev)
-        got["at"] = time.monotonic()
-
-    with timing_window():
-        thread = threading.Thread(target=waiting_pull)
-        thread.start()
-        deadline = time.monotonic() + 5
-        while waiters.waiting_count(pid) == 0 and time.monotonic() < deadline:
-            time.sleep(0.02)
-        assert waiters.waiting_count(pid) == 1
-        pushed_at = time.monotonic()
-        pushed(client, a.dev, pid, a.replica, [delta_op(a.author_id, [hex32()])])
-        thread.join(timeout=10)
-    assert got["res"].status_code == 200, got["res"].text
-    assert [op["server_seq"] for op in got["res"].json()["ops"]] == [1]
-    assert got["at"] - pushed_at < 1.0
+    reader = LongPoll(lambda: client.get(f"/projects/{pid}/ops", params={"after": 0, "wait_s": wait_s}, headers=a.dev))
+    wakeups.until_waiting(pid)
+    assert waiters.waiting_count(pid) == 1
+    pushed(client, a.dev, pid, a.replica, [delta_op(a.author_id, [hex32()])])
+    res = reader.answer()
+    assert res.status_code == 200, res.text
+    assert [op["server_seq"] for op in res.json()["ops"]] == [1]
+    wakeups.assert_woken(pid, "the push")
+    assert reader.took < wait_s / 2
     assert waiters.waiting_count(pid) == 0
 
-    # Nothing new: the pull holds for wait_s, then answers empty.
+    # Nothing new: the pull holds for wait_s, then answers empty. Its deadline ends the wait; the bound is
+    # far under the patched 60 s re-check, so it proves the deadline is honoured.
+    wakeups.clear()
     started = time.monotonic()
     empty = pull(client, a.dev, pid, after=1, wait_s=1)
     assert empty == {"ops": [], "head_seq": 1, "more": False}
-    assert 0.9 <= time.monotonic() - started < 3
+    assert 0.9 <= time.monotonic() - started < 30
+    wakeups.assert_deadline(pid)
 
 
 def test_roles_enforced(client):
