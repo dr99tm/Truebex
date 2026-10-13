@@ -183,7 +183,11 @@ Launch: in the worktree, `powershell -NoProfile -ExecutionPolicy Bypass -File sc
   listed by `git log master..` on the branch: the tests first (failing on the stand-in), then the sync, the copies and
   the package, the site, and this doc with the tracker row.
 * **Counts:** pytest 669 → 673 collected (`test_pf12_mcp_package.py` 6 → 9, `test_site_pf12.py` 6 → 7); the package
-  and site files: 16 passed in about 10 s. `tools.json` 1.0.0 (`truebex-tools/1`, 11 tools, 2 with `requires`); the
+  and site files: 16 passed in about 10 s. The verify gate (lint, build, pytest on SQLite): GREEN in 1 033 s, 656
+  passed and 17 skipped (the Postgres-only tests), pytest 540 s. The run before it failed one test outside this
+  feature, `test_billing_pf2.py::test_billing_paddle_webhook_signature` (its `ts=int(time.time()) + 301` lost 0.998 s to
+  `int()` and the server read its clock later under load, so the request fell inside the 300 s window); it passed
+  three times alone and in the next gate. Left as it is (not this feature's; a timing check under load). `tools.json` 1.0.0 (`truebex-tools/1`, 11 tools, 2 with `requires`); the
   page: 11 tool sections, 83 argument rows, 3 resources, 16 error codes. Copied from the app's `main` 90799860:
   `truebex-mcp.mjs` 1 972 B, `lib/` 4 files (29 946 B), `tools.json` 22 426 B, `instructions.md` 1 286 B, `test/` 4
   files, 3 wire scripts. Removed: `server.js`, `bin/truebex-mcp.js`, `test/fake-pipe.mjs`, 5 interim scripts.
