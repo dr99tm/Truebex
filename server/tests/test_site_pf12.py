@@ -7,10 +7,15 @@ import json
 import re
 import xml.etree.ElementTree as ET
 
-from .pf12_helpers import ROOT
+import pytest
+
+from .pf12_helpers import ROOT, node
+from .test_pf12_mcp_package import Bridge
+from .test_pf12_mcp_package import meta as mcp_meta
 from .test_site_pf13 import OUT, SITE, Doc, built  # noqa: F401  (built is a fixture)
 
 SUBPAGES = ["projects", "jobs", "shares", "market", "webhooks", "sdks", "mcp"]
+MCP_RESOURCES = {"truebex://state/digest", "truebex://project/summary", "truebex://entity/{kind}/{id}"}
 GROUP_PAGES = {
     "projects": ["projects"],
     "jobs": ["jobs"],
@@ -33,27 +38,132 @@ def _tools() -> dict:
     return json.loads((ROOT / "src" / "content" / "tools.json").read_text(encoding="utf-8"))
 
 
+def _arguments(schema: dict, prefix: str = "") -> dict[str, tuple[dict, bool]]:
+    """Every argument the page lists: name -> (schema, required), nested objects as `a.b`."""
+    out = {}
+    required = set(schema.get("required", []))
+    for name, prop in (schema.get("properties") or {}).items():
+        out[prefix + name] = (prop, name in required)
+        if prop.get("type") == "object" and prop.get("properties"):
+            out.update(_arguments(prop, f"{prefix}{name}."))
+    return out
+
+
+def _cells(page: Doc, row: dict) -> list[str]:
+    """The text of each cell of one table row."""
+    out = []
+    for el in page.elements[page.elements.index(row) + 1 :]:
+        if el["tag"] == "tr":
+            break
+        if el["tag"] in ("td", "th"):
+            out.append(page.text(el))
+    return out
+
+
+def _num(v) -> str:
+    return str(int(v)) if float(v).is_integer() else str(v)
+
+
+def _expected_cells(prop: dict) -> list[str]:
+    """What the row must show: the type (enum values), the range, the length, the items, the default."""
+    want = []
+    s = prop["items"] if prop.get("type") == "array" and isinstance(prop.get("items"), dict) else prop
+    if s.get("enum"):
+        want += [json.dumps(v) for v in s["enum"]]
+    else:
+        want.append({"integer": "int"}.get(s.get("type"), s.get("type", "")))
+    if prop.get("type") == "array":
+        want.append("[]")
+    if "minimum" in s or "maximum" in s:
+        want.append(f"{_num(s['minimum']) if 'minimum' in s else '−∞'} to {_num(s['maximum']) if 'maximum' in s else '∞'}")
+    if "maxLength" in s:
+        want.append(f"≤ {s['maxLength']} chars")
+    if prop.get("type") == "array" and prop.get("minItems") is not None and prop.get("minItems") == prop.get("maxItems"):
+        want.append(f"{prop['minItems']} items")
+    if "default" in prop:
+        want.append(f"default {json.dumps(prop['default'])}")
+    if prop.get("description"):
+        want.append(prop["description"])
+    return [w for w in want if w]
+
+
 def test_docs_generated_from_tools_json(built):
-    """agent-interface §10: the docs list every tool, class and argument of tools.json."""
+    """agent-interface §10: the docs list every tool, class and argument of tools.json (PF12b: the file
+    AI1 ships), what a tool that needs an unshipped feature answers, the resources, the switch and
+    the prompt, and install notes for the bridge as the app installs it."""
+    doc = _tools()
     page = _page("developers/mcp")
-    for tool in _tools()["tools"]:
+    html = page.html
+    for tool in doc["tools"]:
         sections = page.all("section", data_tool=tool["name"])
         assert len(sections) == 1, tool["name"]
         section = sections[0]
         text = page.text(section)
-        assert tool["name"] in text and tool["title"] in text and tool["description"] in text
+        assert tool["name"] in text and tool["title"] in text and tool["description"] in text, tool["name"]
         klass = tool["_meta"]["com.truebex/permission"]
-        assert klass in text
-        args = {el["attrs"]["data-argument"] for el in page.all("tr", data_argument=True) if el in _rows_within(page, section)}
-        want = set()
-        for name, prop in tool["inputSchema"]["properties"].items():
-            want.add(name)
-            for sub in (prop.get("properties") or {}):
-                want.add(f"{name}.{sub}")
-        assert args == want, tool["name"]
-    text = page.visible_text()
-    assert "claude mcp add --scope user truebex -- npx -y @truebex/mcp" in text
-    assert '"args": ["-y", "@truebex/mcp"]' in text
+        assert f"Class: {klass}" in text, tool["name"]
+        within = _rows_within(page, section)
+        requires = tool["_meta"].get("com.truebex/requires")
+        flagged = [el for el in within if el["tag"] == "p" and "data-requires" in el["attrs"]]
+        if requires:
+            assert len(flagged) == 1 and "feature_absent" in page.text(flagged[0]), tool["name"]
+            assert requires not in text, f"{tool['name']}: the plan id {requires} is Truebex's own"
+        else:
+            assert not flagged, tool["name"]
+        rows = {el["attrs"]["data-argument"]: el for el in within if el["tag"] == "tr" and "data-argument" in el["attrs"]}
+        want = _arguments(tool["inputSchema"])
+        assert set(rows) == set(want), tool["name"]
+        for name, (prop, required) in want.items():
+            cells = _cells(page, rows[name])
+            assert cells[0] == name and cells[2] == ("yes" if required else ""), f"{tool['name']}.{name}: {cells}"
+            row = " | ".join(cells)
+            for cell in _expected_cells(prop):
+                assert cell in row, f"{tool['name']}.{name}: {cell!r} not in {row!r}"
+    # Truebex's own _meta (router, surfaces, requires ids) never reaches the page.
+    assert "com.truebex/" not in html and "kernel:" not in html and "registry:" not in html
+    for tool in doc["tools"]:
+        for symbol in re.findall(r"[A-Za-z]+::[A-Za-z]+", tool["_meta"]["com.truebex/router"]):
+            assert symbol not in html, symbol
+    text = " ".join(page.visible_text().split())
+    for phrase in (
+        "Allow AI apps to connect",
+        "off by default",
+        "read, read + edit, or read + edit + export",
+        "for that connection only",
+        "Install in Claude Desktop",
+        "truebex.mcpb",
+        "claude_desktop_config.json",
+        r'"args": ["<install>\\MultiWindow\\Tools\\mcp\\truebex-mcp.mjs"]',
+        r'claude mcp add --scope user truebex -- node "<install>\MultiWindow\Tools\mcp\truebex-mcp.mjs"',
+        "app_not_running",
+        f"tools.json {doc['version']}",
+    ):
+        assert phrase in text, phrase
+    assert {el["attrs"]["data-resource"] for el in page.all("tr", data_resource=True)} == MCP_RESOURCES
+    constants = (ROOT / "src" / "lib" / "constants.ts").read_text(encoding="utf-8")
+    published = re.search(r"mcpPublished: (true|false)", constants.split("export const DEVELOPER_DOCS", 1)[1]).group(1)
+    if published == "true":
+        assert "claude mcp add --scope user truebex -- npx -y @truebex/mcp" in text
+    else:  # the npx form waits until the owner has published @truebex/mcp
+        assert "npx" not in html and "Rolling out" in text
+    # The app ships node + truebex-mcp.mjs and truebex.mcpb: no executable anywhere in the site.
+    for path in OUT.rglob("*"):
+        if path.is_file() and path.suffix in {".html", ".js", ".txt", ".json", ".xml"}:
+            assert b"truebex-mcp.exe" not in path.read_bytes(), path
+
+
+def test_docs_resources_match_the_bridge(built, tmp_path):
+    """The resources on /developers/mcp/ are the ones the copied bridge lists (they are not in tools.json)."""
+    if node() is None:
+        pytest.skip("node is not installed")
+    bridge = Bridge(tmp_path)
+    listed = {r["uri"] for r in bridge.request("resources/list", {"_meta": mcp_meta()})["result"]["resources"]}
+    templates = bridge.request("resources/templates/list", {"_meta": mcp_meta()})["result"]["resourceTemplates"]
+    listed |= {t["uriTemplate"] for t in templates}
+    assert bridge.close()[0] == 0
+    assert listed == MCP_RESOURCES
+    page = _page("developers/mcp")
+    assert {el["attrs"]["data-resource"] for el in page.all("tr", data_resource=True)} == listed
 
 
 def _rows_within(page: Doc, section: dict) -> list[dict]:
