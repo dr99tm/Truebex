@@ -111,7 +111,7 @@ def test_categories_root_on_app_taxonomy(client):
     assert res.headers["Cache-Control"] == "public, max-age=86400"
     again = client.get("/market/categories", headers={**CONTRACT, "If-None-Match": res.headers["ETag"]})
     assert again.status_code == 304 and again.headers["X-Truebex-Contract"] == "marketplace-api/1.1"
-    # The contract fixture is this server's answer.
+    # PF7's fixture is this server's answer (tests/fixtures/market; PF7c checks the app's set).
     assert _fixture("categories")["body"] == body
     if APP_TAXONOMY.is_file():  # the copy is byte-identical to the app's file
         assert APP_TAXONOMY.read_bytes() == raw
@@ -676,7 +676,7 @@ def test_market_supplier_profile_media_and_jobs(client, monkeypatch):
 
 
 def test_market_fixtures_up_to_date():
-    """The contract fixtures are this server's answers (regenerated in a
+    """PF7's fixtures are this server's answers (regenerated in a
     fresh process; image URLs masked)."""
     run = subprocess.run(
         [sys.executable, str(SERVER / "scripts" / "make_market_fixtures.py"), "--check"],

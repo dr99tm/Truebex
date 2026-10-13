@@ -7,7 +7,7 @@
 would write beside the fixture snapshot of PF4's project-log set: the same
 entity ids (walls, rooms, openings, storey of `make_project_log_fixtures.py`;
 the saved view of the render-jobs fixtures), plus placed products that
-reference the marketplace fixture's supplier (`tests/contracts/marketplace`)
+reference the marketplace fixture's supplier (PF7's, `tests/fixtures/market`)
 so the phone shows names, prices and same-category swaps. Deterministic. The
 app writes the real one once the owner adds `digest` to the contract (C.9).
 """
@@ -17,7 +17,7 @@ from pathlib import Path
 
 OUT = Path(__file__).resolve().parents[1] / "tests" / "contracts" / "project-digest"
 SCHEMA = "truebex-project-digest/1"
-SUPPLIER = "f8afe1ba2b0bf97f23ef888f040cf46a"  # Nord Living, tests/contracts/marketplace
+SUPPLIER = "f8afe1ba2b0bf97f23ef888f040cf46a"  # Nord Living, tests/fixtures/market (PF7)
 
 
 def eid(kind: int, n: int) -> str:
