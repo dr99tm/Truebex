@@ -52,6 +52,10 @@ tax ids on its later sessions, as Stripe Checkout does. It prints the
 customer each checkout opens on, each payment's business flag, the
 supplier's billing customer and whether Pro offers the EU withdrawal. Run it
 once per scratch database.
+
+--pf8b --stripe-price <price id> seeds for a run against Stripe's test mode
+instead: that price for Standard's fee, and no earlier Pro (cus_seed_pro
+exists only here). The checkouts are then made on the site (PF8b's doc).
 """
 
 import argparse
@@ -193,7 +197,10 @@ PF8B_PRO_CUSTOMER = "cus_seed_pro"
 PF8B_PRO_PRICE = "price_seed_pro_gbp"
 
 
-def seed_pf8b(db: Session, email: str, password: str) -> dict:
+def seed_pf8b(db: Session, email: str, password: str, stripe_price: str | None = None) -> dict:
+    """With `stripe_price` (a Stripe test-mode price for Standard's fee),
+    for a run against Stripe itself: that price, and no earlier Pro (its
+    customer would not exist in that Stripe account)."""
     now = datetime.now(timezone.utc)
     user = _user(db, email)
     if user is None:
@@ -210,10 +217,16 @@ def seed_pf8b(db: Session, email: str, password: str) -> dict:
     db.flush()
     db.add(SupplierMember(supplier_id=supplier.supplier_id, user_id=user.id, role="owner", created_at=now))
     pro_amount = PLANS["pro"].price("month", "GBP").amount_minor
-    for tier, amount, price_id in (("listing_standard", FEE, PRICE_ID), ("pro", pro_amount, PF8B_PRO_PRICE)):
+    prices = [("listing_standard", FEE, stripe_price or PRICE_ID)]
+    if not stripe_price:
+        prices.append(("pro", pro_amount, PF8B_PRO_PRICE))
+    for tier, amount, price_id in prices:
         if db.scalar(select(ProviderPrice).where(ProviderPrice.provider_price_id == price_id)) is None:
             db.add(ProviderPrice(provider="stripe", tier=tier, interval="month", currency="GBP", amount_minor=amount,
                                  provider_price_id=price_id))  # fmt: skip
+    if stripe_price:
+        db.commit()
+        return {"supplier": supplier.supplier_id, "pro": None}
     ended = now - timedelta(days=10)
     db.add(
         Subscription(
@@ -223,7 +236,7 @@ def seed_pf8b(db: Session, email: str, password: str) -> dict:
         )
     )  # fmt: skip
     db.commit()
-    return {"supplier": supplier.supplier_id}
+    return {"supplier": supplier.supplier_id, "pro": PF8B_PRO_CUSTOMER}
 
 
 class _StripeStandIn:
@@ -293,6 +306,8 @@ def checkouts(db: Session, email: str) -> None:
         raise SystemExit(f"seed {email} with --pf8b first")
     if db.scalar(select(ListingSubscription).where(ListingSubscription.supplier_id == supplier.supplier_id)) is not None:
         raise SystemExit("--checkouts already ran here: delete the scratch database to run it again")
+    if db.scalar(select(ProviderPrice).where(ProviderPrice.provider_price_id == PF8B_PRO_PRICE)) is None:
+        raise SystemExit("--checkouts stands in for Stripe: seed with --pf8b without --stripe-price")
     s = get_settings()
     if not (s.stripe_secret_key and s.stripe_webhook_secret):
         s.stripe_secret_key, s.stripe_webhook_secret = "sk_test_seed_pf8b", "whsec_seed_pf8b"  # this process only
@@ -348,6 +363,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--show", action="store_true", help="print what was seeded and what the jobs did")
     ap.add_argument("--pf8b", action="store_true", help="seed PF8b's supplier and the owner's earlier Pro instead")
     ap.add_argument("--checkouts", action="store_true", help="PF8b: open and pay the listing and Pro checkouts")
+    ap.add_argument("--stripe-price", help="with --pf8b: a Stripe test-mode price id for Standard's GBP 49.00 a month")
     args = ap.parse_args(argv)
     init_db()
     with SessionLocal() as db:
@@ -355,8 +371,9 @@ def main(argv: list[str] | None = None) -> int:
             checkouts(db, args.email)
             return 0
         if args.pf8b:
-            out = seed_pf8b(db, args.email, args.password)
-            print(f"seeded supplier {out['supplier']} ({PF8B_SUPPLIER}) for {args.email}, Pro ended on {PF8B_PRO_CUSTOMER}")
+            out = seed_pf8b(db, args.email, args.password, args.stripe_price)
+            pro = f"Pro ended on {out['pro']}" if out["pro"] else "no Pro yet"
+            print(f"seeded supplier {out['supplier']} ({PF8B_SUPPLIER}) for {args.email}, {pro}")
             return 0
         if args.show:
             show(db, args.email)
