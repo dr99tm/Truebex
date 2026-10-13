@@ -931,6 +931,7 @@ def test_telemetry_scanner_platform_cases(client):
         ("events", set_in(events, ["hw", "gpu"], "sara@example.com"), "hw.gpu"),
         ("events", set_in(events, ["events", 3, "props", "kind"], "Ground floor plan"), "events[3].props.kind"),
         ("events", set_in(events, ["events", 6, "props", "clean"], "yes"), "events[6].props.clean"),
+        ("events", set_in(events, ["events", 1, "props", "tool"], "MwTool_Cad3D\n"), "events[1].props.tool"),
         ("crashes", set_in(crash, ["exception", "module"], r"C:\Users\sara\Truebex.exe"), "exception.module"),
         ("crashes", set_in(crash, ["gpu_driver"], "sara@example.com"), "gpu_driver"),
         ("feedback", set_in(fb, ["os"], "windows 10.0.26200 sara@example.com"), "os"),

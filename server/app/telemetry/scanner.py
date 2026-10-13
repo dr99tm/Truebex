@@ -342,7 +342,7 @@ def _scan_prop(event: Any, key: str, value: Any, field: str) -> Violation | None
             return Violation(field, "path")
         if enum:
             return None if canonical_enum(event, key, value) else Violation(field, "type")
-        if k in INT_PROPS or k in BOOL_PROPS or not TOKEN_RE.match(value):
+        if k in INT_PROPS or k in BOOL_PROPS or not TOKEN_RE.fullmatch(value):
             return Violation(field, "type")
         return None
     return Violation(field, "type")  # floats, null, lists, objects
