@@ -85,6 +85,15 @@ def parse_sym(text: str) -> SymbolTable:
     return table
 
 
+def short_names(table: SymbolTable) -> list[str]:
+    """The module's names without an extension, lower case: OP1 sends
+    `Truebex-Win64-Shipping+0x1a2b3c` (FPaths::GetBaseFilename) for a frame in
+    `Truebex-Win64-Shipping.exe`."""
+    names = [Path(table.code_file).stem.lower()] if table.code_file else []
+    pdb = Path(table.module).stem.lower()
+    return names + ([pdb] if pdb not in names else [])
+
+
 def symbolicate_frames(frames: list[str], tables: dict[str, SymbolTable]) -> tuple[list[str], bool]:
     """Name the raw frames whose module has a table (keyed by code file,
     lower case). Returns the frames and whether any changed."""

@@ -9,6 +9,12 @@ to Pro for existing subscribers.
 An organisation (PF3a, `metadata.org_id`) is attached only from our payment
 row, matched by our own Checkout Session (`client_reference_id` and the
 session id we stored), never from metadata alone (billing/org_billing.py).
+
+A supplier's listing plan (PF8, `listing_<plan>`) is paid on the supplier's
+own customer (`suppliers.billing_customer_id`, or a new one), and a person's
+own plans and top-ups on theirs (`service.customer_id`, which skips listing
+plans): Checkout saves the VAT id it collects onto the customer it ran on,
+and a later session reporting that id makes its payment a business one (PF8b).
 """
 
 import logging
@@ -177,7 +183,13 @@ class StripeProvider(BillingProvider):
             params["expires_at"] = int(time.time()) + FOUNDING_SESSION_S
         else:
             params["allow_promotion_codes"] = True
-        customer = service.customer_id(db, user, "stripe")
+        if payment.plan.startswith(service.LISTING_TIER_PREFIX):
+            # PF8b: the supplier's own customer, or a new one (Stripe makes it
+            # from the member's e-mail), never the person's own: the supplier's
+            # VAT id is saved onto the customer the checkout runs on.
+            customer = service.listing_customer(db, payment)
+        else:
+            customer = service.customer_id(db, user, "stripe")
         if customer:
             params["customer"] = customer
             # Tax ids and the address are saved onto the existing customer.
