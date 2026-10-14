@@ -3,8 +3,9 @@
 Lets your own AI app (Claude Desktop, Claude Code or any MCP client that
 launches a local stdio server) read and edit the project you have open in
 Truebex: find walls, rooms and openings, explain an entity, place, move and
-resize, set finishes, export the sheets as a PDF, and undo its own steps.
-Eleven tools and three resources, listed even while Truebex is closed.
+resize, set finishes, export the sheets as a PDF, read and set Truebex's
+tunables, and undo its own steps. Thirteen tools and three resources, listed
+even while Truebex is closed.
 
 How it works: your client starts the server and speaks MCP with it over stdio
 (one JSON-RPC message per line; logs go to stderr). The server answers
@@ -26,7 +27,8 @@ This package is the same server the Truebex app installs beside itself
    waits up to 30 s for your answer. The answer lasts for that connection only;
    change or revoke it in the Agent panel at any time. Every call is listed
    there, every edit is one undo step (Ctrl+Z), and nothing can quit Truebex,
-   delete a project or write outside the project's export folder.
+   delete a project, write outside the project's export folder or change a
+   setting other than a tunable.
 
 ## Claude Desktop
 
@@ -56,7 +58,7 @@ or, from npm:
 claude mcp add --scope user truebex -- npx -y @truebex/mcp
 ```
 
-Then `/mcp` lists `truebex` with its eleven tools. With Truebex open and
+Then `/mcp` lists `truebex` with its thirteen tools. With Truebex open and
 connections on, ask "how many walls are on the ground floor?" and allow read
 when Truebex asks: it answers through `find`.
 
@@ -70,11 +72,15 @@ of 2025-11-25 and 2025-06-18; capabilities: tools and resources.
 
 ## What it offers
 
-* Tools (`tools.json` is the single source): `read_state`, `find`, `explain`
-  (class read); `place`, `move`, `resize`, `fill`, `apply_theme`, `undo`
-  (edit); `export_pdf`, `export_panorama` (export). `apply_theme` and
-  `export_panorama` answer `feature_absent` until room themes and the panorama
-  export arrive in Truebex. Reference: https://truebex.com/developers/mcp/.
+* Tools (`tools.json` is the single source): `read_state`, `find`, `explain`,
+  `get_tunables` (class read); `place`, `move`, `resize`, `fill`,
+  `apply_theme`, `undo`, `set_tunable` (edit); `export_pdf`, `export_panorama`
+  (export). `apply_theme` and `export_panorama` answer `feature_absent` until
+  room themes and the panorama export arrive in Truebex. Reference:
+  https://truebex.com/developers/mcp/.
+* Settings: the server changes none but a tunable (Truebex's runtime knobs, by
+  console name from `get_tunables`), through `set_tunable`: typed and
+  range-checked, a Design tunable as one undo step, never a console command.
 * Resources: `truebex://state/digest`, `truebex://project/summary`,
   `truebex://entity/{kind}/{id}` (reading one needs the read class).
 * With Truebex closed or connections off, a tool call answers the tool error

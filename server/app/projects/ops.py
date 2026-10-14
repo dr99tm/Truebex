@@ -47,8 +47,9 @@ WAIT_MAX_S = 25
 PULL_MAX_BYTES = 16 * 1024 * 1024
 KINDS = ("delta", "action")
 # agent-interface.md §5: the tools that may travel as log `action` operations;
-# `place` only for objects and products.
-LOG_SAFE_TOOLS = ("place", "move", "resize", "fill", "apply_theme")
+# `place` only for objects and products. `set_tunable` since agent-interface 1.1.0
+# (§5.18, TU1): it names a tunable, no entity, so its `touched` is empty (§6.2).
+LOG_SAFE_TOOLS = ("place", "move", "resize", "fill", "apply_theme", "set_tunable")
 PLACE_LOG_SAFE_KINDS = ("object", "product")
 _B64_MAX_CHARS = 4 * ((MAX_DELTA_BYTES + 2) // 3)
 _IN_CHUNK = 500

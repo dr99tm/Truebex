@@ -10,7 +10,7 @@ import xml.etree.ElementTree as ET
 import pytest
 
 from .pf12_helpers import ROOT, node
-from .test_pf12_mcp_package import Bridge
+from .test_pf12_mcp_package import ASSISTANT_ONLY, Bridge, on_mcp
 from .test_pf12_mcp_package import meta as mcp_meta
 from .test_site_pf13 import OUT, SITE, Doc, built  # noqa: F401  (built is a fixture)
 
@@ -64,12 +64,24 @@ def _num(v) -> str:
     return str(int(v)) if float(v).is_integer() else str(v)
 
 
-def _expected_cells(prop: dict) -> list[str]:
+# An argument with no type (TU1's set_tunable value: the portable subset has no type list) shows the page's own
+# words for it (DEVELOPER_DOCS.pages.mcp.untypedTypes), else this fallback; never an empty cell or "undefined".
+UNTYPED_FALLBACK = "any"
+
+
+def _untyped_types() -> dict[str, str]:
+    block = (ROOT / "src" / "lib" / "constants.ts").read_text(encoding="utf-8").split("untypedTypes: {", 1)[1].split("}", 1)[0]
+    return dict(re.findall(r'"([a-z_]+\.[a-z_.]+)": "([^"]+)"', block))
+
+
+def _expected_cells(prop: dict, untyped: str = UNTYPED_FALLBACK) -> list[str]:
     """What the row must show: the type (enum values), the range, the length, the items, the default."""
     want = []
     s = prop["items"] if prop.get("type") == "array" and isinstance(prop.get("items"), dict) else prop
     if s.get("enum"):
         want += [json.dumps(v) for v in s["enum"]]
+    elif "type" not in s:
+        want.append(untyped)
     else:
         want.append({"integer": "int"}.get(s.get("type"), s.get("type", "")))
     if prop.get("type") == "array":
@@ -94,7 +106,18 @@ def test_docs_generated_from_tools_json(built):
     doc = _tools()
     page = _page("developers/mcp")
     html = page.html
-    for tool in doc["tools"]:
+    # agent-interface 1.2.0: the page documents the tools on the mcp surface (absent = both), 13 of the file's 14;
+    # the in-app assistant's propose_variants is never on MCP, so its name is nowhere in the page's files.
+    listed = on_mcp(doc)
+    assert len(listed) == len(doc["tools"]) - len(ASSISTANT_ONLY) == 13
+    assert [el["attrs"]["data-tool"] for el in page.all("section", data_tool=True)] == [t["name"] for t in listed]
+    for path in (OUT / "developers" / "mcp").rglob("*"):
+        if path.is_file():
+            for name in ASSISTANT_ONLY:
+                assert name.encode() not in path.read_bytes(), (name, path)
+    untyped = _untyped_types()
+    assert "undefined" not in page.visible_text()
+    for tool in listed:
         sections = page.all("section", data_tool=tool["name"])
         assert len(sections) == 1, tool["name"]
         section = sections[0]
@@ -116,9 +139,25 @@ def test_docs_generated_from_tools_json(built):
         for name, (prop, required) in want.items():
             cells = _cells(page, rows[name])
             assert cells[0] == name and cells[2] == ("yes" if required else ""), f"{tool['name']}.{name}: {cells}"
+            assert cells[1].strip() and cells[1] != "undefined", f"{tool['name']}.{name}: no type shown"
             row = " | ".join(cells)
-            for cell in _expected_cells(prop):
+            for cell in _expected_cells(prop, untyped.get(f"{tool['name']}.{name}", UNTYPED_FALLBACK)):
                 assert cell in row, f"{tool['name']}.{name}: {cell!r} not in {row!r}"
+    # TU1's two tools: the untyped value reads as what set_tunable takes, next to its description; get_tunables'
+    # limits as the file gives them.
+    tunable = {el["attrs"]["data-argument"]: _cells(page, el) for el in _rows_within(page, page.all("section", data_tool="set_tunable")[0]) if el["tag"] == "tr" and "data-argument" in el["attrs"]}
+    setter = next(t for t in listed if t["name"] == "set_tunable")["inputSchema"]["properties"]["value"]
+    assert tunable["value"][1] == untyped["set_tunable.value"] == "number | boolean | string", tunable["value"]
+    assert tunable["value"][4] == setter["description"] and tunable["value"][3] == ""
+    reader = {el["attrs"]["data-argument"]: _cells(page, el) for el in _rows_within(page, page.all("section", data_tool="get_tunables")[0]) if el["tag"] == "tr" and "data-argument" in el["attrs"]}
+    assert reader["limit"][1] == "int" and "1 to 500" in reader["limit"][3] and "default 200" in reader["limit"][3]
+    assert "≤ 40 chars" in reader["feature"][3] and "≤ 80 chars" in reader["query"][3]
+    assert "Class: read" in page.text(page.all("section", data_tool="get_tunables")[0])
+    assert "Class: edit" in page.text(page.all("section", data_tool="set_tunable")[0])
+    # "Also travels in the project log" only where the log takes the tool: a log-safe edit (project-log §6.2), not
+    # get_tunables, a read the app's file marks logSafe (PF12c carry-over).
+    in_log = [t["name"] for t in listed if "Also travels in the project log" in page.text(page.all("section", data_tool=t["name"])[0])]
+    assert in_log == ["place", "move", "resize", "fill", "apply_theme", "set_tunable"], in_log
     # Truebex's own _meta (router, surfaces, requires ids) never reaches the page.
     assert "com.truebex/" not in html and "kernel:" not in html and "registry:" not in html
     for tool in doc["tools"]:

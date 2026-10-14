@@ -13,6 +13,13 @@ function argumentRows(schema: Schema, prefix = ""): { name: string; schema: Sche
   });
 }
 
+// An argument with no type (set_tunable's value: the portable subset of agent-interface §6.5 has no type
+// list) shows the page's own words for what it takes, never an empty cell.
+function argumentType(tool: string, name: string, schema: Schema, untyped: Record<string, string>, fallback: string) {
+  const typed = schema.type !== undefined || schema.enum || schema.const !== undefined || schema.anyOf || schema.$ref;
+  return typed ? typeOf(schema) : (untyped[`${tool}.${name}`] ?? fallback);
+}
+
 function CodeBlock({ code }: { code: string }) {
   return (
     <pre>
@@ -23,10 +30,12 @@ function CodeBlock({ code }: { code: string }) {
 
 // PF12b: generated at build time from src/content/tools.json (the app's own file,
 // copied by scripts/sync-mcp.ps1); the words around it are DEVELOPER_DOCS.pages.mcp.
+// PF12c: only the tools on the mcp surface (toolsDocument), as the server lists them.
 export default function McpDocs() {
   const page = D.pages.mcp;
   const tools = toolsDocument();
   const requiresText: Record<string, string> = page.requiresText;
+  const untypedTypes: Record<string, string> = page.untypedTypes;
   return (
     <DevPage slug="mcp" h1={page.h1} intro={page.intro} description={page.description} status={page.status}>
       <h2 id="connect">{page.connectTitle}</h2>
@@ -80,7 +89,8 @@ export default function McpDocs() {
             <p>{t.description}</p>
             <p className="text-sm">
               {page.klass}: <code data-class={klass}>{klass}</code>
-              {t._meta["com.truebex/logSafe"] ? <span> · {page.logSafe}</span> : null}
+              {/* the project log takes log-safe edits only (project-log §6.2): a read marked logSafe never travels */}
+              {t._meta["com.truebex/logSafe"] && klass === "edit" ? <span> · {page.logSafe}</span> : null}
             </p>
             {requires ? (
               <p className="text-sm" data-requires>
@@ -105,7 +115,7 @@ export default function McpDocs() {
                         <code>{a.name}</code>
                       </td>
                       <td>
-                        <code>{typeOf(a.schema)}</code>
+                        <code>{argumentType(t.name, a.name, a.schema, untypedTypes, page.untypedFallback)}</code>
                       </td>
                       <td>{a.required ? D.reference.yes : ""}</td>
                       <td>{rulesOf(a.schema)}</td>

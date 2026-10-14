@@ -1411,6 +1411,25 @@ cd server
 The first ends `pytest exit 0`. The second fails the six wake-up tests (each read waits its whole 25 s first) and
 passes the two guards.
 
+## Canonicals on private pages (PF13b)
+
+The root layout (`src/app/layout.tsx`) names no canonical. A public page names its own: `pageMetadata` in
+`src/lib/seo.ts`, or `alternates.canonical` with the trailing slash. A private page (the dashboard, the supplier
+portal, a checkout, a per-person page, `/account/`'s redirect) is `noindex` and names none, so only the home page
+names `https://truebex.com/`. `server/tests/test_site_pf13b.py` checks every page in the built `out/`: a canonical is
+the page's own URL, no noindex page names another one, and each sitemap URL names itself. Doc:
+`docs/roadmap/40/PF13b-private-pages-canonical.md`.
+
+## MCP package and docs on agent-interface 1.2.0 (PF12c)
+
+`packages/mcp/` and `src/content/tools.json` hold the app's `tools.json` 1.2.0: 14 tools, of which the MCP server lists
+13 (TU1's `get_tunables` and `set_tunable` among them). The in-app assistant's `propose_variants` is never on MCP, so
+`/developers/mcp/` documents the 13 only (`mcpTools()` in `src/lib/developer-docs.ts` keeps the tools whose
+`com.truebex/surfaces` include `mcp`; none named means both). The project log accepts `set_tunable` as a log-safe
+action (`LOG_SAFE_TOOLS` in `server/app/projects/ops.py`). A tunable names no entity, so its `touched` is empty and
+never conflicts. Re-sync and check as in the PF12b section above; the PF12c checks are
+`server\tests\test_pf12c_agent_interface.py`. Doc: `docs/roadmap/40/PF12c-agent-interface-1-2-0.md`.
+
 ## Marketplace fixtures after AU2's bedroom set (PF7d)
 
 The app's AU2 (auto furniture layouts by room type) added a bedroom set to the app's marketplace fixtures: the
