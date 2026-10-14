@@ -141,6 +141,12 @@ _ADDED_COLUMNS.setdefault("api_keys", []).append(("scopes", "TEXT"))
 # email_verified; NULL = off.
 _ADDED_COLUMNS.setdefault("sso_connections", []).append(("trust_idp_email", "BOOLEAN"))
 
+# PF5b (share-bundle 1.1): a share's version (NULL = 1) and the Update that
+# waits for 5.5. JSON is a valid column type on SQLite and Postgres.
+_ADDED_COLUMNS.setdefault("shares", []).extend(
+    [("version", "INTEGER"), ("pending_bundle_id", "VARCHAR(32)"), ("pending_manifest", "JSON")]
+)
+
 
 def _migrate(bind: Engine) -> None:
     insp = inspect(bind)

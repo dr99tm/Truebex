@@ -3352,3 +3352,25 @@ export const MARKET_BASKET = {
   priceChanged: "Prices changed since this page loaded. Check the new total, then send the order again.",
   failed: "Couldn't send the order. Please try again.",
 } as const;
+
+// PF5b (share-bundle 1.1): the share page's project card (storeys, rooms and
+// floor area from the app's manifest, the area in the project's units) and the
+// line a share shows once the designer published an Update into its link.
+// server/app/shares/page.py mirrors the card's words for the page's <noscript>.
+export const SHARE_PROJECT_CARD = {
+  label: "About this project",
+  storey: "storey",
+  storeys: "storeys",
+  room: "room",
+  rooms: "rooms",
+  squareMetres: "m²",
+  squareFeet: "ft²",
+  updated: "Updated",
+} as const;
+
+// PF5b: the dashboard's Shares page names a share's version after an Update
+// from Truebex (the link stays the same).
+export const DASHBOARD_SHARES_VERSION = {
+  version: "Version",
+  note: "Updated from Truebex. The link stays the same and shows the latest version.",
+} as const;

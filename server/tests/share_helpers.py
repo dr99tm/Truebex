@@ -9,9 +9,13 @@ from pathlib import Path
 from .conftest import signup
 from .licence_helpers import FP1, FP2, activated
 
-SHARE_FIXTURES = Path(__file__).parent / "contracts" / "share-bundle"
-CONTRACT = {"X-Truebex-Contract": "share-bundle/1.0"}
+# PF5's own three-room set (PF5b moved it here from tests/contracts/share-bundle/,
+# which now holds the app's fixtures: CONTRACT_FIXTURES).
+SHARE_FIXTURES = Path(__file__).parent / "fixtures" / "share"
+CONTRACT_FIXTURES = Path(__file__).parent / "contracts" / "share-bundle"
+CONTRACT = {"X-Truebex-Contract": "share-bundle/1.1"}
 BINARIES = ("pano-2048.jpg", "pano-2048-kitchen.jpg", "pano-2048-hall.jpg", "render-640.jpg", "sheets-2p.pdf")
+APP_BINARIES = ("pano-2048.jpg", "render-640.jpg", "sheets-2p.pdf")
 
 
 def fixture_json(name: str) -> dict:
@@ -22,6 +26,19 @@ def blobs_by_sha() -> dict[str, bytes]:
     out = {}
     for name in BINARIES:
         data = (SHARE_FIXTURES / name).read_bytes()
+        out[hashlib.sha256(data).hexdigest()] = data
+    return out
+
+
+def contract_json(name: str) -> dict:
+    """One of the app's fixtures (tests/contracts/share-bundle/, PR4)."""
+    return json.loads((CONTRACT_FIXTURES / name).read_text(encoding="utf-8"))
+
+
+def app_blobs_by_sha() -> dict[str, bytes]:
+    out = {}
+    for name in APP_BINARIES:
+        data = (CONTRACT_FIXTURES / name).read_bytes()
         out[hashlib.sha256(data).hexdigest()] = data
     return out
 
@@ -80,9 +97,12 @@ def send_part(client, token: str, upload_id: str, sha: str, n: int, data: bytes,
     )
 
 
-def upload_files(client, token: str, upload: dict, only: list[str] | None = None) -> int:
-    """Send every missing part of the upload's files; returns how many were sent."""
-    data = blobs_by_sha()
+def upload_files(
+    client, token: str, upload: dict, only: list[str] | None = None, data: dict[str, bytes] | None = None
+) -> int:
+    """Send every missing part of the upload's files; returns how many were sent.
+    `data` maps sha256 to bytes (PF5's set by default)."""
+    data = data if data is not None else blobs_by_sha()
     sent = 0
     for f in upload["files"]:
         if f["state"] in ("present", "complete") or (only is not None and f["sha256"] not in only):
@@ -96,17 +116,23 @@ def upload_files(client, token: str, upload: dict, only: list[str] | None = None
     return sent
 
 
-def create(client, token: str, m: dict | None = None, title: str = "House — client review", days: int = 30):
-    return client.post(
-        "/shares", json={"title": title, "expires_in_days": days, "manifest": m or house()}, headers=dev(token)
-    )
+def create(
+    client, token: str, m: dict | None = None, title: str = "House — client review", days: int = 30,
+    replace: str | None = None,
+):
+    body = {"title": title, "expires_in_days": days, "manifest": m or house()}
+    if replace is not None:
+        body["replace_share_id"] = replace  # share-bundle 1.1: Update into that share
+    return client.post("/shares", json=body, headers=dev(token))
 
 
-def published(client, token: str, m: dict | None = None, title: str = "House — client review") -> dict:
+def published(
+    client, token: str, m: dict | None = None, title: str = "House — client review", data: dict[str, bytes] | None = None
+) -> dict:
     res = create(client, token, m, title)
     assert res.status_code in (200, 201), res.text
     body = res.json()
-    upload_files(client, token, body["upload"])
+    upload_files(client, token, body["upload"], data=data)
     res = client.post(f"/shares/{body['share']['share_id']}/publish", headers=dev(token))
     assert res.status_code == 200, res.text
     return res.json()["share"]

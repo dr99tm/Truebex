@@ -15,7 +15,7 @@ from ..database import get_db
 from ..uploads import service
 from ..uploads.credentials import UploadCaller, get_upload_caller
 
-router = APIRouter(prefix="/uploads", tags=["uploads"], dependencies=[contract("share-bundle", 1, 0)])
+router = APIRouter(prefix="/uploads", tags=["uploads"], dependencies=[contract("share-bundle", 1, 1)])
 
 
 class UploadFileIn(BaseModel):

@@ -1,4 +1,4 @@
-// The share page's data (contract share-bundle v1.0, 5.10): the manifest of
+// The share page's data (contract share-bundle v1.1, 5.10): the manifest of
 // §6.1 with every file's signed URL and the panorama derivatives PF5 makes.
 
 export interface Hotspot {
@@ -44,6 +44,7 @@ export interface BundleFile {
   sha256: string;
   bytes: number;
   content_type: string;
+  /** A relative path inside the bundle; it may hold folders (1.1). */
   name: string;
   url?: string | null;
 }
@@ -52,8 +53,19 @@ export interface Manifest {
   schema: string;
   bundle_id: string;
   watermark: boolean;
-  project: { title: string; units?: string; region?: string | null };
+  project: {
+    title: string;
+    units?: string;
+    region?: string | null;
+    /** 1.1: the project card. */
+    storeys?: number;
+    rooms?: number;
+    floor_area_m2?: number;
+  };
   start?: string | null;
+  /** 1.1: the SHA-256 of the link-preview JPEG (the API serves it as the card). */
+  cover?: string | null;
+  branding?: { designed_in?: boolean };
   panoramas: Panorama[];
   renders: Render[];
   sheets?: { file: string; pages?: number; titles?: string[] } | null;
@@ -68,6 +80,8 @@ export interface PageData {
   watermark: boolean;
   designed_in: string;
   url?: string;
+  /** 1.1: 1, + 1 per Update the designer published. */
+  version?: number;
   manifest: Manifest;
 }
 

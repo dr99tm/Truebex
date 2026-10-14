@@ -8,17 +8,21 @@
 // so it loads fast on a phone from another origin. Copy: SHARE_PAGE.
 // A panorama naming a followed render set (`live_job_id`, PF6) is shown live
 // from that set's tiles (cube.ts, live.ts). Copy: SHARE_LIVE.
+// PF5b (share-bundle 1.1): the project card under the title, "Updated" once
+// the designer pressed Update, downloads named by a file's last segment.
+// Copy: SHARE_PROJECT_CARD.
 
-import { SHARE_LIVE, SHARE_PAGE } from "../lib/constants";
+import { SHARE_LIVE, SHARE_PAGE, SHARE_PROJECT_CARD } from "../lib/constants";
 import { CubeTileViewer } from "./cube";
 import { buildGallery } from "./gallery";
 import { meteredConnection, pickSources } from "./geometry";
 import { followShareLive, type LiveState } from "./live";
 import { PanoViewer } from "./pano";
 import { buildDrawings } from "./pdf";
+import { downloadName, projectLine } from "./project";
 import { SCHEMA_MAJOR, schemaMajor, type Manifest, type PageData, type Panorama } from "./types";
 
-const CONTRACT = { "X-Truebex-Contract": "share-bundle/1.0" };
+const CONTRACT = { "X-Truebex-Contract": "share-bundle/1.1" };
 const VISITOR_KEY = "truebex_share_visitor";
 const VISITOR_LIFETIME_MS = 24 * 3600 * 1000;
 
@@ -83,7 +87,7 @@ function message(root: HTMLElement, title: string, text: string, site: string, r
   root.replaceChildren(box, footer(site));
 }
 
-function footer(site: string, expires?: string | null): HTMLElement {
+function footer(site: string, expires?: string | null, updated?: string | null): HTMLElement {
   const foot = el("footer", "tbx-foot");
   const brand = el("p", "tbx-brand");
   const mark = el("span", "tbx-mark");
@@ -92,6 +96,7 @@ function footer(site: string, expires?: string | null): HTMLElement {
   get.href = `${site}/download/?utm_source=share`;
   brand.append(mark, document.createTextNode(`${SHARE_PAGE.designedIn} · `), get);
   foot.append(brand);
+  if (updated) foot.append(el("p", "tbx-until tbx-updated", `${SHARE_PROJECT_CARD.updated} ${formatDate(updated)}`));
   if (expires) foot.append(el("p", "tbx-until", `${SHARE_PAGE.openUntil} ${formatDate(expires)}`));
   return foot;
 }
@@ -142,12 +147,25 @@ function render(root: HTMLElement, data: PageData, site: string, base: URL, live
   const pdfFile = sheets ? m.files.find((f) => f.sha256 === sheets.file) : undefined;
 
   const header = el("header", "tbx-bar");
-  header.append(el("h1", "tbx-title", data.title, "auto"));
+  const title = el("h1", "tbx-title", data.title, "auto");
+  // 1.1: the project card (storeys, rooms, floor area) under the title; a
+  // 1.0 manifest has none and the header stays as it was.
+  const facts = projectLine(m.project, SHARE_PROJECT_CARD);
+  if (facts) {
+    const heading = el("div", "tbx-heading");
+    const card = el("p", "tbx-project", facts);
+    card.setAttribute("aria-label", SHARE_PROJECT_CARD.label);
+    heading.append(title, card);
+    header.append(heading);
+  } else {
+    header.append(title);
+  }
   const tabs = el("nav", "tbx-tabs");
   tabs.setAttribute("role", "tablist");
   header.append(tabs);
   const stage = el("div", "tbx-stage");
-  root.replaceChildren(header, stage, footer(site, data.expires_at));
+  const updated = (data.version ?? 1) > 1 ? data.published_at : null;
+  root.replaceChildren(header, stage, footer(site, data.expires_at, updated));
   document.title = `${data.title}${SHARE_PAGE.ogTitleSuffix}`;
 
   const panels = new Map<Tab, HTMLElement>();
@@ -186,7 +204,7 @@ function render(root: HTMLElement, data: PageData, site: string, base: URL, live
   if (sheets && pdfFile?.url) {
     const drawings = buildDrawings({
       url: pdfFile.url,
-      name: pdfFile.name,
+      name: downloadName(pdfFile.name),
       titles: sheets.titles ?? [],
       base,
       labels: SHARE_PAGE,

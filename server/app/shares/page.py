@@ -8,6 +8,8 @@ Rendered with `string.Template`; every value is HTML-escaped.
 """
 
 import html
+import math
+from decimal import ROUND_HALF_UP, Decimal
 from pathlib import Path
 from string import Template
 from urllib.parse import urlsplit
@@ -22,6 +24,17 @@ ENDED_TEXT = "The designer ended this share, or it reached its expiry date. Ask 
 NOT_FOUND_TITLE = "We can't find this share"
 NOT_FOUND_TEXT = "Check the link you were sent, or ask the designer for a new one."
 DOWNLOAD_PDF = "Download PDF"
+# PF5b: the project card's words, mirrored from SHARE_PROJECT_CARD
+# (tests/test_shares_pf5b.py fails when the two drift).
+PROJECT_CARD = {
+    "storey": "storey",
+    "storeys": "storeys",
+    "room": "room",
+    "rooms": "rooms",
+    "squareMetres": "m²",
+    "squareFeet": "ft²",
+}
+SQ_FT_PER_M2 = 10.763910416709722
 
 _TEMPLATES = Path(__file__).with_name("templates")
 _VIEW = Template((_TEMPLATES / "view.html").read_text(encoding="utf-8"))
@@ -54,6 +67,44 @@ def description(m: dict) -> str:
 
 def og_title(title: str) -> str:
     return title + OG_TITLE_SUFFIX
+
+
+def _count(value: object) -> int | None:
+    """A positive whole number from the manifest, else None (never shown)."""
+    if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value):
+        return None
+    return int(value) if value >= 1 and value == int(value) else None
+
+
+def _decimals(value: float, places: int) -> str:
+    """At most `places` decimals, rounded half away from zero on the number's
+    shortest decimal form (as the viewer's Intl.NumberFormat does: 72.755 ->
+    72.76), with thousands separators: 1234.5678 -> '1,234.57'."""
+    shortest = Decimal(repr(float(value)))
+    text = f"{shortest.quantize(Decimal(1).scaleb(-places), rounding=ROUND_HALF_UP):,f}"
+    return text.rstrip("0").rstrip(".") if "." in text else text
+
+
+def project_line(m: dict) -> str | None:
+    """The project card (share-bundle 1.1 `project.storeys`, `rooms`,
+    `floor_area_m2`): '1 storey · 3 rooms · 72.75 m²', the area in the
+    manifest's units (ft², whole, when `imperial`). None without any of them,
+    so a 1.0 manifest renders as before. src/viewer/project.ts writes the same."""
+    project = m.get("project") if isinstance(m.get("project"), dict) else {}
+    words = PROJECT_CARD
+    parts = []
+    storeys, rooms = _count(project.get("storeys")), _count(project.get("rooms"))
+    if storeys:
+        parts.append(f"{storeys:,} {words['storey'] if storeys == 1 else words['storeys']}")
+    if rooms:
+        parts.append(f"{rooms:,} {words['room'] if rooms == 1 else words['rooms']}")
+    area = project.get("floor_area_m2")
+    if not isinstance(area, bool) and isinstance(area, (int, float)) and math.isfinite(area) and area > 0:
+        if project.get("units") == "imperial":
+            parts.append(f"{_decimals(area * SQ_FT_PER_M2, 0)} {words['squareFeet']}")
+        else:
+            parts.append(f"{_decimals(area, 2)} {words['squareMetres']}")
+    return " · ".join(parts) if parts else None
 
 
 def origin(url: str) -> str:
@@ -96,10 +147,15 @@ def render_view(
     first_render_url: str | None,
     pdf_url: str | None,
 ) -> str:
+    """`card_url` is the cover or PF5's card (with `?v=` after an Update);
+    a 1.1 project card adds one line under the title. A 1.0 manifest renders
+    exactly as PF5 wrote it."""
     preload = (
         f'<link rel="preload" as="image" href="{_e(preload_url)}" crossorigin="anonymous" fetchpriority="high">' if preload_url else ""
     )
     noscript = []
+    if line := project_line(m):
+        noscript.append(f'<p class="tbx-project">{_e(line)}</p>')
     if first_render_url:
         noscript.append(f'<img src="{_e(first_render_url)}" alt="{_e(title)}" width="640">')
     if pdf_url:

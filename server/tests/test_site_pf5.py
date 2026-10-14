@@ -27,7 +27,7 @@ def test_site_pf5_viewer_bundle_built():
     assert js.is_file() and css.is_file()
     assert js.stat().st_size <= 250 * 1024
     code = js.read_text(encoding="utf-8")
-    assert "share-bundle/1.0" in code and page.DESIGNED_IN in code
+    assert "share-bundle/1.1" in code and page.DESIGNED_IN in code
     # Brand tokens come from globals.css, so the page matches the site.
     styles = css.read_text(encoding="utf-8")
     globals_css = (ROOT / "src" / "app" / "globals.css").read_text(encoding="utf-8")

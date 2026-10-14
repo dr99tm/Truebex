@@ -443,6 +443,8 @@ class Share(_Doc):
     """The share record (§6.2)."""
 
     share_id: str
+    bundle_id: str
+    version: int
     slug: str
     url: str | None
     title: str
@@ -457,6 +459,9 @@ class Share(_Doc):
 
 class ShareRequest(_shares.CreateShareIn):
     """5.4: a share from a bundle manifest (truebex-share/1); the same `bundle_id` again returns the same share."""
+
+    # 1.1 `replace_share_id` (Update: the same link, `version` + 1 at publish)
+    # comes from CreateShareIn.
 
 
 class ShareCreated(_Doc):

@@ -4,7 +4,8 @@ calling in:
 * PF4's push hook (`projects.hooks.on_ops_accepted`) → the 30 s window of
   `project.ops_appended` (`events.note_ops`).
 * A session observer. `after_flush` notes the rows that matter: a render job
-  whose state became `succeeded` or `failed`, a share that went `live`, a new
+  whose state became `succeeded` or `failed`, a share that went `live` (or
+  published an Update, PF5b), a new
   version, a new (non-owner) project member, an order or a supplier's part of
   one changing state, a feed run that ended. `after_commit` builds each event
   from the committed rows in a session of its own; `after_rollback` forgets
@@ -64,7 +65,8 @@ def _collect(session: Session, _flush_context) -> None:
                 if state in ("succeeded", "failed"):
                     _note(session, ("job", obj.job_id, state))
             elif isinstance(obj, Share):
-                if _changed_to(obj, "state") == "live":
+                # PF5b: an Update's publish (version + 1) is published again.
+                if _changed_to(obj, "state") == "live" or (obj.state == "live" and (_changed_to(obj, "version") or 0) > 1):
                     _note(session, ("share", obj.share_id))
             elif isinstance(obj, MarketOrder):
                 if _changed_to(obj, "state") is not None:

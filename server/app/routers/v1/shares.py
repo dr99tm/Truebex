@@ -21,7 +21,7 @@ from .. import uploads as c_uploads
 from . import models as m
 from .common import AnyKey, doc, scope
 
-router = APIRouter(tags=["shares"], dependencies=[contract("share-bundle", 1, 0)])
+router = APIRouter(tags=["shares"], dependencies=[contract("share-bundle", 1, 1)])
 
 PURPOSE_SCOPES = {"share": "shares:write", "snapshot": "projects:write", "job-input": "jobs:write"}
 Shares = scope("shares:write")
@@ -101,8 +101,10 @@ async def put_part(
 @router.post("/shares", status_code=201, operation_id="shares_create", **doc("shares:write", m.ShareCreated, 201, errors=(401, 403, 422, 429)))
 def create_share(body: m.ShareRequest, response: Response, api: ApiCaller = Shares, db: Session = Depends(get_db)) -> dict:
     """Create a share from a bundle manifest and get its upload session (5.4); the same `bundle_id` returns the same share (200)."""
+    # 1.1: `replace_share_id` sends the bundle as an Update of that share.
     share, upload, created = shares.create(
-        db, upload_caller(api), api.user, title=body.title, days=body.expires_in_days, m=body.manifest
+        db, upload_caller(api), api.user, title=body.title, days=body.expires_in_days, m=body.manifest,
+        replace=body.replace_share_id,
     )
     if not created:
         response.status_code = 200

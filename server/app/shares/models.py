@@ -54,6 +54,12 @@ class Share(Base):
     # Files, derivatives and the card go 7 days after expiry or revoke.
     purge_after: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), index=True, nullable=True)
     purged_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # PF5b (share-bundle 1.1): 1 for a new share, + 1 per Update (NULL = 1, a
+    # row from before). An Update (5.4 `replace_share_id`) of a live share
+    # waits here until 5.5 publishes it; the share serves `manifest` meanwhile.
+    version: Mapped[int | None] = mapped_column(Integer, nullable=True, default=1)
+    pending_bundle_id: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    pending_manifest: Mapped[dict | None] = mapped_column(JSON, nullable=True)
 
 
 class ShareDerivative(Base):
