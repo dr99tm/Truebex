@@ -208,12 +208,12 @@ def test_share_url_has_its_own_preview(client):
 def test_contract_header_and_error_envelope(client):
     token, session = device_token(client)
     res = client.get("/shares", headers=web(session))
-    assert res.status_code == 200 and res.headers["X-Truebex-Contract"] == "share-bundle/1.0"
+    assert res.status_code == 200 and res.headers["X-Truebex-Contract"] == "share-bundle/1.1"
     assert res.json()["limits"] == {"share_links": 1, "share_days": 30, "share_bytes": 1024**3}
     for method, path in (("get", "/shares"), ("post", "/uploads"), ("get", "/s/AAAAAAAAAA")):
         res = getattr(client, method)(path, headers={**dev(token), "X-Truebex-Contract": "share-bundle/2.0"})
         body = error_of(res, 400, "contract_version")
-        assert body["data"]["supported"] == ["share-bundle/1.0"]
+        assert body["data"]["supported"] == ["share-bundle/1.1"]
     res = client.get("/shares/" + "0" * 32, headers=dev(token))
     body = error_of(res, 404, "not_found")
     assert set(body) == {"detail", "code", "status", "request_id", "retry_after_s", "data"}
@@ -477,7 +477,7 @@ def test_demo_share_script(client, monkeypatch, capsys):
 
     monkeypatch.setattr(demo.httpx, "Client", _Same)
     token, _ = device_token(client)
-    fixture = str(Path(__file__).parent / "contracts" / "share-bundle" / "manifest-house.json")
+    fixture = str(Path(__file__).parent / "fixtures" / "share" / "manifest-house.json")
     argv = ["--token", token, "--fixture", fixture, "--api", "http://testserver"]
     assert demo.main(argv) == 0
     first = capsys.readouterr().out

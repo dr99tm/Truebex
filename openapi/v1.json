@@ -2410,6 +2410,10 @@
         "additionalProperties": true,
         "description": "The share record (§6.2).",
         "properties": {
+          "bundle_id": {
+            "title": "Bundle Id",
+            "type": "string"
+          },
           "bytes": {
             "title": "Bytes",
             "type": "integer"
@@ -2473,6 +2477,10 @@
             ],
             "title": "Url"
           },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          },
           "visits": {
             "$ref": "#/components/schemas/ShareVisits"
           },
@@ -2483,6 +2491,8 @@
         },
         "required": [
           "share_id",
+          "bundle_id",
+          "version",
           "slug",
           "url",
           "title",
@@ -2567,6 +2577,18 @@
           },
           "manifest": {
             "title": "Manifest"
+          },
+          "replace_share_id": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Replace Share Id"
           },
           "title": {
             "maxLength": 120,
@@ -7776,7 +7798,7 @@
         "tags": [
           "shares"
         ],
-        "x-truebex-contract": "share-bundle/1.0",
+        "x-truebex-contract": "share-bundle/1.1",
         "x-truebex-scope": "shares:write"
       },
       "post": {
@@ -7858,7 +7880,7 @@
         "tags": [
           "shares"
         ],
-        "x-truebex-contract": "share-bundle/1.0",
+        "x-truebex-contract": "share-bundle/1.1",
         "x-truebex-scope": "shares:write"
       }
     },
@@ -7953,7 +7975,7 @@
         "tags": [
           "shares"
         ],
-        "x-truebex-contract": "share-bundle/1.0",
+        "x-truebex-contract": "share-bundle/1.1",
         "x-truebex-scope": "shares:write"
       },
       "get": {
@@ -8046,7 +8068,7 @@
         "tags": [
           "shares"
         ],
-        "x-truebex-contract": "share-bundle/1.0",
+        "x-truebex-contract": "share-bundle/1.1",
         "x-truebex-scope": "shares:write"
       },
       "patch": {
@@ -8149,7 +8171,7 @@
         "tags": [
           "shares"
         ],
-        "x-truebex-contract": "share-bundle/1.0",
+        "x-truebex-contract": "share-bundle/1.1",
         "x-truebex-scope": "shares:write"
       }
     },
@@ -8244,7 +8266,7 @@
         "tags": [
           "shares"
         ],
-        "x-truebex-contract": "share-bundle/1.0",
+        "x-truebex-contract": "share-bundle/1.1",
         "x-truebex-scope": "shares:write"
       }
     },
@@ -8338,7 +8360,7 @@
         "tags": [
           "uploads"
         ],
-        "x-truebex-contract": "share-bundle/1.0",
+        "x-truebex-contract": "share-bundle/1.1",
         "x-truebex-scope": "shares:write"
       }
     },
@@ -8443,7 +8465,7 @@
         "tags": [
           "uploads"
         ],
-        "x-truebex-contract": "share-bundle/1.0",
+        "x-truebex-contract": "share-bundle/1.1",
         "x-truebex-scope": "shares:write"
       }
     },
@@ -8594,7 +8616,7 @@
         "tags": [
           "uploads"
         ],
-        "x-truebex-contract": "share-bundle/1.0",
+        "x-truebex-contract": "share-bundle/1.1",
         "x-truebex-scope": "shares:write"
       }
     },

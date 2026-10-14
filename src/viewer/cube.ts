@@ -93,7 +93,7 @@ export class CubeTileViewer {
   ) {
     this.yaw = options.yawDeg ?? 0;
     this.pitch = options.pitchDeg ?? 0;
-    this.hfov = options.hfovDeg ?? 80;
+    this.hfov = clamp(options.hfovDeg ?? 80, 30, 110); // a manifest may give up to 180°
     this.root = document.createElement("div");
     this.root.tabIndex = 0;
     this.root.setAttribute("role", "img");

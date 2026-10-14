@@ -423,6 +423,7 @@ class ShareRequest(TypedDict):
 
     expires_in_days: NotRequired[int]
     manifest: Any
+    replace_share_id: NotRequired[str | None]
     title: str
 
 
@@ -791,6 +792,7 @@ class Share(TypedDict):
     The share record (§6.2).
     """
 
+    bundle_id: str
     bytes: int
     created_at: str
     expires_at: str | None
@@ -800,6 +802,7 @@ class Share(TypedDict):
     state: Literal['uploading', 'live', 'expired', 'revoked']
     title: str
     url: str | None
+    version: int
     visits: ShareVisits
     watermark: bool
 

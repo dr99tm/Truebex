@@ -498,7 +498,7 @@ export const OPERATIONS = {
       "purpose"
     ],
     "scope": "shares:write",
-    "contract": "share-bundle/1.0"
+    "contract": "share-bundle/1.1"
   },
   "uploads_get": {
     "group": "uploads",
@@ -513,7 +513,7 @@ export const OPERATIONS = {
     "body": null,
     "bodyProps": [],
     "scope": "shares:write",
-    "contract": "share-bundle/1.0"
+    "contract": "share-bundle/1.1"
   },
   "uploads_put_part": {
     "group": "uploads",
@@ -532,7 +532,7 @@ export const OPERATIONS = {
     "body": "binary",
     "bodyProps": [],
     "scope": "shares:write",
-    "contract": "share-bundle/1.0"
+    "contract": "share-bundle/1.1"
   },
   "shares_create": {
     "group": "shares",
@@ -546,10 +546,11 @@ export const OPERATIONS = {
     "bodyProps": [
       "expires_in_days",
       "manifest",
+      "replace_share_id",
       "title"
     ],
     "scope": "shares:write",
-    "contract": "share-bundle/1.0"
+    "contract": "share-bundle/1.1"
   },
   "shares_get": {
     "group": "shares",
@@ -564,7 +565,7 @@ export const OPERATIONS = {
     "body": null,
     "bodyProps": [],
     "scope": "shares:write",
-    "contract": "share-bundle/1.0"
+    "contract": "share-bundle/1.1"
   },
   "shares_list": {
     "group": "shares",
@@ -579,7 +580,7 @@ export const OPERATIONS = {
     "body": null,
     "bodyProps": [],
     "scope": "shares:write",
-    "contract": "share-bundle/1.0"
+    "contract": "share-bundle/1.1"
   },
   "shares_publish": {
     "group": "shares",
@@ -594,7 +595,7 @@ export const OPERATIONS = {
     "body": null,
     "bodyProps": [],
     "scope": "shares:write",
-    "contract": "share-bundle/1.0"
+    "contract": "share-bundle/1.1"
   },
   "shares_revoke": {
     "group": "shares",
@@ -609,7 +610,7 @@ export const OPERATIONS = {
     "body": null,
     "bodyProps": [],
     "scope": "shares:write",
-    "contract": "share-bundle/1.0"
+    "contract": "share-bundle/1.1"
   },
   "shares_update": {
     "group": "shares",
@@ -627,7 +628,7 @@ export const OPERATIONS = {
       "title"
     ],
     "scope": "shares:write",
-    "contract": "share-bundle/1.0"
+    "contract": "share-bundle/1.1"
   },
   "market_categories": {
     "group": "market",

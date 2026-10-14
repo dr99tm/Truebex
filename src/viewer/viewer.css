@@ -84,6 +84,20 @@ button {
   text-overflow: ellipsis;
 }
 
+/* PF5b: the title and the project card under it (1.1 manifests only). */
+.tbx-heading {
+  flex: 1 1 12rem;
+  min-width: 0;
+}
+
+.tbx-project {
+  margin: 2px 0 0;
+  font-size: 0.8125rem;
+  line-height: 1.3;
+  color: var(--color-text-muted);
+  overflow-wrap: anywhere;
+}
+
 .tbx-tabs {
   display: flex;
   gap: 4px;

@@ -203,7 +203,7 @@ The first nine names are the contract's §10 platform tests.
   * PF4: snapshots upload through `uploads` (purpose `snapshot`) and take refs on their blobs.
   * PF13 (Arabic): a share title in a script Open Sans lacks is left off the preview card (never drawn as boxes); add Noto with shaping then. **Done in PF5a** (2026-10-12, Autopilot T57, `PF5a-arabic-share-titles.md`): Arabic, Persian and Urdu titles joined and drawn right to left in Noto Sans Arabic; the page's names `dir="auto"`.
   * GD7: `share_days` / `share_bytes` per tier in `catalogue.json`.
-  * App PR4: the Share command and Shares panel against these endpoints and fixtures.
+  * App PR4: the Share command and Shares panel against these endpoints and fixtures. **Followed in PF5b** (2026-10-14, Autopilot T74, `PF5b-share-bundle-1-1-0.md`): share-bundle 1.1.0, the app's own fixtures and rule ids, Update (`replace_share_id`), `version`, the cover and the project card.
   * Owner: Lighthouse on a phone (≤ 3 s to the first panorama on 4G) and the gyroscope on a real phone (human test steps 5 and 6).
 * **Merged together with PF7, PF8, PF2a, PF2b and master (PF2, PF3, PF13, PF14, PF14a) (2026-10-10, Autopilot T28, `ap/t28-merge-t5-t6-t7-t18-t19`):** verify green (lint, build, pytest 330 passed, 3 Postgres-only skipped); a smoke run against one real API process (demo share, trial catalogue, request for quote, worker running every merged job) passed 23/23.
   * PF14's `tasks.py` calls a job as `fn(now)`: `shares.expire`, `shares.purge` and `uploads.expire` open their own session. They are listed in `tasks._load_jobs` (the worker) and PF5's tables in `scripts/sqlite_to_postgres.py`; `test_ops` checks both. The share tests run only PF5's jobs.

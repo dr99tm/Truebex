@@ -12,10 +12,11 @@ r"""Load a marketplace fixture into the local database (a trial catalogue).
   the Bergen lounge chair is new, so it waits in the admin review queue
   (Admin → Market → Products).
 * The app's set (PF7c, tests/contracts/marketplace, MK1's stub catalogue):
-  its three suppliers, verified, and nine products, approved, with their GB
-  and AE prices and deliveries; categories the stub uses that the platform's
-  tree lacks are added. Its feed is not imported (it is the Oslo sofa the
-  catalogue already holds; upload it in the portal or through 5.11).
+  its three suppliers, verified, and thirteen products (MK1's nine and, since
+  PF7d, AU2's bedroom set), approved, with their GB and AE prices and
+  deliveries; categories the stub uses that the platform's tree lacks are
+  added. Its feed is not imported (it is the Oslo sofa the catalogue already
+  holds; upload it in the portal or through 5.11).
 * `--owner` makes that account every loaded supplier's owner;
   `--payments-ready` marks them as onboarded to Stripe Connect (orders, not
   only quotes, once MARKET_PAYMENTS_ENABLED=true).

@@ -2,8 +2,12 @@
 trying share pages before the app's Share command exists.
 
     .venv\\Scripts\\python.exe scripts\\demo_share.py --email you@example.com --password ... \\
-        --fixture tests\\contracts\\share-bundle\\manifest-house.json [--api http://127.0.0.1:8000]
+        --fixture tests\\fixtures\\share\\manifest-house.json [--api http://127.0.0.1:8000]
     (or --token tbx_dev_... instead of --email / --password)
+
+`tests\\fixtures\\share\\` is PF5's three-room house; `tests\\contracts\\share-bundle\\`
+is the app's own bundle (PR4, share-bundle 1.1: folders in file names, the
+project card).
 
 The files are looked up by SHA-256 among the files beside the manifest.
 Prints the parts it sent and the share's url. Running it again sends no
@@ -24,6 +28,13 @@ same share. --rooms renames the panoramas (comma-separated, in the
 manifest's order) and the hotspots that lead to them, for trying room names
 in Arabic. Every plan has one live share for now (GD7): end the other one
 first (Dashboard → Shares → End link), or use another account.
+
+--update <share id> (PF5b, share-bundle 1.1) sends the bundle as an Update of
+that share, as the app's Update button does: the same link, `version` + 1 once
+published. The bundle gets its own bundle_id from the share id and the other
+switches, so combine it with --rooms, --title or --cover to see a change;
+running the same command again returns the same share. --cover <jpg> adds that
+JPEG as the bundle's link-preview cover (1.1 `cover`).
 """
 
 import argparse
@@ -37,7 +48,7 @@ from pathlib import Path
 
 import httpx
 
-CONTRACT = {"X-Truebex-Contract": "share-bundle/1.0"}
+CONTRACT = {"X-Truebex-Contract": "share-bundle/1.1"}
 RETRY = {408, 429, 500, 502, 503, 504, 530}
 
 
@@ -99,6 +110,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--rooms", default=None, help="the panoramas' names, comma-separated in the manifest's order")
     parser.add_argument("--days", type=int, default=30)
     parser.add_argument("--live", metavar="JOB_ID", help="show this followed render set live (PF6)")
+    parser.add_argument("--update", metavar="SHARE_ID", help="send the bundle as an Update of this share (1.1)")
+    parser.add_argument("--cover", type=Path, help="a JPEG to add as the link-preview cover (1.1)")
     args = parser.parse_args(argv)
 
     manifest = json.loads(args.fixture.read_text(encoding="utf-8"))
@@ -119,19 +132,32 @@ def main(argv: list[str] | None = None) -> int:
     for path in args.fixture.parent.iterdir():
         if path.is_file() and path.suffix.lower() in (".jpg", ".jpeg", ".png", ".pdf"):
             by_sha[hashlib.sha256(path.read_bytes()).hexdigest()] = path
+    if args.cover:
+        data = args.cover.read_bytes()
+        cover = hashlib.sha256(data).hexdigest()
+        by_sha[cover] = args.cover
+        if cover not in {f["sha256"] for f in manifest["files"]}:
+            manifest["files"].append({"sha256": cover, "bytes": len(data), "content_type": "image/jpeg", "name": "cover.jpg"})
+        manifest["cover"] = cover
+        manifest["bundle_id"] = hashlib.sha256(f"{manifest['bundle_id']}|cover|{cover}".encode()).hexdigest()[:32]
+    if args.update:
+        manifest["bundle_id"] = hashlib.sha256(f"{manifest['bundle_id']}|update|{args.update}".encode()).hexdigest()[:32]
     title = args.title or f"{manifest['project']['title']} — client review"
     api = args.api.rstrip("/")
 
     with httpx.Client(timeout=120) as client:
         token = args.token or device_token(client, api, args.email, args.password)
         headers = {"Authorization": f"Bearer {token}", **CONTRACT}
-        res = call(client, "POST", f"{api}/shares", headers=headers,
-                   json={"title": title, "expires_in_days": args.days, "manifest": manifest})
+        body = {"title": title, "expires_in_days": args.days, "manifest": manifest}
+        if args.update:
+            body["replace_share_id"] = args.update
+        res = call(client, "POST", f"{api}/shares", headers=headers, json=body)
         if res.status_code not in (200, 201):
             fail(res)
         body = res.json()
         share, upload = body["share"], body["upload"]
-        print(f"share {share['share_id']} ({'new' if res.status_code == 201 else 'existing'}, {share['state']})")
+        kind = ("update" if args.update else "new") if res.status_code == 201 else "existing"
+        print(f"share {share['share_id']} ({kind}, {share['state']}, version {share.get('version', 1)})")
         sent = 0
         if upload:
             size = upload["part_bytes"]
@@ -154,12 +180,12 @@ def main(argv: list[str] | None = None) -> int:
                     sent += 1
                     print(f"  sent {path.name} part {n}")
         print(f"{sent} parts sent")
-        if share["state"] == "uploading":
+        if share["state"] == "uploading" or args.update:
             res = call(client, "POST", f"{api}/shares/{share['share_id']}/publish", headers=headers)
             if res.status_code != 200:
                 fail(res)
             share = res.json()["share"]
-        print(f"state {share['state']}, expires {share['expires_at']}")
+        print(f"state {share['state']}, version {share.get('version', 1)}, expires {share['expires_at']}")
         print(f"url {share['url']}")
     return 0
 

@@ -6,7 +6,7 @@ import { ErrorNote, PageHeader, Panel } from "@/components/dashboard/DashboardSh
 import { UsageChart } from "@/components/dashboard/UsageChart";
 import { useApiData } from "@/components/dashboard/useApiData";
 import { formatDate } from "@/lib/api";
-import { DASHBOARD_SHARES as T } from "@/lib/constants";
+import { DASHBOARD_SHARES as T, DASHBOARD_SHARES_VERSION as V } from "@/lib/constants";
 import { extendShare, fillDays, getShare, listShares, revokeShare, sortShares, type Share } from "@/lib/shares";
 import { timeAgo } from "@/lib/time";
 import { cn } from "@/lib/utils";
@@ -122,6 +122,11 @@ function ShareCard({ share, days, onChange }: { share: Share; days: number; onCh
             >
               {T.states[share.state]}
             </span>
+            {(share.version ?? 1) > 1 && (
+              <span className="mr-2 inline-block rounded-full bg-white/5 px-2 py-0.5 text-xs text-text-secondary" title={V.note}>
+                {V.version} {share.version}
+              </span>
+            )}
             {share.state === "revoked"
               ? `${T.endedOn} ${formatDate(share.revoked_at)}`
               : share.expires_at

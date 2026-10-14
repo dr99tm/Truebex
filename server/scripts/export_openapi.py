@@ -54,8 +54,8 @@ MARKET = {
 CONTRACTS = {
     "projects": "project-log/1.0",
     "jobs": "render-jobs/1.0",
-    "uploads": "share-bundle/1.0",
-    "shares": "share-bundle/1.0",
+    "uploads": "share-bundle/1.1",
+    "shares": "share-bundle/1.1",
     "market": "marketplace-api/1.1",
     "feeds": "marketplace-api/1.1",
 }

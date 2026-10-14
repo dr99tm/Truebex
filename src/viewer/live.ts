@@ -14,7 +14,7 @@ export interface LiveState {
   manifest: { tiles_base: string; views: (CubeView & { view: string })[] } | null;
 }
 
-const CONTRACT = { "X-Truebex-Contract": "share-bundle/1.0" };
+const CONTRACT = { "X-Truebex-Contract": "share-bundle/1.1" };
 
 function sleep(ms: number, signal: AbortSignal): Promise<void> {
   return new Promise((resolve) => {

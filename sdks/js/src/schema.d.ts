@@ -1866,6 +1866,8 @@ export interface components {
          * @description The share record (§6.2).
          */
         Share: {
+            /** Bundle Id */
+            bundle_id: string;
             /** Bytes */
             bytes: number;
             /** Created At */
@@ -1887,6 +1889,8 @@ export interface components {
             title: string;
             /** Url */
             url: string | null;
+            /** Version */
+            version: number;
             visits: components["schemas"]["ShareVisits"];
             /** Watermark */
             watermark: boolean;
@@ -1927,6 +1931,8 @@ export interface components {
             expires_in_days: number;
             /** Manifest */
             manifest: unknown;
+            /** Replace Share Id */
+            replace_share_id?: string | null;
             /** Title */
             title: string;
         };

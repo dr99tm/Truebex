@@ -47,7 +47,7 @@ def test_upload_parts_resume_and_dedup(client, small_parts):
     res = _open(client, dev(token))
     assert res.status_code == 201, res.text
     body = res.json()
-    assert res.headers["X-Truebex-Contract"] == "share-bundle/1.0"
+    assert res.headers["X-Truebex-Contract"] == "share-bundle/1.1"
     assert body["part_bytes"] == small_parts and len(body["upload_id"]) == 32
     parts = -(-len(PANO) // small_parts)
     assert _states(body)[PANO_SHA] == {"sha256": PANO_SHA, "state": "missing", "parts": parts, "received": []}

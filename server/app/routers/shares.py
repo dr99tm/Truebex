@@ -1,8 +1,9 @@
-"""Shares (contract share-bundle v1.0, §5.4-5.11) and the share page itself.
+"""Shares (contract share-bundle v1.1, §5.4-5.11) and the share page itself.
 
 5.4-5.5 take a device token; 5.6-5.9 a device token or a website session;
 5.10-5.11 nothing (anyone with the link). `GET /view/{slug}` is the share's
 `url`: this share's link-preview tags around the static viewer shell.
+PF5b (1.1): 5.4's `replace_share_id` (Update), the record's `version`.
 """
 
 from typing import Any
@@ -24,7 +25,7 @@ from ..storage import get_store
 from ..uploads.credentials import UploadCaller
 from ..utc import UtcDateTime
 
-router = APIRouter(tags=["shares"], dependencies=[contract("share-bundle", 1, 0)])
+router = APIRouter(tags=["shares"], dependencies=[contract("share-bundle", 1, 1)])
 public = APIRouter(include_in_schema=False)
 
 _PRIVATE = {"Cache-Control": "no-store", "X-Robots-Tag": "noindex, nofollow", "Referrer-Policy": "no-referrer"}
@@ -34,6 +35,9 @@ class CreateShareIn(BaseModel):
     title: str = Field(min_length=1, max_length=120)
     expires_in_days: int = Field(default=30, ge=1)
     manifest: Any
+    # 1.1: Update: the new manifest replaces this share's files at 5.5 (the
+    # same share_id, slug and url; version + 1).
+    replace_share_id: str | None = Field(default=None, max_length=64)
 
     @field_validator("title")
     @classmethod
@@ -73,7 +77,8 @@ def create_share(
     body: CreateShareIn, response: Response, caller: DeviceCaller = Depends(get_device), db: Session = Depends(get_db)
 ) -> dict:
     share, upload, created = shares.create(
-        db, _uploader(caller), caller.user, title=body.title, days=body.expires_in_days, m=body.manifest
+        db, _uploader(caller), caller.user, title=body.title, days=body.expires_in_days, m=body.manifest,
+        replace=body.replace_share_id,
     )
     if not created:
         response.status_code = 200
@@ -173,7 +178,7 @@ def view(slug: str, db: Session = Depends(get_db)) -> HTMLResponse:
         slug=share.slug,
         api=s.share_base,
         site=site,
-        card_url=shares.card_url(share.slug),
+        card_url=shares.card_url(share.slug, share.version or 1),
         preload_url=preload,
         first_render_url=urls["files"].get(first_render) if first_render else None,
         pdf_url=urls["files"].get(pdf) if pdf else None,

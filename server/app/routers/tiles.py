@@ -25,7 +25,7 @@ from ..render.models import RenderSet
 from ..storage import get_store
 
 router = APIRouter(tags=["tiles"], dependencies=[enveloped()], include_in_schema=False)
-share_router = APIRouter(tags=["shares"], dependencies=[contract("share-bundle", 1, 0)])
+share_router = APIRouter(tags=["shares"], dependencies=[contract("share-bundle", 1, 1)])
 _TILE = re.compile(r"^([0-9a-f]{64})\.jpg$")
 PUBLIC = {"Cache-Control": tiles.IMMUTABLE, "Access-Control-Allow-Origin": "*", "X-Content-Type-Options": "nosniff"}
 NO_STORE = {"Cache-Control": "no-store", "X-Robots-Tag": "noindex, nofollow", "Referrer-Policy": "no-referrer"}

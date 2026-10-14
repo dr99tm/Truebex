@@ -1430,6 +1430,56 @@ action (`LOG_SAFE_TOOLS` in `server/app/projects/ops.py`). A tunable names no en
 never conflicts. Re-sync and check as in the PF12b section above; the PF12c checks are
 `server\tests\test_pf12c_agent_interface.py`. Doc: `docs/roadmap/40/PF12c-agent-interface-1-2-0.md`.
 
+## Marketplace fixtures after AU2's bedroom set (PF7d)
+
+The app's AU2 (auto furniture layouts by room type) added a bedroom set to the app's marketplace fixtures: the
+Fjell double and single beds, the Nord wardrobe and the Fjell bedside table, a GLB and a thumbnail each.
+`server/tests/contracts/marketplace/` was re-copied from the app's `main` 7fe6b2c2 (the folder as AU2's commit
+180b2d53 left it): 36 files, three suppliers and 13 products, every file byte for byte the app's blob.
+`server/tests/test_market_contract_fixtures.py` keeps the app's blob ids (`APP_BLOBS`) and checks the platform's
+answers for all 13 products. `server/tests/test_pf7d_bedroom_set.py` puts the bedroom set through the basket
+route, 5.5 and 5.7. The readings that moved (D1, D2) and the new one (D17: substitutes of the storage products)
+are in `docs/roadmap/40/PF7d-marketplace-fixtures-au2-bedroom-set.md`.
+
+To re-copy after the app changes the folder again:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts\sync-contract-fixtures.ps1 -Contract marketplace
+cd server
+.venv\Scripts\python.exe -m pytest -q tests\test_market_contract_fixtures.py tests\test_pf7d_bedroom_set.py tests\test_pf7b_pf7c_meet.py
+```
+
+The folder's `README.md` is the app's own file, so leave it as copied. Update `APP_BLOBS` from
+`git ls-tree -r main -- Docs/roadmap/fixtures/contracts/marketplace/` in the app repo, then the counts the tests
+name.
+
+## Share links: share-bundle 1.1 (PF5b)
+
+The share service speaks share-bundle 1.1.0, the version the app's Share command (PR4) is built against. It takes
+the manifests the app writes (file names with folders such as `tour/living-2k.jpg`, the 1.1 `cover`, `branding`,
+`plan`, `app_build` and the project card) and answers a broken rule with the app's own rule ids (`panorama_ratio`,
+`file_unlisted`, `file_unreferenced` ...). `POST /shares` with `replace_share_id` is the app's Update: the share stays
+live on its old files while the new bundle uploads, then `POST /shares/{id}/publish` swaps them in on the same link
+with `version` 2 (old files nothing else uses are dropped; visits are kept). An ended share answers 409
+`replace_conflict`. A 403 `quota_exceeded` names the caller's `plan` and the plan that lifts it (`upgrade_to`, null
+while every plan keeps one live share). The page's link preview is the app's cover, and a line under the title gives
+the storeys, rooms and floor area. Doc: `docs/roadmap/40/PF5b-share-bundle-1-1-0.md`.
+
+`server/tests/contracts/share-bundle/` is now the app's own fixture set (re-copy with
+`scripts\sync-contract-fixtures.ps1 -Contract share-bundle`); PF5's three-room house moved to
+`server/tests/fixtures/share/` (`scripts\make_share_fixtures.py [--check]`). Where an earlier section names
+`tests\contracts\share-bundle\manifest-house.json`, that file is now the app's house (one picture for its three
+rooms); use `tests\fixtures\share\manifest-house.json` for PF5's rooms. Trying an Update without the app:
+
+```powershell
+cd server
+.venv\Scripts\python.exe scripts\demo_share.py --email <you> --password <pw> --fixture tests\contracts\share-bundle\manifest-house.json
+.venv\Scripts\python.exe scripts\demo_share.py --email <you> --password <pw> --fixture tests\contracts\share-bundle\manifest-house.json --update <share id> --rooms "Lounge, Kitchen, Main bedroom"
+```
+
+The second prints `state live, version 2` and the same `url`; reloading the page shows the new room names and
+"Updated" with the date in its footer. `--cover <a JPEG>` adds a link-preview cover.
+
 ## Organisations on their own Stripe customer (PF3e)
 
 An organisation's Stripe checkout opens on the organisation's own Stripe customer, never on the buyer's:
