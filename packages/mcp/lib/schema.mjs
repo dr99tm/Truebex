@@ -109,9 +109,18 @@ export function validate(schema, value, path = '') {
   return null;
 }
 
-/** The tools as MCP serves them: internal _meta keys removed, order kept. */
+/** The surfaces a tool is offered on (default both); AI2's propose_variants is
+ *  assistant-only, so MCP never lists it. */
+export const SURFACES = ['mcp', 'assistant'];
+export function surfacesOf(t) {
+  const s = t && t._meta && t._meta['com.truebex/surfaces'];
+  return Array.isArray(s) ? s : SURFACES;
+}
+
+/** The tools as MCP serves them: the mcp surface only, internal _meta keys
+ *  removed, order kept. */
 export function publicTools(doc) {
-  return (doc.tools || []).map((t) => {
+  return (doc.tools || []).filter((t) => surfacesOf(t).includes('mcp')).map((t) => {
     const copy = JSON.parse(JSON.stringify(t));
     if (copy._meta) {
       for (const k of INTERNAL_META) { delete copy._meta[k]; }
@@ -136,6 +145,8 @@ export function toolsFileProblems(doc) {
     const perm = t._meta && t._meta['com.truebex/permission'];
     if (!PERMISSIONS.includes(perm)) { out.push(`${name}: permission ${perm} not in ${PERMISSIONS.join('/')}`); }
     if (!t._meta || !t._meta['com.truebex/router']) { out.push(`${name}: no router`); }
+    const surfaces = surfacesOf(t);
+    if (!surfaces.length || surfaces.some((s) => !SURFACES.includes(s))) { out.push(`${name}: surfaces must be a non-empty subset of ${SURFACES.join('/')}`); }
     if (!t.inputSchema || t.inputSchema.type !== 'object') { out.push(`${name}: inputSchema must be an object schema`); }
     if (t.inputSchema && t.inputSchema.additionalProperties !== false) { out.push(`${name}: inputSchema must set additionalProperties false`); }
     out.push(...portableProblems(t.inputSchema, `${name}.inputSchema`));
