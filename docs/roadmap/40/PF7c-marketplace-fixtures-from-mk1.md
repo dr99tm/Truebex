@@ -161,5 +161,5 @@ Window 1, in the worktree: `powershell -NoProfile -ExecutionPolicy Bypass -File 
 * **Carry-over → which feature:**
   * The owner / app side: the PATCH lines D1–D14 and D16 (MK1, MK2's substitutes parser, MK4's order totals and `checkout_url`).
   * PF7 follow-up: the `https://truebex.com/market/basket?region=…&items=…` page the contract's 2026-10-11 PR2 line says PF7 owns (no such page exists); D2's category names; D14 (a `.tbxa`'s own S1 id as the asset id, MINOR).
-  * PF14d: once its `scripts/sync-contract-fixtures.ps1` is on `master`, `-Contract marketplace` should re-copy this folder (it has `geometry/` and `thumbs/` subfolders and keeps MK1's README).
+  * PF7d (2026-10-14, Autopilot T75): `scripts/sync-contract-fixtures.ps1 -Contract marketplace` re-copied this folder after AU2's bedroom set (36 files, 13 products); D1 and D2 moved and D17 is new, in [PF7d's As-built](PF7d-marketplace-fixtures-au2-bedroom-set.md).
 * **Verify gate** (`scripts/autopilot-verify.ps1`, on the docs commit): green in 614 s; lint, build, pytest 668 passed + 17 skipped (the Postgres-only tests) of 685 collected in 356 s.

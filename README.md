@@ -1410,3 +1410,26 @@ cd server
 
 The first ends `pytest exit 0`. The second fails the six wake-up tests (each read waits its whole 25 s first) and
 passes the two guards.
+
+## Marketplace fixtures after AU2's bedroom set (PF7d)
+
+The app's AU2 (auto furniture layouts by room type) added a bedroom set to the app's marketplace fixtures: the
+Fjell double and single beds, the Nord wardrobe and the Fjell bedside table, a GLB and a thumbnail each.
+`server/tests/contracts/marketplace/` was re-copied from the app's `main` 7fe6b2c2 (the folder as AU2's commit
+180b2d53 left it): 36 files, three suppliers and 13 products, every file byte for byte the app's blob.
+`server/tests/test_market_contract_fixtures.py` keeps the app's blob ids (`APP_BLOBS`) and checks the platform's
+answers for all 13 products. `server/tests/test_pf7d_bedroom_set.py` puts the bedroom set through the basket
+route, 5.5 and 5.7. The readings that moved (D1, D2) and the new one (D17: substitutes of the storage products)
+are in `docs/roadmap/40/PF7d-marketplace-fixtures-au2-bedroom-set.md`.
+
+To re-copy after the app changes the folder again:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts\sync-contract-fixtures.ps1 -Contract marketplace
+cd server
+.venv\Scripts\python.exe -m pytest -q tests\test_market_contract_fixtures.py tests\test_pf7d_bedroom_set.py tests\test_pf7b_pf7c_meet.py
+```
+
+The folder's `README.md` is the app's own file, so leave it as copied. Update `APP_BLOBS` from
+`git ls-tree -r main -- Docs/roadmap/fixtures/contracts/marketplace/` in the app repo, then the counts the tests
+name.
