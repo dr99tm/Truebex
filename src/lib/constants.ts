@@ -2798,7 +2798,7 @@ export const DEVELOPER_DOCS = {
     mcp: {
       title: "MCP server",
       description:
-        "The Truebex MCP server lets your own AI app read and edit the project open in Truebex: eleven tools and three resources, each class allowed by you.",
+        "The Truebex MCP server lets your own AI app read and edit the project open in Truebex: thirteen tools and three resources, each class allowed by you.",
       h1: "The Truebex MCP server",
       intro:
         "Your AI app starts the server on your computer and talks to it over stdio. The server passes each tool call to the Truebex app you have open, through a private pipe only your Windows user can reach. Truebex asks before each kind of action, makes every edit one undo step and lists every call.",
@@ -2820,7 +2820,7 @@ export const DEVELOPER_DOCS = {
         },
         {
           client: "Claude Code",
-          text: "Needs Node 20 or newer. Add it once for your user; /mcp then lists truebex with its eleven tools and three resources.",
+          text: "Needs Node 20 or newer. Add it once for your user; /mcp then lists truebex with its thirteen tools and three resources.",
           code: 'claude mcp add --scope user truebex -- node "<install>\\MultiWindow\\Tools\\mcp\\truebex-mcp.mjs"',
         },
         {
@@ -2851,6 +2851,11 @@ export const DEVELOPER_DOCS = {
         PR3: "Answers feature_absent until the panorama export arrives in Truebex.",
       },
       requiresFallback: "Answers feature_absent until the part of Truebex it needs arrives.",
+      // An argument tools.json gives no type (the portable subset has no type list): what it takes, by tool.argument.
+      untypedTypes: {
+        "set_tunable.value": "number | boolean | string",
+      },
+      untypedFallback: "any",
       argument: "Argument",
       rules: "Rules",
       resourcesTitle: "Resources",
@@ -2889,8 +2894,9 @@ export const DEVELOPER_DOCS = {
       safetyTitle: "What it never does",
       safety: [
         "It never sees a Truebex sign-in, an API key or your AI account's credentials; it talks only to Truebex on your computer.",
-        "It cannot quit Truebex, delete or overwrite a project or library file, write outside the project's export folder, change settings or drive the interface.",
-        "Every call is listed in the Agent panel and in a daily audit file kept 30 days. Every edit is one undo step, and undo takes back only the AI app's own steps.",
+        "It cannot quit Truebex, delete or overwrite a project or library file, write outside the project's export folder, run console commands or drive the interface.",
+        "It cannot change settings, with one exception: a tunable, which set_tunable sets by name. A tunable is typed and range-checked, a Design tunable (one that changes the picture or the drawing) is one undo step, and setting one is never a console command.",
+        "Every call is listed in the Agent panel and in a daily audit file kept 30 days. Every edit to the project is one undo step, and undo takes back only the AI app's own steps.",
         "Text from the project, such as room names and notes, reaches your AI app as data, never as instructions.",
       ],
       groups: [],

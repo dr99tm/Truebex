@@ -10,15 +10,18 @@ import { test } from 'node:test';
 import { startFakeApp } from './fake-app.mjs';
 import { MCP_DIR, emptyInstances, modernMeta, spawnServer } from './helpers.mjs';
 import { readZip } from './zip.mjs';
-import { INTERNAL_META, loadToolsFile, toolsFileProblems, validate } from '../lib/schema.mjs';
+import { INTERNAL_META, loadToolsFile, publicTools, surfacesOf, toolsFileProblems, validate } from '../lib/schema.mjs';
 import { SERVER_VERSION, SUPPORTED_VERSIONS } from '../lib/server.mjs';
 
-const TOOL_NAMES = ['read_state', 'find', 'explain', 'place', 'move', 'resize', 'fill', 'apply_theme', 'export_pdf', 'export_panorama', 'undo'];
+const TOOL_NAMES = ['read_state', 'find', 'explain', 'place', 'move', 'resize', 'fill', 'apply_theme', 'export_pdf', 'export_panorama', 'undo', 'get_tunables', 'set_tunable'];
 
 test('mcp-tools-json-valid', () => {
   const { doc } = loadToolsFile(join(MCP_DIR, 'tools.json'));
   assert.deepEqual(toolsFileProblems(doc), []);
-  assert.deepEqual(doc.tools.map((t) => t.name), TOOL_NAMES);
+  // AI2: the file also carries the assistant-only propose_variants; MCP lists the other thirteen.
+  assert.deepEqual(doc.tools.map((t) => t.name), [...TOOL_NAMES, 'propose_variants']);
+  assert.deepEqual(surfacesOf(doc.tools.find((t) => t.name === 'propose_variants')), ['assistant']);
+  assert.deepEqual(publicTools(doc).map((t) => t.name), TOOL_NAMES);
   const perms = Object.fromEntries(doc.tools.map((t) => [t.name, t._meta['com.truebex/permission']]));
   assert.equal(perms.read_state, 'read');
   assert.equal(perms.place, 'edit');
@@ -29,6 +32,14 @@ test('mcp-tools-json-valid', () => {
   assert.equal(validate(place, { kind: 'window', colour: 'x' }), 'colour: unknown argument');
   assert.equal(validate(place, {}), 'kind: required');
   assert.equal(validate(place, { kind: 'window', host: 'wall#42', width_mm: 1200 }), null);
+  // TU1's two tools (merge T165): value takes a number, a boolean or a name
+  assert.equal(perms.get_tunables, 'read');
+  assert.equal(perms.set_tunable, 'edit');
+  const setTunable = doc.tools.find((t) => t.name === 'set_tunable').inputSchema;
+  assert.equal(validate(setTunable, { name: 'cad.Light.SunIntensity', value: 7 }), null);
+  assert.equal(validate(setTunable, { name: 'cad.Elev.HlrVariant', value: 'Exact' }), null);
+  assert.equal(validate(setTunable, { name: 'cad.Light.Sun', value: false }), null);
+  assert.equal(validate(setTunable, { value: 7 }), 'name: required');
 });
 
 test('mcp-discover', async (t) => {
@@ -77,7 +88,7 @@ test('mcp-legacy-initialize', async (t) => {
   assert.equal(init.result.resultType, undefined);
   s.send({ jsonrpc: '2.0', method: 'notifications/initialized' });
   const list = await s.request('tools/list', {});
-  assert.equal(list.result.tools.length, 11);
+  assert.equal(list.result.tools.length, 13);
   assert.equal(list.result.resultType, undefined);
   const call = await s.request('tools/call', { name: 'place', arguments: { kind: 'window', host: 'wall#42', width_mm: 1200 } });
   assert.equal(call.result.isError, false);
@@ -130,11 +141,23 @@ test('mcp-tools-deterministic', async (t) => {
   }
 });
 
+// AI2: propose_variants is the in-app assistant's (surfaces ["assistant"]): an MCP
+// client never sees it and a call to it is an unknown tool, app or no app.
+test('mcp-assistant-only-hidden', async (t) => {
+  const app = await startFakeApp();
+  const s = spawnServer({ TRUEBEX_AGENT_INSTANCES_DIR: app.instances });
+  t.after(async () => { await s.close(); await app.close(); });
+  const list = await s.request('tools/list', { _meta: modernMeta() });
+  assert.ok(!list.result.tools.some((x) => x.name === 'propose_variants'));
+  const call = await s.request('tools/call', { _meta: modernMeta(), name: 'propose_variants', arguments: { variants: [] } });
+  assert.equal(call.error.code, -32602);
+});
+
 test('mcp-no-app', async (t) => {
   const s = spawnServer({ TRUEBEX_AGENT_INSTANCES_DIR: emptyInstances() });
   t.after(() => s.close());
   const list = await s.request('tools/list', { _meta: modernMeta() });
-  assert.equal(list.result.tools.length, 11);
+  assert.equal(list.result.tools.length, 13);
   const call = await s.request('tools/call', { _meta: modernMeta(), name: 'read_state', arguments: {} });
   assert.equal(call.result.isError, true);
   assert.equal(call.result.structuredContent.code, 'app_not_running');
@@ -218,7 +241,7 @@ test('mcp-bundle-manifest', () => {
   assert.equal(manifest.server.entry_point, 'truebex-mcp.mjs');
   assert.deepEqual(manifest.server.mcp_config.args, ['${__dirname}/truebex-mcp.mjs']);
   const { doc } = loadToolsFile(join(MCP_DIR, 'tools.json'));
-  assert.deepEqual(manifest.tools.map((x) => x.name), doc.tools.map((x) => x.name));
+  assert.deepEqual(manifest.tools.map((x) => x.name), publicTools(doc).map((x) => x.name));
 
   const entries = readZip(readFileSync(join(MCP_DIR, 'truebex.mcpb')));
   const names = [...entries.keys()].sort();
