@@ -171,7 +171,8 @@ Launch: in the worktree, `powershell -NoProfile -ExecutionPolicy Bypass -File sc
   11), 92 argument rows (PF12b 83; +4 `get_tunables`, +5 `set_tunable`), 3 resources, 16 error codes. The app's node
   tests: 10 passed, 0 failed (PF12b 9; `mcp-bundle-manifest` still filtered out). pytest 718 → 724 collected (the 6 new
   tests; 5 package tests and 1 site test changed). The package, site and PF12c files: 22 passed, then with
-  `test_projects.py` and `test_mobile.py` 63 passed + 1 skipped on SQLite.
+  `test_projects.py` and `test_mobile.py` 63 passed + 1 skipped on SQLite. The verify gate (lint, build, pytest on
+  SQLite, `out/` check): GREEN in 540 s, 707 passed and 17 skipped (the Postgres-only tests), pytest 439 s.
 * **Tests first:** on `master` 988334f with `out/` built from it, 11 failed: `test_mcp_package_discover_and_legacy_initialize`
   (11 names listed, not §5's 14 less `propose_variants`), `test_mcp_package_tools_list_and_replay` (11 == 11 − 1),
   `test_mcp_package_app_node_tests` (9 run), `test_tools_json_follows_the_contract` (1.0.0), `test_docs_generated_from_tools_json`
