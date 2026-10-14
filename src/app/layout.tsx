@@ -40,7 +40,8 @@ export const metadata: Metadata = {
   ],
   authors: [{ name: "Truebex" }],
   creator: "Truebex",
-  alternates: { canonical: "/" },
+  // No canonical here (PF13b): a page names its own (src/lib/seo.ts
+  // pageMetadata), and a private page names none rather than the home page.
   openGraph: {
     type: "website",
     locale: "en_US",
