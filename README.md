@@ -1410,3 +1410,13 @@ cd server
 
 The first ends `pytest exit 0`. The second fails the six wake-up tests (each read waits its whole 25 s first) and
 passes the two guards.
+
+## MCP package and docs on agent-interface 1.2.0 (PF12c)
+
+`packages/mcp/` and `src/content/tools.json` hold the app's `tools.json` 1.2.0: 14 tools, of which the MCP server lists
+13 (TU1's `get_tunables` and `set_tunable` among them). The in-app assistant's `propose_variants` is never on MCP, so
+`/developers/mcp/` documents the 13 only (`mcpTools()` in `src/lib/developer-docs.ts` keeps the tools whose
+`com.truebex/surfaces` include `mcp`; none named means both). The project log accepts `set_tunable` as a log-safe
+action (`LOG_SAFE_TOOLS` in `server/app/projects/ops.py`). A tunable names no entity, so its `touched` is empty and
+never conflicts. Re-sync and check as in the PF12b section above; the PF12c checks are
+`server\tests\test_pf12c_agent_interface.py`. Doc: `docs/roadmap/40/PF12c-agent-interface-1-2-0.md`.
