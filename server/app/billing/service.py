@@ -46,6 +46,11 @@ LISTING_TIER_PREFIX = "listing_"
 # Trials are subscriptions rows too (licence contract 5.6).
 TRIAL_PROVIDER = "trial"
 
+# PF3e: providers where an organisation pays on a customer of its own
+# (org_billing.org_customer), never on its buyer's. Paddle has one customer
+# per e-mail address, so there it is the buyer's (PF3a, Risks).
+ORG_CUSTOMER_PROVIDERS = ("stripe",)
+
 
 def _rank(sub: Subscription) -> tuple[int, int]:
     # Higher tier wins (ranks come from catalogue.json); on a tie a paid row
@@ -128,8 +133,11 @@ def customer_id(db: Session, user: User, provider: str) -> str | None:
     """The provider's customer id from the user's latest subscription there:
     the customer their own checkouts, top-ups and invoices use. A supplier's
     listing plan (PF8) is on the supplier's own customer (listing_customer),
-    never this one (PF8b)."""
-    sub = db.scalar(
+    never this one (PF8b), and so is an organisation's Stripe subscription
+    (PF3a) on the organisation's (org_billing.org_customer, PF3e). Paddle
+    keeps one customer per e-mail address, so there what a person buys for
+    an organisation is on their own customer, and it still counts."""
+    query = (
         select(Subscription)
         .where(
             Subscription.user_id == user.id,
@@ -139,6 +147,9 @@ def customer_id(db: Session, user: User, provider: str) -> str | None:
         )
         .order_by(Subscription.updated_at.desc())
     )
+    if provider in ORG_CUSTOMER_PROVIDERS:
+        query = query.where(Subscription.organisation_id.is_(None))
+    sub = db.scalar(query)
     return sub.provider_customer_id if sub else None
 
 
