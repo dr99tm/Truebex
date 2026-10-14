@@ -237,9 +237,12 @@ def _upload_for(db: Session, caller: UploadCaller, share: Share) -> dict | None:
     session = db.get(UploadSession, share.upload_id) if share.upload_id else None
     if session is not None and clock.aware(session.expires_at) > now:
         return uploads.opened_json(db, session)
-    if share.state != "uploading" and share.pending_manifest is None:
+    if share.state == "live" and share.pending_manifest is not None:
+        waiting = share.pending_manifest  # an Update still uploading
+    elif share.state == "uploading":
+        waiting = share.manifest
+    else:
         return None
-    waiting = share.pending_manifest if share.pending_manifest is not None else share.manifest
     session = uploads.open_session(db, caller, purpose="share", files=_upload_files(waiting))
     share.upload_id = session.upload_id
     db.add(share)
@@ -469,8 +472,16 @@ def publish(db: Session, user: User, share_id: str) -> Share:
     store.put(key, image, content_type="image/jpeg")
 
     uploads.add_refs(db, user.id, shas)
+    old = share.manifest if update else None
     if update:
-        _swap_in(db, share, m)
+        # 5.5 of an Update: the share serves the new bundle from now on.
+        share.manifest = m
+        share.bundle_id = m["bundle_id"]
+        share.bytes = manifest.total_bytes(m)
+        share.watermark = bool(m.get("watermark"))
+        share.version = (share.version or 1) + 1
+        share.pending_bundle_id = None
+        share.pending_manifest = None
     else:
         share.state = "live"
         share.expires_at = now + timedelta(days=share.days)
@@ -486,28 +497,28 @@ def publish(db: Session, user: User, share_id: str) -> Share:
         raise ContractError(
             "replace_conflict", 409, "Another share already serves this bundle.", {"bundle_id": m.get("bundle_id")}
         )
+    if old is not None:
+        _drop_replaced(db, share, old)
     return share
 
 
-def _swap_in(db: Session, share: Share, m: dict) -> None:
-    """5.5 of an Update: the share serves the new bundle from now on. The old
-    files lose this share's ref (dropped when nothing else holds them), and
-    derivatives of panoramas the new bundle no longer has go."""
-    old = share.manifest
-    share.manifest = m
-    share.bundle_id = m["bundle_id"]
-    share.bytes = manifest.total_bytes(m)
-    share.watermark = bool(m.get("watermark"))
-    share.version = (share.version or 1) + 1
-    share.pending_bundle_id = None
-    share.pending_manifest = None
+def _drop_replaced(db: Session, share: Share, old: dict) -> None:
+    """After an Update is live: the old bundle's files lose this share's ref
+    (a blob nothing else holds is deleted) and derivatives of panoramas the
+    new bundle no longer has go. Run after the swap is committed, so a failed
+    swap never loses a file the share still serves."""
     uploads.drop_refs(db, share.account_id, manifest.file_shas(old))
-    keep = {p["file"] for p in manifest.panoramas(m)}
+    keep = {p["file"] for p in manifest.panoramas(share.manifest)}
+    stale = [
+        d for d in db.scalars(select(ShareDerivative).where(ShareDerivative.share_id == share.share_id)).all()
+        if d.source_sha256 not in keep
+    ]
+    for d in stale:
+        db.delete(d)
+    db.commit()
     store = get_store()
-    for d in db.scalars(select(ShareDerivative).where(ShareDerivative.share_id == share.share_id)).all():
-        if d.source_sha256 not in keep:
-            store.delete(d.storage_key)
-            db.delete(d)
+    for d in stale:
+        store.delete(d.storage_key)
 
 
 # --- 5.6-5.9 ------------------------------------------------------------------------
