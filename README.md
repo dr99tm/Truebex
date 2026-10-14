@@ -1429,3 +1429,27 @@ the page's own URL, no noindex page names another one, and each sitemap URL name
 action (`LOG_SAFE_TOOLS` in `server/app/projects/ops.py`). A tunable names no entity, so its `touched` is empty and
 never conflicts. Re-sync and check as in the PF12b section above; the PF12c checks are
 `server\tests\test_pf12c_agent_interface.py`. Doc: `docs/roadmap/40/PF12c-agent-interface-1-2-0.md`.
+
+## Organisations on their own Stripe customer (PF3e)
+
+An organisation's Stripe checkout opens on the organisation's own Stripe customer, never on the buyer's:
+* on the customer of the organisation's latest subscription, unless that customer also holds a person's own plan, a
+  listing plan or another organisation's (`billing.org_billing.org_customer`);
+* otherwise on a new customer made from the buyer's e-mail.
+
+So the organisation's VAT id, name and address never reach the buyer's own Pro: it is not a business purchase, and
+Billing keeps their EU withdrawal. `billing.service.customer_id` (the buyer's Pro and top-up checkouts, personal
+invoices and portal) skips organisation subscriptions on Stripe. The organisation's portal, invoices, seat and plan
+changes are on its own customer. Paddle is unchanged: one customer per e-mail. Doc:
+`docs/roadmap/40/PF3e-organisation-stripe-customer.md`.
+
+To see which customer each checkout opens on, without Stripe keys (Stripe's side is stood in for in-process):
+
+```powershell
+cd server
+$env:DATABASE_URL="sqlite:///./pf3e-test.db"; $env:EU_WITHDRAWAL_ENABLED="true"
+.venv\Scripts\python.exe scripts\seed_org_checkouts.py --email pf3e@example.com
+```
+
+The organisation's Team opens on a new customer (`cus_sim_1`, with DE123456789) and the buyer's own Pro on another
+(`cus_sim_2`). The Pro payment is not business, and the EU withdrawal is offered.
