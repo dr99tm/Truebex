@@ -140,4 +140,4 @@ Optional, app side (not run by this task): an app build started with `-mwmarket=
   * PF7 follow-up: D2's category names, now `double-beds` / `single-beds` / a bedside path as well as `coffee-tables` / sconces.
   * `scripts/sync-contract-fixtures.ps1` (PF14d's): its closing hint names `test_<contract>.py` and says to update the folder's README; for the marketplace folder the tests are `test_market_contract_fixtures.py` + `test_pf7d_bedroom_set.py` and the README is the app's. A wording fix in the script whenever it is next touched.
   * The next re-copy of this folder: run the script, update `APP_BLOBS` from the app's `git ls-tree`, then the counts the tests name.
-* **Verify gate** (`scripts/autopilot-verify.ps1`, on the docs commit): see the commit that fills this line.
+* **Verify gate** (`scripts/autopilot-verify.ps1`, on the docs commit ebb6d74): green in 570 s; lint, build, pytest 706 passed + 17 skipped (the Postgres-only tests) of 723 collected in 389 s.
