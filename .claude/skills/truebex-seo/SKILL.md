@@ -32,6 +32,7 @@ real searches, share-ready previews, and repeated distribution.
 6. Structured data where it fits: `FAQPage` (Q&A), `TechArticle` (docs), `SoftwareApplication` (product), `HowTo` (step guides), `BreadcrumbList` for nested pages.
 7. Add to `sitemap.ts`. Build and check `out/<page>/index.html` contains the title, description, canonical and JSON-LD.
 8. Performance: no full-screen hidden images, no `priority` on below-the-fold media, keep JS per page lean (Lighthouse ≥ 90 on mobile is the target).
+9. A private page (dashboard, supplier portal, checkout, a per-person or redirect page) is `noindex` and has no inherited canonical: the root layout names none (PF13b), so it names none either (`alternates: { canonical: null }` under a layout that does); `server/tests/test_site_pf13b.py` fails any canonical that is not the page's own URL.
 
 ## Keyword map (search intent → page)
 

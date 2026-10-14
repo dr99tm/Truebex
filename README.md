@@ -1410,3 +1410,12 @@ cd server
 
 The first ends `pytest exit 0`. The second fails the six wake-up tests (each read waits its whole 25 s first) and
 passes the two guards.
+
+## Canonicals on private pages (PF13b)
+
+The root layout (`src/app/layout.tsx`) names no canonical. A public page names its own: `pageMetadata` in
+`src/lib/seo.ts`, or `alternates.canonical` with the trailing slash. A private page (the dashboard, the supplier
+portal, a checkout, a per-person page, `/account/`'s redirect) is `noindex` and names none, so only the home page
+names `https://truebex.com/`. `server/tests/test_site_pf13b.py` checks every page in the built `out/`: a canonical is
+the page's own URL, no noindex page names another one, and each sitemap URL names itself. Doc:
+`docs/roadmap/40/PF13b-private-pages-canonical.md`.
