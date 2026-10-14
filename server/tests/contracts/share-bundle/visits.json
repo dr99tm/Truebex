@@ -1,43 +1,46 @@
 {
-  "note": "POST /s/{slug}/visits at each `at` (UTC); GET /shares/{id} then reports `expect` as `visits` (by_day: the last 30 days, oldest first; count = visits, unique = distinct visitors that day).",
-  "visits": [
+  "by_day": [
     {
-      "visitor": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-      "at": "2026-10-08T21:00:00Z"
+      "count": 4,
+      "days_ago": 0
     },
     {
-      "visitor": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-      "at": "2026-10-09T08:00:00Z"
+      "count": 7,
+      "days_ago": 1
     },
     {
-      "visitor": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-      "at": "2026-10-09T08:05:00Z"
+      "count": 3,
+      "days_ago": 2
     },
     {
-      "visitor": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
-      "at": "2026-10-09T09:00:00Z"
+      "count": 6,
+      "days_ago": 3
     },
     {
-      "visitor": "cccccccccccccccccccccccccccccccc",
-      "at": "2026-10-09T23:59:59Z"
+      "count": 2,
+      "days_ago": 4
+    },
+    {
+      "count": 5,
+      "days_ago": 5
+    },
+    {
+      "count": 1,
+      "days_ago": 6
+    },
+    {
+      "count": 6,
+      "days_ago": 8
+    },
+    {
+      "count": 4,
+      "days_ago": 11
+    },
+    {
+      "count": 3,
+      "days_ago": 15
     }
   ],
-  "now": "2026-10-10T00:00:00Z",
-  "expect": {
-    "total": 5,
-    "unique": 4,
-    "last_at": "2026-10-09T23:59:59Z",
-    "by_day": [
-      {
-        "day": "2026-10-08",
-        "count": 1,
-        "unique": 1
-      },
-      {
-        "day": "2026-10-09",
-        "count": 4,
-        "unique": 3
-      }
-    ]
-  }
+  "note": "the visits the stub reports for 5.7 (days ago -> count); a manual -mwshare=stub run seeds every new share with them",
+  "unique": 17
 }

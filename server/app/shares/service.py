@@ -5,7 +5,14 @@ visit counter; expiry and purge.
 Limits per tier come from the account's plan (`seats.seat_source`):
 `limits.share_links` live shares; `limits.share_days` and
 `limits.share_bytes` when the matrix has them (a MINOR proposal to
-licence-api §6.3), else SHARE_MAX_DAYS and SHARE_MAX_BYTES.
+licence-api §6.3), else SHARE_MAX_DAYS and SHARE_MAX_BYTES. A 403
+`quota_exceeded` names the caller's plan and the lowest plan that lifts it.
+
+PF5b (share-bundle 1.1): 5.4 with `replace_share_id` is an Update. A live
+share keeps serving its bundle while the new one uploads (the app's stub:
+state `live`, its `version` and `bundle_id`; the new title and expiry apply
+at once); 5.5 swaps in the new files, `bundle_id` and `version` + 1, drops
+the old files nothing else uses and keeps the slug, the url and the visits.
 """
 
 import math
@@ -23,7 +30,7 @@ from ..contract_http import ContractError
 from ..licence import clock, seats
 from ..licence.ids import uuid7_hex
 from ..models import User
-from ..plans import get_plan
+from ..plans import PLANS, get_plan
 from ..storage import get_store
 from ..uploads import service as uploads
 from ..uploads.credentials import UploadCaller
@@ -52,8 +59,7 @@ class Limits:
     bytes: int
 
 
-def limits_for(db: Session, user: User) -> Limits:
-    tier = get_plan(seats.seat_source(db, user).plan)
+def _plan_limits(tier) -> Limits:
     s = get_settings()
     days = tier.limits.get("share_days")
     size = tier.limits.get("share_bytes")
@@ -64,6 +70,19 @@ def limits_for(db: Session, user: User) -> Limits:
     )
 
 
+def limits_for(db: Session, user: User) -> Limits:
+    return _plan_limits(get_plan(seats.seat_source(db, user).plan))
+
+
+def _plan_data(db: Session, user: User, admits) -> dict:
+    """403 `quota_exceeded`'s `plan` (the caller's) and `upgrade_to`: the
+    lowest plan above it whose limits admit the request, or None (PF5b; the
+    app's Upgrade dialog shows it)."""
+    plan = get_plan(seats.seat_source(db, user).plan)
+    higher = sorted((t for t in PLANS.values() if t.rank > plan.rank), key=lambda t: t.rank)
+    return {"plan": plan.id, "upgrade_to": next((t.id for t in higher if admits(_plan_limits(t))), None)}
+
+
 def limits_json(lim: Limits) -> dict:
     return {"share_links": lim.links, "share_days": lim.days, "share_bytes": lim.bytes}
 
@@ -72,8 +91,19 @@ def share_url(slug: str | None) -> str | None:
     return f"{get_settings().share_base}/view/{slug}" if slug else None
 
 
-def card_url(slug: str) -> str:
-    return f"{get_settings().share_base}/s/{slug}/card.jpg"
+def card_url(slug: str, version: int = 1) -> str:
+    """The link-preview image. After an Update its URL changes (`?v=`), so a
+    preview cache that keys on the image URL fetches the new one."""
+    url = f"{get_settings().share_base}/s/{slug}/card.jpg"
+    return f"{url}?v={version}" if version > 1 else url
+
+
+def download_name(name: object) -> str:
+    """The name a file downloads as: the last segment of its manifest name
+    (a name may hold folders, PF5b), never a quote or a control character."""
+    last = next((part for part in reversed(str(name or "").split("/")) if part), "")
+    clean = "".join("_" if ch in '"\\' or ord(ch) < 32 or ord(ch) == 127 else ch for ch in last).strip()
+    return clean or "file"
 
 
 def _gone(share: Share) -> ContractError:
@@ -132,7 +162,10 @@ def _check_slots(db: Session, user: User, lim: Limits, now: datetime, *, exclude
             "quota_exceeded",
             403,
             f"Your plan keeps {lim.links} share {plural} live at a time. End one to share again.",
-            {"kind": "share_links", "limit": lim.links, "used": used},
+            {
+                "kind": "share_links", "limit": lim.links, "used": used,
+                **_plan_data(db, user, lambda t: t.links is None or used < t.links),
+            },
         )
 
 
@@ -174,7 +207,9 @@ def visits_detail(db: Session, share_id: str, now: datetime) -> dict:
 def share_json(share: Share, visits: dict | None = None) -> dict:
     return {
         "share_id": share.share_id,
+        # 1.1: the bundle the share serves now, and 1 + its Updates.
         "bundle_id": share.bundle_id,
+        "version": share.version or 1,
         "slug": share.slug,
         "url": share_url(share.slug),
         "title": share.title,
@@ -202,13 +237,24 @@ def _upload_for(db: Session, caller: UploadCaller, share: Share) -> dict | None:
     session = db.get(UploadSession, share.upload_id) if share.upload_id else None
     if session is not None and clock.aware(session.expires_at) > now:
         return uploads.opened_json(db, session)
-    if share.state != "uploading":
+    if share.state != "uploading" and share.pending_manifest is None:
         return None
-    session = uploads.open_session(db, caller, purpose="share", files=_upload_files(share.manifest))
+    waiting = share.pending_manifest if share.pending_manifest is not None else share.manifest
+    session = uploads.open_session(db, caller, purpose="share", files=_upload_files(waiting))
     share.upload_id = session.upload_id
     db.add(share)
     db.commit()
     return uploads.opened_json(db, session)
+
+
+def _by_bundle(db: Session, account_id: int, bundle_id: str) -> Share | None:
+    """The share serving this bundle, or the one whose Update waits with it."""
+    return db.scalar(
+        select(Share)
+        .where(Share.account_id == account_id, (Share.bundle_id == bundle_id) | (Share.pending_bundle_id == bundle_id))
+        .order_by(Share.created_at)
+        .limit(1)
+    )
 
 
 def _upload_files(m: dict) -> list[dict]:
@@ -225,10 +271,12 @@ def _check_days(days: int, lim: Limits, now: datetime) -> None:
         )
 
 
-def create(db: Session, caller: UploadCaller, user: User, *, title: str, days: int, m: object) -> tuple[Share, dict | None, bool]:
-    """Returns (share, upload, created)."""
+def create(
+    db: Session, caller: UploadCaller, user: User, *, title: str, days: int, m: object, replace: str | None = None
+) -> tuple[Share, dict | None, bool]:
+    """Returns (share, upload, created). `replace` is 1.1's `replace_share_id`."""
     if isinstance(m, dict) and isinstance(m.get("bundle_id"), str):
-        existing = db.scalar(select(Share).where(Share.account_id == user.id, Share.bundle_id == m["bundle_id"]))
+        existing = _by_bundle(db, user.id, m["bundle_id"])
         if existing is not None:
             refresh_state(db, existing)
             return existing, _upload_for(db, caller, existing), False
@@ -246,8 +294,10 @@ def create(db: Session, caller: UploadCaller, user: User, *, title: str, days: i
     if size > lim.bytes:
         raise ContractError(
             "quota_exceeded", 403, f"A share holds at most {lim.bytes} bytes on your plan; this one is {size}.",
-            {"kind": "share_bytes", "limit": lim.bytes, "used": size},
+            {"kind": "share_bytes", "limit": lim.bytes, "used": size, **_plan_data(db, user, lambda t: size <= t.bytes)},
         )
+    if replace is not None:
+        return _replace(db, caller, user, replace, title=title, days=days, m=m, size=size, now=now)
     _check_slots(db, user, lim, now)
     session = uploads.open_session(db, caller, purpose="share", files=_upload_files(m))
     share = Share(
@@ -269,7 +319,46 @@ def create(db: Session, caller: UploadCaller, user: User, *, title: str, days: i
         db.commit()
     except IntegrityError:  # the same bundle_id raced in
         db.rollback()
-        existing = db.scalar(select(Share).where(Share.account_id == user.id, Share.bundle_id == m["bundle_id"]))
+        existing = _by_bundle(db, user.id, m["bundle_id"])
+        if existing is None:
+            raise
+        return existing, _upload_for(db, caller, existing), False
+    return share, uploads.opened_json(db, session), True
+
+
+def _replace(
+    db: Session, caller: UploadCaller, user: User, share_id: str, *, title: str, days: int, m: dict, size: int, now: datetime
+) -> tuple[Share, dict | None, bool]:
+    """5.4 with `replace_share_id` (1.1): the new manifest goes into that share.
+    It takes no new live-share slot. An ended share answers 409 `replace_conflict`."""
+    share = _owned(db, user, share_id)
+    if share.state in ("expired", "revoked"):
+        raise ContractError(
+            "replace_conflict", 409, f"That share has ended ({share.state}). Share again to make a new link.",
+            {"state": share.state, "share_id": share.share_id},
+        )
+    session = uploads.open_session(db, caller, purpose="share", files=_upload_files(m))
+    share.title = title
+    share.days = days
+    share.upload_id = session.upload_id
+    share.expires_at = now + timedelta(days=days)
+    if share.state == "uploading":
+        # Nothing is served yet: the share takes the new bundle at once.
+        share.bundle_id = m["bundle_id"]
+        share.manifest = m
+        share.bytes = size
+        share.watermark = bool(m.get("watermark"))
+        share.pending_bundle_id = share.pending_manifest = None
+    else:
+        # Live: it keeps serving its bundle until 5.5 publishes this one.
+        share.pending_bundle_id = m["bundle_id"]
+        share.pending_manifest = m
+    db.add(share)
+    try:
+        db.commit()
+    except IntegrityError:  # the new bundle_id raced into another share
+        db.rollback()
+        existing = _by_bundle(db, user.id, m["bundle_id"])
         if existing is None:
             raise
         return existing, _upload_for(db, caller, existing), False
@@ -311,6 +400,13 @@ def _verify_files(m: dict, blobs: dict) -> None:
                 size = None
             if size != (item.get("width"), item.get("height")):
                 errors.append({"path": f"{kind}[{i}].file", "rule": "file_content"})
+    cover = manifest.cover(m)
+    if cover is not None:
+        try:
+            with store.open(blobs[cover].storage_key) as fh:
+                Image.open(fh).verify()
+        except Exception:
+            errors.append({"path": "cover", "rule": "file_content"})
     if errors:
         for e in errors:
             e["message"] = manifest.MESSAGES["file_content"]
@@ -321,11 +417,12 @@ def _verify_files(m: dict, blobs: dict) -> None:
 
 def publish(db: Session, user: User, share_id: str) -> Share:
     share = _owned(db, user, share_id)
-    if share.state == "live":
+    update = share.pending_manifest is not None
+    if share.state == "live" and not update:
         return share
-    if share.state != "uploading":
+    if share.state not in ("uploading", "live"):
         raise _gone(share)
-    m = share.manifest
+    m = share.pending_manifest if update else share.manifest
     shas = manifest.file_shas(m)
     missing = uploads.missing_files(db, user.id, shas)
     if missing:
@@ -334,8 +431,8 @@ def publish(db: Session, user: User, share_id: str) -> Share:
             "upload_incomplete", 422, f"This share is still missing {n} file{'s' if n != 1 else ''}.", {"missing": missing}
         )
     now = clock.now()
-    lim = limits_for(db, user)
-    _check_slots(db, user, lim, now, exclude=share.share_id)
+    if not update:
+        _check_slots(db, user, limits_for(db, user), now, exclude=share.share_id)
     blobs = uploads.blobs_by_sha(db, user.id, shas)
     _verify_files(m, blobs)
 
@@ -358,21 +455,59 @@ def publish(db: Session, user: User, share_id: str) -> Share:
                 )
         if start is not None and sha == start["file"]:
             start_image = largest
-    render_image = None
-    if start_image is None and manifest.renders(m):
-        render_image = derivatives.open_rgb(store, blobs[manifest.renders(m)[0]["file"]].storage_key, draft_width=2400)
     key = f"shares/{share.share_id}/card.jpg"
-    store.put(key, card.compose(card.background_for(m, start_image, render_image), share.title), content_type="image/jpeg")
+    cover = manifest.cover(m)
+    if cover is not None:
+        # 1.1: the app's cover is the link preview (fitted to 1200 x 630).
+        with store.open(blobs[cover].storage_key) as fh:
+            image = card.from_cover(fh.read())
+    else:
+        render_image = None
+        if start_image is None and manifest.renders(m):
+            render_image = derivatives.open_rgb(store, blobs[manifest.renders(m)[0]["file"]].storage_key, draft_width=2400)
+        image = card.compose(card.background_for(m, start_image, render_image), share.title)
+    store.put(key, image, content_type="image/jpeg")
 
     uploads.add_refs(db, user.id, shas)
+    if update:
+        _swap_in(db, share, m)
+    else:
+        share.state = "live"
+        share.expires_at = now + timedelta(days=share.days)
+        share.version = 1
     share.card_key = key
     share.slug = share.slug or _mint_slug(db)
-    share.state = "live"
     share.published_at = now
-    share.expires_at = now + timedelta(days=share.days)
     db.add(share)
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:  # another share of this account took the bundle_id meanwhile
+        db.rollback()
+        raise ContractError(
+            "replace_conflict", 409, "Another share already serves this bundle.", {"bundle_id": m.get("bundle_id")}
+        )
     return share
+
+
+def _swap_in(db: Session, share: Share, m: dict) -> None:
+    """5.5 of an Update: the share serves the new bundle from now on. The old
+    files lose this share's ref (dropped when nothing else holds them), and
+    derivatives of panoramas the new bundle no longer has go."""
+    old = share.manifest
+    share.manifest = m
+    share.bundle_id = m["bundle_id"]
+    share.bytes = manifest.total_bytes(m)
+    share.watermark = bool(m.get("watermark"))
+    share.version = (share.version or 1) + 1
+    share.pending_bundle_id = None
+    share.pending_manifest = None
+    uploads.drop_refs(db, share.account_id, manifest.file_shas(old))
+    keep = {p["file"] for p in manifest.panoramas(m)}
+    store = get_store()
+    for d in db.scalars(select(ShareDerivative).where(ShareDerivative.share_id == share.share_id)).all():
+        if d.source_sha256 not in keep:
+            store.delete(d.storage_key)
+            db.delete(d)
 
 
 # --- 5.6-5.9 ------------------------------------------------------------------------
@@ -475,7 +610,7 @@ def page_urls(db: Session, share: Share) -> dict:
         blob = blobs.get(f["sha256"])
         if blob is None:
             continue
-        name = f.get("name") if f["content_type"] == "application/pdf" else None
+        name = download_name(f.get("name")) if f["content_type"] == "application/pdf" else None
         files[f["sha256"]] = store.signed_get_url(blob.storage_key, expires_in=ttl, filename=name)
     derived: dict[str, dict] = {}
     for d in db.scalars(select(ShareDerivative).where(ShareDerivative.share_id == share.share_id)):
@@ -490,7 +625,7 @@ def page_urls(db: Session, share: Share) -> dict:
 
 def page_data(db: Session, share: Share) -> dict:
     urls = page_urls(db, share)
-    m = dict(share.manifest)
+    m = manifest.public(share.manifest)  # 1.1's plan and app_build stay private
     m["files"] = [{**f, "url": urls["files"].get(f["sha256"])} for f in manifest.files(m)]
     m["panoramas"] = [{**p, "derivatives": urls["derived"].get(p.get("file"), {})} for p in manifest.panoramas(m)]
     return {
@@ -501,6 +636,7 @@ def page_data(db: Session, share: Share) -> dict:
         "watermark": share.watermark,
         "designed_in": "Truebex",
         "url": share_url(share.slug),
+        "version": share.version or 1,
         "manifest": m,
     }
 

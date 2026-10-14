@@ -39,15 +39,15 @@ OPERATIONS: dict[str, dict[str, Any]] = {
     'jobs_list': {'method': 'GET', 'path': '/v1/jobs', 'path_params': [], 'query': ['project_id', 'kind', 'state', 'cursor', 'limit'], 'headers': [], 'body': None, 'body_props': [], 'scope': 'projects:read', 'contract': 'render-jobs/1.0'},
     'jobs_output': {'method': 'GET', 'path': '/v1/jobs/{job_id}/output', 'path_params': ['job_id'], 'query': [], 'headers': [], 'body': None, 'body_props': [], 'scope': 'projects:read', 'contract': 'render-jobs/1.0'},
     'jobs_usage': {'method': 'GET', 'path': '/v1/jobs/usage', 'path_params': [], 'query': [], 'headers': [], 'body': None, 'body_props': [], 'scope': 'projects:read', 'contract': 'render-jobs/1.0'},
-    'uploads_create': {'method': 'POST', 'path': '/v1/uploads', 'path_params': [], 'query': [], 'headers': [], 'body': 'json', 'body_props': ['files', 'purpose'], 'scope': 'shares:write', 'contract': 'share-bundle/1.0'},
-    'uploads_get': {'method': 'GET', 'path': '/v1/uploads/{upload_id}', 'path_params': ['upload_id'], 'query': [], 'headers': [], 'body': None, 'body_props': [], 'scope': 'shares:write', 'contract': 'share-bundle/1.0'},
-    'uploads_put_part': {'method': 'PUT', 'path': '/v1/uploads/{upload_id}/files/{sha256}/parts/{n}', 'path_params': ['upload_id', 'sha256', 'n'], 'query': [], 'headers': ['x-part-sha256'], 'body': 'binary', 'body_props': [], 'scope': 'shares:write', 'contract': 'share-bundle/1.0'},
-    'shares_create': {'method': 'POST', 'path': '/v1/shares', 'path_params': [], 'query': [], 'headers': [], 'body': 'json', 'body_props': ['expires_in_days', 'manifest', 'title'], 'scope': 'shares:write', 'contract': 'share-bundle/1.0'},
-    'shares_get': {'method': 'GET', 'path': '/v1/shares/{share_id}', 'path_params': ['share_id'], 'query': [], 'headers': [], 'body': None, 'body_props': [], 'scope': 'shares:write', 'contract': 'share-bundle/1.0'},
-    'shares_list': {'method': 'GET', 'path': '/v1/shares', 'path_params': [], 'query': ['state'], 'headers': [], 'body': None, 'body_props': [], 'scope': 'shares:write', 'contract': 'share-bundle/1.0'},
-    'shares_publish': {'method': 'POST', 'path': '/v1/shares/{share_id}/publish', 'path_params': ['share_id'], 'query': [], 'headers': [], 'body': None, 'body_props': [], 'scope': 'shares:write', 'contract': 'share-bundle/1.0'},
-    'shares_revoke': {'method': 'DELETE', 'path': '/v1/shares/{share_id}', 'path_params': ['share_id'], 'query': [], 'headers': [], 'body': None, 'body_props': [], 'scope': 'shares:write', 'contract': 'share-bundle/1.0'},
-    'shares_update': {'method': 'PATCH', 'path': '/v1/shares/{share_id}', 'path_params': ['share_id'], 'query': [], 'headers': [], 'body': 'json', 'body_props': ['expires_at', 'title'], 'scope': 'shares:write', 'contract': 'share-bundle/1.0'},
+    'uploads_create': {'method': 'POST', 'path': '/v1/uploads', 'path_params': [], 'query': [], 'headers': [], 'body': 'json', 'body_props': ['files', 'purpose'], 'scope': 'shares:write', 'contract': 'share-bundle/1.1'},
+    'uploads_get': {'method': 'GET', 'path': '/v1/uploads/{upload_id}', 'path_params': ['upload_id'], 'query': [], 'headers': [], 'body': None, 'body_props': [], 'scope': 'shares:write', 'contract': 'share-bundle/1.1'},
+    'uploads_put_part': {'method': 'PUT', 'path': '/v1/uploads/{upload_id}/files/{sha256}/parts/{n}', 'path_params': ['upload_id', 'sha256', 'n'], 'query': [], 'headers': ['x-part-sha256'], 'body': 'binary', 'body_props': [], 'scope': 'shares:write', 'contract': 'share-bundle/1.1'},
+    'shares_create': {'method': 'POST', 'path': '/v1/shares', 'path_params': [], 'query': [], 'headers': [], 'body': 'json', 'body_props': ['expires_in_days', 'manifest', 'replace_share_id', 'title'], 'scope': 'shares:write', 'contract': 'share-bundle/1.1'},
+    'shares_get': {'method': 'GET', 'path': '/v1/shares/{share_id}', 'path_params': ['share_id'], 'query': [], 'headers': [], 'body': None, 'body_props': [], 'scope': 'shares:write', 'contract': 'share-bundle/1.1'},
+    'shares_list': {'method': 'GET', 'path': '/v1/shares', 'path_params': [], 'query': ['state'], 'headers': [], 'body': None, 'body_props': [], 'scope': 'shares:write', 'contract': 'share-bundle/1.1'},
+    'shares_publish': {'method': 'POST', 'path': '/v1/shares/{share_id}/publish', 'path_params': ['share_id'], 'query': [], 'headers': [], 'body': None, 'body_props': [], 'scope': 'shares:write', 'contract': 'share-bundle/1.1'},
+    'shares_revoke': {'method': 'DELETE', 'path': '/v1/shares/{share_id}', 'path_params': ['share_id'], 'query': [], 'headers': [], 'body': None, 'body_props': [], 'scope': 'shares:write', 'contract': 'share-bundle/1.1'},
+    'shares_update': {'method': 'PATCH', 'path': '/v1/shares/{share_id}', 'path_params': ['share_id'], 'query': [], 'headers': [], 'body': 'json', 'body_props': ['expires_at', 'title'], 'scope': 'shares:write', 'contract': 'share-bundle/1.1'},
     'market_categories': {'method': 'GET', 'path': '/market/categories', 'path_params': [], 'query': [], 'headers': [], 'body': None, 'body_props': [], 'scope': 'market:read', 'contract': 'marketplace-api/1.1'},
     'market_prices': {'method': 'POST', 'path': '/market/prices', 'path_params': [], 'query': [], 'headers': [], 'body': 'json', 'body_props': ['items', 'region'], 'scope': 'market:read', 'contract': 'marketplace-api/1.1'},
     'market_product': {'method': 'GET', 'path': '/market/products/{product_id}', 'path_params': ['product_id'], 'query': ['region'], 'headers': [], 'body': None, 'body_props': [], 'scope': 'market:read', 'contract': 'marketplace-api/1.1'},
@@ -274,11 +274,11 @@ class Uploads(Resource):
 class Shares(Resource):
     """The `shares` operations."""
 
-    def create(self, *, manifest: Any, title: str, expires_in_days: int | None = UNSET) -> models.ShareCreated:
+    def create(self, *, manifest: Any, title: str, expires_in_days: int | None = UNSET, replace_share_id: str | None = UNSET) -> models.ShareCreated:
         """Create a share from a bundle manifest and get its upload session (5.4); the same `bundle_id` returns the same share (200).
 
         POST /v1/shares · scope: shares:write"""
-        return self._call('shares_create', values={'expires_in_days': expires_in_days, 'manifest': manifest, 'title': title})
+        return self._call('shares_create', values={'expires_in_days': expires_in_days, 'manifest': manifest, 'replace_share_id': replace_share_id, 'title': title})
 
     def get(self, share_id: str) -> models.Share:
         """One share with its visits of the last 30 days (5.7).

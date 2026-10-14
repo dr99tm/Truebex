@@ -13,6 +13,9 @@ Arabic letters in Noto Sans Arabic (OFL, assets/NotoSansArabic-OFL.txt) and
 its other letters, digits and marks in Open Sans. If any letter cannot be
 joined or neither font has a character, the title is left off as before:
 never boxes, never unjoined or reversed letters.
+
+PF5b: a share-bundle 1.1 manifest's `cover` (a JPEG the app made for link
+previews) is the card instead (`from_cover`); without one, the card above.
 """
 
 import io
@@ -280,6 +283,20 @@ def compose(background: Image.Image | None, title: str) -> bytes:
     """The card as the JPEG stored at publish (shares/{share_id}/card.jpg)."""
     out = io.BytesIO()
     render(background, title).save(out, format="JPEG", quality=86, optimize=True)
+    return out.getvalue()
+
+
+def from_cover(data: bytes) -> bytes:
+    """PF5b (share-bundle 1.1): the app's `cover` as the link-preview card. A
+    1200 x 630 JPEG is served as it is, byte for byte (the app made it for
+    previews, with its watermark when the plan has one); any other size is
+    cropped to fill 1200 x 630, never stretched, and nothing is drawn on it."""
+    with Image.open(io.BytesIO(data)) as img:
+        if img.format == "JPEG" and img.size == (W, H):
+            return data
+        fitted = _cover(img.convert("RGB"))
+    out = io.BytesIO()
+    fitted.save(out, format="JPEG", quality=86, optimize=True)
     return out.getvalue()
 
 

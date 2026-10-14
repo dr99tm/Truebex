@@ -1,0 +1,146 @@
+{
+  "schema": "truebex-share/1",
+  "bundle_id": "4f2a9c1e7b3d4e5f8a6b0c2d1e3f5a7b",
+  "created_at": "2026-10-09T10:00:00Z",
+  "app_version": "1.1.0",
+  "watermark": true,
+  "project": {
+    "title": "House",
+    "project_id": null,
+    "units": "metric",
+    "region": "GB"
+  },
+  "start": "p1",
+  "panoramas": [
+    {
+      "id": "p1",
+      "title": "Living room",
+      "file": "d1e402c3129a348ae35b40fa1ff34302c1bf547251cd957579ea6dbbc8d9658e",
+      "width": 2048,
+      "height": 1024,
+      "storey": "Ground",
+      "eye_mm": [
+        4200,
+        1800,
+        1600
+      ],
+      "center_bearing_deg": 0,
+      "start_bearing_deg": 90,
+      "start_pitch_deg": 0,
+      "start_hfov_deg": 75,
+      "hotspots": [
+        {
+          "target": "p2",
+          "bearing_deg": 132.5,
+          "pitch_deg": -8,
+          "label": "Kitchen"
+        },
+        {
+          "target": "p3",
+          "bearing_deg": 270,
+          "pitch_deg": -8,
+          "label": "Hall"
+        }
+      ]
+    },
+    {
+      "id": "p2",
+      "title": "Kitchen",
+      "file": "7c02dd8750caec9a132876e61dc7b9b6c36ae09159a7e8bf1ff69b79b2f22bb1",
+      "width": 2048,
+      "height": 1024,
+      "storey": "Ground",
+      "eye_mm": [
+        8100,
+        600,
+        1600
+      ],
+      "center_bearing_deg": 90,
+      "start_bearing_deg": 120,
+      "start_pitch_deg": -5,
+      "start_hfov_deg": 80,
+      "hotspots": [
+        {
+          "target": "p1",
+          "bearing_deg": 340,
+          "pitch_deg": -8,
+          "label": "Living room"
+        }
+      ]
+    },
+    {
+      "id": "p3",
+      "title": "Hall",
+      "file": "deb6f409c39622b7b8bc86d77d85ca3fb7e22d33c4b5147c529c9cd47eeeb960",
+      "width": 2048,
+      "height": 1024,
+      "storey": "Ground",
+      "eye_mm": [
+        1000,
+        2100,
+        1600
+      ],
+      "center_bearing_deg": 0,
+      "start_bearing_deg": 73,
+      "start_pitch_deg": 0,
+      "start_hfov_deg": 75,
+      "hotspots": [
+        {
+          "target": "p1",
+          "bearing_deg": 73,
+          "pitch_deg": -8,
+          "label": "Living room"
+        }
+      ]
+    }
+  ],
+  "renders": [
+    {
+      "id": "r1",
+      "title": "Street view",
+      "file": "0acc3ac59bf0f1d11681ab9a0586785e69d017c0cd3c763207b7799ac09581b1",
+      "width": 640,
+      "height": 360
+    }
+  ],
+  "sheets": {
+    "file": "cd26e3c0e3c2ca7836434c7181c4972a80920eb13f3cbdd2f28c70d52b4ec92e",
+    "pages": 2,
+    "titles": [
+      "A-101 Ground floor plan",
+      "A-102 Sections"
+    ]
+  },
+  "files": [
+    {
+      "sha256": "d1e402c3129a348ae35b40fa1ff34302c1bf547251cd957579ea6dbbc8d9658e",
+      "bytes": 121495,
+      "content_type": "image/jpeg",
+      "name": "living-room.jpg"
+    },
+    {
+      "sha256": "7c02dd8750caec9a132876e61dc7b9b6c36ae09159a7e8bf1ff69b79b2f22bb1",
+      "bytes": 121519,
+      "content_type": "image/jpeg",
+      "name": "kitchen.jpg"
+    },
+    {
+      "sha256": "deb6f409c39622b7b8bc86d77d85ca3fb7e22d33c4b5147c529c9cd47eeeb960",
+      "bytes": 91870,
+      "content_type": "image/jpeg",
+      "name": "hall.jpg"
+    },
+    {
+      "sha256": "0acc3ac59bf0f1d11681ab9a0586785e69d017c0cd3c763207b7799ac09581b1",
+      "bytes": 14635,
+      "content_type": "image/jpeg",
+      "name": "street-view.jpg"
+    },
+    {
+      "sha256": "cd26e3c0e3c2ca7836434c7181c4972a80920eb13f3cbdd2f28c70d52b4ec92e",
+      "bytes": 2171,
+      "content_type": "application/pdf",
+      "name": "drawings.pdf"
+    }
+  ]
+}

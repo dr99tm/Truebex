@@ -1,11 +1,15 @@
-"""Write the share-bundle contract fixtures (share-bundle.md v1.0.0, §9).
+"""Write PF5's own share fixtures (share-bundle.md §9 shapes) into
+tests/fixtures/share/.
 
-    .venv\\Scripts\\python.exe scripts\\make_share_fixtures.py [--out DIR]
+    .venv\\Scripts\\python.exe scripts\\make_share_fixtures.py [--out DIR] [--check]
 
 Deterministic: re-running reproduces the JSON byte for byte, and the images
-and the PDF too with the same Pillow build. Until the app repo carries them
-in `Docs/roadmap/fixtures/contracts/share-bundle/`, this script is their
-source; from then on the platform keeps a copy, copied, never edited.
+and the PDF too with the same Pillow build; `--check` builds everything in
+memory and fails when a file in the folder differs. PF5 wrote these as the
+contract's first fixtures; since PF5b (share-bundle 1.1) the contract's set is
+the app's own (tests/contracts/share-bundle/, copied by
+scripts/sync-contract-fixtures.ps1) and this three-room house stays the
+platform's: the share tests, the viewer tests and PF5's human test use it.
 
 Files:
     pano-2048.jpg, pano-2048-kitchen.jpg, pano-2048-hall.jpg
@@ -30,7 +34,7 @@ from pathlib import Path
 from PIL import Image, ImageDraw, ImageFont
 
 SERVER = Path(__file__).resolve().parents[1]
-OUT = SERVER / "tests" / "contracts" / "share-bundle"
+OUT = SERVER / "tests" / "fixtures" / "share"
 FONT = SERVER / "app" / "shares" / "assets" / "OpenSans-Bold.ttf"
 
 PANO_W, PANO_H = 2048, 1024
@@ -339,40 +343,40 @@ def invalid_cases(valid: dict) -> dict:
 
     cases = [
         case("pano-3-to-1", "a 3:1 panorama", lambda m: m["panoramas"][1].update(width=3072, height=1024),
-             [("panoramas[1].width", "pano_size")]),
+             [("panoramas[1].width", "panorama_ratio"), ("panoramas[1].width", "panorama_width")]),
         case("hotspot-missing-target", "a hotspot to a missing id",
              lambda m: m["panoramas"][0]["hotspots"][0].update(target="p9"),
              [("panoramas[0].hotspots[0].target", "hotspot_target")]),
         case("file-not-listed", "a file not listed", lambda m: m["renders"].append(
              {"id": "r2", "title": "Garden", "file": other, "width": 640, "height": 360}),
-             [("renders[1].file", "file_listed")]),
+             [("renders[1].file", "file_unlisted")]),
         case("schema-major", "a MAJOR this server does not read", lambda m: m.update(schema="truebex-share/2"),
              [("schema", "schema")]),
         case("title-too-long", "project title over 120 characters", lambda m: m["project"].update(title="T" * 121),
-             [("project.title", "text_length")]),
+             [("project.title", "title_length")]),
         case("label-too-long", "hotspot label over 60 characters",
              lambda m: m["panoramas"][0]["hotspots"][0].update(label="L" * 61),
-             [("panoramas[0].hotspots[0].label", "text_length")]),
+             [("panoramas[0].hotspots[0].label", "label_length")]),
         case("bearing-out-of-range", "a start bearing of 400 degrees",
-             lambda m: m["panoramas"][0].update(start_bearing_deg=400), [("panoramas[0].start_bearing_deg", "bearing")]),
+             lambda m: m["panoramas"][0].update(start_bearing_deg=400), [("panoramas[0].start_bearing_deg", "bearing_range")]),
         case("pitch-out-of-range", "a hotspot below straight down",
              lambda m: m["panoramas"][0]["hotspots"][1].update(pitch_deg=-95),
-             [("panoramas[0].hotspots[1].pitch_deg", "pitch")]),
+             [("panoramas[0].hotspots[1].pitch_deg", "pitch_range")]),
         case("render-too-large", "a render wider than 8192 px", lambda m: m["renders"][0].update(width=9000, height=5000),
-             [("renders[0].width", "render_size")]),
+             [("renders[0].width", "render_edge")]),
         case("sheets-not-pdf", "the sheets file is not a PDF", sheets_png, [("sheets.file", "sheets_type")]),
         case("file-unreferenced", "a listed file nothing uses (nothing else travels)", unreferenced,
-             [("files[5]", "file_referenced")]),
+             [("files[5]", "file_unreferenced")]),
         case("start-not-a-panorama", "start names a render", lambda m: m.update(start="r1"), [("start", "start")]),
         case("duplicate-id", "two renders share an id", lambda m: m["renders"].append(
              {**m["renders"][0], "title": "Street view again"}),
-             [("renders[1].id", "id_unique")]),
+             [("renders[1].id", "duplicate_id")]),
         case("path-in-name", "a file name carrying a folder", lambda m: m["files"][0].update(name="C:\\Users\\me\\living.jpg"),
              [("files[0].name", "file_name")]),
     ]
     return {
         "note": "Each case is manifest-house.json with one thing broken; POST /shares answers `expect` "
-        "(data.errors[] exactly, in order). Rules are share-bundle.md §6.1, one id per table row.",
+        "(data.errors[] exactly, in order). Rules are share-bundle.md §6.1 with the app's rule ids (PF5b).",
         "cases": cases,
     }
 
@@ -419,15 +423,24 @@ def build() -> dict[str, bytes]:
     return out
 
 
-def main() -> None:
+def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--out", type=Path, default=OUT)
-    args = parser.parse_args()
+    parser.add_argument("--check", action="store_true", help="fail when a file in --out differs from a fresh build")
+    args = parser.parse_args(argv)
+    built = build()
+    if args.check:
+        stale = [name for name, data in built.items() if not (args.out / name).is_file() or (args.out / name).read_bytes() != data]
+        for name in stale:
+            print(f"differs: {name}")
+        print("up to date" if not stale else f"{len(stale)} file(s) differ: run without --check and commit")
+        return 1 if stale else 0
     args.out.mkdir(parents=True, exist_ok=True)
-    for name, data in build().items():
+    for name, data in built.items():
         (args.out / name).write_bytes(data)
         print(f"{name:24} {len(data):>8} bytes")
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

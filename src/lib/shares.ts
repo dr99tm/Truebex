@@ -1,10 +1,10 @@
 "use client";
 
-// Share links (contract share-bundle v1.0, 5.6-5.9) as the website's
+// Share links (contract share-bundle v1.1, 5.6-5.9) as the website's
 // dashboard uses them: list, one share with its visits, extend, end.
 import { api } from "@/lib/api";
 
-const CONTRACT = { "X-Truebex-Contract": "share-bundle/1.0" };
+const CONTRACT = { "X-Truebex-Contract": "share-bundle/1.1" };
 
 export type ShareState = "uploading" | "live" | "expired" | "revoked";
 
@@ -17,6 +17,9 @@ export interface ShareVisits {
 
 export interface Share {
   share_id: string;
+  /** 1.1: the bundle the share serves now, and 1 + the Updates published into it. */
+  bundle_id?: string;
+  version?: number;
   slug: string | null;
   url: string | null;
   title: string;
