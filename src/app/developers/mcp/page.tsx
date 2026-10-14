@@ -89,7 +89,8 @@ export default function McpDocs() {
             <p>{t.description}</p>
             <p className="text-sm">
               {page.klass}: <code data-class={klass}>{klass}</code>
-              {t._meta["com.truebex/logSafe"] ? <span> · {page.logSafe}</span> : null}
+              {/* the project log takes log-safe edits only (project-log §6.2): a read marked logSafe never travels */}
+              {t._meta["com.truebex/logSafe"] && klass === "edit" ? <span> · {page.logSafe}</span> : null}
             </p>
             {requires ? (
               <p className="text-sm" data-requires>

@@ -154,6 +154,10 @@ def test_docs_generated_from_tools_json(built):
     assert "≤ 40 chars" in reader["feature"][3] and "≤ 80 chars" in reader["query"][3]
     assert "Class: read" in page.text(page.all("section", data_tool="get_tunables")[0])
     assert "Class: edit" in page.text(page.all("section", data_tool="set_tunable")[0])
+    # "Also travels in the project log" only where the log takes the tool: a log-safe edit (project-log §6.2), not
+    # get_tunables, a read the app's file marks logSafe (PF12c carry-over).
+    in_log = [t["name"] for t in listed if "Also travels in the project log" in page.text(page.all("section", data_tool=t["name"])[0])]
+    assert in_log == ["place", "move", "resize", "fill", "apply_theme", "set_tunable"], in_log
     # Truebex's own _meta (router, surfaces, requires ids) never reaches the page.
     assert "com.truebex/" not in html and "kernel:" not in html and "registry:" not in html
     for tool in doc["tools"]:
