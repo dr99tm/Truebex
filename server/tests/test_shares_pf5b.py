@@ -703,6 +703,15 @@ def test_pf5b_viewer_bundle_reads_1_1():
     code = js.read_text(encoding="utf-8")
     assert js.stat().st_size <= 250 * 1024
     assert "share-bundle/1.1" in code and "share-bundle/1.0" not in code
+    def escaped(word: str) -> set[str]:  # esbuild writes non-ASCII as a backslash-x or backslash-u escape
+        backslash = chr(92)
+        formats = [backslash + f for f in ("x{:02X}", "x{:02x}", "u{:04X}", "u{:04x}")]
+
+        def esc(ch: str, fmt: str) -> str:
+            return ch if ord(ch) < 128 else fmt.format(ord(ch))
+
+        return {word, *("".join(esc(ch, f) for ch in word) for f in formats)}
+
     for word in page.PROJECT_CARD.values():
-        assert json.dumps(word, ensure_ascii=False)[1:-1] in code or word in code, word
+        assert any(f'"{form}"' in code for form in escaped(word)), word
     assert ".tbx-project" in css.read_text(encoding="utf-8")
