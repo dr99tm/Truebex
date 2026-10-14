@@ -474,7 +474,8 @@ def test_pf5b_update_sends_share_published(client, resolver, receiver):
     assert client.post(f"/shares/{a['share_id']}/publish", headers=dev(token)).json()["share"]["version"] == 2
     run_webhooks()
     got = [b["data"] for b in receiver.bodies() if b["type"] == "share.published"]
-    assert [(d["share_id"], d["version"], d["bundle_id"]) for d in got] == [
+    # Deliveries go out several at once, so they may arrive in either order.
+    assert sorted((d["share_id"], d["version"], d["bundle_id"]) for d in got) == [
         (a["share_id"], 1, house()["bundle_id"]), (a["share_id"], 2, BUNDLE_Y)]
 
 
