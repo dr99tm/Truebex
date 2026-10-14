@@ -16,9 +16,14 @@ PF2's providers.
 * An organisation's tier never reaches its buyer's `users.plan` cache
   (`service.live_subscription` skips organisation rows); its members get it
   through PF3's seats (`seat_source`, named and floating).
+* Whose customer (PF3e): an organisation's Stripe checkout opens on the
+  organisation's own customer (`org_customer`) or a new one, never its
+  buyer's, so the organisation's VAT id, name and address stay off the
+  buyer's own plan, and its portal and invoices are the organisation's.
+  Paddle keeps one customer per e-mail address: there it is the buyer's.
 """
 
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from ..contract_http import ContractError
@@ -108,6 +113,44 @@ def seats_assigned(db: Session, org_id: str) -> int:
     return named + floating
 
 
+# --- the organisation's own customer (PF3e) ---------------------------------------------
+
+
+def org_customer(db: Session, org_id: str, provider: str) -> str | None:
+    """The provider customer the organisation's checkouts open on: that of
+    its latest subscription there, unless the customer also holds a
+    subscription that is not this organisation's (a person's own plan, a
+    listing plan, another organisation's). Before PF3e an organisation's
+    Stripe checkout opened on its buyer's own customer; such a customer is
+    never the organisation's again. None: the checkout makes a new one.
+
+    Read from our own rows, which a subscription reaches only through our
+    payment row and Stripe's verified state (`owner_of`), so nothing else
+    needs keeping in step (no column to fill, as PF8b fills a supplier's)."""
+    customers = db.scalars(
+        select(Subscription.provider_customer_id)
+        .where(
+            Subscription.organisation_id == org_id,
+            Subscription.provider == provider,
+            Subscription.provider_customer_id.is_not(None),
+        )
+        .order_by(Subscription.updated_at.desc(), Subscription.id.desc())
+    )
+    for customer in dict.fromkeys(customers):
+        shared = db.scalar(
+            select(Subscription.id)
+            .where(
+                Subscription.provider == provider,
+                Subscription.provider_customer_id == customer,
+                or_(Subscription.organisation_id.is_(None), Subscription.organisation_id != org_id),
+            )
+            .limit(1)
+        )
+        if shared is None:
+            return customer
+    return None
+
+
 # --- invoices --------------------------------------------------------------------------
 
 
@@ -132,7 +175,8 @@ def org_scope(db: Session, org_id: str, provider: str) -> InvoiceScope | None:
 
 def personal_scope(db: Session, user: User, provider: str) -> InvoiceScope | None:
     """The person's own invoices at `provider`: their customer's, without the
-    subscriptions and checkouts they paid for organisations."""
+    subscriptions and checkouts they paid for organisations (on Paddle's one
+    customer per e-mail, and on a Stripe customer shared before PF3e)."""
     customer = service.customer_id(db, user, provider)
     if not customer:
         return None

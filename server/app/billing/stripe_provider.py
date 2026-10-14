@@ -11,10 +11,14 @@ row, matched by our own Checkout Session (`client_reference_id` and the
 session id we stored), never from metadata alone (billing/org_billing.py).
 
 A supplier's listing plan (PF8, `listing_<plan>`) is paid on the supplier's
-own customer (`suppliers.billing_customer_id`, or a new one), and a person's
-own plans and top-ups on theirs (`service.customer_id`, which skips listing
-plans): Checkout saves the VAT id it collects onto the customer it ran on,
-and a later session reporting that id makes its payment a business one (PF8b).
+own customer (`suppliers.billing_customer_id`, or a new one), an
+organisation's plan on the organisation's (`org_billing.org_customer`, or a
+new one; PF3e), and a person's own plans and top-ups on theirs
+(`service.customer_id`, which skips listing and organisation plans): Checkout
+saves the VAT id it collects onto the customer it ran on, and a later session
+reporting that id makes its payment a business one (PF8b, PF3e). An
+organisation's portal opens on its subscription's customer, so on the
+organisation's own.
 """
 
 import logging
@@ -188,6 +192,10 @@ class StripeProvider(BillingProvider):
             # from the member's e-mail), never the person's own: the supplier's
             # VAT id is saved onto the customer the checkout runs on.
             customer = service.listing_customer(db, payment)
+        elif payment.organisation_id:
+            # PF3e: likewise the organisation's own customer, or a new one
+            # from the buyer's e-mail, never the buyer's.
+            customer = org_billing.org_customer(db, payment.organisation_id, "stripe")
         else:
             customer = service.customer_id(db, user, "stripe")
         if customer:
@@ -474,7 +482,13 @@ class StripeProvider(BillingProvider):
         return Refund(id=str(refund.get("id") or ""), amount_minor=amount, currency=currency)
 
     def portal_url(self, db: Session, user: User, sub: Subscription) -> str:
-        customer = sub.provider_customer_id or service.customer_id(db, user, "stripe")
+        # The subscription's own customer: an organisation's (PF3e) for its
+        # subscriptions from PF3e on; one from before stays where it is.
+        customer = sub.provider_customer_id
+        if not customer and sub.organisation_id:
+            customer = org_billing.org_customer(db, sub.organisation_id, "stripe")
+        elif not customer:
+            customer = service.customer_id(db, user, "stripe")
         if not customer:
             raise ProviderError("no Stripe customer")
         portal = stripe.billing_portal.Session.create(
