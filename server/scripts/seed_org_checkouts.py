@@ -26,8 +26,9 @@ billing, PF11's top-up):
 4. the billing member adds a seat (3 to 4);
 5. the organisation's portal, opened by the billing member, and the buyer's
    own portal; the organisation's invoices and the buyer's own;
-6. the organisation's subscription ends; the billing member buys Team again;
-7. the buyer buys Team for PF3e Studio South.
+6. the organisation's subscription ends; the billing member buys Team again
+   and pays (entering the VAT id only if Checkout asks for one);
+7. the buyer opens a Team checkout for PF3e Studio South (not paid).
 
 Stripe's stand-in runs each Checkout Session on the customer it names, else on
 a new one (`cus_sim_N`), saves a VAT id entered at checkout onto that
@@ -261,6 +262,9 @@ def checkouts(db: Session, buyer: User, billing: User, org: Organisation, second
     provider.reconcile(db, [sub], [])
     again = open_checkout(billing, "team", organisation=org, seats=3)
     print(f"organisation subscription ended; Team again by {billing.email}: opens on {stripe.opens_on(again)}")
+    customer, _ = paid(again, f"Team for {org.name} (again)", vat_id=VAT_ID)  # entered only if Checkout asks
+    saved = ", ".join(t["value"] for t in stripe.tax_ids[customer])
+    print(f"  paid from DE on {customer} (its saved tax ids: {saved}): business {again.business}")
     other = open_checkout(buyer, "team", organisation=second, seats=3)
     print(f"second organisation {second.name}, Team by the buyer: opens on {stripe.opens_on(other)}")
     print("Stripe customers: " + "; ".join(
