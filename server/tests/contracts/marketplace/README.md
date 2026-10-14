@@ -9,9 +9,9 @@ into `server/tests/contracts/marketplace/`. Staged loose into every NON-Shipping
 |---|---|
 | `categories.json` | 5.1: 16 categories rooted on the app's taxonomy (`app_path` is always a row of `CAD/taxonomy/categories.json`; `taxonomy_sha256` is that file's) |
 | `regions.json` | 5.2: GB (GBP, VAT 20 %) and AE (AED, VAT 5 %) |
-| `products.json` | the catalogue: 3 suppliers and 9 products -- the **Oslo 3-seater sofa** (two variants, Oat / Charcoal, a `.tbxa` each, GB and AE prices), the Bergen armchair (`.tbxa`), the **discontinued Halden coffee table** (GLB; substitute: Fjord), the Fjord coffee table (GLB), the Arc wall light (GLB, `lighting/wall`: wall-mounted), the Nord sideboard (a parametric `.tbxa`: O1's cabinet recipe; variants 2400 x 900 x 750 and 1800 x 450 x 750), a paint and a wallpaper (`finish`), and the Calm lounge **theme** (includes the sofa, the coffee table and the paint) |
+| `products.json` | the catalogue: 3 suppliers and 13 products -- the **Oslo 3-seater sofa** (two variants, Oat / Charcoal, a `.tbxa` each, GB and AE prices), the Bergen armchair (`.tbxa`), the **discontinued Halden coffee table** (GLB; substitute: Fjord), the Fjord coffee table (GLB), the Arc wall light (GLB, `lighting/wall`: wall-mounted), the Nord sideboard (a parametric `.tbxa`: O1's cabinet recipe; variants 2400 x 900 x 750 and 1800 x 450 x 750), a paint and a wallpaper (`finish`), the Calm lounge **theme** (includes the sofa, the coffee table and the paint), and (roadmap 40 / AU2) the bedroom set `Layout.Products` swaps an auto layout's boxes for: the Fjell double and single beds (1600 / 900 x 2000 x 480), the Nord wardrobe (1200 x 600 x 2200) and the Fjell bedside table (450 x 400 x 560), a GLB each -- 13 products |
 | `geometry/*.tbxa` | the four object assets, each with its S1 id, written by the 2D scenario `mk1-fixture-geometry` from the app's own serializer (single-line JSON, no newline: no checkout can change their sha256) |
-| `geometry/*.glb` | three small box meshes (glTF 2.0, metres, +Y up) |
+| `geometry/*.glb` | seven small box meshes (glTF 2.0, metres, +Y up) |
 | `thumbs/*.png` | one 512 px thumbnail per product (the feed's minimum) |
 | `prices-gb.json`, `prices-ae.json` | 5.5 answers: every placeable variant re-priced for the region (MK2) |
 | `order-awaiting-payment.json`, `order-quoted.json` | 5.7 / 5.9 answers (MK4) |

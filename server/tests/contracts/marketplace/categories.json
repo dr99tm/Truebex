@@ -5,7 +5,7 @@
       "path": "furniture",
       "label": "Furniture",
       "app_path": "furniture",
-      "products": 6
+      "products": 10
     },
     {
       "path": "furniture/seating",
@@ -41,12 +41,42 @@
       "path": "furniture/storage",
       "label": "Storage",
       "app_path": "furniture/storage",
-      "products": 1
+      "products": 3
     },
     {
       "path": "furniture/storage/sideboards",
       "label": "Sideboards",
       "app_path": "furniture/storage",
+      "products": 1
+    },
+    {
+      "path": "furniture/storage/wardrobes",
+      "label": "Wardrobes",
+      "app_path": "furniture/storage",
+      "products": 1
+    },
+    {
+      "path": "furniture/storage/bedside",
+      "label": "Bedside tables",
+      "app_path": "furniture/storage",
+      "products": 1
+    },
+    {
+      "path": "furniture/beds",
+      "label": "Beds",
+      "app_path": "furniture/beds",
+      "products": 2
+    },
+    {
+      "path": "furniture/beds/double",
+      "label": "Double beds",
+      "app_path": "furniture/beds",
+      "products": 1
+    },
+    {
+      "path": "furniture/beds/single",
+      "label": "Single beds",
+      "app_path": "furniture/beds",
       "products": 1
     },
     {
