@@ -1411,6 +1411,48 @@ cd server
 The first ends `pytest exit 0`. The second fails the six wake-up tests (each read waits its whole 25 s first) and
 passes the two guards.
 
+## Canonicals on private pages (PF13b)
+
+The root layout (`src/app/layout.tsx`) names no canonical. A public page names its own: `pageMetadata` in
+`src/lib/seo.ts`, or `alternates.canonical` with the trailing slash. A private page (the dashboard, the supplier
+portal, a checkout, a per-person page, `/account/`'s redirect) is `noindex` and names none, so only the home page
+names `https://truebex.com/`. `server/tests/test_site_pf13b.py` checks every page in the built `out/`: a canonical is
+the page's own URL, no noindex page names another one, and each sitemap URL names itself. Doc:
+`docs/roadmap/40/PF13b-private-pages-canonical.md`.
+
+## MCP package and docs on agent-interface 1.2.0 (PF12c)
+
+`packages/mcp/` and `src/content/tools.json` hold the app's `tools.json` 1.2.0: 14 tools, of which the MCP server lists
+13 (TU1's `get_tunables` and `set_tunable` among them). The in-app assistant's `propose_variants` is never on MCP, so
+`/developers/mcp/` documents the 13 only (`mcpTools()` in `src/lib/developer-docs.ts` keeps the tools whose
+`com.truebex/surfaces` include `mcp`; none named means both). The project log accepts `set_tunable` as a log-safe
+action (`LOG_SAFE_TOOLS` in `server/app/projects/ops.py`). A tunable names no entity, so its `touched` is empty and
+never conflicts. Re-sync and check as in the PF12b section above; the PF12c checks are
+`server\tests\test_pf12c_agent_interface.py`. Doc: `docs/roadmap/40/PF12c-agent-interface-1-2-0.md`.
+
+## Marketplace fixtures after AU2's bedroom set (PF7d)
+
+The app's AU2 (auto furniture layouts by room type) added a bedroom set to the app's marketplace fixtures: the
+Fjell double and single beds, the Nord wardrobe and the Fjell bedside table, a GLB and a thumbnail each.
+`server/tests/contracts/marketplace/` was re-copied from the app's `main` 7fe6b2c2 (the folder as AU2's commit
+180b2d53 left it): 36 files, three suppliers and 13 products, every file byte for byte the app's blob.
+`server/tests/test_market_contract_fixtures.py` keeps the app's blob ids (`APP_BLOBS`) and checks the platform's
+answers for all 13 products. `server/tests/test_pf7d_bedroom_set.py` puts the bedroom set through the basket
+route, 5.5 and 5.7. The readings that moved (D1, D2) and the new one (D17: substitutes of the storage products)
+are in `docs/roadmap/40/PF7d-marketplace-fixtures-au2-bedroom-set.md`.
+
+To re-copy after the app changes the folder again:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts\sync-contract-fixtures.ps1 -Contract marketplace
+cd server
+.venv\Scripts\python.exe -m pytest -q tests\test_market_contract_fixtures.py tests\test_pf7d_bedroom_set.py tests\test_pf7b_pf7c_meet.py
+```
+
+The folder's `README.md` is the app's own file, so leave it as copied. Update `APP_BLOBS` from
+`git ls-tree -r main -- Docs/roadmap/fixtures/contracts/marketplace/` in the app repo, then the counts the tests
+name.
+
 ## Share links: share-bundle 1.1 (PF5b)
 
 The share service speaks share-bundle 1.1.0, the version the app's Share command (PR4) is built against. It takes

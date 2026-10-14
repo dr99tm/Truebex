@@ -28,14 +28,24 @@ FIXTURES = PKG / "test" / "fixtures"
 HERE = Path(__file__).resolve().parent
 SUPPORTED = ["2026-07-28", "2025-11-25", "2025-06-18"]
 WIRE_SCRIPTS = {"window-north-study", "permissions", "fence"}
+# §5's fixed order (agent-interface 1.2.0): TU1's two tunable tools (5.17, 5.18), then AI2's
+# assistant-only propose_variants (5.19), which the MCP server never lists.
 CONTRACT_ORDER = [
     "read_state", "find", "explain", "place", "move", "resize", "fill", "apply_theme", "export_pdf", "export_panorama", "undo",
+    "get_tunables", "set_tunable", "propose_variants",
 ]
 CLASSES = {
-    "read": {"read_state", "find", "explain"},
-    "edit": {"place", "move", "resize", "fill", "apply_theme", "undo"},
+    "read": {"read_state", "find", "explain", "get_tunables"},
+    "edit": {"place", "move", "resize", "fill", "apply_theme", "undo", "set_tunable", "propose_variants"},
     "export": {"export_pdf", "export_panorama"},
 }
+SURFACES = {"mcp", "assistant"}
+ASSISTANT_ONLY = {"propose_variants"}
+# Known differences of the app's tools.json from the contract, recorded in PF12c's As-built (carry-over for the app):
+# get_tunables is marked logSafe although §5 makes it read only (a read never travels in the log), and its result
+# (§5.17) carries no `ok`, so its output schema requires nothing.
+LOG_SAFE_READS = {"get_tunables"}
+OUTPUT_WITHOUT_OK = {"get_tunables"}
 PRIVATE_META = ["com.truebex/router", "com.truebex/requires", "com.truebex/surfaces", "com.truebex/logSafe"]
 # agent-interface §6.5: the portable subset. No $ref, oneOf, anyOf, allOf, pattern.
 ALLOWED_KEYWORDS = {
@@ -61,10 +71,22 @@ def _tools() -> dict:
     return json.loads((PKG / "tools.json").read_text(encoding="utf-8"))
 
 
+def surfaces_of(tool: dict) -> list[str]:
+    """The surfaces a tool is offered on (agent-interface 1.2.0 §3, §6.5): absent means both."""
+    surfaces = tool.get("_meta", {}).get("com.truebex/surfaces")
+    return surfaces if isinstance(surfaces, list) else sorted(SURFACES)
+
+
+def on_mcp(doc: dict) -> list[dict]:
+    """The tools the MCP server lists, in the file's order."""
+    return [t for t in doc["tools"] if "mcp" in surfaces_of(t)]
+
+
 def _public(doc: dict) -> list[dict]:
-    """tools.json as tools/list serves it: Truebex's private _meta keys stripped, permission kept (§6.5)."""
+    """tools.json as tools/list serves it: the mcp surface only, Truebex's private _meta keys stripped,
+    permission kept (§6.5)."""
     out = []
-    for tool in copy.deepcopy(doc["tools"]):
+    for tool in copy.deepcopy(on_mcp(doc)):
         for key in PRIVATE_META:
             tool.get("_meta", {}).pop(key, None)
         out.append(tool)
@@ -312,7 +334,7 @@ def test_mcp_package_stdio_framing(tmp_path):
         found = bridge.request("tools/call", {"_meta": meta(), "name": "find", "arguments": {"kind": "room", "name": "غرفة المعيشة — Küche"}})
         assert found["result"]["isError"] is False and found["result"]["content"][0]["text"] == "find ok"
         listed = bridge.request("tools/list", {"_meta": meta()})
-        assert len(listed["result"]["tools"]) == 11  # a long answer is still one line
+        assert len(listed["result"]["tools"]) == len(on_mcp(_tools()))  # a long answer is still one line
         code, seconds = bridge.close()  # the pipe to the app is open: EOF still ends the bridge at once
     finally:
         log = app.stop()
@@ -360,7 +382,8 @@ def test_mcp_package_discover_and_legacy_initialize(tmp_path):
         assert "resultType" not in result
         legacy.send({"jsonrpc": "2.0", "method": "notifications/initialized"})
         listed = legacy.request("tools/list")["result"]
-        assert [t["name"] for t in listed["tools"]] == CONTRACT_ORDER and "resultType" not in listed and "ttlMs" not in listed
+        mcp_order = [n for n in CONTRACT_ORDER if n not in ASSISTANT_ONLY]
+        assert [t["name"] for t in listed["tools"]] == mcp_order and "resultType" not in listed and "ttlMs" not in listed
         assert {r["uri"] for r in legacy.request("resources/list")["result"]["resources"]} == RESOURCES
         assert legacy.close()[0] == 0
         assert len(bytes(legacy.raw).splitlines()) == 3  # the notification got no answer
@@ -372,6 +395,9 @@ def test_mcp_package_tools_list_and_replay(tmp_path):
     bridge = Bridge(tmp_path)  # no instance file, no pipe: no app
     listed = bridge.request("tools/list", {"_meta": meta()})["result"]
     assert listed["tools"] == _public(doc)
+    # agent-interface 1.2.0: the list is the mcp surface (13 tools), never the assistant-only propose_variants.
+    assert len(listed["tools"]) == len(on_mcp(doc)) == len(doc["tools"]) - len(ASSISTANT_ONLY)
+    assert not {t["name"] for t in listed["tools"]} & ASSISTANT_ONLY
     assert listed["ttlMs"] == 60000 and listed["cacheScope"] == "private" and listed["resultType"] == "complete"
     for tool in listed["tools"]:
         assert set(tool["_meta"]) == {"com.truebex/permission"}, tool["name"]
@@ -387,8 +413,11 @@ def test_mcp_package_tools_list_and_replay(tmp_path):
     assert NOT_RUNNING in call["content"][0]["text"]
     read = bridge.request("resources/read", {"_meta": meta(), "uri": "truebex://state/digest"})["error"]
     assert read["data"]["code"] == "app_not_running"
-    # An unknown tool never reaches an app.
+    # An unknown tool never reaches an app; nor does an assistant-only one (1.2.0: -32602, as the app's router).
     assert bridge.request("tools/call", {"_meta": meta(), "name": "delete_project", "arguments": {}})["error"]["code"] == -32602
+    variants = {"variants": [{"name": "Warm", "calls": [{"fill": {"target": "room#3", "finish": {"kind": "paint"}}}]}]}
+    for name in ASSISTANT_ONLY:
+        assert bridge.request("tools/call", {"_meta": meta(), "name": name, "arguments": variants})["error"]["code"] == -32602
     assert bridge.close()[0] == 0
 
     # A pipe name nobody holds is no app either.
@@ -404,6 +433,9 @@ def test_mcp_package_tools_list_and_replay(tmp_path):
         linked = Bridge(tmp_path)
         res = linked.request("tools/call", {"_meta": meta(), "name": "find", "arguments": {"kind": "room"}})["result"]
         assert res["isError"] is False and res["structuredContent"] == {"ok": True, "text": "find ok"}
+        # With an app linked, propose_variants is still -32602 from the bridge itself: the app never sees it.
+        hidden = linked.request("tools/call", {"_meta": meta(), "name": "propose_variants", "arguments": variants})
+        assert hidden["error"]["code"] == -32602
         digest = linked.request("resources/read", {"_meta": meta(), "uri": "truebex://state/digest"})["result"]
         assert digest["contents"][0]["text"].startswith("TRUEBEX fake-app")
         missing = linked.request("resources/read", {"_meta": meta(), "uri": "truebex://entity/wall/999"})
@@ -412,7 +444,8 @@ def test_mcp_package_tools_list_and_replay(tmp_path):
         assert outside["error"]["code"] == -32602
         assert linked.close()[0] == 0
     finally:
-        app.stop()
+        app_log = app.stop()
+    assert "calls=1" in app_log, app_log  # the find only: propose_variants never reached the app
     # Connections off: the app refuses the hello, and the client hears the same app_not_running.
     off = FakeApp("--connections-off")
     try:
@@ -435,7 +468,8 @@ def test_mcp_package_tools_list_and_replay(tmp_path):
 
 def test_mcp_package_app_node_tests():
     """The app's own `node --test Tools/mcp/test` on the copied folder, minus mcp-bundle-manifest
-    (truebex.mcpb ships with the app, not in the npm package)."""
+    (truebex.mcpb ships with the app, not in the npm package). Since agent-interface 1.2.0 that is
+    10, mcp-assistant-only-hidden among them (propose_variants unlisted, a call of it -32602)."""
     proc = subprocess.run(
         [node(), "--test", "--test-reporter=tap", "--test-name-pattern=^mcp-(?!bundle-manifest)", str(PKG / "test" / "mcp.test.mjs")],
         capture_output=True, text=True, encoding="utf-8", errors="replace", cwd=PKG, timeout=300,
@@ -443,7 +477,8 @@ def test_mcp_package_app_node_tests():
     )
     assert proc.returncode == 0, proc.stdout[-4000:] + proc.stderr[-2000:]
     passed = int(re.search(r"^# pass (\d+)", proc.stdout, re.M).group(1))
-    assert passed == 9 and re.search(r"^# fail 0", proc.stdout, re.M), proc.stdout[-2000:]
+    assert passed == 10 and re.search(r"^# fail 0", proc.stdout, re.M), proc.stdout[-2000:]
+    assert re.search(r"^ok \d+ - mcp-assistant-only-hidden$", proc.stdout, re.M), proc.stdout[-2000:]
 
 
 # --- the copies -----------------------------------------------------------------------------------
@@ -540,17 +575,19 @@ def test_sync_mcp_copies_the_landed_bridge(tmp_path):
     unchanged()
 
 
-def _walk(schema: dict, where: str, problems: list[str], closed: bool) -> None:
+def _walk(schema: dict, where: str, problems: list[str], closed: bool, seen: list[str] | None = None) -> None:
     """Every schema node: keywords of the portable subset only; closed objects in input schemas."""
+    if seen is not None:
+        seen.append(where)
     unknown = set(schema) - ALLOWED_KEYWORDS
     if unknown:
         problems.append(f"{where}: {sorted(unknown)}")
     if schema.get("type") == "object" and closed and schema.get("additionalProperties") is not False:
         problems.append(f"{where}: additionalProperties must be false")
     for name, sub in (schema.get("properties") or {}).items():
-        _walk(sub, f"{where}.{name}", problems, closed)
+        _walk(sub, f"{where}.{name}", problems, closed, seen)
     if isinstance(schema.get("items"), dict):
-        _walk(schema["items"], f"{where}[]", problems, closed)
+        _walk(schema["items"], f"{where}[]", problems, closed, seen)
 
 
 def _conforms(schema: dict, value) -> bool:
@@ -563,41 +600,87 @@ def _conforms(schema: dict, value) -> bool:
 
 
 def test_tools_json_follows_the_contract():
-    """agent-interface §6.5 as amended by AI1, on the copy the package serves and the site reads."""
+    """agent-interface §6.5 as amended by AI1, TU1 (1.1.0) and AI2 (1.2.0), on the copy the package serves
+    and the site reads."""
     doc = _tools()
     assert doc["schema"] == "truebex-tools/1"
     assert re.fullmatch(r"\d+\.\d+\.\d+", doc["version"]) and doc["version"].startswith("1.")
-    assert [t["name"] for t in doc["tools"]] == CONTRACT_ORDER
+    assert tuple(map(int, doc["version"].split("."))) >= (1, 2, 0), doc["version"]  # surfaces are read since 1.2.0
+    assert [t["name"] for t in doc["tools"]] == CONTRACT_ORDER  # §5's order: 14 tools
+    by_name = {t["name"]: t for t in doc["tools"]}
     problems: list[str] = []
+    seen: list[str] = []
     for t in doc["tools"]:
         name = t["name"]
         assert t["title"] and t["description"], name
         klass = t["_meta"]["com.truebex/permission"]
         assert name in CLASSES[klass], f"{name}: class {klass}"
         assert t["_meta"]["com.truebex/router"], name
-        assert set(t["_meta"]["com.truebex/surfaces"]) >= {"mcp", "assistant"}, name
+        # Surfaces: absent (both) or a non-empty subset of mcp / assistant; only propose_variants is assistant-only.
+        raw = t["_meta"].get("com.truebex/surfaces")
+        assert raw is None or (isinstance(raw, list) and raw and set(raw) <= SURFACES and len(set(raw)) == len(raw)), name
+        if name in ASSISTANT_ONLY:
+            assert raw == ["assistant"], name
+        else:
+            assert set(surfaces_of(t)) == SURFACES, name
         hints = t["annotations"]
         assert set(hints) == {"readOnlyHint", "destructiveHint", "idempotentHint", "openWorldHint"}, name
         assert hints["openWorldHint"] is False and hints["readOnlyHint"] is (klass == "read"), name
         assert t["inputSchema"]["type"] == "object" and t["inputSchema"]["additionalProperties"] is False, name
-        _walk(t["inputSchema"], f"{name}.inputSchema", problems, closed=True)
+        _walk(t["inputSchema"], f"{name}.inputSchema", problems, closed=True, seen=seen)
         _walk(t["outputSchema"], f"{name}.outputSchema", problems, closed=False)
         out = t["outputSchema"]
-        assert out["type"] == "object" and out["required"] == ["ok"] and out["properties"]["ok"] == {"type": "boolean"}, name
+        assert out["type"] == "object", name
+        if name in OUTPUT_WITHOUT_OK:  # §5.17's result has no ok: nothing required, so a §7 error conforms
+            assert set(out.get("required", [])) <= {"ok"}, name
+        else:
+            assert out["required"] == ["ok"] and out["properties"]["ok"] == {"type": "boolean"}, name
         # ... so an error's structured content (§7) conforms too.
         assert _conforms(out, {"ok": False, "code": "invalid", "detail": "width_mm: must be >= 100", "request_id": "0" * 32, "data": {}}), name
         props = t["inputSchema"]["properties"]
-        if klass != "read":
+        if klass != "read" and "mcp" in surfaces_of(t):
             assert props["request_id"]["type"] == "string" and props["request_id"]["maxLength"] == 32, name
     assert not problems, problems  # no pattern, $ref or composition keyword anywhere
-    log_safe = {t["name"] for t in doc["tools"] if t["_meta"]["com.truebex/logSafe"]}
-    assert log_safe == {"place", "move", "resize", "fill", "apply_theme"}  # project-log §6.2
-    for name in log_safe:  # every edit tool of §5.7-5.11 takes dry_run
-        assert next(t for t in doc["tools"] if t["name"] == name)["inputSchema"]["properties"]["dry_run"] == {"type": "boolean"}
+    log_safe = {t["name"] for t in doc["tools"] if t["_meta"].get("com.truebex/logSafe")}
+    log_safe_edits = {n for n in log_safe if by_name[n]["_meta"]["com.truebex/permission"] == "edit"}
+    assert log_safe_edits == {"place", "move", "resize", "fill", "apply_theme", "set_tunable"}  # project-log §6.2
+    assert log_safe - log_safe_edits <= LOG_SAFE_READS  # a read never travels in the log (PF12c carry-over)
+    for name in log_safe_edits:  # every log-safe edit (§5.7-5.11, §5.18) takes dry_run
+        assert by_name[name]["inputSchema"]["properties"]["dry_run"] == {"type": "boolean"}, name
+    assert by_name["propose_variants"]["_meta"]["com.truebex/logSafe"] is False
     requires = {t["name"]: t["_meta"]["com.truebex/requires"] for t in doc["tools"] if "com.truebex/requires" in t["_meta"]}
     assert requires == {"apply_theme": "PR2", "export_panorama": "PR3"}
-    find_kinds = next(t for t in doc["tools"] if t["name"] == "find")["inputSchema"]["properties"]["kind"]["enum"]
+    find_kinds = by_name["find"]["inputSchema"]["properties"]["kind"]["enum"]
     assert {"model", "sweep", "dim", "layer"} <= set(find_kinds) and not {"product", "view", "category"} & set(find_kinds)
+
+    # TU1 (§5.17, §5.18): get_tunables reads, with its limits; set_tunable's value carries no type (the portable
+    # subset has no type list: a number, a boolean or a name) and its name no pattern; exactly one of value, reset.
+    tunables = by_name["get_tunables"]["inputSchema"]["properties"]
+    assert set(tunables) == {"feature", "query", "modified_only", "limit"}
+    assert tunables["feature"]["maxLength"] == 40 and tunables["query"]["maxLength"] == 80
+    assert (tunables["limit"]["minimum"], tunables["limit"]["maximum"], tunables["limit"]["default"]) == (1, 500, 200)
+    assert tunables["modified_only"] == {"type": "boolean", "default": False}
+    setter = by_name["set_tunable"]["inputSchema"]
+    assert setter["required"] == ["name"] and setter["properties"]["name"]["maxLength"] == 80
+    value = setter["properties"]["value"]
+    assert "type" not in value and "pattern" not in value and value["description"], value
+    assert "pattern" not in setter["properties"]["name"]
+    assert setter["properties"]["reset"]["type"] == "boolean"
+
+    # AI2 (§5.19): up to three variants of 1-20 calls, each call one of fill / place / move / resize with that
+    # tool's own arguments minus dry_run and request_id, walked like every other schema above.
+    variants = by_name["propose_variants"]["inputSchema"]["properties"]["variants"]
+    assert (variants["minItems"], variants["maxItems"]) == (1, 3)
+    calls = variants["items"]["properties"]["calls"]
+    assert (calls["minItems"], calls["maxItems"]) == (1, 20)
+    nested = calls["items"]["properties"]
+    assert set(nested) == {"fill", "place", "move", "resize"}
+    for tool, schema in nested.items():
+        own = {k: v for k, v in by_name[tool]["inputSchema"]["properties"].items() if k not in ("dry_run", "request_id")}
+        assert schema["properties"] == own, tool
+        assert set(schema.get("required", [])) == set(by_name[tool]["inputSchema"].get("required", [])), tool
+        assert f"propose_variants.inputSchema.variants[].calls[].{tool}" in seen, tool
+    assert "propose_variants.inputSchema.variants[].calls[].fill.finish.tile_mm[]" in seen
 
 
 def _tools_hash(data: bytes) -> str:

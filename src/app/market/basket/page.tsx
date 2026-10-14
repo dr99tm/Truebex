@@ -5,8 +5,8 @@ import { BasketPanel } from "@/components/market/BasketPanel";
 import { MARKET_BASKET } from "@/lib/constants";
 
 // PF7b: the "Buy this look" basket the app's room themes open. A per-person
-// page: never indexed, never in the sitemap, and no canonical (the root
-// layout's "/" would point a crawler at the home page).
+// page: never indexed, never in the sitemap, and no canonical (`null` keeps
+// it so should a parent layout ever name one again; PF13b dropped the root's "/").
 export const metadata: Metadata = {
   title: MARKET_BASKET.metaTitle,
   robots: { index: false, follow: false },

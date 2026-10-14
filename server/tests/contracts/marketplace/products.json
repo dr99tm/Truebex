@@ -994,6 +994,377 @@
         }
       ],
       "substitutes": []
+    },
+    {
+      "product_id": "3f6c1e2a9b0d4c8e9a1b2c3d4e5f6a0a",
+      "supplier_id": "4e6f72644c6976696e67000000000001",
+      "supplier_name": "Nord Living",
+      "sku": "BED-FJELL-160",
+      "name": "Fjell double bed",
+      "kind": "object",
+      "category": "furniture/beds/double",
+      "app_path": "furniture/beds",
+      "description": "A low oak double bed, 160 x 200 mattress.",
+      "images": [
+        "https://market.truebex.com/files/thumbs/bed-fjell.png"
+      ],
+      "thumbnail_url": "https://market.truebex.com/files/thumbs/bed-fjell.png",
+      "includes": [],
+      "variants": [
+        {
+          "variant_id": "oak-160",
+          "options": {
+            "size": "160 x 200",
+            "colour": "Oak"
+          },
+          "dims_mm": [
+            1600,
+            480,
+            2000
+          ],
+          "materials": [
+            "oak"
+          ],
+          "geometry": {
+            "asset": {
+              "name": "Fjell double bed",
+              "rev": 1,
+              "kind": "object"
+            },
+            "format": "glb",
+            "url": "https://market.truebex.com/files/geometry/bed-fjell.glb",
+            "sha256": "d1412477ad303e1def61d91a2e25293a7e054f98690bce8b085110621e49bf72",
+            "bytes": 1620
+          },
+          "prices": {
+            "GB": {
+              "amount": 79900,
+              "currency": "GBP",
+              "exponent": 2,
+              "region": "GB",
+              "includes_tax": true,
+              "tax_rate_bp": 2000,
+              "at": "2026-10-09T10:00:00Z"
+            },
+            "AE": {
+              "amount": 94900,
+              "currency": "AED",
+              "exponent": 2,
+              "region": "AE",
+              "includes_tax": true,
+              "tax_rate_bp": 500,
+              "at": "2026-10-09T10:00:00Z"
+            }
+          },
+          "deliveries": {
+            "GB": {
+              "fee": {
+                "amount": 5900,
+                "currency": "GBP",
+                "exponent": 2
+              },
+              "days_min": 7,
+              "days_max": 14
+            },
+            "AE": {
+              "fee": {
+                "amount": 20000,
+                "currency": "AED",
+                "exponent": 2
+              },
+              "days_min": 10,
+              "days_max": 21
+            }
+          },
+          "availability": {
+            "state": "in_stock",
+            "stock": 6,
+            "lead_time_days": null,
+            "updated_at": "2026-10-09T10:00:00Z"
+          }
+        }
+      ],
+      "brand": "Nord Living",
+      "substitutes": [
+        "3f6c1e2a9b0d4c8e9a1b2c3d4e5f6a0b"
+      ]
+    },
+    {
+      "product_id": "3f6c1e2a9b0d4c8e9a1b2c3d4e5f6a0b",
+      "supplier_id": "4e6f72644c6976696e67000000000001",
+      "supplier_name": "Nord Living",
+      "sku": "BED-FJELL-90",
+      "name": "Fjell single bed",
+      "kind": "object",
+      "category": "furniture/beds/single",
+      "app_path": "furniture/beds",
+      "description": "A low oak single bed, 90 x 200 mattress.",
+      "images": [
+        "https://market.truebex.com/files/thumbs/bed-fjell-single.png"
+      ],
+      "thumbnail_url": "https://market.truebex.com/files/thumbs/bed-fjell-single.png",
+      "includes": [],
+      "variants": [
+        {
+          "variant_id": "oak-90",
+          "options": {
+            "size": "90 x 200",
+            "colour": "Oak"
+          },
+          "dims_mm": [
+            900,
+            480,
+            2000
+          ],
+          "materials": [
+            "oak"
+          ],
+          "geometry": {
+            "asset": {
+              "name": "Fjell single bed",
+              "rev": 1,
+              "kind": "object"
+            },
+            "format": "glb",
+            "url": "https://market.truebex.com/files/geometry/bed-fjell-single.glb",
+            "sha256": "56591c0f7d517aab2f8393d10948b08d24ffe08192abdb393adf5c85f0783dcf",
+            "bytes": 1624
+          },
+          "prices": {
+            "GB": {
+              "amount": 49900,
+              "currency": "GBP",
+              "exponent": 2,
+              "region": "GB",
+              "includes_tax": true,
+              "tax_rate_bp": 2000,
+              "at": "2026-10-09T10:00:00Z"
+            },
+            "AE": {
+              "amount": 59900,
+              "currency": "AED",
+              "exponent": 2,
+              "region": "AE",
+              "includes_tax": true,
+              "tax_rate_bp": 500,
+              "at": "2026-10-09T10:00:00Z"
+            }
+          },
+          "deliveries": {
+            "GB": {
+              "fee": {
+                "amount": 4900,
+                "currency": "GBP",
+                "exponent": 2
+              },
+              "days_min": 7,
+              "days_max": 14
+            },
+            "AE": {
+              "fee": {
+                "amount": 15000,
+                "currency": "AED",
+                "exponent": 2
+              },
+              "days_min": 10,
+              "days_max": 21
+            }
+          },
+          "availability": {
+            "state": "in_stock",
+            "stock": 9,
+            "lead_time_days": null,
+            "updated_at": "2026-10-09T10:00:00Z"
+          }
+        }
+      ],
+      "brand": "Nord Living",
+      "substitutes": [
+        "3f6c1e2a9b0d4c8e9a1b2c3d4e5f6a0a"
+      ]
+    },
+    {
+      "product_id": "3f6c1e2a9b0d4c8e9a1b2c3d4e5f6a0c",
+      "supplier_id": "4e6f72644c6976696e67000000000001",
+      "supplier_name": "Nord Living",
+      "sku": "WARDROBE-NORD-120",
+      "name": "Nord wardrobe",
+      "kind": "object",
+      "category": "furniture/storage/wardrobes",
+      "app_path": "furniture/storage",
+      "description": "A two-door walnut wardrobe, 120 cm.",
+      "images": [
+        "https://market.truebex.com/files/thumbs/wardrobe-nord.png"
+      ],
+      "thumbnail_url": "https://market.truebex.com/files/thumbs/wardrobe-nord.png",
+      "includes": [],
+      "variants": [
+        {
+          "variant_id": "walnut-120",
+          "options": {
+            "size": "120 cm",
+            "colour": "Walnut"
+          },
+          "dims_mm": [
+            1200,
+            2200,
+            600
+          ],
+          "materials": [
+            "walnut veneer"
+          ],
+          "geometry": {
+            "asset": {
+              "name": "Nord wardrobe",
+              "rev": 1,
+              "kind": "object"
+            },
+            "format": "glb",
+            "url": "https://market.truebex.com/files/geometry/wardrobe-nord.glb",
+            "sha256": "2e9cabad620429d3c1f4cbdabcdeb31946d0e42a4e26d39d4d328bd40dc5ff11",
+            "bytes": 1612
+          },
+          "prices": {
+            "GB": {
+              "amount": 99900,
+              "currency": "GBP",
+              "exponent": 2,
+              "region": "GB",
+              "includes_tax": true,
+              "tax_rate_bp": 2000,
+              "at": "2026-10-09T10:00:00Z"
+            },
+            "AE": {
+              "amount": 119900,
+              "currency": "AED",
+              "exponent": 2,
+              "region": "AE",
+              "includes_tax": true,
+              "tax_rate_bp": 500,
+              "at": "2026-10-09T10:00:00Z"
+            }
+          },
+          "deliveries": {
+            "GB": {
+              "fee": {
+                "amount": 5900,
+                "currency": "GBP",
+                "exponent": 2
+              },
+              "days_min": 10,
+              "days_max": 20
+            },
+            "AE": {
+              "fee": {
+                "amount": 20000,
+                "currency": "AED",
+                "exponent": 2
+              },
+              "days_min": 14,
+              "days_max": 28
+            }
+          },
+          "availability": {
+            "state": "in_stock",
+            "stock": 4,
+            "lead_time_days": null,
+            "updated_at": "2026-10-09T10:00:00Z"
+          }
+        }
+      ],
+      "brand": "Nord Living",
+      "substitutes": []
+    },
+    {
+      "product_id": "3f6c1e2a9b0d4c8e9a1b2c3d4e5f6a0d",
+      "supplier_id": "4e6f72644c6976696e67000000000001",
+      "supplier_name": "Nord Living",
+      "sku": "BEDSIDE-FJELL",
+      "name": "Fjell bedside table",
+      "kind": "object",
+      "category": "furniture/storage/bedside",
+      "app_path": "furniture/storage",
+      "description": "An oak bedside table with one drawer.",
+      "images": [
+        "https://market.truebex.com/files/thumbs/bedside-fjell.png"
+      ],
+      "thumbnail_url": "https://market.truebex.com/files/thumbs/bedside-fjell.png",
+      "includes": [],
+      "variants": [
+        {
+          "variant_id": "oak",
+          "options": {
+            "colour": "Oak"
+          },
+          "dims_mm": [
+            450,
+            560,
+            400
+          ],
+          "materials": [
+            "oak"
+          ],
+          "geometry": {
+            "asset": {
+              "name": "Fjell bedside table",
+              "rev": 1,
+              "kind": "object"
+            },
+            "format": "glb",
+            "url": "https://market.truebex.com/files/geometry/bedside-fjell.glb",
+            "sha256": "96e4ea945a78b34ec4f8e92838c8549e23064cecf939bd154e44cc3202309faf",
+            "bytes": 1636
+          },
+          "prices": {
+            "GB": {
+              "amount": 14900,
+              "currency": "GBP",
+              "exponent": 2,
+              "region": "GB",
+              "includes_tax": true,
+              "tax_rate_bp": 2000,
+              "at": "2026-10-09T10:00:00Z"
+            },
+            "AE": {
+              "amount": 17900,
+              "currency": "AED",
+              "exponent": 2,
+              "region": "AE",
+              "includes_tax": true,
+              "tax_rate_bp": 500,
+              "at": "2026-10-09T10:00:00Z"
+            }
+          },
+          "deliveries": {
+            "GB": {
+              "fee": {
+                "amount": 1900,
+                "currency": "GBP",
+                "exponent": 2
+              },
+              "days_min": 5,
+              "days_max": 10
+            },
+            "AE": {
+              "fee": {
+                "amount": 5000,
+                "currency": "AED",
+                "exponent": 2
+              },
+              "days_min": 7,
+              "days_max": 14
+            }
+          },
+          "availability": {
+            "state": "in_stock",
+            "stock": 20,
+            "lead_time_days": null,
+            "updated_at": "2026-10-09T10:00:00Z"
+          }
+        }
+      ],
+      "brand": "Nord Living",
+      "substitutes": []
     }
   ]
 }

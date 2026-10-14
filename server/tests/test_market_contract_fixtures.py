@@ -1,17 +1,20 @@
 """PF7c: the platform's marketplace answers checked against the app's own
 contract fixtures (contracts/marketplace-api.md §9). MK1 wrote them in the
 app repo (Docs/roadmap/fixtures/contracts/marketplace/, app main 90799860);
-they are copied byte for byte into tests/contracts/marketplace/.
+they are copied byte for byte into tests/contracts/marketplace/. PF7d
+re-copied them after AU2 added its bedroom set (app commit 180b2d53, on the
+app's main since 7caa26aa; copied from main 7fe6b2c2): 13 products.
 
 The platform is seeded from the app's products.json (the stub's catalogue:
-three suppliers, nine products, per-region prices and deliveries) and asked
-what the stub answers from the same files. Only what is volatile is masked:
-the ids and times the server mints, and URLs (the stub serves
+three suppliers, thirteen products, per-region prices and deliveries) and
+asked what the stub answers from the same files. Only what is volatile is
+masked: the ids and times the server mints, and URLs (the stub serves
 https://market.truebex.com/files/<path>; the platform its own picture and
 geometry links). Every other difference is asserted as the platform's
 behaviour with its number in PF7c's As-built ("Differences",
-docs/roadmap/40/PF7c-marketplace-fixtures-from-mk1.md), where the PATCH line
-for the app side is written. PF7's own catalogue, which the older
+docs/roadmap/40/PF7c-marketplace-fixtures-from-mk1.md; D17 on in PF7d's,
+docs/roadmap/40/PF7d-marketplace-fixtures-au2-bedroom-set.md), where the
+PATCH line for the app side is written. PF7's own catalogue, which the older
 marketplace tests count on, is tests/fixtures/market/.
 """
 
@@ -52,22 +55,64 @@ REGIONS = ("GB", "AE")
 FILES = "https://market.truebex.com/files/"
 # Keys the stub keeps in products.json but drops from 5.4 (its README).
 STUB_ONLY = ("substitutes", "supplier_name", "thumbnail_url")
-# The app's set as MK1 committed it (tests/contracts/marketplace/README.md).
-APP_FILES = {
-    "README.md", "categories.json", "regions.json", "products.json", "prices-gb.json", "prices-ae.json",
-    "order-awaiting-payment.json", "order-quoted.json", "feed-two-regions.csv", "feed-two-regions.json",
-    "feed-report.json",
-    "geometry/sofa-oslo.tbxa", "geometry/sofa-oslo-charcoal.tbxa", "geometry/chair-bergen.tbxa",
-    "geometry/sideboard-nord.tbxa", "geometry/light-arc.glb", "geometry/table-fjord.glb", "geometry/table-halden.glb",
-    *(f"thumbs/{n}.png" for n in (
-        "sofa-oslo", "sofa-oslo-charcoal", "chair-bergen", "table-halden", "table-fjord", "light-arc",
-        "sideboard-nord", "paint-sand", "wallpaper-palm", "theme-calm",
-    )),
-}  # fmt: skip
+# The app's set as committed (tests/contracts/marketplace/README.md): its git
+# blob ids, as `git ls-tree -r <app main> -- Docs/roadmap/fixtures/contracts/marketplace/`
+# prints them. PF7d: app commit 180b2d53 (AU2's bedroom set; the folder is the
+# same at main 7caa26aa and 7fe6b2c2). A re-copy (scripts/sync-contract-fixtures.ps1
+# -Contract marketplace) updates this table from the same listing.
+APP_BLOBS = {
+    "README.md": "a98aaed770c05ca63192957eff71e70c982f7795",
+    "categories.json": "663d721377b193b4c88be732fca71b778a118e8f",
+    "feed-report.json": "6345d627b877ddd11ecd39e13d9e94c683c879ea",
+    "feed-two-regions.csv": "afc7711a2830ade310412e6fa54dc02e02bc99ec",
+    "feed-two-regions.json": "a88c8f7ea97c2ad9bffd3b73bbceacb86b77a938",
+    "geometry/bed-fjell-single.glb": "1ba19c19c08d621b2787ee7f4053811a212ffcce",
+    "geometry/bed-fjell.glb": "780825d79611a42ea1efb078346d0cf414cf0bca",
+    "geometry/bedside-fjell.glb": "66b91b69836e47e7572a781d13e0cad072e2f5da",
+    "geometry/chair-bergen.tbxa": "858b5b80e13b5b4ef41c3ac052fd1ad8d8139a22",
+    "geometry/light-arc.glb": "5799f14fc6ec46168d2dcfee4856aaa35ff0383d",
+    "geometry/sideboard-nord.tbxa": "2bfe1dfd29601867e1639fb9550f17ddaf51042f",
+    "geometry/sofa-oslo-charcoal.tbxa": "0fc6c1bacd1c51302bd3f4a171e3e181ae667e4e",
+    "geometry/sofa-oslo.tbxa": "5a26f8274d49002ef90a2befadb0d834a70f595f",
+    "geometry/table-fjord.glb": "2d44ddffa7746bb5e9294e6a42298db3d0780f9f",
+    "geometry/table-halden.glb": "ca070d1bb6a5b8072512987be064e1b0c46771da",
+    "geometry/wardrobe-nord.glb": "25907e2a6270f3aa50c4cc9665fa9bc01e44f328",
+    "order-awaiting-payment.json": "0f777162c5278d69af0604b536d3848ddfdc81b3",
+    "order-quoted.json": "1e9f21f9fc8f1b16e61b4f7d25c2dca759516a99",
+    "prices-ae.json": "9e29a1555cd02b4812f3ffd3a5e4dc5091b4fd5a",
+    "prices-gb.json": "a185245d61104e115fc7af16e6156361dee9d6a7",
+    "products.json": "407d8319dc33088cfe46ec12fd65434204b59b2e",
+    "regions.json": "8dd0bb1d2201c4e91270a5f6df3920a78e4262ce",
+    "thumbs/bed-fjell-single.png": "0c715a3a1eeb6c4466c5e9459dcb81efa9931434",
+    "thumbs/bed-fjell.png": "2b5e38b5877204939be737d2c39dc28a05cb8038",
+    "thumbs/bedside-fjell.png": "69b1dbb6a3bbde27a2b21ae7cfcbf16d64b4c73d",
+    "thumbs/chair-bergen.png": "83b277b6e7d35992b5f5d5ca2446b9871cd8bf31",
+    "thumbs/light-arc.png": "e85add2b9430d2bff7544e63e6b462d623158253",
+    "thumbs/paint-sand.png": "5e5c3bea24a9bf6e01abb7a83f01a7a459a20b02",
+    "thumbs/sideboard-nord.png": "840cb4b780b1786e51938c6631475fd9d4915c03",
+    "thumbs/sofa-oslo-charcoal.png": "924ede513df6b10226c2a5532ac00d8e15a3aefa",
+    "thumbs/sofa-oslo.png": "1fecd9320a4a5ea39a85d6dbc8d2e9dcff1b2d7e",
+    "thumbs/table-fjord.png": "467921e85b5c039aa5dbb2ed8e5a2e465ec086e2",
+    "thumbs/table-halden.png": "da105a3a994d1959f7343ab0da1628a5947386fb",
+    "thumbs/theme-calm.png": "c75de08eb1ec66c8e85dc7b07687a505102e7f0f",
+    "thumbs/wallpaper-palm.png": "6155674e314377b8de39942cf896e6e377c32f0e",
+    "thumbs/wardrobe-nord.png": "c8ae85689e0e70bc2ccde8d6781c14d2e727181d",
+}
+APP_FILES = set(APP_BLOBS)
+# AU2's bedroom set (the products `Layout.Products` swaps an auto layout's boxes for).
+BEDROOM = ("BED-FJELL-160", "BED-FJELL-90", "WARDROBE-NORD-120", "BEDSIDE-FJELL")
+# Variants that carry a file: MK1's eight (four .tbxa uses, three .glb, the second
+# sideboard size) and AU2's four .glb.
+GEOMETRY_VARIANTS = 12
 
 
 def stub(name: str) -> dict:
     return json.loads((CONTRACT_FIXTURES / name).read_text(encoding="utf-8"))
+
+
+def git_blob_id(data: bytes) -> str:
+    """What `git hash-object --no-filters` prints for these bytes."""
+    return hashlib.sha1(b"blob %d\0" % len(data) + data).hexdigest()
 
 
 def stub_file(url: str) -> bytes:
@@ -151,7 +196,9 @@ def test_contract_folder_is_the_apps_copy():
     files = {p.relative_to(CONTRACT_FIXTURES).as_posix() for p in CONTRACT_FIXTURES.rglob("*") if p.is_file()}
     assert files == APP_FILES
     assert STUB["schema"] == "truebex-market-stub/1"
-    assert len(STUB["suppliers"]) == 3 and len(STUB["products"]) == 9
+    # PF7d: MK1's nine products and AU2's bedroom set.
+    assert len(STUB["suppliers"]) == 3 and len(STUB["products"]) == 13
+    assert all(BY_SKU.get(sku, {}).get("supplier_id") == NORD for sku in BEDROOM)
     # Copied as the app's blobs: no line ending converted on the way.
     for rel in APP_FILES:
         if rel.endswith((".json", ".csv", ".md")):
@@ -178,23 +225,45 @@ def test_contract_folder_is_the_apps_copy():
             assert img.format == "PNG" and min(img.size) >= 512, rel
 
 
+def test_contract_folder_blobs_are_the_apps():
+    """PF7d: every file is the app's blob at AU2's commit (on the app's main
+    since 7caa26aa): its git blob id (`git hash-object --no-filters`) equals
+    `git ls-tree`'s, so no byte differs, line endings included."""
+    mine = {
+        p.relative_to(CONTRACT_FIXTURES).as_posix(): git_blob_id(p.read_bytes())
+        for p in CONTRACT_FIXTURES.rglob("*")
+        if p.is_file()
+    }
+    assert {rel: blob for rel, blob in mine.items() if APP_BLOBS.get(rel) != blob} == {}
+    assert set(mine) == set(APP_BLOBS)
+
+
 # --- The seed ---------------------------------------------------------------------------------
 
 
 def test_seed_reads_the_apps_catalogue(client, capsys):
     """seed_market.py --fixture with the app's set: its three suppliers
-    (verified) and nine products (approved), each found by 5.3 with the price
-    products.json gives it in GB and AE. A second run changes nothing."""
+    (verified) and thirteen products (approved; PF7d: AU2's bedroom set
+    among them), each found by 5.3 with the price products.json gives it in
+    GB and AE. A second run prints and leaves the same."""
     from scripts import seed_market
 
+    runs = []
     for _ in range(2):
         assert seed_market.main(["--fixture", str(CONTRACT_FIXTURES)]) == 0
-    out = capsys.readouterr().out
+        runs.append(capsys.readouterr().out)
+        with SessionLocal() as db:
+            runs.append(
+                (db.scalar(select(func.count()).select_from(Supplier)), sorted((p.product_id, p.status) for p in db.scalars(select(Product))))
+            )
+    assert runs[0:2] == runs[2:4]
+    out, (suppliers, products) = runs[0], runs[1]
     for s in STUB["suppliers"]:
         assert f"supplier {s['name']} ({s['supplier_id']}): verified" in out
-    with SessionLocal() as db:
-        assert db.scalar(select(func.count()).select_from(Supplier)) == 3
-        assert {p.product_id: p.status for p in db.scalars(select(Product))} == {pid: "approved" for pid in PRODUCTS}
+    assert (suppliers, len(products)) == (3, 13)
+    assert dict(products) == {pid: "approved" for pid in PRODUCTS}
+    for sku in BEDROOM:
+        assert f"approved        {sku:<22} {BY_SKU.get(sku, {}).get('name')}" in out
 
     listed = client.get("/market/search", params={"region": "GB", "limit": 100}, headers=CONTRACT).json()
     assert sorted(r["product_id"] for r in listed["results"]) == sorted(PRODUCTS)
@@ -214,12 +283,24 @@ def test_seed_reads_the_apps_catalogue(client, capsys):
     ae = client.get("/market/search", params={"q": "sofa", "region": "AE"}, headers=CONTRACT).json()["results"]
     assert [h["product_id"] for h in ae] == [SOFA["product_id"], BY_SKU["THEME-CALM"]["product_id"]]
     assert ae[0]["price"] == SOFA["variants"][0]["prices"]["AE"]
+    # "bed" in GB and AE: the Fjell double and single beds, each with the price
+    # products.json gives it there (PF7d's human test).
+    for region in REGIONS:
+        hits = client.get("/market/search", params={"q": "bed", "region": region}, headers=CONTRACT).json()["results"]
+        found = {h["product_id"]: h for h in hits}
+        for sku in ("BED-FJELL-160", "BED-FJELL-90"):
+            bed = BY_SKU.get(sku, {"product_id": sku})
+            hit = found.get(bed["product_id"])
+            assert hit is not None, (region, sku, [h["name"] for h in hits])
+            assert (hit["name"], hit["category"]) == (bed["name"], bed["category"])
+            assert hit["price"] == bed["variants"][0]["prices"][region], (region, sku)
 
 
 # --- 5.1, 5.2 ---------------------------------------------------------------------------------
 
 
 def test_categories_like_the_stub(client):
+    tree = {c["path"]: c for c in client.get("/market/categories", headers=CONTRACT).json()["categories"]}
     load_stub()
     res = client.get("/market/categories", headers=CONTRACT)
     assert res.status_code == 200, res.text
@@ -230,17 +311,34 @@ def test_categories_like_the_stub(client):
     counts = counts_of(STUB["products"])
     # D3: an app path's label is the app's taxonomy file's own (CAD/taxonomy/categories.json: "Wall").
     labels = {"lighting/wall": "Wall"}
+    # D2: the seed adds the stub's paths the platform's tree lacks, with the
+    # stub's labels: MK1's two and (PF7d) AU2's three. The platform's own
+    # `double-beds` / `single-beds` stay beside the stub's `double` / `single`
+    # (market_categories.json unchanged; which names stay is the owner's call).
+    added = {p: got[p]["label"] for p in set(got) - set(tree)}
+    assert added == {
+        "furniture/tables/coffee": "Coffee tables",
+        "lighting/wall/sconces": "Sconces",
+        "furniture/beds/double": "Double beds",
+        "furniture/beds/single": "Single beds",
+        "furniture/storage/bedside": "Bedside tables",
+    }
+    assert {p: tree[p]["label"] for p in ("furniture/beds/double-beds", "furniture/beds/single-beds", "furniture/storage/wardrobes")} == {
+        "furniture/beds/double-beds": "Double beds", "furniture/beds/single-beds": "Single beds", "furniture/storage/wardrobes": "Wardrobes",
+    }  # fmt: skip
     for c in want["categories"]:
-        mine = got.pop(c["path"])  # D2: the seed adds the stub's two paths the platform's tree lacks
+        mine = got.pop(c["path"])
         assert (mine["app_path"], mine["label"]) == (c["app_path"], labels.get(c["path"], c["label"])), c
         assert mine["products"] == counts[c["path"]], c
         if c["path"] != "furniture":
             assert c["products"] == mine["products"], c
-    # D1: the stub's categories.json says 6 under furniture; products.json files 5 there.
-    assert next(c for c in want["categories"] if c["path"] == "furniture")["products"] == 6
-    assert counts["furniture"] == 5
+    # D1: the stub's categories.json says 10 under furniture (6 before AU2);
+    # products.json files 9 there (5 before).
+    assert next(c for c in want["categories"] if c["path"] == "furniture")["products"] == 10
+    assert counts["furniture"] == 9
     # D4: 5.1 is the platform's whole tree; the rest of it holds no fixture product.
     assert got and all(c["products"] == 0 for c in got.values())
+    assert got["furniture/beds/double-beds"]["products"] == got["furniture/beds/single-beds"]["products"] == 0
 
 
 def test_regions_like_the_stub(client):
@@ -280,6 +378,12 @@ def test_batch_prices_like_the_stub(client, region):
         assert {**mine, "substitutes": theirs["substitutes"]} == theirs
     halden = next(i for i in body["items"] if i["sku"] == "TABLE-HALDEN")
     assert halden["availability"]["state"] == "discontinued" and halden["substitutes"]
+    # PF7d: every line of the new file, AU2's bedroom set (one variant each) included.
+    assert len(body["items"]) == 12
+    assert [i["sku"] for i in body["items"][-4:]] == list(BEDROOM)
+    for i in body["items"][-4:]:
+        (v,) = BY_SKU[i["sku"]]["variants"]
+        assert (i["variant_id"], i["price"], i["availability"]) == (v["variant_id"], v["prices"][region], v["availability"])
 
 
 # --- 5.7, 5.9 ---------------------------------------------------------------------------------
@@ -390,6 +494,8 @@ def test_feed_import_like_the_stub_report(client, monkeypatch, fmt):
 
 def test_products_and_suppliers_like_the_stub(client):
     load_stub()
+    # PF7d: all thirteen, AU2's bedroom set included, in both regions.
+    assert {p["sku"] for p in STUB["products"]} >= set(BEDROOM) and len(STUB["products"]) == 13
     for p in STUB["products"]:
         for region in REGIONS:
             res = client.get(f"/market/products/{p['product_id']}", params={"region": region}, headers=CONTRACT)
@@ -430,10 +536,26 @@ def test_products_and_suppliers_like_the_stub(client):
 
 def test_withdrawn_substitutes_like_the_stub(client):
     """5.4's 410 `product_withdrawn` names the substitutes products.json
-    gives, but one: D13, the platform offers only a substitute that can be
-    ordered in the region, and the stub offers the discontinued Halden table
-    for the Fjord table."""
+    gives, but for four products. D13: the platform offers only a substitute
+    that can be ordered in the region, and the stub offers the discontinued
+    Halden table for the Fjord table. D17 (PF7d): the platform's rule is the
+    same category, then the same app path, nearest in price, so the three
+    `furniture/storage` products (MK1's sideboard, AU2's wardrobe and bedside
+    table) offer each other where the stub lists none; the stub's own
+    app-path substitutes (the sofa and the armchair, AU2's double and single
+    beds) are the platform's too."""
     load_stub()
+    # D17: in GB and AE alike (AE's prices keep GB's order).
+    storage = {
+        "SIDEBOARD-NORD": ["WARDROBE-NORD-120", "BEDSIDE-FJELL"],
+        "WARDROBE-NORD-120": ["SIDEBOARD-NORD", "BEDSIDE-FJELL"],
+        "BEDSIDE-FJELL": ["WARDROBE-NORD-120", "SIDEBOARD-NORD"],
+    }
+    platform = {
+        "TABLE-FJORD": [],  # D13
+        **{sku: [BY_SKU[s]["product_id"] for s in subs] for sku, subs in storage.items() if set(subs) <= set(BY_SKU)},
+    }
+    assert set(platform) == {"TABLE-FJORD", *storage}
     for p in STUB["products"]:
         with SessionLocal() as db:
             db.get(Product, p["product_id"]).status = "withdrawn"
@@ -442,11 +564,15 @@ def test_withdrawn_substitutes_like_the_stub(client):
             res = client.get(f"/market/products/{p['product_id']}", params={"region": region}, headers=CONTRACT)
             body = error_of(res, 410, "product_withdrawn")
             ids = [s["product_id"] for s in body["data"]["substitutes"]]
-            assert ids == ([] if p["sku"] == "TABLE-FJORD" else p["substitutes"]), p["sku"]
+            assert ids == platform.get(p["sku"], p["substitutes"]), (p["sku"], region)
         with SessionLocal() as db:
             db.get(Product, p["product_id"]).status = "approved"
             db.commit()
     assert BY_SKU["TABLE-FJORD"]["substitutes"] == [BY_SKU["TABLE-HALDEN"]["product_id"]]
+    assert all(BY_SKU[sku]["substitutes"] == [] for sku in storage)
+    # The stub's beds name each other (another category, the same app path), as the platform does.
+    assert BY_SKU["BED-FJELL-160"]["substitutes"] == [BY_SKU["BED-FJELL-90"]["product_id"]]
+    assert BY_SKU["BED-FJELL-90"]["substitutes"] == [BY_SKU["BED-FJELL-160"]["product_id"]]
 
 
 # --- Geometry byte for byte -------------------------------------------------------------------
@@ -462,7 +588,7 @@ def download(client, url: str) -> bytes:
 
 def test_app_geometry_through_the_seed_and_the_product_link(client):
     load_stub()
-    seen = 0
+    seen, downloaded = 0, []
     for p in STUB["products"]:
         for region in REGIONS:
             product = client.get(f"/market/products/{p['product_id']}", params={"region": region}, headers=CONTRACT).json()
@@ -472,8 +598,10 @@ def test_app_geometry_through_the_seed_and_the_product_link(client):
                 data = download(client, v["geometry"]["url"])
                 assert data == stub_file(w["geometry"]["url"])
                 assert (hashlib.sha256(data).hexdigest(), len(data)) == (w["geometry"]["sha256"], w["geometry"]["bytes"])
+                downloaded.append(w["geometry"]["url"][len(FILES) :])
                 seen += 1
-    assert seen == 2 * 8  # eight variants carry a file: four .tbxa uses, three .glb, the second sideboard size
+    assert seen == 2 * GEOMETRY_VARIANTS
+    assert set(downloaded) >= {f"geometry/{n}.glb" for n in ("bed-fjell", "bed-fjell-single", "wardrobe-nord", "bedside-fjell")}
 
 
 def test_app_geometry_survives_the_portal_upload(client):
@@ -530,7 +658,7 @@ def test_app_geometry_survives_the_portal_upload(client):
             assert asset["id"] == importer.asset_id(pid, v["variant_id"]) and asset["kind"] == "object"
             if w["geometry"]["asset"].get("id"):
                 assert asset["id"] != w["geometry"]["asset"]["id"] and "-" in w["geometry"]["asset"]["id"]
-    assert uploaded == 8
+    assert uploaded == GEOMETRY_VARIANTS  # PF7d: AU2's four GLBs too, PF8's checks warning about none
 
 
 # --- Theme includes ---------------------------------------------------------------------------

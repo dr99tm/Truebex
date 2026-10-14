@@ -1,6 +1,6 @@
 {
   "schema": "truebex-tools/1",
-  "version": "1.0.0",
+  "version": "1.2.0",
   "tools": [
     {
       "name": "read_state",
@@ -437,6 +437,128 @@
         "com.truebex/logSafe": false,
         "com.truebex/router": "kernel:FCadTransactionManager::Undo",
         "com.truebex/surfaces": ["mcp", "assistant"]
+      }
+    },
+    {
+      "name": "get_tunables",
+      "title": "List the tunables",
+      "description": "List the runtime knobs (tunables, roadmap 40 / TU1): each one's console name (cad.<Feature>.<Name>), feature, label, type, current value, default, range and step, unit, options, flags and help. Filter by feature, by words in the name / label / help, or to the ones changed from their default. Debug knobs are not listed in a release build.",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "feature": { "type": "string", "maxLength": 40, "description": "only this feature's knobs (Light, Elev, DC1, ...)" },
+          "query": { "type": "string", "maxLength": 80, "description": "words that must appear in the name, label or help" },
+          "modified_only": { "type": "boolean", "default": false },
+          "limit": { "type": "integer", "minimum": 1, "maximum": 500, "default": 200 }
+        }
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "tunables": { "type": "array", "items": { "type": "object" } },
+          "total": { "type": "integer" },
+          "truncated": { "type": "boolean" },
+          "profile": { "type": "string" }
+        }
+      },
+      "annotations": { "readOnlyHint": true, "destructiveHint": false, "idempotentHint": true, "openWorldHint": false },
+      "_meta": {
+        "com.truebex/permission": "read",
+        "com.truebex/logSafe": true,
+        "com.truebex/router": "kernel:CadTunables::RunAgentTool(get_tunables)",
+        "com.truebex/surfaces": ["mcp", "assistant"]
+      }
+    },
+    {
+      "name": "set_tunable",
+      "title": "Set one tunable",
+      "description": "Set (or reset to its default) ONE tunable by its console name from get_tunables. value is a number, true / false, an option or a name, or a colour #RRGGBB; a number is clamped to the knob's range unless it is open-ended. A Design knob (the lighting rig and the other knobs that change the picture or the drawing) is one undo step; no other setting and no console command can be reached this way.",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name"],
+        "properties": {
+          "name": { "type": "string", "maxLength": 80, "description": "cad.<Feature>.<Name>, as get_tunables lists it" },
+          "value": { "description": "the new value: a number, true / false, an option name or #RRGGBB (exactly one of value, reset)" },
+          "reset": { "type": "boolean", "description": "true = back to the default (exactly one of value, reset)" },
+          "dry_run": { "type": "boolean" },
+          "request_id": { "type": "string", "maxLength": 32 }
+        }
+      },
+      "outputSchema": {
+        "type": "object",
+        "required": ["ok"],
+        "properties": {
+          "ok": { "type": "boolean" },
+          "name": { "type": "string" },
+          "previous": { "type": "string" },
+          "value": { "type": "string" },
+          "changed_keys": { "type": "array", "items": { "type": "string" } },
+          "text": { "type": "string" }
+        }
+      },
+      "annotations": { "readOnlyHint": false, "destructiveHint": false, "idempotentHint": true, "openWorldHint": false },
+      "_meta": {
+        "com.truebex/permission": "edit",
+        "com.truebex/logSafe": true,
+        "com.truebex/router": "kernel:CadTunables::RunAgentTool(set_tunable)",
+        "com.truebex/surfaces": ["mcp", "assistant"]
+      }
+    },
+    {
+      "name": "propose_variants",
+      "title": "Propose design variants",
+      "description": "Show the person up to 3 named VARIANTS of an edit as cards in the Assistant panel; each variant is a batch of edit calls (fill, place, move or resize, with the same arguments those tools take). Nothing changes until the person previews one: Preview applies a variant as one undo step (undoing the previous preview first), Keep keeps it, Discard takes it back. Use it when asked for options or alternatives; say in one sentence what differs between the variants. In-app assistant only.",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["variants"],
+        "properties": {
+          "title": { "type": "string", "maxLength": 80, "description": "what the variants are of (\"Kitchen wall fills\")" },
+          "variants": {
+            "type": "array", "minItems": 1, "maxItems": 3,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["name", "calls"],
+              "properties": {
+                "name": { "type": "string", "maxLength": 60 },
+                "description": { "type": "string", "maxLength": 200 },
+                "calls": {
+                  "type": "array", "minItems": 1, "maxItems": 20,
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "description": "exactly one of fill, place, move, resize",
+                    "properties": {
+                      "fill": {"type": "object", "additionalProperties": false, "required": ["target", "finish"], "properties": {"target": {"type": "string", "maxLength": 64, "description": "face#<panel>.<cell>, a wall ref or a room ref"}, "face": {"type": "string", "enum": ["left", "right", "both", "walls", "floor", "ceiling", "all"], "description": "wall: left / right / both side; room: walls / floor / ceiling / all (default walls)"}, "finish": {"type": "object", "additionalProperties": false, "required": ["kind"], "properties": {"kind": {"type": "string", "enum": ["paint", "wallpaper", "pattern3d", "none"]}, "colour": {"type": "string", "maxLength": 16, "description": "#RRGGBB or RAL nnnn"}, "roughness": {"type": "number", "minimum": 0, "maximum": 1}, "sheen": {"type": "string", "enum": ["matt", "satin", "gloss"]}, "texture": {"type": "string", "maxLength": 120}, "pattern": {"type": "string", "enum": ["tile", "brick", "slat", "coffer"]}, "tile_mm": {"type": "array", "items": {"type": "number", "minimum": 10, "maximum": 10000}, "minItems": 2, "maxItems": 2}}}}, "description": "the arguments of one fill call (as the fill tool takes them)"},
+                      "place": {"type": "object", "additionalProperties": false, "required": ["kind"], "properties": {"kind": {"type": "string", "enum": ["wall", "door", "window", "opening", "object", "product"]}, "host": {"type": "string", "maxLength": 64, "description": "wall ref for a door / window / opening"}, "offset_mm": {"type": "number", "minimum": 0, "maximum": 1000000}, "width_mm": {"type": "number", "minimum": 100, "maximum": 20000}, "height_mm": {"type": "number", "minimum": 100, "maximum": 10000, "description": "opening height (head = sill + height), or a wall's height"}, "sill_mm": {"type": "number", "minimum": 0, "maximum": 10000}, "head_mm": {"type": "number", "minimum": 100, "maximum": 10000}, "start_mm": {"type": "array", "items": {"type": "number"}, "minItems": 3, "maxItems": 3}, "end_mm": {"type": "array", "items": {"type": "number"}, "minItems": 3, "maxItems": 3}, "thickness_mm": {"type": "number", "minimum": 10, "maximum": 2000}, "storey": {"type": "string", "maxLength": 80}, "asset": {"type": "string", "maxLength": 120}, "room": {"type": "string", "maxLength": 80}, "at_mm": {"type": "array", "items": {"type": "number"}, "minItems": 3, "maxItems": 3}, "bearing_deg": {"type": "number", "minimum": 0, "maximum": 360}, "product": {"type": "object", "additionalProperties": false, "required": ["supplier_id", "sku", "variant_id"], "properties": {"supplier_id": {"type": "string", "maxLength": 32}, "sku": {"type": "string", "maxLength": 64}, "variant_id": {"type": "string", "maxLength": 64}}}}, "description": "the arguments of one place call (as the place tool takes them)"},
+                      "move": {"type": "object", "additionalProperties": false, "required": ["refs"], "properties": {"refs": {"type": "array", "items": {"type": "string", "maxLength": 64}, "minItems": 1, "maxItems": 100}, "by_mm": {"type": "array", "items": {"type": "number"}, "minItems": 3, "maxItems": 3}, "to_mm": {"type": "array", "items": {"type": "number"}, "minItems": 3, "maxItems": 3}, "along_mm": {"type": "number"}, "rotate_deg": {"type": "number", "minimum": -360, "maximum": 360}}, "description": "the arguments of one move call (as the move tool takes them)"},
+                      "resize": {"type": "object", "additionalProperties": false, "required": ["ref"], "properties": {"ref": {"type": "string", "maxLength": 64}, "length_mm": {"type": "number", "minimum": 1, "maximum": 1000000}, "width_mm": {"type": "number", "minimum": 1, "maximum": 1000000}, "height_mm": {"type": "number", "minimum": 1, "maximum": 1000000}, "depth_mm": {"type": "number", "minimum": 1, "maximum": 1000000}, "thickness_mm": {"type": "number", "minimum": 1, "maximum": 1000000}, "sill_mm": {"type": "number", "minimum": 0, "maximum": 1000000}, "head_mm": {"type": "number", "minimum": 1, "maximum": 1000000}, "scale": {"type": "number", "minimum": 0.01, "maximum": 100}, "anchor": {"type": "string", "enum": ["start", "centre", "end"], "default": "centre"}}, "description": "the arguments of one resize call (as the resize tool takes them)"}
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "outputSchema": {
+        "type": "object",
+        "required": ["ok"],
+        "properties": {
+          "ok": { "type": "boolean" },
+          "variants": { "type": "integer" },
+          "text": { "type": "string" }
+        }
+      },
+      "annotations": { "readOnlyHint": false, "destructiveHint": false, "idempotentHint": false, "openWorldHint": false },
+      "_meta": {
+        "com.truebex/permission": "edit",
+        "com.truebex/logSafe": false,
+        "com.truebex/router": "assistant:variant cards (each Preview runs the calls through the router as one undo step)",
+        "com.truebex/surfaces": ["assistant"]
       }
     }
   ]

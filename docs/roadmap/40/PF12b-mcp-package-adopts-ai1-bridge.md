@@ -262,6 +262,7 @@ Launch: in the worktree, `powershell -NoProfile -ExecutionPolicy Bypass -File sc
      could name this shape.
   3. `Tools/mcp/manifest.json:40` `"license": "Proprietary"` vs the npm package's MIT (`packages/mcp/LICENSE`): the
      owner decides the bridge's licence before publishing.
+  4. The app has since moved to agent-interface 1.2.0 (TU1's `get_tunables` / `set_tunable`, AI2's assistant-only `propose_variants`): followed by [PF12c](PF12c-agent-interface-1-2-0.md).
 * **Contract proposals (for the owner to write in `agent-interface.md`; nothing changed from here):** §6.5 —
   "`additionalProperties` (always `false` on input-schema objects; output schemas stay open so a §7 error conforms)";
   §9 — `legacy-initialize` and `app-not-running` are node tests (`mcp-legacy-initialize`, `mcp-no-app`), not fixture

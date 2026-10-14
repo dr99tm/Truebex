@@ -216,11 +216,27 @@ export interface Tool {
   inputSchema: Schema;
   outputSchema?: Schema;
   annotations: { readOnlyHint: boolean; destructiveHint?: boolean; idempotentHint?: boolean; openWorldHint?: boolean };
-  _meta: { "com.truebex/permission": string; "com.truebex/logSafe"?: boolean; "com.truebex/requires"?: string };
+  _meta: {
+    "com.truebex/permission": string;
+    "com.truebex/logSafe"?: boolean;
+    "com.truebex/requires"?: string;
+    "com.truebex/surfaces"?: string[];
+  };
 }
 
+/** The tools the MCP server lists (agent-interface 1.2.0): those whose surfaces include `mcp`;
+ *  no surfaces key means both. The in-app assistant's tools (propose_variants) are never on MCP. */
+export function mcpTools(tools: readonly Tool[]): Tool[] {
+  return tools.filter((t) => {
+    const surfaces = t._meta?.["com.truebex/surfaces"];
+    return !Array.isArray(surfaces) || surfaces.includes("mcp");
+  });
+}
+
+/** src/content/tools.json with only the tools on the mcp surface, in the file's order. */
 export function toolsDocument(): { schema: string; version: string; tools: Tool[] } {
-  return JSON.parse(fs.readFileSync(path.join(ROOT, "src", "content", "tools.json"), "utf8"));
+  const doc = JSON.parse(fs.readFileSync(path.join(ROOT, "src", "content", "tools.json"), "utf8"));
+  return { ...doc, tools: mcpTools(doc.tools) };
 }
 
 /** A tool argument's rules in words: items, range, length, pattern, default. */
