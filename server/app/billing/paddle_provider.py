@@ -559,10 +559,10 @@ class PaddleProvider(BillingProvider):
         self, db: Session, user: User, scope: InvoiceScope | None = None
     ) -> list[Invoice]:
         if scope is None:
-            customer = service.customer_id(db, user, "paddle")
-            if not customer:
+            # The person's own (PF2e: their packs' customers too).
+            scope = org_billing.personal_scope(db, user, "paddle")
+            if scope is None:
                 return []
-            scope = InvoiceScope(customers=(customer,))
         out = []
         for customer in scope.customers:
             rows = self._api(
@@ -600,12 +600,10 @@ class PaddleProvider(BillingProvider):
     ) -> str:
         txn = self._api("GET", f"/transactions/{invoice_id}")["data"]
         if scope is None:
-            customer = service.customer_id(db, user, "paddle")
-            mine = bool(customer) and txn.get("customer_id") == customer
-        else:
-            mine = txn.get("customer_id") in scope.customers and scope.keeps(
-                invoice_id, str_or_none(txn.get("subscription_id"))
-            )
+            scope = org_billing.personal_scope(db, user, "paddle")
+        mine = scope is not None and txn.get("customer_id") in scope.customers and scope.keeps(
+            invoice_id, str_or_none(txn.get("subscription_id"))
+        )
         if not mine:
             raise ProviderError("not this customer's invoice")
         return self._api("GET", f"/transactions/{invoice_id}/invoice")["data"]["url"]

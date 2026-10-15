@@ -16,7 +16,7 @@ Rules:
 from collections.abc import Callable
 from datetime import datetime, timedelta, timezone
 
-from sqlalchemy import func, select, update
+from sqlalchemy import func, or_, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -136,7 +136,12 @@ def customer_id(db: Session, user: User, provider: str) -> str | None:
     never this one (PF8b), and so is an organisation's Stripe subscription
     (PF3a) on the organisation's (org_billing.org_customer, PF3e). Paddle
     keeps one customer per e-mail address, so there what a person buys for
-    an organisation is on their own customer, and it still counts."""
+    an organisation is on their own customer, and it still counts.
+
+    PF2e: with no such subscription (a trial, a seat in an organisation, a
+    buyer whose only Stripe subscription is an organisation's), the customer
+    their latest one-off item was paid on (`one_off_customers`), so their
+    next pack, Pro and portal open there instead of on a new one each time."""
     query = (
         select(Subscription)
         .where(
@@ -150,7 +155,52 @@ def customer_id(db: Session, user: User, provider: str) -> str | None:
     if provider in ORG_CUSTOMER_PROVIDERS:
         query = query.where(Subscription.organisation_id.is_(None))
     sub = db.scalar(query)
-    return sub.provider_customer_id if sub else None
+    if sub is not None:
+        return sub.provider_customer_id
+    found = one_off_customers(db, user, provider)
+    return found[0] if found else None
+
+
+def one_off_customers(db: Session, user: User, provider: str) -> list[str]:
+    """PF2e: the customers the person's own one-off items (ONE_OFF_ITEMS, an
+    AI credit pack) were paid on at `provider`, newest first, as recorded
+    from the provider's verified state (`payments.provider_customer_id`).
+    Never a listing plan's or an organisation's payment, and where an
+    organisation pays on a customer of its own (Stripe, PF3e) never a
+    customer that holds a subscription that is not the person's own (an
+    organisation's, a listing plan's, someone else's). Payments from before
+    PF2e recorded none."""
+    if not ONE_OFF_ITEMS:
+        return []
+    rows = db.scalars(
+        select(Payment.provider_customer_id)
+        .where(
+            Payment.user_id == user.id,
+            Payment.provider == provider,
+            Payment.status == "paid",
+            Payment.plan.in_(sorted(ONE_OFF_ITEMS)),
+            Payment.organisation_id.is_(None),
+            Payment.provider_customer_id.is_not(None),
+        )
+        .order_by(Payment.paid_at.desc(), Payment.id.desc())
+    )
+    found = list(dict.fromkeys(rows))
+    if provider not in ORG_CUSTOMER_PROVIDERS or not found:
+        return found
+    held = set(
+        db.scalars(
+            select(Subscription.provider_customer_id).where(
+                Subscription.provider == provider,
+                Subscription.provider_customer_id.in_(found),
+                or_(
+                    Subscription.organisation_id.is_not(None),
+                    Subscription.plan.startswith(LISTING_TIER_PREFIX, autoescape=True),
+                    Subscription.user_id != user.id,
+                ),
+            )
+        )
+    )
+    return [c for c in found if c not in held]
 
 
 def listing_customer(db: Session, payment: Payment) -> str | None:

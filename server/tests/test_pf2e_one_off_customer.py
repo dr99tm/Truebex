@@ -394,7 +394,9 @@ def test_customer_id_ignores_listing_and_organisation_payments(client):
         _row(db, uid, "ai_credits", "cus_pack", paid_ago=timedelta(days=1))
         db.commit()
         assert service.customer_id(db, user, "stripe") == "cus_pack"  # the latest pack's
-        assert org_billing.personal_scope(db, user, "stripe") == InvoiceScope(customers=("cus_pack", "cus_pack_old"))
+        scope = org_billing.personal_scope(db, user, "stripe")
+        assert scope.customers == ("cus_pack", "cus_pack_old")
+        assert scope.exclude == {"ref_pf2e_2", "ref_pf2e_3"}  # what they bought for the organisation, as before
 
         # A pack on a customer that an organisation's subscription uses (a
         # session opened before PF3e): never the person's on Stripe.
