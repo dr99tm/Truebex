@@ -14,7 +14,8 @@ A supplier's listing plan (PF8, `listing_<plan>`) is paid on the supplier's
 own customer (`suppliers.billing_customer_id`, or a new one), an
 organisation's plan on the organisation's (`org_billing.org_customer`, or a
 new one; PF3e), and a person's own plans and top-ups on theirs
-(`service.customer_id`, which skips listing and organisation plans): Checkout
+(`service.customer_id`, which skips listing and organisation plans and, with
+no subscription of their own, is their latest pack's customer; PF2e): Checkout
 saves the VAT id it collects onto the customer it ran on, and a later session
 reporting that id makes its payment a business one (PF8b, PF3e). An
 organisation's portal opens on its subscription's customer, so on the
@@ -286,6 +287,11 @@ class StripeProvider(BillingProvider):
                 payment.provider_subscription_id = (
                     _id_of(session.get("subscription")) or payment.provider_subscription_id
                 )
+                # PF2e: the customer it was paid on (Stripe makes one for a
+                # session that named none), so a pack's is found again.
+                payment.provider_customer_id = (
+                    _id_of(session.get("customer")) or payment.provider_customer_id
+                )
                 service.mark_payment_paid(db, payment)
                 db.commit()
                 # Sessions are created only by this server, so its metadata holds.
@@ -522,10 +528,10 @@ class StripeProvider(BillingProvider):
         self, db: Session, user: User, scope: InvoiceScope | None = None
     ) -> list[Invoice]:
         if scope is None:
-            customer = service.customer_id(db, user, "stripe")
-            if not customer:
+            # The person's own (PF2e: their packs' customers too).
+            scope = org_billing.personal_scope(db, user, "stripe")
+            if scope is None:
                 return []
-            scope = InvoiceScope(customers=(customer,))
         out = []
         for customer in scope.customers:
             found = stripe.Invoice.list(api_key=self._key, customer=customer, limit=24)
@@ -557,12 +563,10 @@ class StripeProvider(BillingProvider):
         except stripe.StripeError as exc:
             raise ProviderError(str(exc)) from exc
         if scope is None:
-            customer = service.customer_id(db, user, "stripe")
-            mine = bool(customer) and inv.get("customer") == customer
-        else:
-            mine = inv.get("customer") in scope.customers and scope.keeps(
-                invoice_id, _invoice_subscription(inv)
-            )
+            scope = org_billing.personal_scope(db, user, "stripe")
+        mine = scope is not None and inv.get("customer") in scope.customers and scope.keeps(
+            invoice_id, _invoice_subscription(inv)
+        )
         if not mine or not inv.get("invoice_pdf"):
             raise ProviderError("not this customer's invoice")
         return inv["invoice_pdf"]
