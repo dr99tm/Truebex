@@ -3374,3 +3374,19 @@ export const DASHBOARD_SHARES_VERSION = {
   version: "Version",
   note: "Updated from Truebex. The link stays the same and shows the latest version.",
 } as const;
+
+// PF13c: the site's own not-found page (src/app/not-found.tsx). GitHub Pages
+// answers every missing path with it (out/404.html, status 404), /ar/ paths
+// too, so it is English only. The title goes through the root template
+// ("Page not found · Truebex").
+export const NOT_FOUND = {
+  title: "Page not found",
+  eyebrow: "404 · Page not found",
+  heading: "Nothing stands at this address",
+  intro: "The link may be out of date, or the address mistyped. Start again from one of these pages.",
+  home: "Go to the home page",
+  links: [
+    { label: "Download for Windows", href: "/download/" },
+    { label: "Pricing", href: "/pricing/" },
+  ],
+} as const;

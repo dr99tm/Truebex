@@ -1528,3 +1528,13 @@ $env:DATABASE_URL="sqlite:///./pf2e-test.db"; $env:PADDLE_API_BASE="http://127.0
 
 The trial user's pack records its Paddle customer and is on their own invoice list; the Stripe buyer's second pack
 opens on the first pack's customer.
+
+## The not-found page (PF13c)
+
+A missing path on truebex.com answers `out/404.html` with status 404 (GitHub Pages). It is the site's own page
+(`src/app/not-found.tsx`, copy in `NOT_FOUND`): one title, `Page not found · Truebex`, robots `noindex` only, no
+canonical, and links to the home page, the download and pricing. `scripts/serve-out.py`, which
+`scripts\autopilot-serve.ps1` runs, answers a missing path the same way: the folder's `404.html`, status 404,
+`Access-Control-Allow-Origin: *`. Components in the root layout read the route segment, not the address bar, because
+the one `404.html` is served at every missing address (the Navbar). `server/tests/test_site_pf13c.py` checks the built
+files and the server. Doc: `docs/roadmap/40/PF13c-not-found-page.md`.
