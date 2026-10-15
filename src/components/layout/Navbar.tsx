@@ -25,7 +25,7 @@ export function Navbar() {
   const { user } = useCurrentUser();
   // The route's first segment, not the address bar (PF13c): GitHub Pages
   // answers a missing /ar/… or /app/… path with the English not-found page,
-  // whose segment is _not-found wherever it is served, so the server's HTML
+  // whose segment is /_not-found wherever it is served, so the server's HTML
   // and the browser agree.
   const segment = useSelectedLayoutSegment();
   const locale = segment === "ar" ? "ar" : "en";
