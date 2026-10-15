@@ -1,154 +1,38 @@
-"""Write the render-jobs contract fixtures (contracts/render-jobs.md §9) into
-server/tests/contracts/render-jobs/.
+"""Write the platform's own render-jobs stand-ins into server/tests/fixtures/render/.
 
-    py -3.12 scripts\\make_render_job_fixtures.py      (needs Pillow for the JPEG tiles)
+    py -3.12 scripts\\make_render_job_fixtures.py            (writes them)
+    py -3.12 scripts\\make_render_job_fixtures.py --check    (exit 1 when a file differs)
 
-Deterministic: re-running with the same Pillow reproduces the same bytes. CL3
-owns the master copy (`Docs/roadmap/fixtures/contracts/render-jobs/` in the app
-repo) once it lands; until then PF6 stages this set, written to the letter of
-§5.6, §5.7, §6.1, §6.2 and §6.3. The tiles are drawn stand-ins (a coloured
-face with its compass letter and a wall), not renders of the house.
+PF6 (2026-10-10) staged the whole contract set (render-jobs.md §9) with this
+script while the app had none. CL3 then published its own
+(`Docs/roadmap/fixtures/contracts/render-jobs/` in the app repo), copied byte
+for byte into server/tests/contracts/render-jobs/ by
+scripts/sync-contract-fixtures.ps1 (PF6a, 2026-10-15). What the app does not
+publish stays here, the platform's own, until AN3 (analysis) and the app
+publish theirs: a 5.7 answer (`claim.json`), the two operation files PF6's
+job files named, and PF11's wind result (§6.3) with its arrays. Deterministic,
+standard library only.
 """
 
+import argparse
 import hashlib
-import io
 import json
-import shutil
 import struct
+import sys
 from pathlib import Path
 
-from PIL import Image, ImageDraw, ImageFont
+OUT = Path(__file__).resolve().parents[1] / "tests" / "fixtures" / "render"
+SNAPSHOT = Path(__file__).resolve().parents[1] / "tests" / "contracts" / "project-log" / "snapshot-0000.tbxp"
 
-OUT = Path(__file__).resolve().parents[1] / "tests" / "contracts" / "render-jobs"
-
-PROJECT_ID = "0199c6a2f1007a3c8b5e2d4f6a7b8c9d"  # the project-log fixtures' "House"
-VIEW_LIVING = "0199c6a2e00070058000000000000001"  # a saved view, "Living room"
-WALL_MOVED = "0199c6a2e00070018000000000000001"  # the project-log fixtures' first wall
-JOB_PANORAMA = "a11ce000000000000000000000000001"
+PROJECT_ID = "0199c6a2f1007a3c8b5e2d4f6a7b8c9d"  # PF4's project-log fixtures' "House"
+WALL_MOVED = "0199c6a2e00070018000000000000001"  # PF4's project-log fixtures' first wall
 JOB_TILES = "a11ce000000000000000000000000002"
 LEASE_ID = "1ea5e000000000000000000000000001"
 UPLOAD_ID = "0b10ad00000000000000000000000001"
-APP_VERSION = "1.1.0"
-FACES = ("n", "e", "s", "w", "u", "d")
-LEVELS = [512, 1024]
-TILE_PX = 512
-FACE_PX = 1024
-COLOURS = {
-    "n": (196, 120, 92),
-    "e": (92, 150, 196),
-    "s": (120, 176, 104),
-    "w": (176, 140, 200),
-    "u": (232, 228, 214),
-    "d": (122, 96, 74),
-}
-SNAPSHOT = Path(__file__).resolve().parents[1] / "tests" / "contracts" / "project-log" / "snapshot-0000.tbxp"
 
 
 def dump(obj) -> bytes:
     return (json.dumps(obj, indent=2, ensure_ascii=False) + "\n").encode("utf-8")
-
-
-def face_image(face: str, wall_x: int | None) -> Image.Image:
-    """A 1024 px face: its colour, a 128 px grid, its letter, and (for the
-    side faces) a dark wall whose left edge sits at `wall_x`."""
-    img = Image.new("RGB", (FACE_PX, FACE_PX), COLOURS[face])
-    draw = ImageDraw.Draw(img)
-    r, g, b = COLOURS[face]
-    line = (max(r - 40, 0), max(g - 40, 0), max(b - 40, 0))
-    for p in range(0, FACE_PX + 1, 128):
-        draw.line([(p, 0), (p, FACE_PX)], fill=line, width=3)
-        draw.line([(0, p), (FACE_PX, p)], fill=line, width=3)
-    if wall_x is not None:
-        draw.rectangle([wall_x, 300, wall_x + 220, 900], fill=(48, 44, 40))
-    font = ImageFont.load_default(size=260)
-    draw.text((FACE_PX // 2, FACE_PX // 2), face.upper(), fill=(255, 255, 255), font=font, anchor="mm")
-    return img
-
-
-def jpeg(img: Image.Image) -> bytes:
-    buf = io.BytesIO()
-    img.save(buf, format="JPEG", quality=85, optimize=False, progressive=False)
-    return buf.getvalue()
-
-
-def cut(img: Image.Image) -> list[list[bytes]]:
-    """Per level, its tiles row by row from the top-left (§6.2)."""
-    levels = []
-    for size in LEVELS:
-        scaled = img if size == FACE_PX else img.resize((size, size), Image.Resampling.LANCZOS)
-        n = max(1, size // TILE_PX)
-        tiles = []
-        for row in range(n):
-            for col in range(n):
-                box = (col * TILE_PX, row * TILE_PX, (col + 1) * TILE_PX, (row + 1) * TILE_PX)
-                tiles.append(jpeg(scaled.crop(box)))
-        levels.append(tiles)
-    return levels
-
-
-def store(tiles_dir: Path, levels: list[list[bytes]]) -> list[list[str]]:
-    out = []
-    for level in levels:
-        shas = []
-        for data in level:
-            sha = hashlib.sha256(data).hexdigest()
-            (tiles_dir / f"{sha}.jpg").write_bytes(data)
-            shas.append(sha)
-        out.append(shas)
-    return out
-
-
-WALL_BEFORE = {"n": 140, "e": 600, "s": None, "w": 380, "u": None, "d": None}
-WALL_AFTER = {"n": 520, "e": 260}  # the moved wall shows on the north and east faces
-
-
-def manifest(job_id: str, at_seq: int, faces: dict, rendered: int, reused: int, ms: dict) -> dict:
-    return {
-        "schema": "truebex-tiles/1",
-        "job_id": job_id,
-        "project_id": PROJECT_ID,
-        "at_seq": at_seq,
-        "app_version": APP_VERSION,
-        "quality": "standard",
-        "views": [
-            {
-                "view": VIEW_LIVING,
-                "title": "Living room",
-                "eye_mm": [4200, 1800, 1600],
-                "face_px": FACE_PX,
-                "tile_px": TILE_PX,
-                "levels": LEVELS,
-                "faces": faces,
-            }
-        ],
-        "faces_rendered": rendered,
-        "faces_reused": reused,
-        "ms": ms,
-    }
-
-
-def job_file(job_id: str, kind: str, at_seq: int, ops: str, changed: list[str], base: str | None) -> dict:
-    root = f"Saved/RenderJobs/{job_id}"
-    return {
-        "schema": "truebex-render-job/1",
-        "job_id": job_id,
-        "kind": kind,
-        "quality": "standard",
-        "seed": 1,
-        "project": {
-            "tbxp": "Docs/roadmap/fixtures/Z0-baseline.tbxp",
-            "tbxpack": None,
-            "ops": f"Docs/roadmap/fixtures/contracts/render-jobs/{ops}",
-            "at_seq": at_seq,
-        },
-        "views": [VIEW_LIVING],
-        "changed": changed,
-        "base_manifest": base,
-        "face_px": FACE_PX,
-        "tile_px": TILE_PX,
-        "jpeg_quality": 85,
-        "out_dir": f"{root}/out",
-    }
 
 
 def record(job_id: str, kind: str, state: str, at_seq: int, **extra) -> dict:
@@ -174,41 +58,29 @@ def record(job_id: str, kind: str, state: str, at_seq: int, **extra) -> dict:
     return base
 
 
-def main() -> None:
-    if OUT.exists():
-        shutil.rmtree(OUT)
-    tiles_dir = OUT / "tiles"
-    tiles_dir.mkdir(parents=True)
+README = """# The platform's own render-jobs stand-ins (PF6, PF11)
 
-    # A full set: one view, levels 512 and 1024, six faces rendered.
-    full = {}
-    for face in FACES:
-        hashes = store(tiles_dir, cut(face_image(face, WALL_BEFORE[face])))
-        full[face] = {"rendered": True, "reason": "full", "tiles": hashes}
-    pano = manifest(JOB_PANORAMA, 0, full, 6, 0, {"open": 3100, "render": 21000, "encode": 900})
-    (OUT / "manifest-panorama.json").write_bytes(dump(pano))
+Not the contract's set: that is the app's own (CL3, render-jobs 1.1.0 §9), copied byte for byte into
+`../../contracts/render-jobs/`. These are the files the app publishes no copy of, written by
+`server/scripts/make_render_job_fixtures.py` (`--check` compares every file; standard library only). PF6
+staged them with the whole set on 2026-10-10; PF6a (2026-10-15) moved them here when CL3's set replaced the
+rest. They stay the platform's own until AN3 (analysis, the wind result) and the app publish theirs, after
+which those files are re-copied into the contract folder and dropped here. Fixture data, never public copy.
 
-    # A partial update after the wall moved: two faces rendered, four carried.
-    partial = {}
-    for face in FACES:
-        if face in WALL_AFTER:
-            hashes = store(tiles_dir, cut(face_image(face, WALL_AFTER[face])))
-            partial[face] = {"rendered": True, "reason": "changed", "tiles": hashes}
-        else:
-            partial[face] = {"rendered": False, "reason": "carried", "tiles": full[face]["tiles"]}
-    tiles = manifest(JOB_TILES, 1, partial, 2, 4, {"open": 3000, "render": 7100, "encode": 300})
-    (OUT / "manifest-tiles.json").write_bytes(dump(tiles))
+| File | Holds | Read by |
+|---|---|---|
+| `claim.json` | a 5.7 answer (the job record with `changed` and `params`, the lease, the signed inputs, the output upload; URLs are placeholders) | `test_render.py` (the claim's keys) |
+| `ops-empty.json`, `ops-move-wall.json` | the project-log 5.7 bodies PF6's own job files named: none, and one "Move wall" of the project-log fixtures' first wall | nothing since PF6a (the app's `ops-tiles.json` replaced them); kept with their history |
+| `wind-result.json`, `wind-*.bin` | an analysis result (§6.3, `truebex-analysis/1`) whose fields name the project-log fixtures' wall ids, and its three little-endian arrays named by SHA-256 | `test_analysis.py`, `tests/fakes/stub_solver/run.py` |
 
-    (OUT / "job-panorama.json").write_bytes(dump(job_file(JOB_PANORAMA, "panorama", 0, "ops-empty.json", [], None)))
-    (OUT / "job-tiles.json").write_bytes(
-        dump(
-            job_file(
-                JOB_TILES, "tiles", 1, "ops-move-wall.json", [WALL_MOVED],
-                "Docs/roadmap/fixtures/contracts/render-jobs/manifest-panorama.json",
-            )
-        )
-    )
-    (OUT / "ops-empty.json").write_bytes(dump({"ops": [], "head_seq": 0, "more": False}))
+The project id and the wall ids are PF4's project-log fixtures' (PF4a re-copied CL1's set over them on 2026-10-15);
+`claim.json`'s snapshot SHA-256 and size are those of `../../contracts/project-log/snapshot-0000.tbxp` as it is now.
+"""
+
+
+def files() -> dict[str, bytes]:
+    out: dict[str, bytes] = {}
+    out["ops-empty.json"] = dump({"ops": [], "head_seq": 0, "more": False})
     move = {
         "op_id": hashlib.sha256(b"render-jobs move wall").hexdigest()[:32],
         "server_seq": 1,
@@ -225,7 +97,7 @@ def main() -> None:
         "action": None,
         "restore": None,
     }
-    (OUT / "ops-move-wall.json").write_bytes(dump({"ops": [move], "head_seq": 1, "more": False}))
+    out["ops-move-wall.json"] = dump({"ops": [move], "head_seq": 1, "more": False})
 
     # An analysis result (§6.3): arrays are little-endian files named by SHA-256.
     cp = struct.pack("<8f", -0.8, -0.6, -0.35, 0.1, 0.45, 0.7, 0.9, -0.2)
@@ -235,7 +107,7 @@ def main() -> None:
     for data in (cp, ids, comfort):
         sha = hashlib.sha256(data).hexdigest()
         arrays[data] = sha
-        (OUT / f"wind-{sha[:12]}.bin").write_bytes(data)
+        out[f"wind-{sha[:12]}.bin"] = data
     wind = {
         "schema": "truebex-analysis/1",
         "kind": "wind",
@@ -258,18 +130,7 @@ def main() -> None:
         ],
         "report": None,
     }
-    (OUT / "wind-result.json").write_bytes(dump(wind))
-
-    usage = {
-        "period_start": "2026-10-01T00:00:00Z",
-        "period_end": "2026-11-01T00:00:00Z",
-        "used_cu": 41.2,
-        "limit_cu": 600,
-        "remaining_cu": 558.8,
-        "classes": {"gpu-std": 1.0, "cpu-8": 0.25},
-        "by_kind": {"tiles": 30.1, "wind": 11.1},
-    }
-    (OUT / "usage.json").write_bytes(dump(usage))
+    out["wind-result.json"] = dump(wind)
 
     snap = SNAPSHOT.read_bytes()
     claim = {
@@ -288,34 +149,36 @@ def main() -> None:
         },
         "output_upload": {"upload_id": UPLOAD_ID, "part_bytes": 8388608},
     }
-    (OUT / "claim.json").write_bytes(dump(claim))
+    out["claim.json"] = dump(claim)
+    out["README.md"] = README.encode("utf-8")
+    out[".gitattributes"] = b"* -text\n"
+    return out
 
-    count = len(list(tiles_dir.iterdir()))
-    readme = f"""# Render-jobs contract fixtures (`contracts/render-jobs.md` v1.0.0, §9)
 
-Copied, never edited: the app side is authoritative for these files.
-
-On 2026-10-10 the app repository had no `Docs/roadmap/fixtures/contracts/render-jobs/` folder yet (CL3 creates
-it), so PF6 wrote this set to the letter of `render-jobs.md` §5.6, §5.7, §6.1, §6.2 and §6.3 with
-`server/scripts/make_render_job_fixtures.py` (deterministic for one Pillow version) and staged it here. CL3
-copies the folder into the app repo (or replaces it with its own, after which this folder is re-copied).
-
-| File | Holds |
-|---|---|
-| `job-panorama.json`, `job-tiles.json` | §6.1 job files against `Docs/roadmap/fixtures/Z0-baseline.tbxp` (paths relative to the app repo) |
-| `ops-empty.json`, `ops-move-wall.json` | the operations those job files name (a project-log 5.7 body): none, and one "Move wall" |
-| `manifest-panorama.json` | a full set: one view ("Living room"), levels 512 and 1024, six faces rendered |
-| `manifest-tiles.json` | the partial update after the wall moved: `n` and `e` rendered (`changed`), four faces carried |
-| `tiles/` | the {count} JPEG tiles both manifests name, `<sha256>.jpg`, 512 px, quality 85 (drawn stand-ins) |
-| `wind-result.json`, `wind-*.bin` | an analysis result (§6.3) whose fields name the project-log fixtures' wall ids |
-| `usage.json`, `claim.json` | a 5.6 answer and a 5.7 answer (URLs are placeholders) |
-
-The project id and the wall ids are the project-log fixtures' (`../project-log/`).
-"""
-    (OUT / "README.md").write_bytes(readme.encode("utf-8"))
-    (OUT / ".gitattributes").write_bytes(b"* -text\n")
-    print(f"wrote {OUT} ({count} tiles)")
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
+    parser.add_argument("--check", action="store_true", help="compare instead of writing; exit 1 on a difference")
+    args = parser.parse_args(argv)
+    want = files()
+    if args.check:
+        have = {p.name for p in OUT.iterdir() if p.is_file()} if OUT.is_dir() else set()
+        bad = sorted(n for n, data in want.items() if not (OUT / n).is_file() or (OUT / n).read_bytes() != data)
+        extra = sorted(have - set(want))
+        for name in bad:
+            print(f"differs or missing: {OUT / name}")
+        for name in extra:
+            print(f"not written by this script: {OUT / name}")
+        if bad or extra:
+            print("run server\\.venv\\Scripts\\python.exe server\\scripts\\make_render_job_fixtures.py")
+            return 1
+        print(f"{OUT}: {len(want)} files up to date")
+        return 0
+    OUT.mkdir(parents=True, exist_ok=True)
+    for name, data in want.items():
+        (OUT / name).write_bytes(data)
+    print(f"wrote {len(want)} files to {OUT}")
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

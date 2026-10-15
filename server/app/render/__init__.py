@@ -1,4 +1,4 @@
-"""Cloud render orchestration (PF6, contract render-jobs v1.0).
+"""Cloud render orchestration (PF6, contract render-jobs v1.0; v1.1 since PF6a).
 
 The jobs table is the queue: clients submit (`service`), workers claim with a
 lease (`queue`), followed panorama sets re-render the faces an edit touches

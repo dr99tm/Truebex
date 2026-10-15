@@ -13,7 +13,8 @@ kinds = ["panorama", "tiles", "pack"]
 class = "gpu-std"
 
 # The packaged app (the Shipping build of the release this machine runs).
-# Before the app's headless mode lands: app = "worker/tests/fake_truebex.py".
+# The headless render mode is CL3's (`Truebex.exe -mwrender=<job.json>`, render-jobs 1.1.0).
+# Without a GPU (tests, the PF6 live run): app = "worker/tests/fake_truebex.py".
 app = 'C:\Program Files\Truebex\Truebex.exe'
 # The app version, and the newest document version its log reader reads
 # (o5/<n>): the platform never hands this worker a job that needs more.

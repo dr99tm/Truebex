@@ -1,124 +1,360 @@
 {
-  "schema": "truebex-tiles/1",
-  "job_id": "a11ce000000000000000000000000001",
-  "project_id": "0199c6a2f1007a3c8b5e2d4f6a7b8c9d",
-  "at_seq": 0,
-  "app_version": "1.1.0",
-  "quality": "standard",
-  "views": [
-    {
-      "view": "0199c6a2e00070058000000000000001",
-      "title": "Living room",
-      "eye_mm": [
-        4200,
-        1800,
-        1600
-      ],
-      "face_px": 1024,
-      "tile_px": 512,
-      "levels": [
-        512,
-        1024
-      ],
-      "faces": {
-        "n": {
-          "rendered": true,
-          "reason": "full",
-          "tiles": [
-            [
-              "28746b924afdd6a1eb06011a2811b57ac05f67e96c27779cd9d6ed348f462846"
-            ],
-            [
-              "b9754a9148cc223c8a8a9d53cfa904871f6e48ecdb8d91bef76b5bdb6624b2a2",
-              "12f0a3172028866964ca3647f5facc92854c1f8102c1f14b31ed225eaca12503",
-              "a6f66ecf3c041fff1afe31167fd8e301f6a871347bfbbc62b4207d9b888fc61f",
-              "1bdd2c6f7d4438a5236db57be5402d9e8b0377bff69407cb15f8ff7223471d69"
-            ]
-          ]
-        },
-        "e": {
-          "rendered": true,
-          "reason": "full",
-          "tiles": [
-            [
-              "74b772ec92d50de04469fc34999eb4d180d3d90a1343daf8df719ee7a8a98218"
-            ],
-            [
-              "24813112c406b213f0334d0515092dccaa47ccb1d01c9afee1bf46eaec17df25",
-              "7e11863d8648167f16b2e80206d61003118a0a15aa0ecaea66505cfc22ae8688",
-              "e3a47ca9dfb0c59a76f24b9d8dafc98cfdac022e4c6ba05f62d16ccec030827b",
-              "fcb04869ad6c376fa456d22b0fb319557f55ae28579f52d0615d528c91da499a"
-            ]
-          ]
-        },
-        "s": {
-          "rendered": true,
-          "reason": "full",
-          "tiles": [
-            [
-              "682abe52231bebc2b64083b04c9c3eec163e319be9de5329ff64f3d5bad1110a"
-            ],
-            [
-              "0dad671ab40d0c950a119cd265e56bb7fa0388e536735e39a5eed55ae144b884",
-              "3d7294f75bae816e03b814be68edf8d39c6fedaf7a3f43ba541880cf3adf643e",
-              "cbf93e2f8d7064f9d85a1d93b87f9eed9f24fa8ec4349daffa40c30713e2a06b",
-              "adda065bc7f547ee417eb1f455fe7e7368f9cbf69e2a7de5f3d601a31bd307fa"
-            ]
-          ]
-        },
-        "w": {
-          "rendered": true,
-          "reason": "full",
-          "tiles": [
-            [
-              "3cbb72d2fc6b063dd11e35906c624755fd823253e890750e071dee2ed0e579b4"
-            ],
-            [
-              "d029d94bbe1f0d8cbede0196669a8a0d20b74b8f5f68554f67b56c9a9e6e7e33",
-              "81432ab0cb2274e50ccd222745b1b4e13f959263e0f13317823412f78f8e7789",
-              "b83954827efbc53ca01d50489d5728e883747f47f065b0fd430998e0612048e4",
-              "351a419e899764aca45f1126d5665e1cd789e860447c39e2a115cd5c119243af"
-            ]
-          ]
-        },
-        "u": {
-          "rendered": true,
-          "reason": "full",
-          "tiles": [
-            [
-              "38ef84da894f1bb1928b9ddcec5551d7e3da4c064807be6a69009e466548c029"
-            ],
-            [
-              "3dd2f6823468abfc3e93a6e8fd72ee45b06b7ad3b6c9b9542234b9458e62c264",
-              "ce76162874c5609d70d9b1a35ee0ed335efc16988cd7c38ae549867ccdd15db4",
-              "22ac67e2f662b196042545563ee7da14845fed12eacb01fa62dce9b5196f617d",
-              "5041598c087ab7ac7c89d5c8ccfa68e659349fcad18cc826d25b4343e021ab9a"
-            ]
-          ]
-        },
-        "d": {
-          "rendered": true,
-          "reason": "full",
-          "tiles": [
-            [
-              "cc15445abfac6be7319fd6000d9a18bee0d247b40da695bd5332227caacaac8a"
-            ],
-            [
-              "c42946080963317515a4fed3671d85e4dbab706f88febd6539fec027d8afa9d3",
-              "b1a1f443be07b450ee221675dbc0dfc11bd1d08e2c40cd5f9a48d96e46969bd0",
-              "5be3bdd702636a45784afb8f81524cf1972c92e3fdc7dd509da1456a1e5ebdb8",
-              "b834b142406d28af6d59d38d3aed14ec883cd25fa9df54ee262616a42a7d66b5"
-            ]
-          ]
-        }
-      }
-    }
-  ],
-  "faces_rendered": 6,
-  "faces_reused": 0,
-  "ms": {
-    "open": 3100,
-    "render": 21000,
-    "encode": 900
-  }
+	"schema": "truebex-tiles/1",
+	"job_id": "c3000000000000000000000000000001",
+	"project_id": "fd1f65c522298d6fbd318103c6601118",
+	"at_seq": 0,
+	"app_version": "1.0.0",
+	"quality": "standard",
+	"views": [
+		{
+			"view": "ecaf16d70fa5862cbba8f2288b9fd593",
+			"title": "bedroom",
+			"eye_mm": [
+				6750,
+				2500,
+				1600
+			],
+			"face_px": 512,
+			"tile_px": 256,
+			"levels": [
+				256,
+				512
+			],
+			"faces":
+			{
+				"n":
+				{
+					"rendered": true,
+					"reason": "full",
+					"tiles": [
+						[
+							"849fba945c75643da309dc0c1ac42a24c35617ca91f4ee616d612d3fe50d1748"
+						],
+						[
+							"2daeb196e154035b0a165c0e76c6aa302c01cab6b1602d723e48fc83ec8b1394",
+							"553f0c335b2c352bec85ad04d2b9b2c5750369b8f81b60e3fbf68da9002348b5",
+							"c3d028c95a5c1391229f953e16d23565e034fe325f36c06eae22adbf33ebb41a",
+							"ad0a1312e4a908d894d01ee5114b5de5b574e8196ad6b845833ded50a4a16786"
+						]
+					]
+				},
+				"e":
+				{
+					"rendered": true,
+					"reason": "full",
+					"tiles": [
+						[
+							"6f2f466d689e56ed3cda6a1347700daf47ce02828770dd6b9af4020706d873eb"
+						],
+						[
+							"b8a366fcfbb45e9164e72c280dcb00f3b7341b98a39f20a5c144104a5dcf0f77",
+							"96fbe5c09b1bffea66256c10eb64cf9e94d6f5822dae0000d7e2a05ae8dab89f",
+							"d1cf7df00766fbbe402c9b0ab458d1c2fc427d59319aa527c5841050bb3573f7",
+							"789139b909154df3c6e16a6a37841b43a5c80b4bc133722eed77ef01b00d97bb"
+						]
+					]
+				},
+				"s":
+				{
+					"rendered": true,
+					"reason": "full",
+					"tiles": [
+						[
+							"bc46a146de2cf01fc915330882643a81bac351f4f4d4fc8f37f35f6471eabcd3"
+						],
+						[
+							"588dfb52d7d7f53a8b046fa4e65c48e814fa339a5ab024b3a41b0f5f59c7f9de",
+							"aabb0c341fcfe957c7fa249c89c38f75dfab7345352c6087d6ac582062274189",
+							"54d0f5a393d1e92fa0212aa0906d454fb993392ed4c1be03ef43bcd5e6d05715",
+							"a565dfa53e6f30e7e04d87c134c5fff91dca297c23448625fe07dfbc8e9c0e8a"
+						]
+					]
+				},
+				"w":
+				{
+					"rendered": true,
+					"reason": "full",
+					"tiles": [
+						[
+							"2a031c9eed3da509bbdb897790a360cdce350958d741fb7a5b708db8887346e5"
+						],
+						[
+							"2fe4746c3fa839b6557b51179bdf44a026fe53f08d2668c66bc87711e9e2c66b",
+							"c675dbe62392f5ddfa219cbb179c25a8fab6039c8d3451c2803d6440998b368a",
+							"67197bfdcaf9ee969d241de8eb2e14ccaf4098a751fe3b3997306a59e400efaa",
+							"c45c32009a8aee443dc4f6d1abb1091c08f3d7006dedc96bd505768393f61385"
+						]
+					]
+				},
+				"u":
+				{
+					"rendered": true,
+					"reason": "full",
+					"tiles": [
+						[
+							"5b3f598c29f3c6514b874460335354b6c959401e7bee02d7522a0ceeadd2c8f7"
+						],
+						[
+							"4cc130c81e032f53c908b98a98bc7d5fdf05ebf55fa11ebed8e971d054039b88",
+							"ef27e12b6506a1a9a87042089dfd90c06f4b37e9d03cf746bb5d9d03980a509e",
+							"2c2ad51f82085b5dd5dfdc6cb12df45c8779c0a3afde5a908d834c036e6b9e63",
+							"7f5e77ae4427ec528344406828a6bd3c1c01b07ed3b631476f42bb505046059d"
+						]
+					]
+				},
+				"d":
+				{
+					"rendered": true,
+					"reason": "full",
+					"tiles": [
+						[
+							"e0f5b5b89a8df7b5ca6b710d642d0627718639607e004ee8c60a2865333ab3f0"
+						],
+						[
+							"65f27d7190a4b2b74acfe6b532f589212ba607844d8c3f628d791b97a2385d23",
+							"b7ce97a59b2dd78b25bbf2fa8dc318f457ba6836077f5cb726d437af42e39670",
+							"d5216e1dbfcf6a817c4470c949faae4558dba8d4f6f830d736eb1e97c60ca840",
+							"daa3022f0bb00d78cf60bbc089a3c79542eb25f74f90990b16c4cb1f102fea87"
+						]
+					]
+				}
+			}
+		},
+		{
+			"view": "8388104cbff98d2dba07fd23c19c83b5",
+			"title": "entry",
+			"eye_mm": [
+				2250,
+				1000,
+				1600
+			],
+			"face_px": 512,
+			"tile_px": 256,
+			"levels": [
+				256,
+				512
+			],
+			"faces":
+			{
+				"n":
+				{
+					"rendered": true,
+					"reason": "full",
+					"tiles": [
+						[
+							"b24a417bd885a06fbe7576ff0b8c99652155813c3877e95d36260021ef17e2ce"
+						],
+						[
+							"f205b5910c28653191a2b33edfd48747336d65a7160f480b83ae02bd4cafccae",
+							"a68e33aac3ac518b189948a26de96cb7445fba101e49cdabcc6b569fa7a51961",
+							"69986c02735a104cb4390dca8628b7c2c2a91c50f38f07124e59ac0fa4f516a4",
+							"a90d6bcd79f4819071e8bb0ecc60b08ee9d2eece54bbade002a11c179e33801f"
+						]
+					]
+				},
+				"e":
+				{
+					"rendered": true,
+					"reason": "full",
+					"tiles": [
+						[
+							"bfb052345f76b5c581eb25436a97b89cddd94e5f190e311c6adc9ccbceb04d78"
+						],
+						[
+							"2382a11b0fa19d36edac751909a955f10e006cd3c1f82ccd55647a1012aa5382",
+							"eaa92b86e9795a545c831a7167553162838673626daa9a27ad3439d833aa61d7",
+							"de5a17ed7ba69cd264eec13f87c13841504014f1b35a7e9502d7a2bb0862bee6",
+							"e004c58e1790dcc7b8eaff4c0bb13ba21b3d1b6663d5d8f882645d3011e7f73d"
+						]
+					]
+				},
+				"s":
+				{
+					"rendered": true,
+					"reason": "full",
+					"tiles": [
+						[
+							"9ccdd93734b020f18638ee0422368887dfeb3b572b709463c4fe978c2c3f605d"
+						],
+						[
+							"47bdd8c3d411d7ba666e82ed10e867c3657a111cf9c2205859204670f4b6de2c",
+							"a9e48786da49160b2f5df5e4345fb2df76a5fdb4eadd53361e3ed5fb3b36345e",
+							"1b6776793b2207696a6cd6c4f3e3d8cea6b9ce37279327405f64e08f8a19f288",
+							"4ca76b4d299562013a34b778e07807684e9947c206655fa4183f2855455fef68"
+						]
+					]
+				},
+				"w":
+				{
+					"rendered": true,
+					"reason": "full",
+					"tiles": [
+						[
+							"ea5245037df4f4e3bef61a9cc3ae431b0132ce15aa6a0a902a68005c82a0e0f5"
+						],
+						[
+							"ea11e259faa0ed7b006da27ec575d54498b98f2e15fd68797eb45bdb43783fbd",
+							"faf229985c5509ad235c5d867da13b75202ac812e5f0ee9efbcb26f41a3c5a80",
+							"b6a5b68655a9d6a895cd3513ed69fdfe034c7d915ea441f1448c82710a5ee0ca",
+							"9ecec606e5f393c743fd326938bac8ed37c5a5d884b82e0845678c3dc566c6cd"
+						]
+					]
+				},
+				"u":
+				{
+					"rendered": true,
+					"reason": "full",
+					"tiles": [
+						[
+							"6589a11fb7bd30f92db0a82f79f9a6ac807b07e69715c98635818881ddef7de2"
+						],
+						[
+							"9386d56b7c941d7ce4276505c7ace33582b99e872b4f42959e38b798073072d2",
+							"52f5e034e7023af75f8b1dd3da13cb62185bd29b3b4c38b1e7650e1de0590a26",
+							"227d2c00860c91bca43b86e51be9b4f52c68650af9184f537e5001dba1e63459",
+							"ca4d8e21917e863f3537fbe6c82539290c80e91497cdfa4ed36f8d5ce75ce997"
+						]
+					]
+				},
+				"d":
+				{
+					"rendered": true,
+					"reason": "full",
+					"tiles": [
+						[
+							"2f2d953665004a185c46911a3bba8b45974b674012408ea866664347e49e0dab"
+						],
+						[
+							"f0790b6fba566ffc7673b504a08f604fb6e634032ee72ad4d693b1c0aaa69b38",
+							"b8460be3eec1f82cee53bd17ee6c1c4cfa0b990c4d6dadc4741a10b5603edd6a",
+							"9f74a9ab2ccef97743849e00d9581e4c6d0c1f36df08a60eccafea0cfa0b9fb2",
+							"5aed548b640eefde0df0ca034823042bf6cb4eb5caa53840a1dbb2d17043c0b0"
+						]
+					]
+				}
+			}
+		},
+		{
+			"view": "aee49319c0d48a7a953f247b52c948be",
+			"title": "living",
+			"eye_mm": [
+				2250,
+				2500,
+				1600
+			],
+			"face_px": 512,
+			"tile_px": 256,
+			"levels": [
+				256,
+				512
+			],
+			"faces":
+			{
+				"n":
+				{
+					"rendered": true,
+					"reason": "full",
+					"tiles": [
+						[
+							"c3644de8f20287088d955aa5e53af3659ca1298204a5d8a82e6f16ef0f04801f"
+						],
+						[
+							"3e4eee7bfcb29b0d8d23e6cef60604affbdb694c91d2e1a9de43b6c5d90406f7",
+							"68630fb497b81605ee62284bd6ac7375328ae83c68a8b578f61f6e5ae929f750",
+							"1288c9eb40a6c72beed9a55e0e9a603a8ca1f2ab650196a42895977e64397d16",
+							"43451faee5a2053e779d8b13f0aced2716b82dea48570c33270eeb124ef6b7ca"
+						]
+					]
+				},
+				"e":
+				{
+					"rendered": true,
+					"reason": "full",
+					"tiles": [
+						[
+							"717818ca3d58ef9e0e37c604d8ac94952f4eb74fb4829cf99265bf1e001ea575"
+						],
+						[
+							"6855eb0d9665dec3c11e2917cf7a35987de98df1926d82b2d24b2a3f8c49655b",
+							"356d27411df32f480ed95a2ccf63e31a563e9e9051de2d437ddd8e9d4d8db9a5",
+							"0986cc0425088d7acfdf91952a3262047a44ac03dd847ab16fa1d8d13ce60cc5",
+							"d9a5e6e42e666f0f08867f51b343ce355f2f163ba15ef0cdd6a5cd7d37989dce"
+						]
+					]
+				},
+				"s":
+				{
+					"rendered": true,
+					"reason": "full",
+					"tiles": [
+						[
+							"cd884d9f42d455a5225e5ea3389047dd29453275ab3fd992c6ecc224b5ad192f"
+						],
+						[
+							"588b0778bb091eb9a53c99807dc90445849292ea772c893ad5a1fddfea8ad24f",
+							"1cfec0bd7d2a86ef6d17da4e456a887ec58a7edd916634cc5cce038f4955dabf",
+							"ae8131674c4a972f30e2e51f5d29891a5697193b1d369e4efd320ff5096645d0",
+							"aeb8b9acb4dae0d98f2a51ba324b83587ca2272bf0895ec7b86057668e002740"
+						]
+					]
+				},
+				"w":
+				{
+					"rendered": true,
+					"reason": "full",
+					"tiles": [
+						[
+							"8a100a7e4f45be5ea8ce298fad2e1addd7bd7997a86bb054c833529352adc46c"
+						],
+						[
+							"6399bea6366e0c4f1283af6e4556c2f459953036c25348430f80b8395742f1c9",
+							"32a7db01642f44b2fde88f08ec81a452f339ac3f7e87a42d4129901c5829c21a",
+							"20165a1acd92a1f02086df5eb2d07d1633f4f6d6ccc496048ce3d621193e0227",
+							"03dd0007cce8c6e2001b241fe127b8c71aae65f57ebafba2ba793e08331c4943"
+						]
+					]
+				},
+				"u":
+				{
+					"rendered": true,
+					"reason": "full",
+					"tiles": [
+						[
+							"8062cde41dd91e070c6feae9e5b75ef8cabd2d07455b755493f6edd056516c10"
+						],
+						[
+							"fde5b8f3fbfcec2c444ecc95943fccbbb7619edb20ca5571a8a8ea8f2344e658",
+							"51fff9c6368fc6bda41a75a38c88301699d3dd53d66c983e929b2f248c15ed6b",
+							"228a7d7ec1f45c0b5965c64e4acf93b3f3763bd3685f5ef418fc7d4e8835473d",
+							"537f5e3247ac4f6c55b48c4683a9f29f01d9a6554643148753850cfb1a19f100"
+						]
+					]
+				},
+				"d":
+				{
+					"rendered": true,
+					"reason": "full",
+					"tiles": [
+						[
+							"97068ede0247f1067135af97f89022133b3d74f947feb8929a6bb2067b416b93"
+						],
+						[
+							"7710a7b660a63d843311f790cd73a4af36cc4a28235dd1c12b8b82f1133c63bf",
+							"e939b45e521748d4aeb76e1c7bf63ffe4efd2ab5a0b3ae45bfa7b6f364b1945f",
+							"6a318c9f726457c0d8c7aa50ffa78fa2b3c4395ee00ae52fc71d398d9843b97c",
+							"2655c8c3daed54896e6375d04f83f9d002b32adaeac6162901ae91081290b6e8"
+						]
+					]
+				}
+			}
+		}
+	],
+	"faces_rendered": 18,
+	"faces_reused": 0,
+	"ms":
+	{
+		"open": 36,
+		"render": 14223,
+		"encode": 237
+	}
 }

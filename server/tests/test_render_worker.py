@@ -1,5 +1,6 @@
 """The worker wrapper (worker/truebex_worker.py) against the API in-process and
-the fake app (worker/tests/fake_truebex.py) as a real subprocess (PF6)."""
+the fake app (worker/tests/fake_truebex.py) as a real subprocess (PF6; the
+app's own fixtures and render-jobs 1.1.0 since PF6a: test_pf6a_render_worker.py)."""
 
 import importlib.util
 import json
@@ -15,7 +16,7 @@ from app.database import SessionLocal
 from app.render.models import RenderJob
 
 from .project_helpers import Person, hex32
-from .render_helpers import WALL, admin, issue_worker, job, project, push_touch, rj, submitted
+from .render_helpers import APP_PROJECT, MOVED, admin, issue_worker, job, project, push_touch, rj, submitted
 
 ROOT = Path(__file__).resolve().parents[2]
 FAKE = ROOT / "worker" / "tests" / "fake_truebex.py"
@@ -46,7 +47,7 @@ class ClientTransport:
 @pytest.fixture()
 def rig(client, tmp_path):
     a = Person(client, "a@example.com")
-    pid, head = project(client, a)
+    pid, head = project(client, a, project_id=APP_PROJECT)
     token = issue_worker(client, admin(client))
     cfg = W.Config(
         api="http://testserver", token=token, worker_id="pc-rtx", app=str(FAKE), work_dir=str(tmp_path / "jobs"),
@@ -75,15 +76,15 @@ def test_worker_wrapper_runs_job_file(client, rig):
     assert json.loads((work / "out" / "received-job.json").read_text("utf-8")) == written
     done = job(client, rj(a), rec["job_id"])
     assert done["state"] == "succeeded" and done["cost_units"] is not None and done["cost_units"] > 0
-    assert any("complete" in line and "6 faces rendered" in line for line in rig["log"])
-    # An edit: the wrapper renders the two faces that see the wall.
-    push_touch(client, a, rig["pid"], [WALL])
+    assert any("complete" in line and "18 faces rendered" in line for line in rig["log"])
+    # An edit: the wrapper renders the faces the moved wall reaches (the app's manifest-tiles.json).
+    push_touch(client, a, rig["pid"], MOVED)
     assert runner.run_once(wait_s=0) == "succeeded"
     tiles_job = client.get("/jobs", params={"kind": "tiles"}, headers=rj(a)).json()["jobs"][0]
     tiles_file = json.loads((Path(rig["cfg"].work_dir) / tiles_job["job_id"] / "job.json").read_text("utf-8"))
-    assert tiles_file["changed"] == [WALL] and Path(tiles_file["base_manifest"]).is_file()
+    assert tiles_file["changed"] == MOVED and Path(tiles_file["base_manifest"]).is_file()
     out = client.get(f"/jobs/{rec['job_id']}/output", headers=rj(a)).json()
-    assert out["job_id"] == tiles_job["job_id"] and out["faces_rendered"] == 2
+    assert out["job_id"] == tiles_job["job_id"] and out["faces_rendered"] == 13
     for face in out["views"][0]["faces"].values():
         for row in face["tiles"]:
             for sha in row:

@@ -1,10 +1,11 @@
-"""Shared helpers for the render tests (PF6, contract render-jobs)."""
+"""Shared helpers for the render tests (PF6, contract render-jobs 1.1.0)."""
 
 import copy
 import hashlib
 import json
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from unittest import mock
 
 from app.database import SessionLocal
 from app.models import Subscription
@@ -12,11 +13,31 @@ from app.models import Subscription
 from .conftest import make_admin, signup
 from .project_helpers import UPLOADS, Person, create, delta_op, hex32, pushed, snapshot
 
-RJ = {"X-Truebex-Contract": "render-jobs/1.0"}
+RJ = {"X-Truebex-Contract": "render-jobs/1.1"}
+# The app's own set (CL3, render-jobs 1.1.0 §9), copied byte for byte.
 FIX = Path(__file__).parent / "contracts" / "render-jobs"
+# PF6's and PF11's stand-ins the app has no copy of (claim.json, the wind result).
+RENDER_FIXTURES = Path(__file__).parent / "fixtures" / "render"
 PROJECT_LOG = Path(__file__).parent / "contracts" / "project-log"
-VIEW = "0199c6a2e00070058000000000000001"  # the fixtures' "Living room"
-WALL = "0199c6a2e00070018000000000000001"
+# CL3's fixtures render PR3's PR3-pano-rooms.tbxp: its project id, its three
+# saved views in job-panorama.json's order, and the ids job-tiles.json's one
+# operation touched (it moves the living room's west wall 300 mm west).
+APP_PROJECT = "fd1f65c522298d6fbd318103c6601118"
+VIEW_BEDROOM = "ecaf16d70fa5862cbba8f2288b9fd593"
+VIEW_ENTRY = "8388104cbff98d2dba07fd23c19c83b5"
+VIEW_LIVING = "aee49319c0d48a7a953f247b52c948be"
+VIEWS = [VIEW_BEDROOM, VIEW_ENTRY, VIEW_LIVING]
+MOVED = [
+    "1ef08768492a8926b64f9592c0667bf9",
+    "3b9fb6803c4c88a7958702688193438f",
+    "4669090c15ee8367a7376ac885195872",
+    "69c372acae5b8ad2a9d7979cc2594196",
+    "6b5a6295be988227a75da6af952373f5",
+    "902423107cab8a10846b22c90ba51415",
+    "a4efa2e373a68a6e918a7473a82d4557",
+    "b0bd1a39d86a8ebf9a45ff5235312966",
+    "d0ccc0cd923987eb8d15dbcfd72832b3",
+]
 
 
 def rj(person_or_headers) -> dict:
@@ -42,9 +63,15 @@ def issue_worker(client, admin_headers: dict, name: str = "pc-rtx", kinds=("pano
     return res.json()["token"]
 
 
-def project(client, person: Person, ops: int = 2) -> tuple[str, int]:
-    """A project with the fixture snapshot at 0 and `ops` operations: (id, head)."""
-    pid = create(client, person.dev)["project_id"]
+def project(client, person: Person, ops: int = 2, *, project_id: str | None = None) -> tuple[str, int]:
+    """A project with the fixture snapshot at 0 and `ops` operations: (id, head).
+    `project_id` (e.g. APP_PROJECT) is the id the platform gives it."""
+    if project_id is None:
+        pid = create(client, person.dev)["project_id"]
+    else:
+        with mock.patch("app.projects.service.uuid7_hex", lambda: project_id):
+            pid = create(client, person.dev)["project_id"]
+        assert pid == project_id
     tbxp = (PROJECT_LOG / "snapshot-0000.tbxp").read_bytes()
     res = snapshot(client, person.dev, pid, 0, tbxp)
     assert res.status_code == 201, res.text
@@ -64,7 +91,7 @@ def push_touch(client, person: Person, pid: str, touched: list[str], *, delta_fo
 def submit(client, headers: dict, **body):
     body.setdefault("kind", "panorama")
     if body["kind"] in ("panorama", "tiles"):
-        body.setdefault("views", [VIEW])
+        body.setdefault("views", list(VIEWS))
     return client.post("/jobs", json=body, headers={**headers, "Idempotency-Key": hex32()})
 
 

@@ -18,7 +18,7 @@ from app.render import live, pools, queue
 from .conftest import LongPoll
 from .licence_helpers import error_of
 from .project_helpers import Person
-from .render_helpers import WALL, admin, claimed, finish, issue_worker, project, push_touch, rj, submitted
+from .render_helpers import MOVED, admin, claimed, finish, issue_worker, project, push_touch, rj, submitted
 from .share_helpers import CONTRACT, create, dev, house, published, web
 
 LIVE_BUNDLE = "6" * 32
@@ -78,7 +78,7 @@ def test_published_share_follows_the_set(client, followed, monkeypatch, wakeups)
     state = first.json()
     assert state["following"] is True and state["job_id"] == followed["job_id"]
     assert state["manifest"]["tiles_base"] == "https://cdn.example.com/tiles"
-    assert state["manifest"]["faces_rendered"] == 6
+    assert state["manifest"]["faces_rendered"] == 18
     error_of(client.get(f"/s/{slug}/live", params={"panorama": "p2"}, headers=CONTRACT), 404, "not_found")
 
     # The share page lets the viewer load tiles from the CDN's origin.
@@ -87,16 +87,16 @@ def test_published_share_follows_the_set(client, followed, monkeypatch, wakeups)
     assert "https://cdn.example.com" in img.split()
     assert "cdn.example.com" not in csp.replace(img, "")
 
-    # An edit re-renders two faces; the tiles job's finish wakes a waiting viewer with the new rev.
+    # An edit re-renders 13 faces; the tiles job's finish wakes a waiting viewer with the new rev.
     key, wait_s = queue.job_key(followed["job_id"]), queue.STATUS_WAIT_MAX_S
     reader = LongPoll(lambda: client.get(f"/s/{slug}/live", params={"rev": state["rev"], "wait_s": wait_s}, headers=CONTRACT))
     wakeups.until_waiting(key)
-    push_touch(client, a, pid, [WALL])
+    push_touch(client, a, pid, MOVED)
     finish(client, token, claimed(client, token), "manifest-tiles.json")
     res = reader.answer()
     assert res.status_code == 200, res.text
     moved = res.json()
-    assert moved["rev"] > state["rev"] and moved["manifest"]["faces_rendered"] == 2
+    assert moved["rev"] > state["rev"] and moved["manifest"]["faces_rendered"] == 13
     wakeups.assert_woken(key, "the tiles job")
     assert reader.took < wait_s / 2
 

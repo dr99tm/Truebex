@@ -1,0 +1,4 @@
+out/
+out-*/
+# The committed tiles (render-jobs.md 9): the root .gitignore drops every *.jpg.
+!tiles/*.jpg

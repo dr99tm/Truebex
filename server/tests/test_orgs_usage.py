@@ -221,7 +221,7 @@ def test_seed_member_usage_script(client, monkeypatch):
     projects = client.get("/projects", headers={**m, "X-Truebex-Contract": "project-log/1.0"})
     assert projects.status_code == 200, projects.text
     assert [p["name"] for p in projects.json()["projects"]] == ["Seeded usage"]
-    rj = {**m, "X-Truebex-Contract": "render-jobs/1.0"}
+    rj = {**m, "X-Truebex-Contract": "render-jobs/1.1"}
     jobs = client.get("/jobs?limit=20", headers=rj)
     assert jobs.status_code == 200, jobs.text
     assert [(j["kind"], j["state"]) for j in jobs.json()["jobs"]] == [("panorama", "succeeded")] * 2

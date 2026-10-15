@@ -2,9 +2,10 @@
 // scripts/build-app.mjs into out/viewer/selftest.mjs and run by the verify
 // gate (`node out/viewer/selftest.mjs`, test_site_pf9_js_selftests): the
 // action builder against the app's contract fixture (project-log 1.1.0 §9
-// action-move.json, refs `<kind>#<id>`), the tile diff against the render-jobs fixtures, the
-// cache policy, the outbox's §6.3 handling, who a rejection names (PF9a) and
-// the orientation maths. Exits non-zero on the first failed check.
+// action-move.json, refs `<kind>#<id>`), the tile diff against the app's
+// render-jobs fixtures, the cache policy, the outbox's §6.3 handling, who a
+// rejection names (PF9a) and the orientation maths. Exits non-zero on the
+// first failed check.
 
 import fixture from "../../server/tests/contracts/project-log/action-move.json";
 import panorama from "../../server/tests/contracts/render-jobs/manifest-panorama.json";
@@ -13,7 +14,7 @@ import { applyTheme, buildActionOp, DIGEST_KINDS, fillFace, moveBy, nudgeVector,
 import { isTileUrl, pageKey, planEviction, requestRule, TILE_BUDGET_BYTES } from "./cachepolicy";
 import { conflictLine, flush, MemoryOutbox, PushError, type ConflictText, type OutboxEntry, type PushAnswer, type Winner } from "./outbox";
 import { angleDelta, bearingTo, lookFromOrientation } from "./orientation";
-import { diffTiles, levelAtMost, levelFor, tileUrls, type TileViewLike } from "./tilediff";
+import { diffTiles, FACE_ORDER, levelAtMost, levelFor, tileUrls, type FaceName, type TileViewLike } from "./tilediff";
 
 let checks = 0;
 const failures: string[] = [];
@@ -113,17 +114,29 @@ function builder(): void {
 // --- the tile diff against the render-jobs fixtures ---------------------------------------------
 
 function tileDiff(): void {
-  const full = panorama.views[0] as unknown as TileViewLike;
-  const update = partial.views[0] as unknown as TileViewLike;
-  const d = diffTiles(full, update);
-  check("diff faces", same(d.faces, ["n", "e"]), JSON.stringify(d.faces));
-  const changedFaces = partial.views[0].faces;
-  const want = (["n", "e"] as const).reduce((n, f) => n + changedFaces[f].tiles.flat().length, 0);
-  check("diff tiles", d.changed.length === want && d.fetch.length <= want, `${d.changed.length} of ${want}`);
-  check("diff same", diffTiles(update, update).changed.length === 0);
+  // The app's own set (CL3, render-jobs 1.1.0): three views of PR3's rooms; the update re-renders the
+  // faces its manifest marks `rendered` (the moved wall's room rule) and carries the rest.
+  type Face = { rendered: boolean; tiles: string[][] };
+  const views = (m: { views: unknown }) => m.views as (TileViewLike & { view: string; faces: Record<FaceName, Face> })[];
+  const fulls = new Map(views(panorama).map((v) => [v.view, v]));
+  check("diff views", views(partial).length === 3 && views(partial).every((v) => fulls.has(v.view)));
+  let faces = 0;
+  for (const update of views(partial)) {
+    const full = fulls.get(update.view)!;
+    const d = diffTiles(full, update);
+    const rendered = FACE_ORDER.filter((f) => update.faces[f].rendered);
+    faces += rendered.length;
+    check(`diff faces ${update.view}`, same(d.faces, rendered), `${JSON.stringify(d.faces)} != ${JSON.stringify(rendered)}`);
+    const want = rendered.reduce((n, f) => n + update.faces[f].tiles.flat().length, 0);
+    check(`diff tiles ${update.view}`, d.changed.length === want && d.fetch.length <= want, `${d.changed.length} of ${want}`);
+    check(`diff same ${update.view}`, diffTiles(update, update).changed.length === 0);
+  }
+  check("diff rendered faces", faces === partial.faces_rendered, `${faces} != ${partial.faces_rendered}`);
+  const full = views(panorama)[0];
   check("diff first", same(diffTiles(null, full).faces, ["n", "e", "s", "w", "u", "d"]));
-  check("level for 600 px", levelFor(full, 600) === 1 && levelFor(full, 300) === 0 && levelFor(full, 5000) === 1);
-  check("level at most 2048", levelAtMost(full, 2048) === 1 && levelAtMost(full, 600) === 0);
+  check("levels 256 and 512", same(full.levels, [256, 512]) && full.tile_px === 256, JSON.stringify(full.levels));
+  check("level for 600 px", levelFor(full, 600) === 1 && levelFor(full, 300) === 1 && levelFor(full, 200) === 0 && levelFor(full, 5000) === 1);
+  check("level at most 2048", levelAtMost(full, 2048) === 1 && levelAtMost(full, 300) === 0);
   const urls = tileUrls(full, "https://tiles.example.com/tiles/", 0);
   check("tile urls", urls.length === 6 && urls.every((u) => isTileUrl(u) && u.startsWith("https://tiles.example.com/tiles/")));
 }

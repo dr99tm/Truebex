@@ -237,8 +237,10 @@ void main() {
     final report = await services.engine.syncAll(unmetered: true);
     final m = (await services.replica.manifest(pid, FakeLog.setId))!.manifest!;
     final want = manifestTiles(m, services.engine.needPx).toSet();
-    expect(want, hasLength(24));
-    expect(report.tilesFetched, 24);
+    // The app's set (CL3): PR3's three saved views, each 6 faces of 4 tiles at the 512 px level.
+    expect([for (final v in m.views) v.title], ['bedroom', 'entry', 'living']);
+    expect(want, hasLength(3 * 6 * 4));
+    expect(report.tilesFetched, 3 * 6 * 4);
     for (final sha in want) {
       expect(await services.tiles.has(sha), isTrue);
     }

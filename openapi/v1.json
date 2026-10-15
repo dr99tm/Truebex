@@ -4967,7 +4967,7 @@
         "tags": [
           "jobs"
         ],
-        "x-truebex-contract": "render-jobs/1.0",
+        "x-truebex-contract": "render-jobs/1.1",
         "x-truebex-scope": "projects:read"
       },
       "post": {
@@ -5095,7 +5095,7 @@
         "tags": [
           "jobs"
         ],
-        "x-truebex-contract": "render-jobs/1.0",
+        "x-truebex-contract": "render-jobs/1.1",
         "x-truebex-scope": "jobs:write"
       }
     },
@@ -5179,7 +5179,7 @@
         "tags": [
           "jobs"
         ],
-        "x-truebex-contract": "render-jobs/1.0",
+        "x-truebex-contract": "render-jobs/1.1",
         "x-truebex-scope": "projects:read"
       }
     },
@@ -5300,7 +5300,7 @@
         "tags": [
           "jobs"
         ],
-        "x-truebex-contract": "render-jobs/1.0",
+        "x-truebex-contract": "render-jobs/1.1",
         "x-truebex-scope": "projects:read"
       }
     },
@@ -5405,7 +5405,7 @@
         "tags": [
           "jobs"
         ],
-        "x-truebex-contract": "render-jobs/1.0",
+        "x-truebex-contract": "render-jobs/1.1",
         "x-truebex-scope": "jobs:write"
       }
     },
@@ -5510,7 +5510,7 @@
         "tags": [
           "jobs"
         ],
-        "x-truebex-contract": "render-jobs/1.0",
+        "x-truebex-contract": "render-jobs/1.1",
         "x-truebex-scope": "projects:read"
       }
     },

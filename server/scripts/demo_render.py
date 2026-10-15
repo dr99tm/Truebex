@@ -1,14 +1,15 @@
 """Submit and follow cloud render jobs as the desktop app will (PF6, contract
-render-jobs v1.0), for testing before the app's Cloud panorama command lands.
+render-jobs v1.1), for testing before the app's Cloud panorama command lands.
 
     cd server
     .venv\\Scripts\\python.exe scripts\\demo_render.py --token tbx_dev_… submit --project <id> --follow
     .venv\\Scripts\\python.exe scripts\\demo_render.py --token tbx_dev_… watch --job <id>
     .venv\\Scripts\\python.exe scripts\\demo_render.py --token tbx_dev_… usage
 
-`submit` reads the project's head and submits a panorama set of one saved view
-(the render-jobs fixtures' "Living room" unless --view) at that sequence
-number, with an Idempotency-Key; --follow keeps it current from the log.
+`submit` reads the project's head and submits a panorama set of saved views
+(the app's render-jobs fixtures' three, PR3's bedroom, entry and living, unless
+--view is given, once per view) at that sequence number, with an
+Idempotency-Key; --follow keeps it current from the log.
 `watch` long-polls the job's `rev` (5.2) and prints every change. `usage`
 prints this month's cost units (5.6). Get a device token with
 `demo_replica.py login … --trial`. API: --api (default http://127.0.0.1:8000).
@@ -21,9 +22,10 @@ import sys
 
 import requests
 
-JOBS = {"X-Truebex-Contract": "render-jobs/1.0"}
+JOBS = {"X-Truebex-Contract": "render-jobs/1.1"}
 LOG = {"X-Truebex-Contract": "project-log/1.0"}
-VIEW = "0199c6a2e00070058000000000000001"
+# The saved views of the app's fixtures (CL3: PR3-pano-rooms.tbxp): bedroom, entry, living.
+VIEWS = ["ecaf16d70fa5862cbba8f2288b9fd593", "8388104cbff98d2dba07fd23c19c83b5", "aee49319c0d48a7a953f247b52c948be"]
 
 
 def call(args, method: str, path: str, *, headers: dict, ok=(200, 201), **kw):
@@ -41,7 +43,7 @@ def call(args, method: str, path: str, *, headers: dict, ok=(200, 201), **kw):
 
 def cmd_submit(args) -> None:
     head = call(args, "GET", f"/projects/{args.project}", headers=LOG)["head_seq"]
-    body = {"kind": args.kind, "project_id": args.project, "at_seq": head, "views": [args.view], "follow": args.follow}
+    body = {"kind": args.kind, "project_id": args.project, "at_seq": head, "views": args.view or VIEWS, "follow": args.follow}
     if args.kind == "pack":
         body = {"kind": "pack", "project_id": args.project, "at_seq": head, "params": {"items": ["renders", "boq"]}}
     job = call(args, "POST", "/jobs", headers={**JOBS, "Idempotency-Key": secrets.token_hex(16)}, json=body)
@@ -75,7 +77,7 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--project", required=True)
     p.add_argument("--follow", action="store_true", help="keep it current from the log")
     p.add_argument("--kind", default="panorama", choices=["panorama", "pack"])
-    p.add_argument("--view", default=VIEW)
+    p.add_argument("--view", action="append", help="a saved view id (repeat for more; default the fixtures' three)")
     p = sub.add_parser("watch", help="print every change of a job (long-poll)")
     p.add_argument("--job", required=True)
     sub.add_parser("usage", help="this month's cost units")

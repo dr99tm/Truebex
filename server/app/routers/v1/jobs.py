@@ -22,7 +22,7 @@ from .. import jobs as c
 from . import models as m
 from .common import doc, project_caller, scope
 
-router = APIRouter(prefix="/jobs", tags=["jobs"], dependencies=[contract("render-jobs", 1, 0), Depends(c._small_body)])
+router = APIRouter(prefix="/jobs", tags=["jobs"], dependencies=[contract("render-jobs", 1, 1), Depends(c._small_body)])
 
 Read = scope("projects:read")
 Write = scope("jobs:write")

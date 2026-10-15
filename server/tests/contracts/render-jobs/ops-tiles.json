@@ -1,0 +1,31 @@
+{
+	"note": "Roadmap 40 / CL3: one operation (server_seq 1) moving the living room's west wall of PR3-pano-rooms.tbxp 300 mm west -- a project-log.md 5.7 body. Written by TruebexSync::MakeRenderJobFixtures (-mwcl3fixtures).",
+	"ops": [
+		{
+			"op_id": "c30000000000f00d0000000000000001",
+			"author": "e0f9479e1fe28e1f96aed8d6c7677be1",
+			"at": "2026-10-14T12:00:00.000Z",
+			"touched": [
+				"1ef08768492a8926b64f9592c0667bf9",
+				"3b9fb6803c4c88a7958702688193438f",
+				"4669090c15ee8367a7376ac885195872",
+				"69c372acae5b8ad2a9d7979cc2594196",
+				"6b5a6295be988227a75da6af952373f5",
+				"902423107cab8a10846b22c90ba51415",
+				"a4efa2e373a68a6e918a7473a82d4557",
+				"b0bd1a39d86a8ebf9a45ff5235312966",
+				"d0ccc0cd923987eb8d15dbcfd72832b3"
+			],
+			"delta": "H4sIAAAAAAAECu1YyW7cRhD9lYBnBumFvc3VCJIANmDEAXIwdGg2uxVCFDkgObIUQf+eV1xHRpxMYANxAp3cVayuebX0q5Ifs9T1t37MDlmnvlMqy7O6GrLD+8wXMXkRpZFeW6+j49abApIVVaGUgaUoU9IlM1pLa0vPLZMmpJiqYGQoKguTioUQWKickM6aWNqKq6oMqTLCSlFKmBRaO+ZY4CpGK7XxRhrtg7WKO2WNgIljohCSMxN8aT1nttClEMGx0itecEKtS+W1cKqMzloh4EVVXvvklEAIiUxKVlbcS1dZ7W0sk/OFSgnfleTCaU1egKJENNrEysoqOR0C94VlVjFW6RImKvkklFZJJ2WFdd4XCMczlxjsCgcTAYPCea6UjJZTmJUxjJsoCmXMlBceE7NG28IJb53QpS4A1YnAtDaABi+ydKnUyGkokAxvKBlMaGu5k4W0CSY26hBTKaT0zDopnTBwqgsHsEaFAiYsaB/x3RgebaVKZ7gyzFXBA04yVEbtgjTCBx8VslsJ7yrjjAtBKFdwR3nhCiYcRVDIHgvKcdzlwkgpNXOOsstcQCFV8LhuI9fOuSScK1DGxASvsqs8u4kP1Fvvs9jE29iOWc5ymRdX+ZlGQGOeaSQ0nDRtV8UsLyDKXVSrhz5e112b5Xo1P/o2NlnO6Tem+6uCk0KQi1VDPrm8AsQy4kHE7PC4P4yxvD8iQH884pX80p9iGe8h38V+oB88KJVnoTu1IxR0cQ3uwPMZMh0++KbJ6LDApGPo2mHsfY1EkNj4h9hnB5Fn8X7sT7Nz6KsaudqkY4OwXtctMOLbh66/eUuaxXfahe4Y27q9nj7c+b72ZTNbDY0vJ+0QwzhFAEfJh/i271K9GM2ZmVA2vr6d7P0wxPEnYPZtWFyNdbj5oe9OSA2cXG+n4UOMx3ddU1fzTfzQXXw9BwhDP8kLVva0xE69gRIs+SPpEWw0OTjRv5dwEsD1SOdjdp8dWJ49oDyM0S/EFh7O1KQLfozXXQ+j4jz9U4qn68e6bSPuJd8MESWvh3rKIsoTn/IZncyzGd0FXHeOrgCwvwK44P4iGBHejPECsj3HOAN8nr4N9+dnEMWmN71XGi9pxnkB4x+76bV9XOe9eKj4scPjmt2DCqhFIzoVwOmVZgeUjmT+BCBd++rU36Gt31+tldUrmguGy8doKDkXQOErFFRohvYRFIhEHRQDjjN57PkyK8ILZlvrbxFd9rq+Ayt883PX3YLEBnqi9YgXgFLj8SMp1NvPsBMZgXjJIsS6mTiFzg+BuAJvdOLlg0UEuO4oolkD5p3TvKtQ4KkQuwZJJk3xdEVV2ClxiXijwkXeyHCRpxwTHS7yRoiL3MeZEhdxIcX1Mk0IOi88g/6Y2++C8XxTE6EgwpXQUYuZ5KHbuBfnvQuOfQSBTpdOQ+y/R+I3cqGETFwH+p8xXDD/ZwzI6YUYOBr+EyDmqlMHzPlYPXI0JvbDiPmBKiFBRz++icNv05zC+VcoBREZzj/ibBkKucayPecLVow5FnTD+st/k08O038aC1yexTJ33HDE5HsDFkJ4j8/meOhujxjrqDLCHlCr6VCe6qZa5+owYlnA4yED8rOZvtukU1uj5NRZOOyj8vdumdmrP/TwzWTnQ4jD8JaYa5KxZ4yvuhaLBsgCAGdQSwcTrOW4Olq/TNBWgeCsZ1yZ4C0y4To7ThAXmUAux9U7wVxUZ0AXDUGtg28I7rxbTB+egNsn9BBlePt742Wt+o+uVd/KTy0u25fPXw0WCvnyy9WG8WvYrzYwlLB9Q/36VqwN6JK1faj9S1vWBuhl0cJgwPyl+SX3tepl0XpZtP78/3JeFq3/8aL19AfXg+ED0RUAAA==",
+			"server_seq": 1,
+			"author_kind": "person",
+			"replica_id": "1fdbc3aabba18e339994b2bac28e4fba",
+			"base_seq": 0,
+			"kind": "delta",
+			"name": "Move",
+			"delta_format": "o5/55"
+		}
+	],
+	"head_seq": 1,
+	"more": false
+}
