@@ -1,0 +1,149 @@
+# PF4a — The project service, the web and Android follow project-log 1.1.0 (CL1): the app's own fixtures re-copied, 5.9 `?id=`, members' `author_id`, and action refs as `<kind>#<id>` (launch priority 2)
+
+**Needs merged:** PF4, PF9, PF10, PF12 (all on `master` cc905d3); CL1 on the app side (the project log and cloud save, merged on the app repo's `main` as 496033be3, 2026-10-14). **Unblocks:** CL1 against the real API (`-mwsync=live -mwapi=<url>`): open, restore and the web's edits applied on the desktop; CL2. **Contract:** `T:\unreal5_7_4_projects\truebex_compact\Docs\roadmap\40\contracts\project-log.md` **1.1.0** (2026-10-14; the app side is authoritative, C.9) and `agent-interface.md` §6.2 (Ref), §6.4 (`FTruebexAgentAction` on the wire). The routers now answer `X-Truebex-Contract: project-log/1.1`.
+
+## Status
+
+**Built 2026-10-15** on `ap/t83-pf4a-the-project-service-the-web` (Autopilot T83); see As-built. What broke on `master` cc905d3 against app `main` 496033be3 (verified by reading both before the work):
+
+| # | Where (master cc905d3) | Before |
+|---|---|---|
+| 1 | `server/tests/contracts/project-log/` | PF4's stand-in set (`make_project_log_fixtures.py`: stand-in `TBXD` deltas, `o5/38`, PF4's own ids); all 7 files differ from CL1's |
+| 2 | `test_projects.py` `test_projects_fixture_ops_remote_replay`, `demo_replica.py` | read a push-level `replica_id` and `o5/38`; CL1's `ops-remote.json` is `truebex-project-log-ops/1` (each operation names its own replica, `o5/55`, real deltas) |
+| 3 | `server/app/projects/ops.py` `_check_action` | refused an action without `session` and `request_id` (422), so the app's own `action-move.json` did not replay |
+| 4 | `src/viewer/actions.ts`, `mobile/android/lib/actions/actions.dart` | wrote (and only accepted) bare 32-hex ids in `refs` / `target` / `replace` / `room`; a desktop replica looks a bare id up as nothing (below) |
+| 5 | `routers/projects.py` `latest_snapshot`, `/v1`'s | ignored `?id=`: per the contract's *Changes*, a 1.0 server makes the app report every restore operation as not applied |
+| 6 | `server/app/projects/members.py` `member_json` | `author_id` null for an active member who never used a device or the website's project pages |
+| 7 | `routers/projects.py`, `routers/v1/projects.py`, `routers/mobile.py`, `mobile/clients.py` | echoed `project-log/1.0` |
+| 8 | the generated clients (`openapi/clients.json` → Dart, TypeScript) | `OperationAction.session` / `request_id` required: the phone's generated parser would throw on the app's own log action in a pull |
+
+## Goal
+
+The desktop app (CL1) saves a project to the cloud, and the platform takes its log exactly as the app writes it: the app's 12 fixture operations and its web edit replay through the real endpoints unchanged; a replica that reaches a `restore` downloads that version's snapshot; every member has the author id the app names authors by; and a move made on the phone or the web names its wall the way the app applies it, `wall#<id>`.
+
+## Read first
+
+* `docs/roadmap/40/00-contract.md` P.2–P.4; `PF4-project-service-log-storage-sync-versions-and-sharing.md` (Carry-over: "CL1 — the real fixtures"), `PF9-…md` and `PF10-…md` (the builders), `PF5b-share-bundle-1-1-0.md` and `PF7d-…md` (the `APP_BLOBS` pattern), `PF14d-telemetry-fixtures-from-op1.md` (the sync script).
+* `project-log.md` 1.1.0: *Changes* 2026-10-14, 5.9, 5.13, §6.2 "Delta byte form", §9 (As built CL1); `agent-interface.md` §6.2 Ref, §6.4.
+* App repo, read only: `Docs/roadmap/fixtures/contracts/project-log/`; `Plugins/CADTOOL/Source/TruebexSync/Private/SyncReplica.cpp` (`RpTranslateRefs`, the action and restore apply paths); `Plugins/TruebexAgent/Source/TruebexAgent/Private/Router/AgentRouter.cpp` (`FRouter::Replay`); `Docs/roadmap/40/CL1-project-log-cloud-save-and-versions.md`.
+
+## Scope
+
+**In** (nothing was cut):
+
+1. **The fixtures.** `scripts\sync-contract-fixtures.ps1 -Contract project-log`; the folder's README rewritten (CL1's set, the app commits, each file); an `APP_BLOBS` blob-id check that runs without the app repo; `make_project_log_fixtures.py` retired.
+2. **Every reader follows the new shapes:** `test_projects.py`, `test_mobile.py`, the web self-test, the Dart helpers and tests, `demo_replica.py` (each operation's own replica, `base_seq` as before).
+3. **The app's `action-move.json` replays unchanged:** option (a), `session` and `request_id` checked only when present.
+4. **Refs `<kind>#<id>`** on the web and Android, the kinds of agent-interface §6.2; `touched` stays the sorted bare ids; a bare id is refused, never sent.
+5. **5.9 `?id=`** on `/projects` and `/v1/projects`; OpenAPI, SDKs and both generated clients regenerated.
+6. **5.13:** an active member always carries a 32-hex `author_id`; an invitation has `author_id` null.
+7. **project-log/1.1** on the routes; a 1.0 client keeps working; the web and Android send 1.1.
+
+**Out (and where it goes):**
+
+* Decoding or applying deltas on the server: never (`ops.py`, §2); the web and the phone keep rendering from snapshots and digests.
+* The platform column of the contract's §11: the app half updates the contract; the cells are proposed below.
+* CL2's presence (5.17, 5.18) and member PATCH / DELETE: unchanged (`presence.json`'s new 5.18 shape needed one test line).
+* The app half's own fixes (contract lines below).
+* PF9's digest fixture (`tests/contracts/project-digest/`): still PF4's first ids, not the app's; re-copied when the app writes a digest (PF9's MINOR proposal, C.9).
+
+## Design
+
+### API
+
+| # | Endpoint | PF4a |
+|---|---|---|
+| 5.9 | `GET /projects/{pid}/snapshots/latest?id=<snapshot_id>`, `/v1/projects/{pid}/snapshots/latest?id=` | that snapshot with fresh signed URLs (15 minutes), the same shape as without `id`; either case of hex (§6.1); 404 `not_found` ("No such snapshot.") for a malformed id (any length, empty), an unknown one or another project's. Without `id` unchanged. The usual 401 / 404 for callers. |
+| 5.13, 5.3, 5.14–5.16, accept | every member object | an active member's `author_id` is the account's, minted on the read when it has none (`members.ensure_author_ids`: one conditional `UPDATE … WHERE author_id IS NULL`, so two reads that race keep one id); an invitation has `author_id: null` |
+| 5.6 | an `action` operation | `session` and `request_id` optional; when present, 32 hex (a string), else 422 `validation_failed` on `ops[i].action.session` / `.request_id`. Tool, args, permission and the size checks unchanged; `touched` unchanged (sorted, unique, 32 hex) |
+| all | `/projects…`, `/v1/projects…`, PF9's `/projects/{pid}/panoramas…` | echo `project-log/1.1`; any 1.x is served (1.0 included), 2.x is 400 `contract_version` with `supported: ["project-log/1.1"]` |
+
+### Refs on the light clients
+
+agent-interface §6.2: `Ref` is `<kind>#<id>`. CL1's replay (`SyncReplica.cpp` `RpTranslateRefs`) rewrites every string `<kind>#<32 hex>` in an action's args to `<kind>#<this session's int>` through `EntityIndex`, and leaves any other string alone, so a bare id reaches the tool untranslated and names nothing. Both builders now:
+
+* `ref(kind, id)` → `kind#id` (lowercase), `refId(value)` → the id or null (a bare id, a name or an unknown kind is not a ref), `REF_KINDS` = §6.2's kinds (`wall`, `opening`, `room`, `slab`, `object`, `extrusion`, `model`, `sweep`, `dim`, `refplane`, `line`, `curve`, `door`, `window`, `storey`, `stair`, `sheet`, `layer`);
+* validate `move.refs`, `fill.target`, `apply_theme.target`, `place.replace`, `place.room` as refs ("move.refs: 1 to 100 refs <kind>#<id>"): a bare id throws, nothing is sent;
+* `touched` = the refs' ids, sorted and unique (the server's check is unchanged).
+
+**Where each client knows the kind.** Every pick comes from a digest section: the web's selection is `{kind: "room" | "product" | "opening", id}` (`ProjectPanels.tsx` `EditPanel`), walls come from the picked room's `walls`; Android's panels are per section (`panels.dart`: room, its walls, product, opening). `DIGEST_KINDS` / `DigestKinds` map them: room → `room`, wall → `wall`, product → `object` (a placed product is an object row, as the app's own selection writes it, `AssistantContext.cpp`), opening → `opening` (the digest's `door` / `window` are §6.2 aliases; `opening` is the kind the app's selection writes). No pick without a kind exists today; a future one fails in the builder instead of sending a bare id.
+
+## Deliverables
+
+- [x] `server/tests/contracts/project-log/` = CL1's 7 files + README; `server/tests/test_pf4a_project_log_1_1.py` (`APP_BLOBS`)
+- [x] `server/app/projects/{ops,members,snapshots}.py`, `server/app/routers/{projects,mobile}.py`, `server/app/routers/v1/{projects,models}.py`, `server/app/mobile/clients.py`, `server/scripts/export_openapi.py`
+- [x] `openapi/v1.json`, `openapi/clients.json`, `sdks/` (`gen-sdks.ps1`), `src/lib/api-clients.d.ts`, `mobile/android/lib/api/gen/` (`gen-clients.ps1`)
+- [x] `src/viewer/actions.ts`, `src/viewer/selftest.ts`, `src/components/app/{ProjectPanels,ProjectScreen}.tsx`, `src/lib/{app,projects}.ts`
+- [x] `mobile/android/lib/actions/actions.dart`, `lib/screens/panels.dart`, `lib/api/api.dart`, `test/{helpers,action_builder_test,replica_test,outbox_test,screens_test,sync_engine_test}.dart`
+- [x] `server/scripts/demo_replica.py`; `server/scripts/make_project_log_fixtures.py` retired
+- [x] this doc, the tracker row, a README section
+
+## Tests
+
+| Name | Kind | Asserts |
+|---|---|---|
+| `test_pf4a_fixture_folder_is_the_apps_copy` | pytest | the folder is the app's 7 files + README; each blob id (`sha1(b"blob %d\0" % len + data)`) equals app 93bc4cac2's (= main ad3aa5c45's); no CR in the JSON; the README names both commits; where the app repo is present, `git ls-tree` at both commits and `git hash-object --no-filters` agree |
+| `test_pf4a_fixture_shapes_are_cl1s` | pytest | `truebex-project-log-ops/1` without a push-level `replica_id`; 12 deltas that decode to `o5/55` JSON with `ids`, `keys`, `before`, `after`; the bare action with `wall#<id>` refs; members with author ids; a 5.18 presence body |
+| `test_pf4a_ops_remote_replays_byte_for_byte` | pytest | 12 accepted, `server_seq` 1–12, head 12; every key the app sent comes back equal (delta strings and decoded bytes), `delta_format` `o5/55`, each its own replica id |
+| `test_pf4a_action_move_replays_unchanged` | pytest | the app's `action-move.json` on top: accepted as 13, pulled back as `{…fixture, server_seq: 13, delta/delta_format/restore: null}`, no `session` added; again → duplicate 13 |
+| `test_pf4a_action_session_and_request_id_checked_when_present` | pytest | without both and with two 32-hex values: accepted; `"nope"`, `""`, `null`, `7` → 422 on `ops[0].action.session` / `.request_id`; a non-log-safe tool and the read permission still refused |
+| `test_pf4a_snapshot_by_id_after_a_newer_one` | pytest | a version at 0, a newer snapshot at 12: no `id` → the newer; the restore's `restore.snapshot_id` → that snapshot (device, session and a 1.0 client), fresh URLs, the bytes download; upper-case id; the newest by its own id |
+| `test_pf4a_snapshot_by_id_not_found` | pytest | another project's id, `not-a-snapshot`, 31 and 33 hex, `""`, an unknown hex → 404 `not_found`; a stranger 404; no credential 401 |
+| `test_pf4a_v1_snapshot_by_id` | pytest | the same through `/v1` with a `projects:read` key; 1.1 echoed; a 1.0 key client 200 |
+| `test_pf4a_active_members_always_carry_an_author_id` | pytest | a website-only member accepted, then `author_id` NULL in the database: 5.13 mints one and stores it; the same on the next 5.13, 5.3 and `/auth/me`; the invitation `null`; a role change answers it too |
+| `test_pf4a_v1_members_carry_author_ids` | pytest | `/v1/projects/{pid}/members` the same |
+| `test_pf4a_routes_speak_project_log_1_1` | pytest | `/projects`, members, PF9's panoramas, `/v1` record and panoramas: no header, 1.1, 1.0, 1.9 → 200 and `project-log/1.1`; 2.0 → 400 naming 1.1 |
+| `test_pf4a_api_documents_name_1_1_and_id` | pytest | `openapi/v1.json` and `openapi/clients.json`: 5.9 has an optional `id` query parameter, every project-log operation says 1.1, the action schemas require tool, args and permission only; the Python SDK's `latest_snapshot` takes `id`; the TypeScript types have it |
+| `test_pf4a_clients_send_1_1` | pytest | `src/lib/app.ts`, `src/lib/projects.ts`, `mobile/android/lib/api/api.dart` send `project-log/1.1` |
+| `test_pf4a_demo_replica_pushes_the_apps_set` | pytest | `demo_replica.py push` → "pushed: 12 accepted", "project House (fixture), head 12"; the pulled deltas, names and replica are the app's; `doc_version` 55; only the snapshot at 0; `pull` prints 12 `o5/55` lines; `move` writes the app's action (`wall#<id>`, `[0, 600, 0]`) |
+| web self-test `builder` (`src/viewer/selftest.ts`) | node (in `test_site_pf9_js_selftests`) | a move of the picked wall → args `{"refs": ["wall#dc64…"], "by_mm": [0, 600, 0]}` byte for byte, `touched` the bare id, tool and permission the fixture's; every other written key equals the fixture's (author, op_id, replica_id, at passed in), `server_seq` the only one left out; `{tool, args, permission}` = the fixture's action; a bare id, `sofa#…` and a bare fill target throw; `refId`, `DIGEST_KINDS`; touched from refs only |
+| `action_builder_matches_fixture`, `a pick with no kind is refused…`, `touched is the sorted, unique set of the refs' ids…` (`action_builder_test.dart`) | flutter test | the same as the web's, plus the generated client: `OpIn` sends it unchanged and `Operation.fromJson` reads the app's action without `session` |
+| PF4, PF6, PF9, PF9a, PF10, PF12, PF12a, PF12c suites, the render tests | pytest, flutter test | green; changed only where they read the old shapes or the 1.0 echo |
+
+## Human test
+
+About 10 minutes, in PowerShell, on the local API. (The served `out/` from `scripts\autopilot-serve.ps1` is not needed: nothing on the site changed visibly.)
+
+0. **Set up the API.** In the worktree: `cd server`. If `server\.env` has no `LICENCE_SIGNING_KEY` yet, run `.venv\Scripts\python.exe scripts\make_signing_key.py --kind lic` and paste the `LICENCE_SIGNING_KEY=` and `LICENCE_KEY_ID=` lines it prints into `server\.env`. Start the API in its own window: `.\run.bat` (it serves http://127.0.0.1:8000). Back in the first window (still in `server\`), make an account: `Invoke-RestMethod -Method Post http://127.0.0.1:8000/auth/register -ContentType 'application/json' -Body '{"email":"ana@example.com","password":"password123"}'` → an `access_token` and `token_type` `bearer`.
+1. **A device with the trial.** `.venv\Scripts\python.exe scripts\demo_replica.py login --email ana@example.com --password password123 --trial` → "Pro trial started (ends …)", "device DEMO-REPLICA for ana@example.com: plan pro, author_id …", "device token: tbx_dev_…". Then `$token = '<that tbx_dev_… token>'`.
+2. **Push the app's set.** `.venv\Scripts\python.exe scripts\demo_replica.py --token $token push --fixture tests\contracts\project-log` → "created House (fixture) (…) with the fixture snapshot at 0", "pushed: 12 accepted", "replica 25a7548b...; deltas o5/55", **"project House (fixture), head 12"**, "project id: …". Then `$p = '<that project id>'`.
+3. **Pull: the app's deltas.** `.venv\Scripts\python.exe scripts\demo_replica.py --token $token pull --project $p` → 12 lines, in this order: Garden wall, Slide opening, Rename layer, Layer, Garden wall, Slide opening, Move, Shed wall, Slide opening, Layer, Garden wall, Fence, each "delta o5/55, … bytes" (560 to 1,830 bytes; "Move" is the big one, touched 10), then "12 operations, head 12".
+4. **The web's move, as the app applies it.** `.venv\Scripts\python.exe scripts\demo_replica.py --token $token move --project $p` → "accepted as 13 (head 13)"; `…demo_replica.py --token $token pull --project $p --after 12` → "13  Move wall  action move wall#dc643577 … touched 1".
+5. **5.9 `?id=` and the 1.1 header.** `$h = @{ Authorization = "Bearer $token"; 'X-Truebex-Contract' = 'project-log/1.1' }`, then `$s = Invoke-RestMethod "http://127.0.0.1:8000/projects/$p/snapshots/latest" -Headers $h; $s.snapshot_id` → 32 hex; `(Invoke-RestMethod "http://127.0.0.1:8000/projects/$p/snapshots/latest?id=$($s.snapshot_id)" -Headers $h).files.tbxp.bytes` → **74505**; `curl.exe -s "http://127.0.0.1:8000/projects/$p/snapshots/latest?id=00000000000000000000000000000000" -H "Authorization: Bearer $token"` → `{"detail":"No such snapshot.","code":"not_found","status":404,…}`. `curl.exe -s -i "http://127.0.0.1:8000/projects/$p" -H "Authorization: Bearer $token" -H "X-Truebex-Contract: project-log/1.0"` → `HTTP/1.1 200 OK` and `x-truebex-contract: project-log/1.1` (a 1.0 client still works).
+6. **Members carry author ids.** `(Invoke-RestMethod "http://127.0.0.1:8000/projects/$p/members" -Headers $h).members | Format-Table email, state, author_id` → ana@example.com, active, the author_id of step 1.
+7. **Optional, with the app.** A CL1 build started with `-mwsync=live -mwapi=http://127.0.0.1:8000` (`SyncService.cpp`, `SyncHttp.cpp`; the CL1 doc's human test), signed in to this API as ana@example.com (LC1's sign-in, as in the CL1 doc's human test): Cloud tab > Open from cloud > "House (fixture)" → the fixture house opens from snapshot 0 and the History lists the 13 operations of steps 2–4 (Garden wall … Fence, then Move wall), all applied: the garden walls, the shed and the fence are drawn, and the wall `dc643577…` stands 600 mm further north than in the fixture; the status reads `Synced · seq 13`. Name a version, then Restore it: the app reports the restore applied (5.9 `?id=` answered the version's snapshot), where a 1.0 server made it report "not applied".
+
+## Risks / traps
+
+* **The app checkout is CRLF** (`core.autocrlf=true`): copy the blobs (the sync script does). The folder's own `.gitattributes` (`*.json text eol=lf`) was removed by the script as a file the app lacks; the root's `server/tests/contracts/** -text` keeps the bytes as committed (the committed blob ids are the app's).
+* **A snapshot claims a state.** With real deltas, a snapshot registered at a sequence must hold every operation up to it: `demo_replica.py push` now leaves only the fixture's snapshot at 0 (it used to register the same file again at the head, which a replica would open and then skip 1–12). PF9's `demo_mobile.py` still registers the fixture snapshot with its digest at the head: harmless for the phone (it never applies deltas), wrong for a desktop opening that project; not changed here (PF9's script, its digest is PF4's ids anyway).
+* **The Dart generator copies a parameter's schema description** onto unrelated nullable string fields (`openapi-generator` 7.26, OpenAPI 3.1 beta): the contract router's `id` has no schema description; the operation's text says what it does.
+* **`render-jobs/claim.json`** still names the old `snapshot-0000.tbxp`'s SHA-256: `test_render.py` checks its keys only. The render-jobs folder is PF6's own set until it is re-copied from the app (CL3 has written one).
+
+## As-built
+
+* **Date, branch, commits:** 2026-10-15, `ap/t83-pf4a-the-project-service-the-web` from `master` cc905d3 (Claude Autopilot T83): `381343c` (tests first: the app's fixtures and `test_pf4a_project_log_1_1.py`), `f9c4ef5` (the service, the routers, the generated documents and clients, the web and Android builders, `demo_replica.py`, the retired script), `bc9dce3` (`demo_replica.py push` keeps only the snapshot at 0), then this doc, the tracker row and the README section.
+* **Copy:** `scripts\sync-contract-fixtures.ps1 -Contract project-log` from app `main` at ad3aa5c45 (the folder last changed in CL1's 93bc4cac2, on `main` since the merge 496033be3): 7 files updated, 0 unchanged, `.gitattributes` removed; every blob id equal to the app's, and the committed blobs here are the same ids. **PF4's carry-over "CL1 — the real fixtures (`snapshot-0000.tbxp` with ids, real deltas)" is done.**
+* **`make_project_log_fixtures.py`: retired.** Its output is no longer the set: it now prints where the set comes from (the sync script, `APP_BLOBS`) and exits 1, so it can never overwrite the app's files; PF4's stand-in set is in git history. Kept as a file, not deleted, because the README's script list names it.
+* **Scope 3: option (a)**, after reading CL1's apply path: `SyncReplica.cpp` hands an action's JSON to `CadAgentHooks::ReplayAction` = `FRouter::Replay` (`AgentRouter.cpp:587`), which reads `tool` and `args` (checks `permission` through `tools.json`, never the field), mints its own session (`Session.Id = FGuid::NewGuid()`, author = the operation's) and never reads `session` or `request_id`. So the kernel never needs them to apply a log action; requiring them only refused the app's own fixture. The web and Android keep sending both (agent-interface §6.4: "added"), and the server still checks them when present.
+* **5.13: `null`** for an invitation (the key kept), against the contract's "no `author_id`": both generated clients (Dart, TypeScript) model the field as a nullable key, and PF9's web and phone already read `null` as "no person yet". An active member always has one: `ensure_author_ids` mints the missing ones in 5.13, 5.3, 5.14–5.16's answers and the invitation accept.
+* **Headers:** the routes answer `project-log/1.1`; the web (`src/lib/app.ts`, `src/lib/projects.ts`), Android (`api.dart` `logContract`), `demo_replica.py` (and `demo_mobile.py` through it) and the SDKs send 1.1, because they read 1.1's member `author_id`; a 1.0 server serves any 1.x, so nothing breaks against one. PF9's `/projects/{pid}/panoramas` router follows (same prefix and contract). `demo_render.py`, `pf12_helpers.PL` and `test_orgs_usage.py` still send 1.0 and keep passing (1.0 clients served).
+* **`demo_replica.py`:** `push` names the project and `doc_version` from `project.json` ("House (fixture)", 55), pushes each run of operations with its own `replica_id` (`--fresh-replica` for one new replica), `base_seq` = the head as before, `author` = the account's, fresh `op_id`s; only the snapshot at 0 (Risks). `pull` shows each delta's format and size and each action's tool and refs. `move` pushes the app's own `action-move.json` action (`wall#<id>`, 600 mm; `--entity`, `--kind`) instead of a stand-in delta, so a CL1 app following the project applies it; the conflict demo works as before.
+* **Files changed:** fixtures `server/tests/contracts/project-log/` (7 + README, `.gitattributes` removed); server `server/app/projects/{ops,members,snapshots}.py`, `server/app/routers/{projects,mobile}.py`, `server/app/routers/v1/{projects,models}.py`, `server/app/mobile/clients.py`, `server/scripts/{demo_replica,export_openapi,make_project_log_fixtures,make_digest_fixture}.py`, `server/tests/contracts/project-digest/README.md` (its ids are PF4's own); tests `server/tests/test_pf4a_project_log_1_1.py` (new), `project_helpers.py` (`CONTRACT` 1.1), `test_projects.py` (the replay, presence from the 5.18 body, the echo, the demo), `test_mobile.py` (the bare action), `test_pf12_api.py`, `test_pf12a_v1_panoramas.py` (the echo); generated `openapi/{v1,clients}.json`, `sdks/js/src/{operations.mjs,operations.d.ts,schema.d.ts}`, `sdks/python/truebex/{_operations,models}.py`, `src/lib/api-clients.d.ts`, `mobile/android/lib/api/gen/` (`api/snapshots_api.dart`, `model/operation_action.dart`, `SPEC_SHA256`); web `src/viewer/{actions,selftest}.ts`, `src/components/app/{ProjectPanels,ProjectScreen}.tsx`, `src/lib/{app,projects}.ts`, `src/lib/constants.ts` (the developer docs' header example says 1.1); Android `mobile/android/lib/actions/actions.dart`, `lib/screens/panels.dart`, `lib/api/api.dart`, `test/{helpers,action_builder_test,replica_test,outbox_test,screens_test,sync_engine_test}.dart`. Read the folder and needed no change: `test_pf9_pf12_meet.py`, `test_pf10_clients.py`, `test_render.py`, `render_helpers.py`, `demo_mobile.py`.
+* **Counts:** pytest collected 824 → 838 (14 new, all in `test_pf4a_project_log_1_1.py`). **Tests first:** the 14 on cc905d3's `server/` with its own fixtures: 14 failed; with the app's fixtures copied in: 12 failed, 2 passed (the shape check, and the replay itself: the server already stored deltas opaquely; what broke was the old test reading a push-level `replica_id`). Web self-test 92 checks (`selftest: 92 checks passed`); with cc905d3's builder: 8 of 92 failed (`builder.refs`, `builder.args bytes`, `builder.action core`, the bare-id refusals, `ref parse`, `digest kinds`, touched from refs). Flutter 43 → 44 tests, all passed; `action_builder_test.dart` with cc905d3's builder: 4 of 7 failed. `flutter analyze`: no issues. `tsc --noEmit` and `npm run lint` clean. On the branch: the PF4, PF9, PF10, PF12, PF12a, PF12c, render and PF4a files, 133 passed + 4 skipped (build checks without `out/`).
+* **Postgres 17** (throwaway cluster, session zone Asia/Baghdad, `TEST_APP_DATABASE_URL` + `TEST_DATABASE_URL`): `test_mobile`, `test_orgs_usage`, `test_pf10_clients`, `test_pf12_api`, `test_pf12_webhooks`, `test_pf12a_v1_panoramas`, `test_pf12c_agent_interface`, `test_pf14c_utc_times`, `test_pf4a_project_log_1_1`, `test_pf9_pf12_meet`, `test_projects`, `test_render`, `test_render_shares`, `test_routes_unique` in one run: 157 passed, 2 skipped (build checks), 567 s.
+* **Self-test** (a real uvicorn on 127.0.0.1:18083, a scratch SQLite database and storage, a throwaway licence key): `demo_replica.py login --trial` → plan pro; `push --fixture tests\contracts\project-log` → "pushed: 12 accepted", "replica 25a7548b...; deltas o5/55", "project House (fixture), head 12"; `pull` → 12 operations, every delta "o5/55" (560–1,830 bytes); a 5.7 read with 1.1: echoed 1.1, deltas, touched, names and replica equal to the app's; a version at 0 → restore at 13 → `?id=<restore.snapshot_id>` 200, at 0, the download equal to `snapshot-0000.tbxp`; `?id=not-a-snapshot` and an unknown id 404 `not_found`; a 1.0 client 200; `move` → "accepted as 14", pulled as "action move wall#dc643577"; a member who accepted on the website with `author_id` set to NULL listed with a new 32-hex id, the invitation `None`; no traceback in the API log. The human test's PowerShell lines were rehearsed literally on a second scratch API (steps 0–6).
+* **Deviations from the task text and why:**
+  1. *`demo_replica.py push` no longer registers a snapshot at the head* (the task: "base_seq as today"; this is beside it): with the app's real deltas that copy claimed a state the operations are not in (Risks). PF4's human test step 2 and PF4's own demo test expected it; the test now expects the snapshot at 0.
+  2. *`move` writes an action*, not a stand-in delta, so it applies in a CL1 app; its output and the conflict demo are unchanged.
+  3. *PF9's panorama router echoes 1.1 too*, not named in the task, because it shares `/projects` and the contract.
+  4. *The developer docs' example* (`constants.ts`, "for example project-log/1.0") now says 1.1, since the routes echo it.
+* **Proposed §11 platform cells** (`contracts/project-log.md`; the app half updates the contract): all eighteen rows "PF4: implemented (2026-10-10; 1.1.0 PF4a 2026-10-15)": `POST /projects`, `GET /projects`, `GET /projects/{pid}`, `PATCH /projects/{pid}`, `DELETE /projects/{pid}` (session only), `POST /projects/{pid}/ops`, `GET /projects/{pid}/ops`, `POST /projects/{pid}/snapshots`, `GET /projects/{pid}/snapshots/latest` (with `?id=`), `GET /projects/{pid}/versions`, `POST /projects/{pid}/versions`, `POST /projects/{pid}/versions/{vid}/restore`, `GET /projects/{pid}/members` (`author_id`), `POST /projects/{pid}/members`, `PATCH /projects/{pid}/members/{user_id}`, `DELETE /projects/{pid}/members/{user_id}`, `PUT /projects/{pid}/presence`, `GET /projects/{pid}/presence`; also mirrored under `/v1/projects` for API keys (PF12). The header line's "platform not yet" → "platform implemented (PF4, 1.1 PF4a)".
+* **Contract lines for the app side** (PATCH = wording, MINOR = additive):
+  * **agent-interface §6.4 / project-log §6.2 (PATCH):** "In a log `action` operation `session` and `request_id` are optional: a kernel replica's replay reads `tool` and `args` only (`FRouter::Replay`). The platform checks them when present." (The app's `action-move.json` omits them while §6.4's example says they are added; the platform accepts both.)
+  * **5.13 (PATCH):** "an invitation without an account has `author_id` null" (the platform keeps the key; readers treat null and absent alike).
+  * **5.9 (PATCH):** "`?id=` that is malformed, unknown or another project's → 404 `not_found`" (not 422).
+  * **§9 (PATCH):** the table's `ops-remote.json` is `truebex-project-log-ops/1` (each operation its own `replica_id`, no push body), `presence.json` a 5.18 body, `action-move.json` a bare §6.2 operation.
+  * **agent-interface §5.7 `place` (open, PF9's MINOR proposal):** `replace` is not in `tools.json`'s `place` schema (`additionalProperties: false`), so `FRouter::Replay`'s `ValidateArgs` refuses a web or phone swap as invalid, a no-op on every replica. The light clients keep writing it as PF9 proposed; the proposal stands.
+* **Carry-over → which feature:** the owner — the §11 cells and contract lines above, and the optional app step of the human test (a CL1 build against this API). PF9 — `demo_mobile.py` registers the fixture snapshot at the head (Risks), and the digest fixture names PF4's first ids, not the app's (re-copied when the app writes a digest). PF6 — re-copy `render-jobs/` from the app (CL3's set; `claim.json` names the old snapshot's hash). PF10 — none (the generated client reads an action without `session` now).
+* **Verify gate:** see the README row and the last commit's message for the counts of the run on this branch.
