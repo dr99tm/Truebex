@@ -120,8 +120,10 @@ def org_customer(db: Session, org_id: str, provider: str) -> str | None:
     """The provider customer the organisation's checkouts open on: that of
     its latest subscription there, unless the customer also holds a
     subscription that is not this organisation's (a person's own plan, a
-    listing plan, another organisation's). Before PF3e an organisation's
-    Stripe checkout opened on its buyer's own customer; such a customer is
+    listing plan, another organisation's), or a payment that is not this
+    organisation's was paid on (PF2e: a person's AI credit pack). Before
+    PF3e an organisation's Stripe checkout opened on its buyer's own
+    customer, and a buyer's top-up on the organisation's; such a customer is
     never the organisation's again. None: the checkout makes a new one.
 
     Read from our own rows, which a subscription reaches only through our
@@ -146,6 +148,16 @@ def org_customer(db: Session, org_id: str, provider: str) -> str | None:
             )
             .limit(1)
         )
+        if shared is None:
+            shared = db.scalar(
+                select(Payment.id)
+                .where(
+                    Payment.provider == provider,
+                    Payment.provider_customer_id == customer,
+                    or_(Payment.organisation_id.is_(None), Payment.organisation_id != org_id),
+                )
+                .limit(1)
+            )
         if shared is None:
             return customer
     return None
@@ -174,16 +186,19 @@ def org_scope(db: Session, org_id: str, provider: str) -> InvoiceScope | None:
 
 
 def personal_scope(db: Session, user: User, provider: str) -> InvoiceScope | None:
-    """The person's own invoices at `provider`: their customer's, without the
+    """The person's own invoices at `provider`: their customer's and (PF2e)
+    every customer their own one-off items were paid on there, without the
     subscriptions and checkouts they paid for organisations (on Paddle's one
-    customer per e-mail, and on a Stripe customer shared before PF3e)."""
-    customer = service.customer_id(db, user, provider)
-    if not customer:
+    customer per e-mail, and on a Stripe customer shared before PF3e). The
+    personal invoice PDF link checks an invoice against this same scope."""
+    found = [service.customer_id(db, user, provider), *service.one_off_customers(db, user, provider)]
+    customers = tuple(dict.fromkeys(c for c in found if c))
+    if not customers:
         return None
     org_subs = db.scalars(
         select(Subscription.provider_subscription_id).where(
             Subscription.provider == provider,
-            Subscription.provider_customer_id == customer,
+            Subscription.provider_customer_id.in_(customers),
             Subscription.organisation_id.is_not(None),
             Subscription.provider_subscription_id.is_not(None),
         )
@@ -196,7 +211,7 @@ def personal_scope(db: Session, user: User, provider: str) -> InvoiceScope | Non
             Payment.provider_ref.is_not(None),
         )
     )
-    return InvoiceScope(customers=(customer,), exclude=frozenset([*org_subs, *org_checkouts]))
+    return InvoiceScope(customers=customers, exclude=frozenset([*org_subs, *org_checkouts]))
 
 
 # --- attaching a provider subscription --------------------------------------------------
