@@ -3,15 +3,19 @@
     py -3.12 worker\\truebex_worker.py --config worker.toml
     py -3.12 worker\\truebex_worker.py --config worker.toml --app worker\\tests\\fake_truebex.py --once
 
-For each job (contract render-jobs v1.0, 5.7-5.10): claim (a long-poll of up to
-20 s) -> download the snapshot, the operations and the base manifest from
-the claim's signed URLs, checking each SHA-256 -> write the job file (§6.1)
--> run `Truebex.exe -mwrender=<job.json>` with no window, sending a heartbeat
+For each job (contract render-jobs 1.1.0, 5.7-5.10): claim (a long-poll of up
+to 20 s) -> download the snapshot, the operations and the base manifest from
+the claim's signed URLs, checking each SHA-256 -> write the job file (§6.1,
+with `project.snapshot_seq`, the sequence the snapshot stands at) -> run
+`Truebex.exe -mwrender=<job.json>` (CL3) with no window, sending a heartbeat
 every 30 s from a thread and killing the app when the platform answers
 `cancel` or `lease_lost` -> upload `out_dir/tiles/*` (and a pack's files)
 through the job-output upload the claim opened (share-bundle §5, 8 MiB parts,
 resumable) -> complete with the measured wall time, or fail with the code the
-app wrote in `out_dir/error.json` and the last 64 KiB of its log.
+app wrote in `out_dir/error.json`, else the code its exit code stands for
+(5.10 per code: 2 bad_input, 3 doc_too_new, 4 render_crash, 5 out_of_memory,
+6 timeout, 7 engine_error; any other render_crash), and the last 64 KiB of
+its log.
 
 `--mode container` (PF11) runs analysis jobs instead: the job file
 `truebex-analysis-job/1` goes to `<work>/job.json` with the inputs under
@@ -44,11 +48,14 @@ import urllib.request
 from dataclasses import dataclass, field
 from pathlib import Path
 
-CONTRACT = "render-jobs/1.0"
+CONTRACT = "render-jobs/1.1"
 UPLOADS = "share-bundle/1.0"
 RETRY_STATUSES = {408, 429, 500, 502, 503, 504, 530}
 NOT_RETRYABLE = {"bad_input", "doc_too_new"}
 FAIL_CODES = {"bad_input", "render_crash", "out_of_memory", "timeout", "engine_error", "doc_too_new"}
+# -mwrender's exit codes (render-jobs 1.1.0, 5.10 per code): the failure an exit
+# means when the app wrote no out_dir/error.json. 0 is success.
+EXIT_CODES = {2: "bad_input", 3: "doc_too_new", 4: "render_crash", 5: "out_of_memory", 6: "timeout", 7: "engine_error"}
 LOG_TAIL = 64 * 1024
 UPLOAD_BATCH = 500
 EXIT_REVOKED = 3
@@ -318,21 +325,28 @@ class Runner:
         self.log = self.api.log
 
     def job_file(self, c: dict, work: Path, inputs: dict) -> dict:
+        """§6.1 as render-jobs 1.1.0 has it. Paths are absolute (1.1.0 resolves
+        only relative ones against the job file's folder); `levels` is left
+        to the app (`face_px` halved down to `tile_px`)."""
         job = c["job"]
-        return {
+        project = {
+            "tbxp": inputs.get("tbxp"),
+            "tbxpack": inputs.get("tbxpack"),
+            "ops": inputs.get("ops"),
+            "at_seq": job["at_seq"],
+        }
+        snap = (c.get("inputs") or {}).get("snapshot")
+        if snap and snap.get("at_seq") is not None:
+            # The sequence the snapshot stands at: the operations file starts after it.
+            project["snapshot_seq"] = snap["at_seq"]
+        project["project_id"] = job.get("project_id")  # the manifest's project_id
+        out = {
             "schema": "truebex-render-job/1",
             "job_id": job["job_id"],
             "kind": job["kind"],
             "quality": job.get("quality") or "standard",
             "seed": 1,
-            "project": {
-                "tbxp": inputs.get("tbxp"),
-                "tbxpack": inputs.get("tbxpack"),
-                "ops": inputs.get("ops"),
-                "at_seq": job["at_seq"],
-                # Additive (MINOR proposal): the manifest names the project.
-                "project_id": job.get("project_id"),
-            },
+            "project": project,
             "views": job.get("views") or [],
             "changed": job.get("changed") or [],
             "base_manifest": inputs.get("base_manifest"),
@@ -340,8 +354,28 @@ class Runner:
             "tile_px": self.cfg.tile_px,
             "jpeg_quality": self.cfg.jpeg_quality,
             "out_dir": (work / "out").resolve().as_posix(),
-            "params": job.get("params") or {},
         }
+        if job["kind"] == "pack":
+            out["params"] = {"items": list((job.get("params") or {}).get("items") or [])}
+        return out
+
+    def failure(self, code: int | None, out: Path) -> tuple[str, str]:
+        """The 5.10 code and message of a run that did not exit 0: the code
+        out_dir/error.json names, else the one the exit code stands for (any
+        other non-zero exit: render_crash; stopped after job_timeout_s: timeout)."""
+        try:
+            err = json.loads((out / "error.json").read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            err = None
+        err = err if isinstance(err, dict) else {}
+        if code is None:
+            fallback, said = "timeout", f"stopped after {self.cfg.job_timeout_s:g} s (job_timeout_s)"
+        else:
+            fallback = EXIT_CODES.get(code, "render_crash")
+            said = f"exit {code} " + ("with out_dir/error.json" if err else "without out_dir/error.json") + f" ({fallback})"
+        name = err.get("code") if err.get("code") in FAIL_CODES else fallback
+        message = str(err.get("message") or "")
+        return name, f"{message} ({said})" if message else said
 
     def fetch_inputs(self, c: dict, work: Path) -> dict:
         got: dict = {}
@@ -440,14 +474,9 @@ class Runner:
                 self.log(f"lease lost on {job_id}: outputs discarded")
                 return "lost"
             if code != 0:
-                err = {"code": "timeout" if code is None else "render_crash", "message": f"exit {code}"}
-                try:
-                    err.update(json.loads((work / "out" / "error.json").read_text(encoding="utf-8")))
-                except (OSError, ValueError):
-                    pass
-                code_name = err.get("code") if err.get("code") in FAIL_CODES else "render_crash"
-                self.api.fail(job_id, lease, code_name, str(err.get("message", "")), code_name not in NOT_RETRYABLE, tail)
-                self.log(f"failed {job_id}: {code_name} {err.get('message', '')}")
+                code_name, message = self.failure(code, work / "out")
+                self.api.fail(job_id, lease, code_name, message, code_name not in NOT_RETRYABLE, tail)
+                self.log(f"failed {job_id}: {code_name}: {message}")
                 return "failed"
             try:
                 manifest, files, types = self.outputs(job["kind"], work / "out")
