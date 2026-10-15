@@ -8,11 +8,17 @@ The listen backlog is 128, not the standard library's 5: a dashboard page
 asks for about 100 files at once, and with 5 the rest got a random
 ERR_CONNECTION_REFUSED in headless self-tests and human tests (PF5a).
 
+A missing path answers the folder's 404.html with status 404, as GitHub Pages
+does (PF13c: the site's own not-found page); a folder without one answers the
+standard error page.
+
     py -3.12 scripts/serve-out.py <port> [--directory out] [--bind 0.0.0.0]
 """
 
 import argparse
 import functools
+import os
+from http import HTTPStatus
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 
 
@@ -31,6 +37,27 @@ class Handler(SimpleHTTPRequestHandler):
     def end_headers(self) -> None:
         self.send_header("Access-Control-Allow-Origin", "*")
         super().end_headers()
+
+    def send_error(self, code: int, message: str | None = None, explain: str | None = None) -> None:
+        page = self.not_found_page() if code == HTTPStatus.NOT_FOUND else None
+        if page is None:
+            super().send_error(code, message, explain)
+            return
+        self.log_error("code %d, message %s", code, message)
+        self.send_response(code)
+        self.send_header("Connection", "close")
+        self.send_header("Content-Type", "text/html; charset=utf-8")
+        self.send_header("Content-Length", str(len(page)))
+        self.end_headers()
+        if self.command != "HEAD":
+            self.wfile.write(page)
+
+    def not_found_page(self) -> bytes | None:
+        try:
+            with open(os.path.join(self.directory, "404.html"), "rb") as f:
+                return f.read()
+        except OSError:
+            return None
 
 
 class Server(ThreadingHTTPServer):
