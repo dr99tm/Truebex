@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { useSelectedLayoutSegment } from "next/navigation";
 import { Menu, X } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { AR_HOME, NAV_LINKS, NAV_UI } from "@/lib/constants";
@@ -23,11 +23,15 @@ export function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const { user } = useCurrentUser();
-  const pathname = usePathname() ?? "/";
-  const locale = pathname === "/ar" || pathname.startsWith("/ar/") ? "ar" : "en";
+  // The route's first segment, not the address bar (PF13c): GitHub Pages
+  // answers a missing /ar/… or /app/… path with the English not-found page,
+  // whose segment is _not-found wherever it is served, so the server's HTML
+  // and the browser agree.
+  const segment = useSelectedLayoutSegment();
+  const locale = segment === "ar" ? "ar" : "en";
   const t = COPY[locale];
   // PF9: the mobile web client under /app/ has its own full-screen chrome.
-  const inApp = pathname === "/app" || pathname.startsWith("/app/");
+  const inApp = segment === "app";
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 50);

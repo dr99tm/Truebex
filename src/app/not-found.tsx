@@ -21,8 +21,8 @@ export default function NotFound() {
       />
       <div className="mx-auto max-w-2xl text-center">
         <p className="text-sm font-medium uppercase tracking-wider text-accent">{NOT_FOUND.eyebrow}</p>
-        <h1 className="mt-3 text-3xl font-bold tracking-tight sm:text-5xl">{NOT_FOUND.heading}</h1>
-        <p className="mt-5 text-lg text-text-secondary">{NOT_FOUND.intro}</p>
+        <h1 className="mt-3 text-balance text-3xl font-bold tracking-tight sm:text-5xl">{NOT_FOUND.heading}</h1>
+        <p className="mt-5 text-pretty text-lg text-text-secondary">{NOT_FOUND.intro}</p>
         <div className="mt-10 flex flex-col items-stretch justify-center gap-3 sm:flex-row sm:items-center">
           <Button href="/">{NOT_FOUND.home}</Button>
           {NOT_FOUND.links.map((link) => (

@@ -91,6 +91,18 @@ def test_site_pf13c_not_found_source():
     assert "/" not in hrefs, "the home link is its own button"
 
 
+def test_site_pf13c_navbar_follows_route_segment():
+    """GitHub Pages answers a missing /ar/… or /app/… path with the English
+    404.html. The Navbar picks its language and hides itself under /app/ from
+    the route segment (`_not-found` there), not the address bar, so the
+    browser renders what the server did: no Arabic labels, no vanished
+    Navbar, no hydration mismatch."""
+    src = (ROOT / "src" / "components" / "layout" / "Navbar.tsx").read_text(encoding="utf-8")
+    assert "useSelectedLayoutSegment()" in src
+    assert "usePathname" not in src
+    assert 'segment === "ar"' in src and 'segment === "app"' in src
+
+
 # --- build -----------------------------------------------------------------------
 
 
