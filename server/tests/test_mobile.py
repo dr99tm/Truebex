@@ -88,14 +88,14 @@ def test_auth_me_includes_author_id(client):
 
 def test_web_action_op_accepted_by_project_log(client):
     owner = Person(client, "owner@example.com")
-    fixture = fixture_action()
-    owner.set_author_id(fixture["op"]["author"])
+    fixture = fixture_action()  # CL1's bare §6.2 operation: refs `<kind>#<id>`, no session or request_id
+    owner.set_author_id(fixture["author"])
     pid = create(client, owner.dev)["project_id"]
-    # Base the fixture's operation on the head it names (12): any 12 operations of the owner.
+    # Twelve other operations of the owner first, from another replica, touching other ids.
     filler = [action_op(owner.author_id, [hex32()]) for _ in range(12)]
     assert pushed(client, owner.web, pid, hex32(), filler)["head_seq"] == 12
 
-    sent = {k: v for k, v in fixture["op"].items() if k not in ("server_seq",)}
+    sent = {k: v for k, v in fixture.items() if k not in ("server_seq",)}
     answer = pushed(client, owner.web, pid, fixture["replica_id"], [sent])
     assert answer["results"] == [{"op_id": sent["op_id"], "status": "accepted", "server_seq": 13}]
     got = pull(client, owner.web, pid, after=12)["ops"][0]

@@ -3,7 +3,12 @@
 // writes a delta: each edit names one log-safe tool with its arguments, and
 // every kernel replica applies it through the same tool at its server_seq.
 //
-// `touched` is the sorted, unique set of entity refs in the arguments (§6.2);
+// Entities in the arguments are `Ref`s, `<kind>#<id>` (agent-interface §6.2;
+// PF4a), exactly as the app's own action-move.json writes them: a kernel
+// replica turns `wall#<32 hex>` into its own row and looks a bare id up as
+// nothing. A pick always knows its kind from the digest section it came from
+// (`DIGEST_KINDS`); the builder refuses a bare id rather than send one.
+// `touched` is the sorted, unique set of the refs' ids (§6.2);
 // `name` is the undo-step name the desktop shows. Framework-free: the project
 // page, the outbox and the self-test (checked against the contract fixture
 // action-move.json) all use it.
@@ -74,7 +79,47 @@ const REF_KEYS = ["refs", "target", "host", "room", "replace"] as const;
 const MAX_MM = 1_000_000;
 export const NAME_MAX = 80;
 
+/** agent-interface §6.2: the kinds of `Cad3DFastEyeView.h`, door / window (aliases of opening), storey, stair, sheet, layer. */
+export const REF_KINDS = [
+  "wall",
+  "opening",
+  "room",
+  "slab",
+  "object",
+  "extrusion",
+  "model",
+  "sweep",
+  "dim",
+  "refplane",
+  "line",
+  "curve",
+  "door",
+  "window",
+  "storey",
+  "stair",
+  "sheet",
+  "layer",
+] as const;
+export type RefKind = (typeof REF_KINDS)[number];
+
+/** The kind of what a digest section lists: a placed product is an `object` row, as in the app's own selection. */
+export const DIGEST_KINDS = { room: "room", wall: "wall", product: "object", opening: "opening" } as const satisfies Record<string, RefKind>;
+
+const REF = new RegExp(`^(${REF_KINDS.join("|")})#([0-9a-f]{32})$`);
+
 export const isHex32 = (value: unknown): value is string => typeof value === "string" && HEX32.test(value);
+
+/** A `Ref` (agent-interface §6.2): `<kind>#<id>`, the id CL0's 32-hex entity id (`wall#dc64…6b30d`). */
+export const ref = (kind: RefKind, id: string): string => `${kind}#${id.toLowerCase()}`;
+
+/** The entity id a ref names, or null for anything else (a bare id, a name, an unknown kind). */
+export function refId(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const m = REF.exec(value.toLowerCase());
+  return m ? m[2] : null;
+}
+
+export const isRef = (value: unknown): value is string => refId(value) !== null;
 
 /** 32 lowercase hex from the platform's random source (op ids, replica ids). */
 export function hex32(): string {
@@ -88,17 +133,18 @@ export function rfc3339ms(at: Date): string {
   return at.toISOString();
 }
 
-/** Every entity ref in a tool's arguments, sorted and unique: the operation's `touched`. */
+/** The ids of every entity ref in a tool's arguments, sorted and unique: the operation's `touched` (bare ids). */
 export function touchedOf(args: object): string[] {
-  const refs = new Set<string>();
+  const ids = new Set<string>();
   const record = args as Record<string, unknown>;
   for (const key of REF_KEYS) {
     const value = record[key];
     for (const v of Array.isArray(value) ? value : [value]) {
-      if (typeof v === "string" && HEX32.test(v.toLowerCase())) refs.add(v.toLowerCase());
+      const id = refId(v);
+      if (id) ids.add(id);
     }
   }
-  return [...refs].sort();
+  return [...ids].sort();
 }
 
 function fail(message: string): never {
@@ -110,11 +156,11 @@ const isP3 = (v: unknown): v is P3 => Array.isArray(v) && v.length === 3 && v.ev
 
 /** The checks of agent-interface §5.7–5.11 a light client can make without the model. */
 export function validateCall(call: ToolCall): void {
-  const refsOk = (refs: unknown) => Array.isArray(refs) && refs.length >= 1 && refs.length <= 100 && refs.every(isHex32);
+  const refsOk = (refs: unknown) => Array.isArray(refs) && refs.length >= 1 && refs.length <= 100 && refs.every(isRef);
   switch (call.tool) {
     case "move": {
       const a = call.args;
-      if (!refsOk(a.refs)) fail("move.refs: 1 to 100 entity ids");
+      if (!refsOk(a.refs)) fail("move.refs: 1 to 100 refs <kind>#<id>");
       const given = (["by_mm", "to_mm", "along_mm", "rotate_deg"] as const).filter((k) => a[k] !== undefined);
       if (given.length !== 1) fail("move: exactly one of by_mm, to_mm, along_mm, rotate_deg");
       if (a.by_mm !== undefined && !isP3(a.by_mm)) fail("move.by_mm: three numbers (mm)");
@@ -125,7 +171,7 @@ export function validateCall(call: ToolCall): void {
     }
     case "fill": {
       const a = call.args;
-      if (!isHex32(a.target)) fail("fill.target: an entity id");
+      if (!isRef(a.target)) fail("fill.target: a ref <kind>#<id>");
       const f = a.finish;
       if (!f || !["paint", "wallpaper", "pattern3d", "none"].includes(f.kind)) fail("fill.finish.kind");
       if (f.colour !== undefined && !COLOUR.test(f.colour)) fail("fill.finish.colour: #RRGGBB");
@@ -135,7 +181,7 @@ export function validateCall(call: ToolCall): void {
     }
     case "apply_theme": {
       const a = call.args;
-      if (!isHex32(a.target)) fail("apply_theme.target: an entity id");
+      if (!isRef(a.target)) fail("apply_theme.target: a ref <kind>#<id>");
       if (!a.theme || a.theme.length > 120) fail("apply_theme.theme: 1 to 120 characters");
       return;
     }
@@ -146,8 +192,8 @@ export function validateCall(call: ToolCall): void {
       if (!p || !isHex32(p.supplier_id) || !p.sku || p.sku.length > 64 || !p.variant_id || p.variant_id.length > 64) {
         fail("place.product: supplier_id, sku, variant_id");
       }
-      if (a.replace !== undefined && !isHex32(a.replace)) fail("place.replace: an entity id");
-      if (a.room !== undefined && !isHex32(a.room)) fail("place.room: an entity id");
+      if (a.replace !== undefined && !isRef(a.replace)) fail("place.replace: a ref <kind>#<id>");
+      if (a.room !== undefined && !isRef(a.room)) fail("place.room: a ref <kind>#<id>");
       if (a.room === undefined && a.at_mm === undefined && a.replace === undefined) fail("place: room, at_mm or replace");
       return;
     }
@@ -202,6 +248,7 @@ export function nudgeVector(bearingDeg: number, dir: Nudge, stepMm: number): P3 
   return [mm(x), mm(y), 0];
 }
 
+// Every entity argument below is a ref, `ref(kind, id)` (§6.2).
 export const moveBy = (refs: string[], by: P3): ToolCall => ({ tool: "move", args: { refs, by_mm: by } });
 export const slideAlong = (ref: string, along: number): ToolCall => ({ tool: "move", args: { refs: [ref], along_mm: along } });
 export const fillFace = (target: string, face: Face, finish: Finish): ToolCall => ({ tool: "fill", args: { target, face, finish } });

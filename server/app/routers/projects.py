@@ -1,5 +1,5 @@
-"""The project service (contract project-log v1.0, PF4): projects, the
-operation log, snapshots, versions and restore, members, presence.
+"""The project service (contract project-log v1.1, PF4 and PF4a): projects,
+the operation log, snapshots, versions and restore, members, presence.
 
 Auth: a device token or a session (contract §4); roles per the §4 matrix on
 every route, 404 for non-members. 5.5 needs a session (403
@@ -24,7 +24,7 @@ from ..models import User
 from ..projects import hooks, members, ops, presence, quotas, service, snapshots, versions, waiters
 from ..projects.caller import ProjectCaller, get_any_caller, get_project_caller, require_session
 
-router = APIRouter(prefix="/projects", tags=["projects"], dependencies=[contract("project-log", 1, 0)])
+router = APIRouter(prefix="/projects", tags=["projects"], dependencies=[contract("project-log", 1, 1)])
 
 
 class CreateIn(BaseModel):
@@ -275,9 +275,16 @@ def register_snapshot(
 
 @router.get("/{project_id}/snapshots/latest")
 def latest_snapshot(
-    project_id: str, caller: ProjectCaller = Depends(get_project_caller), db: Session = Depends(get_db)
+    project_id: str,
+    # 1.1.0: that snapshot instead of the newest (a restore operation's `restore.snapshot_id`).
+    # No schema description: the Dart generator would copy it onto other nullable strings.
+    snapshot_id: str | None = Query(default=None, alias="id"),
+    caller: ProjectCaller = Depends(get_project_caller),
+    db: Session = Depends(get_db),
 ) -> dict:
     project, _ = service.open_project(db, caller, project_id)
+    if snapshot_id is not None:
+        return snapshots.by_id(db, project, snapshot_id)
     return snapshots.latest(db, project)
 
 

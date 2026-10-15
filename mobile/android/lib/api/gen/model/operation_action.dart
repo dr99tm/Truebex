@@ -15,8 +15,8 @@ class OperationAction {
   OperationAction({
     required this.args,
     required this.permission,
-    required this.requestId,
-    required this.session,
+    this.requestId,
+    this.session,
     required this.tool,
   });
 
@@ -24,9 +24,9 @@ class OperationAction {
 
   String permission;
 
-  String requestId;
+  String? requestId;
 
-  String session;
+  String? session;
 
   String tool;
 
@@ -43,8 +43,8 @@ class OperationAction {
     // ignore: unnecessary_parenthesis
     (args.hashCode) +
     (permission.hashCode) +
-    (requestId.hashCode) +
-    (session.hashCode) +
+    (requestId == null ? 0 : requestId!.hashCode) +
+    (session == null ? 0 : session!.hashCode) +
     (tool.hashCode);
 
   @override
@@ -54,8 +54,16 @@ class OperationAction {
     final json = <String, dynamic>{};
       json[r'args'] = this.args;
       json[r'permission'] = this.permission;
+    if (this.requestId != null) {
       json[r'request_id'] = this.requestId;
+    } else {
+      json[r'request_id'] = null;
+    }
+    if (this.session != null) {
       json[r'session'] = this.session;
+    } else {
+      json[r'session'] = null;
+    }
       json[r'tool'] = this.tool;
     return json;
   }
@@ -75,10 +83,6 @@ class OperationAction {
         assert(json[r'args'] != null, 'Required key "OperationAction[args]" has a null value in JSON.');
         assert(json.containsKey(r'permission'), 'Required key "OperationAction[permission]" is missing from JSON.');
         assert(json[r'permission'] != null, 'Required key "OperationAction[permission]" has a null value in JSON.');
-        assert(json.containsKey(r'request_id'), 'Required key "OperationAction[request_id]" is missing from JSON.');
-        assert(json[r'request_id'] != null, 'Required key "OperationAction[request_id]" has a null value in JSON.');
-        assert(json.containsKey(r'session'), 'Required key "OperationAction[session]" is missing from JSON.');
-        assert(json[r'session'] != null, 'Required key "OperationAction[session]" has a null value in JSON.');
         assert(json.containsKey(r'tool'), 'Required key "OperationAction[tool]" is missing from JSON.');
         assert(json[r'tool'] != null, 'Required key "OperationAction[tool]" has a null value in JSON.');
         return true;
@@ -87,8 +91,8 @@ class OperationAction {
       return OperationAction(
         args: mapValueOfType<Object>(json, r'args')!,
         permission: mapValueOfType<String>(json, r'permission')!,
-        requestId: mapValueOfType<String>(json, r'request_id')!,
-        session: mapValueOfType<String>(json, r'session')!,
+        requestId: mapValueOfType<String>(json, r'request_id'),
+        session: mapValueOfType<String>(json, r'session'),
         tool: mapValueOfType<String>(json, r'tool')!,
       );
     }
@@ -139,8 +143,6 @@ class OperationAction {
   static const requiredKeys = <String>{
     'args',
     'permission',
-    'request_id',
-    'session',
     'tool',
   };
 }

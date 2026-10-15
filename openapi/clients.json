@@ -107,7 +107,7 @@
       },
       "Member": {
         "additionalProperties": true,
-        "description": "5.13; `author_id` names who wrote an operation (PF9's MINOR proposal).",
+        "description": "5.13; `author_id` names who wrote an operation (project-log 1.1.0): set for\nevery active member, null for an invitation.",
         "properties": {
           "accepted_at": {
             "anyOf": [
@@ -552,7 +552,7 @@
       },
       "OperationAction": {
         "additionalProperties": true,
-        "description": "`FTruebexAgentAction` (agent-interface §6.4): a log-safe tool and its arguments.",
+        "description": "`FTruebexAgentAction` (agent-interface §6.4): a log-safe tool and its arguments.\n`session` and `request_id` come with a live call; the desktop's own log actions\nmay carry neither (PF4a). Refs in `args` are `<kind>#<id>` (§6.2).",
         "properties": {
           "args": {
             "title": "Args",
@@ -563,12 +563,28 @@
             "type": "string"
           },
           "request_id": {
-            "title": "Request Id",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Request Id"
           },
           "session": {
-            "title": "Session",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Session"
           },
           "tool": {
             "title": "Tool",
@@ -578,9 +594,7 @@
         "required": [
           "tool",
           "args",
-          "permission",
-          "session",
-          "request_id"
+          "permission"
         ],
         "title": "OperationAction",
         "type": "object"
@@ -2708,7 +2722,7 @@
             "name": "X-Truebex-Contract",
             "required": false,
             "schema": {
-              "default": "project-log/1.0",
+              "default": "project-log/1.1",
               "type": "string"
             }
           }
@@ -2744,7 +2758,7 @@
         "tags": [
           "projects"
         ],
-        "x-truebex-contract": "project-log/1.0"
+        "x-truebex-contract": "project-log/1.1"
       }
     },
     "/projects/{project_id}": {
@@ -2766,7 +2780,7 @@
             "name": "X-Truebex-Contract",
             "required": false,
             "schema": {
-              "default": "project-log/1.0",
+              "default": "project-log/1.1",
               "type": "string"
             }
           }
@@ -2802,7 +2816,7 @@
         "tags": [
           "projects"
         ],
-        "x-truebex-contract": "project-log/1.0"
+        "x-truebex-contract": "project-log/1.1"
       }
     },
     "/projects/{project_id}/members": {
@@ -2824,7 +2838,7 @@
             "name": "X-Truebex-Contract",
             "required": false,
             "schema": {
-              "default": "project-log/1.0",
+              "default": "project-log/1.1",
               "type": "string"
             }
           }
@@ -2860,7 +2874,7 @@
         "tags": [
           "members"
         ],
-        "x-truebex-contract": "project-log/1.0"
+        "x-truebex-contract": "project-log/1.1"
       }
     },
     "/projects/{project_id}/ops": {
@@ -2912,7 +2926,7 @@
             "name": "X-Truebex-Contract",
             "required": false,
             "schema": {
-              "default": "project-log/1.0",
+              "default": "project-log/1.1",
               "type": "string"
             }
           }
@@ -2948,7 +2962,7 @@
         "tags": [
           "ops"
         ],
-        "x-truebex-contract": "project-log/1.0"
+        "x-truebex-contract": "project-log/1.1"
       },
       "post": {
         "operationId": "ops_push",
@@ -2968,7 +2982,7 @@
             "name": "X-Truebex-Contract",
             "required": false,
             "schema": {
-              "default": "project-log/1.0",
+              "default": "project-log/1.1",
               "type": "string"
             }
           }
@@ -3014,7 +3028,7 @@
         "tags": [
           "ops"
         ],
-        "x-truebex-contract": "project-log/1.0"
+        "x-truebex-contract": "project-log/1.1"
       }
     },
     "/projects/{project_id}/panoramas": {
@@ -3036,7 +3050,7 @@
             "name": "X-Truebex-Contract",
             "required": false,
             "schema": {
-              "default": "project-log/1.0",
+              "default": "project-log/1.1",
               "type": "string"
             }
           }
@@ -3072,7 +3086,7 @@
         "tags": [
           "panoramas"
         ],
-        "x-truebex-contract": "project-log/1.0"
+        "x-truebex-contract": "project-log/1.1"
       }
     },
     "/projects/{project_id}/panoramas/{set_id}": {
@@ -3129,7 +3143,7 @@
             "name": "X-Truebex-Contract",
             "required": false,
             "schema": {
-              "default": "project-log/1.0",
+              "default": "project-log/1.1",
               "type": "string"
             }
           }
@@ -3165,7 +3179,7 @@
         "tags": [
           "panoramas"
         ],
-        "x-truebex-contract": "project-log/1.0"
+        "x-truebex-contract": "project-log/1.1"
       }
     },
     "/projects/{project_id}/presence": {
@@ -3187,7 +3201,7 @@
             "name": "X-Truebex-Contract",
             "required": false,
             "schema": {
-              "default": "project-log/1.0",
+              "default": "project-log/1.1",
               "type": "string"
             }
           }
@@ -3223,7 +3237,7 @@
         "tags": [
           "presence"
         ],
-        "x-truebex-contract": "project-log/1.0"
+        "x-truebex-contract": "project-log/1.1"
       },
       "put": {
         "operationId": "presence_put",
@@ -3243,7 +3257,7 @@
             "name": "X-Truebex-Contract",
             "required": false,
             "schema": {
-              "default": "project-log/1.0",
+              "default": "project-log/1.1",
               "type": "string"
             }
           }
@@ -3289,7 +3303,7 @@
         "tags": [
           "presence"
         ],
-        "x-truebex-contract": "project-log/1.0"
+        "x-truebex-contract": "project-log/1.1"
       }
     },
     "/projects/{project_id}/snapshots/latest": {
@@ -3306,12 +3320,28 @@
             }
           },
           {
+            "in": "query",
+            "name": "id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Id"
+            }
+          },
+          {
             "description": "The contract and version the client speaks; a MAJOR the server does not serve is 400 `contract_version`.",
             "in": "header",
             "name": "X-Truebex-Contract",
             "required": false,
             "schema": {
-              "default": "project-log/1.0",
+              "default": "project-log/1.1",
               "type": "string"
             }
           }
@@ -3343,11 +3373,11 @@
             "session": []
           }
         ],
-        "summary": "The newest snapshot (5.9) with signed URLs; `files.digest` is the project digest.",
+        "summary": "The newest snapshot (5.9) with signed URLs, or the one `id` names (a restore's); `files.digest` is the project digest.",
         "tags": [
           "snapshots"
         ],
-        "x-truebex-contract": "project-log/1.0"
+        "x-truebex-contract": "project-log/1.1"
       }
     }
   },

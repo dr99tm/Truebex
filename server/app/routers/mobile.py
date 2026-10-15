@@ -25,7 +25,7 @@ from ..projects.caller import ProjectCaller, get_project_caller
 from ..render import queue
 from ..render.models import RenderSet
 
-router = APIRouter(prefix="/projects", tags=["mobile"], dependencies=[contract("project-log", 1, 0)])
+router = APIRouter(prefix="/projects", tags=["mobile"], dependencies=[contract("project-log", 1, 1)])
 PRIVATE = {"Cache-Control": "private, no-store"}
 
 

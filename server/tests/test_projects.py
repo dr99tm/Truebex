@@ -460,7 +460,9 @@ def test_presence_expires_after_ttl(client, monkeypatch, backend):
     b = Person(client, "b@example.com")
     pid = create(client, a.dev)["project_id"]
     invite_and_accept(client, a, pid, b, "viewer")
-    beat = json.loads((FIXTURES / "presence.json").read_text(encoding="utf-8"))["heartbeat"]
+    # presence.json is CL1's 5.18 body; the 5.17 heartbeat is its entry without the user fields.
+    seen = json.loads((FIXTURES / "presence.json").read_text(encoding="utf-8"))["present"][0]
+    beat = {k: v for k, v in seen.items() if k not in ("user_id", "name", "seen_at")}
     res = client.put(f"/projects/{pid}/presence", json=dict(beat, replica_id=b.replica), headers=b.dev)
     assert res.status_code == 200, res.text
     assert res.json() == {"ttl_s": 30, "others": []}
@@ -496,20 +498,20 @@ def test_presence_expires_after_ttl(client, monkeypatch, backend):
 def test_contract_header_and_error_envelope(client):
     a = Person(client, "a@example.com")
     res = client.post("/projects", json={"name": "House", "doc_version": 38}, headers=a.dev)
-    assert res.headers["X-Truebex-Contract"] == "project-log/1.0"
+    assert res.headers["X-Truebex-Contract"] == "project-log/1.1"
     pid = res.json()["project_id"]
     # No header reads as the current version; a newer MINOR is served.
     plain = {"Authorization": f"Bearer {a.token}"}
     assert client.get(f"/projects/{pid}", headers=plain).status_code == 200
     assert client.get(f"/projects/{pid}", headers={**plain, "X-Truebex-Contract": "project-log/1.7"}).status_code == 200
     body = error_of(client.get(f"/projects/{pid}", headers={**plain, "X-Truebex-Contract": "project-log/2.0"}), 400, "contract_version")
-    assert body["data"]["supported"] == ["project-log/1.0"]
+    assert body["data"]["supported"] == ["project-log/1.1"]
     error_of(client.get(f"/projects/{hex32()}", headers=a.dev), 404, "not_found")
     error_of(client.get(f"/projects/not-an-id", headers=a.dev), 404, "not_found")
     body = error_of(client.get("/projects", headers=CONTRACT), 401, "unauthenticated")
     assert body["retry_after_s"] is None
     res = client.get(f"/projects/{hex32()}", headers=a.dev)
-    assert res.headers["X-Truebex-Contract"] == "project-log/1.0"
+    assert res.headers["X-Truebex-Contract"] == "project-log/1.1"
 
 
 # --- PF4 per-endpoint tests ---------------------------------------------------------------------
@@ -819,28 +821,30 @@ def test_projects_idempotency_key_replay(client):
 def test_projects_fixture_ops_remote_replay(client):
     owner = Person(client, "owner@example.com")
     editor = Person(client, "editor@example.com")
+    # CL1's set (project-log 1.1.0): each operation names its own replica, the action is a bare §6.2 op.
     remote = json.loads((FIXTURES / "ops-remote.json").read_text(encoding="utf-8"))
     action = json.loads((FIXTURES / "action-move.json").read_text(encoding="utf-8"))
     tbxp = (FIXTURES / "snapshot-0000.tbxp").read_bytes()
     project = json.loads((FIXTURES / "project.json").read_text(encoding="utf-8"))
-    pid = create(client, owner.dev, project["name"])["project_id"]
+    pid = create(client, owner.dev, project["name"], doc_version=project["doc_version"])["project_id"]
     assert snapshot(client, owner.dev, pid, 0, tbxp).status_code == 201
     invite_and_accept(client, owner, pid, editor, "editor")
     editor.set_author_id(remote["ops"][0]["author"])
-    owner.set_author_id(action["op"]["author"])
+    assert action["author"] == editor.author_id  # the editor moves the wall on the web
 
-    answer = pushed(client, editor.dev, pid, remote["replica_id"], remote["ops"])
+    answer = pushed(client, editor.dev, pid, remote["ops"][0]["replica_id"], remote["ops"])
     assert statuses(answer) == ["accepted"] * 12
     assert [r["server_seq"] for r in answer["results"]] == list(range(1, 13)) and answer["head_seq"] == 12
     log = pull(client, owner.dev, pid)
     assert [op["op_id"] for op in log["ops"]] == [op["op_id"] for op in remote["ops"]]
     for got, sent in zip(log["ops"], remote["ops"]):
         assert got["delta"] == sent["delta"] and got["touched"] == sent["touched"] and got["at"] == sent["at"]
-        assert got["author"] == sent["author"] and got["name"] == sent["name"] and got["delta_format"] == "o5/38"
+        assert got["author"] == sent["author"] and got["name"] == sent["name"] and got["delta_format"] == "o5/55"
+        assert got["replica_id"] == sent["replica_id"]
     # The web client's action operation lands on top.
-    res = pushed(client, owner.web, pid, action["replica_id"], [action["op"]])
-    assert res["results"][0] == {"op_id": action["op"]["op_id"], "status": "accepted", "server_seq": 13}
-    assert pull(client, editor.dev, pid, after=12)["ops"][0]["action"] == action["op"]["action"]
+    res = pushed(client, editor.web, pid, action["replica_id"], [action])
+    assert res["results"][0] == {"op_id": action["op_id"], "status": "accepted", "server_seq": 13}
+    assert pull(client, owner.dev, pid, after=12)["ops"][0]["action"] == action["action"]
     # Open = 5.3 → 5.9 → 5.7 from at_seq.
     opened = client.get(f"/projects/{pid}", headers=editor.dev).json()
     assert opened["head_seq"] == 13 and opened["latest_snapshot"]["at_seq"] == 0
@@ -1010,7 +1014,7 @@ def test_demo_replica_script_human_test_path(client, monkeypatch, capsys):
     ta, tb = token_of("a@example.com"), token_of("b@example.com")
     demo_replica.main(["--token", ta, "push", "--fixture", str(FIXTURES)])
     out = capsys.readouterr().out
-    assert "pushed: 12 accepted" in out and "project House, head 12" in out
+    assert "pushed: 12 accepted" in out and "project House (fixture), head 12" in out
     pid = out.split("project id: ")[1].split()[0]
     # The owner invites b in the dashboard; b accepts.
     a_session = client.post("/auth/login", json={"email": "a@example.com", "password": "password123"}).json()["access_token"]
@@ -1028,9 +1032,10 @@ def test_demo_replica_script_human_test_path(client, monkeypatch, capsys):
     demo_replica.main(["--token", tb, "move", "--project", pid, "--base", "12"])
     out = capsys.readouterr().out
     assert "rejected (conflict): replaced by" in out and "13  Move wall" in out
-    # The latest snapshot is at 12, ready to be named as a version.
+    # The only snapshot is the fixture's at 0 (PF4a: the app's deltas are real, so a copy at 12 would
+    # claim a state they are not in); it can be named as a version.
     latest = client.get(f"/projects/{pid}/snapshots/latest", headers=dev(ta)).json()
-    assert latest["at_seq"] == 12
+    assert latest["at_seq"] == 0
     demo_replica.main(["--token", tb, "presence", "--project", pid, "--seconds", "0"])
     assert "left the project" in capsys.readouterr().out
 

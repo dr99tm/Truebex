@@ -1,12 +1,12 @@
 "use client";
 
-// The project service (contract project-log v1.0, PF4) as the website uses
+// The project service (contract project-log v1.1, PF4) as the website uses
 // it: the Projects dashboard (list, people, versions, restore, delete) and
 // the invitation page. Deleting needs this session: the app cannot.
 import { ApiError, api } from "@/lib/api";
 import { PROJECTS } from "@/lib/constants";
 
-const CONTRACT = { "X-Truebex-Contract": "project-log/1.0" };
+const CONTRACT = { "X-Truebex-Contract": "project-log/1.1" };
 
 export type ProjectRole = "owner" | "editor" | "viewer";
 

@@ -35,8 +35,9 @@ ReplicaDb memoryDb() {
   return ReplicaDb(NativeDatabase.memory());
 }
 
-const alexAuthor = '0199c6a2f0007000a000000000000042';
-const samAuthor = '0199c6a2f0007000a000000000000007';
+// The author ids of the fixture's members (members.json, project-log 1.1.0): Ana the owner, Sam the editor.
+const alexAuthor = '019a2b3c4d5e7000a000000000000042';
+const samAuthor = '019a2b3c4d5e7000a000000000000007';
 const samDesktop = 'b0000000000000000000000000000002';
 
 /// A project-log server in memory: one project, §6.3 order and conflicts, pages of `limit`.
@@ -205,13 +206,13 @@ Map<String, Object?> renderManifest() {
   return {...m, 'tiles_base': 'https://tiles.test/t'};
 }
 
-/// The operations of ops-remote.json as the server stores them (numbered from 1).
+/// The operations of ops-remote.json as the server answers them (numbered from 1, every
+/// §6.2 key present). CL1's file names each operation's own replica_id.
 List<Map<String, Object?>> remoteOps() {
   final body = fixture('ops-remote.json');
-  final replica = body['replica_id'] as String;
   var seq = 0;
   return [
-    for (final o in body['ops'] as List) {...(o as Map).cast<String, Object?>(), 'server_seq': ++seq, 'replica_id': replica},
+    for (final o in body['ops'] as List) {'action': null, 'restore': null, ...(o as Map).cast<String, Object?>(), 'server_seq': ++seq},
   ];
 }
 

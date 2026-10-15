@@ -43,7 +43,7 @@ void main() {
     // The delta is kept exactly as it arrived (base64 text), never decoded.
     final row = await (db.select(db.ops)..where((t) => t.serverSeq.equals(1))).getSingle();
     expect(utf8.decode(row.delta!), fixtureOps.first['delta']);
-    expect(row.deltaFormat, 'o5/38');
+    expect(row.deltaFormat, 'o5/55');
 
     // Pulling again asks only after what the phone holds and changes nothing.
     asked.clear();

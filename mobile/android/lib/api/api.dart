@@ -17,7 +17,7 @@ import 'gen/api.dart';
 
 export 'gen/api.dart';
 
-const logContract = 'project-log/1.0';
+const logContract = 'project-log/1.1';
 const marketContract = 'marketplace-api/1.1';
 
 /// A call that failed: `status` 0 means no answer arrived (offline, timeout).

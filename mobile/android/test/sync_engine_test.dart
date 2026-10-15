@@ -51,7 +51,7 @@ void main() {
         name: 'Wall finish',
         label: 'Wall finish: Sage green (Kitchen, North wall)',
         subject: kitchenWall,
-        call: fillFace(kitchenWall, 'left', wallFinishes[1].finish),
+        call: fillFace(ref(DigestKinds.wall, kitchenWall), 'left', wallFinishes[1].finish),
       );
 
   test('an edit made offline goes out when the network returns, without the app', () async {

@@ -1,229 +1,212 @@
 {
-  "note": "12 operations by the editor (a second author) against ids of snapshot-0000; a 5.6 push body.",
-  "replica_id": "5e1d0c0ffee000000000000000000b07",
-  "ops": [
-    {
-      "op_id": "752b5fab81ea61855b86cfb6215df300",
-      "author": "0199c6a2f0007000a000000000000007",
-      "author_kind": "person",
-      "at": "2026-10-09T10:01:00.000Z",
-      "touched": [
-        "0199c6a2e00070018000000000000001"
-      ],
-      "delta": "VEJYRHsic3RhbmRfaW4iOnRydWUsIm5hbWUiOiJNb3ZlIHdhbGwiLCJyb3dzIjpbIjAxOTljNmEyZTAwMDcwMDE4MDAwMDAwMDAwMDAwMDAxIl19",
-      "server_seq": 0,
-      "replica_id": "5e1d0c0ffee000000000000000000b07",
-      "base_seq": 0,
-      "kind": "delta",
-      "name": "Move wall",
-      "delta_format": "o5/38",
-      "action": null,
-      "restore": null
-    },
-    {
-      "op_id": "d8cb5c56aa1dab2dc42397c7f833c21d",
-      "author": "0199c6a2f0007000a000000000000007",
-      "author_kind": "person",
-      "at": "2026-10-09T10:02:00.000Z",
-      "touched": [
-        "0199c6a2e00070018000000000000002",
-        "0199c6a2e00070028000000000000001"
-      ],
-      "delta": "VEJYRHsic3RhbmRfaW4iOnRydWUsIm5hbWUiOiJNb3ZlIHdhbGwiLCJyb3dzIjpbIjAxOTljNmEyZTAwMDcwMDE4MDAwMDAwMDAwMDAwMDAyIiwiMDE5OWM2YTJlMDAwNzAwMjgwMDAwMDAwMDAwMDAwMDEiXX0=",
-      "server_seq": 0,
-      "replica_id": "5e1d0c0ffee000000000000000000b07",
-      "base_seq": 0,
-      "kind": "delta",
-      "name": "Move wall",
-      "delta_format": "o5/38",
-      "action": null,
-      "restore": null
-    },
-    {
-      "op_id": "ecf1892d8bc4d9d6d7ab1872422c06d8",
-      "author": "0199c6a2f0007000a000000000000007",
-      "author_kind": "person",
-      "at": "2026-10-09T10:03:00.000Z",
-      "touched": [
-        "0199c6a2e00070018000000000000003",
-        "0199c6a2e00070038000000000000001"
-      ],
-      "delta": "VEJYRHsic3RhbmRfaW4iOnRydWUsIm5hbWUiOiJBZGQgZG9vciIsInJvd3MiOlsiMDE5OWM2YTJlMDAwNzAwMTgwMDAwMDAwMDAwMDAwMDMiLCIwMTk5YzZhMmUwMDA3MDAzODAwMDAwMDAwMDAwMDAwMSJdfQ==",
-      "server_seq": 0,
-      "replica_id": "5e1d0c0ffee000000000000000000b07",
-      "base_seq": 0,
-      "kind": "delta",
-      "name": "Add door",
-      "delta_format": "o5/38",
-      "action": null,
-      "restore": null
-    },
-    {
-      "op_id": "9bcaf522c0865595d578dd1411041f2d",
-      "author": "0199c6a2f0007000a000000000000007",
-      "author_kind": "person",
-      "at": "2026-10-09T10:04:00.000Z",
-      "touched": [
-        "0199c6a2e00070038000000000000002"
-      ],
-      "delta": "VEJYRHsic3RhbmRfaW4iOnRydWUsIm5hbWUiOiJSZXNpemUgd2luZG93Iiwicm93cyI6WyIwMTk5YzZhMmUwMDA3MDAzODAwMDAwMDAwMDAwMDAwMiJdfQ==",
-      "server_seq": 0,
-      "replica_id": "5e1d0c0ffee000000000000000000b07",
-      "base_seq": 0,
-      "kind": "delta",
-      "name": "Resize window",
-      "delta_format": "o5/38",
-      "action": null,
-      "restore": null
-    },
-    {
-      "op_id": "55196c9f61a65da2d73a0cad9a0af3ed",
-      "author": "0199c6a2f0007000a000000000000007",
-      "author_kind": "person",
-      "at": "2026-10-09T10:05:00.000Z",
-      "touched": [
-        "0199c6a2e00070018000000000000004",
-        "0199c6a2e00070018000000000000005"
-      ],
-      "delta": "VEJYRHsic3RhbmRfaW4iOnRydWUsIm5hbWUiOiJQYWludCB3YWxscyIsInJvd3MiOlsiMDE5OWM2YTJlMDAwNzAwMTgwMDAwMDAwMDAwMDAwMDQiLCIwMTk5YzZhMmUwMDA3MDAxODAwMDAwMDAwMDAwMDAwNSJdfQ==",
-      "server_seq": 0,
-      "replica_id": "5e1d0c0ffee000000000000000000b07",
-      "base_seq": 0,
-      "kind": "delta",
-      "name": "Paint walls",
-      "delta_format": "o5/38",
-      "action": null,
-      "restore": null
-    },
-    {
-      "op_id": "78f78ba5950a87296ac7d950ff53ba31",
-      "author": "0199c6a2f0007000a000000000000007",
-      "author_kind": "person",
-      "at": "2026-10-09T10:06:00.000Z",
-      "touched": [
-        "0199c6a2e00070028000000000000002"
-      ],
-      "delta": "VEJYRHsic3RhbmRfaW4iOnRydWUsIm5hbWUiOiJSZW5hbWUgcm9vbSIsInJvd3MiOlsiMDE5OWM2YTJlMDAwNzAwMjgwMDAwMDAwMDAwMDAwMDIiXX0=",
-      "server_seq": 0,
-      "replica_id": "5e1d0c0ffee000000000000000000b07",
-      "base_seq": 0,
-      "kind": "delta",
-      "name": "Rename room",
-      "delta_format": "o5/38",
-      "action": null,
-      "restore": null
-    },
-    {
-      "op_id": "5c2867ad1404100b2b416d51bfc516a6",
-      "author": "0199c6a2f0007000a000000000000007",
-      "author_kind": "person",
-      "at": "2026-10-09T10:07:00.000Z",
-      "touched": [
-        "0199c6a2e00070018000000000000006",
-        "0199c6a2e00070028000000000000002",
-        "0199c6a2e00070028000000000000003"
-      ],
-      "delta": "VEJYRHsic3RhbmRfaW4iOnRydWUsIm5hbWUiOiJBZGQgd2FsbCIsInJvd3MiOlsiMDE5OWM2YTJlMDAwNzAwMTgwMDAwMDAwMDAwMDAwMDYiLCIwMTk5YzZhMmUwMDA3MDAyODAwMDAwMDAwMDAwMDAwMiIsIjAxOTljNmEyZTAwMDcwMDI4MDAwMDAwMDAwMDAwMDAzIl19",
-      "server_seq": 0,
-      "replica_id": "5e1d0c0ffee000000000000000000b07",
-      "base_seq": 0,
-      "kind": "delta",
-      "name": "Add wall",
-      "delta_format": "o5/38",
-      "action": null,
-      "restore": null
-    },
-    {
-      "op_id": "9372d68cec74a8d098175afb7f624195",
-      "author": "0199c6a2f0007000a000000000000007",
-      "author_kind": "person",
-      "at": "2026-10-09T10:08:00.000Z",
-      "touched": [
-        "0199c6a2e00070038000000000000001"
-      ],
-      "delta": "VEJYRHsic3RhbmRfaW4iOnRydWUsIm5hbWUiOiJNb3ZlIGRvb3IiLCJyb3dzIjpbIjAxOTljNmEyZTAwMDcwMDM4MDAwMDAwMDAwMDAwMDAxIl19",
-      "server_seq": 0,
-      "replica_id": "5e1d0c0ffee000000000000000000b07",
-      "base_seq": 0,
-      "kind": "delta",
-      "name": "Move door",
-      "delta_format": "o5/38",
-      "action": null,
-      "restore": null
-    },
-    {
-      "op_id": "283fbdf5330bed9dfe01d0ec53208298",
-      "author": "0199c6a2f0007000a000000000000007",
-      "author_kind": "person",
-      "at": "2026-10-09T10:09:00.000Z",
-      "touched": [
-        "0199c6a2e00070028000000000000003"
-      ],
-      "delta": "VEJYRHsic3RhbmRfaW4iOnRydWUsIm5hbWUiOiJTZXQgZmxvb3IgZmluaXNoIiwicm93cyI6WyIwMTk5YzZhMmUwMDA3MDAyODAwMDAwMDAwMDAwMDAwMyJdfQ==",
-      "server_seq": 0,
-      "replica_id": "5e1d0c0ffee000000000000000000b07",
-      "base_seq": 0,
-      "kind": "delta",
-      "name": "Set floor finish",
-      "delta_format": "o5/38",
-      "action": null,
-      "restore": null
-    },
-    {
-      "op_id": "76a0c3b21ab2668c7b800130b891e96f",
-      "author": "0199c6a2f0007000a000000000000007",
-      "author_kind": "person",
-      "at": "2026-10-09T10:10:00.000Z",
-      "touched": [
-        "00000000000000000000000000000001"
-      ],
-      "delta": "VEJYRHsic3RhbmRfaW4iOnRydWUsIm5hbWUiOiJDaGFuZ2UgdW5pdHMiLCJyb3dzIjpbIjAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAxIl19",
-      "server_seq": 0,
-      "replica_id": "5e1d0c0ffee000000000000000000b07",
-      "base_seq": 0,
-      "kind": "delta",
-      "name": "Change units",
-      "delta_format": "o5/38",
-      "action": null,
-      "restore": null
-    },
-    {
-      "op_id": "2c5c517fef6a9c3c81eb28fa7eb066e2",
-      "author": "0199c6a2f0007000a000000000000007",
-      "author_kind": "person",
-      "at": "2026-10-09T10:11:00.000Z",
-      "touched": [
-        "0199c6a2e00070018000000000000007",
-        "0199c6a2e00070038000000000000003"
-      ],
-      "delta": "VEJYRHsic3RhbmRfaW4iOnRydWUsIm5hbWUiOiJBZGQgd2luZG93Iiwicm93cyI6WyIwMTk5YzZhMmUwMDA3MDAxODAwMDAwMDAwMDAwMDAwNyIsIjAxOTljNmEyZTAwMDcwMDM4MDAwMDAwMDAwMDAwMDAzIl19",
-      "server_seq": 0,
-      "replica_id": "5e1d0c0ffee000000000000000000b07",
-      "base_seq": 0,
-      "kind": "delta",
-      "name": "Add window",
-      "delta_format": "o5/38",
-      "action": null,
-      "restore": null
-    },
-    {
-      "op_id": "a9b36fb6b36d6a7b32e097d9978c2963",
-      "author": "0199c6a2f0007000a000000000000007",
-      "author_kind": "person",
-      "at": "2026-10-09T10:12:00.000Z",
-      "touched": [
-        "0199c6a2e00070018000000000000008",
-        "0199c6a2e00070028000000000000003"
-      ],
-      "delta": "VEJYRHsic3RhbmRfaW4iOnRydWUsIm5hbWUiOiJNb3ZlIHdhbGwiLCJyb3dzIjpbIjAxOTljNmEyZTAwMDcwMDE4MDAwMDAwMDAwMDAwMDA4IiwiMDE5OWM2YTJlMDAwNzAwMjgwMDAwMDAwMDAwMDAwMDMiXX0=",
-      "server_seq": 0,
-      "replica_id": "5e1d0c0ffee000000000000000000b07",
-      "base_seq": 0,
-      "kind": "delta",
-      "name": "Move wall",
-      "delta_format": "o5/38",
-      "action": null,
-      "restore": null
-    }
-  ]
+	"schema": "truebex-project-log-ops/1",
+	"note": "Twelve operations by the editor (Sam) against snapshot-0000.tbxp, as the stub's 'remote' script injects them after the app's first push. Written by TruebexSync::FSyncStub::WriteFixtures (-mwcl1fixtures).",
+	"ops": [
+		{
+			"op_id": "c10000000000f00d0000000000000001",
+			"author": "019a2b3c4d5e7000a000000000000007",
+			"at": "2026-10-09T10:10:00.000Z",
+			"touched": [
+				"c62aa272636e8ad58c5733c3658d9200",
+				"eff154afdef38b8fba2716b3ef106007"
+			],
+			"delta": "H4sIAAAAAAAECu1VwYrbMBD9F50Ndew4cXwrpZTCFha2t2UPsjzOiiiWkeRNtiH/3idZctpSaI+lbC6ZNxqN3jyNxhfWa3PkjjVMV++qimVMdpY1j4z6flWted9RX9Zt3be82K42bUn9Kt/k+RaR23ZVt4UoabfZ1aLd7Wi7g6te76io8lIgRGwKjo3FptxQzbuqFtW2LEW5qepuV+Q5e8rYgV79iThS0ZEGx7I8K7Jt/ZQ9shNXigEFjNiWwJdYc7nxdu15xEl8HFHEVzNRS2fgFzJW6oE1VQUaehocHH5jOqVZZWzQHZLBCOd4w9A+7IIp9GCd4RKM/Irir2RYU2SMzs5Mc3L4OwnSCxoVH+hODjGtNod77wkZDPU3oEca5LAPCy/cSN6qOcoq3gavJeESl54Luje6lzFoRE4VooTi8hgsbi25z+DMBxFTOSkOn4yeIA2Y7hfLnojGB61kN+/EQS90NxeIQB5w5JpfY+3+knAFUb+IvILR9BpGc1YxgpuO0bHoF/GiYMSLhhGfkooRJx0jjEpGZEdI9QWsIM/lp4sX+jiiD+aSrXSzRu0kVZcuwjp012vQJOSZLYQ++KwBTYOc+8EbN22/6XjJKR964BDFFWTtvU59hMZ0H/SAzlxB2UQqscdZ0UyJ0kqgloCnk+xEL2LP6wczUIzYk4xmyu5pRhcXC9Ho8VSl4MrTnZsxLFzBm/d4T2/v8N94hxcM7bk5/f/fjG4MCYM2vrAza8ocv4yh7YOFyyX/SOa19a9rgjvaa4Po9Y8zMbxZ1iDPKNEs2N9zZQlzWFoZRhtmJl0xP34zMWb+ZcamwP+PHw08G3wnyKhlzsrOPWM2+zqeSe6fUVuJrxQYahAOUxSgkxYzSp8e5uojw+T96KuOPqGID35sLgnfT06zJhXxNuD2//WAu34HgFftFhkJAAA=",
+			"server_seq": 0,
+			"author_kind": "person",
+			"replica_id": "25a7548b4dbe8e788815184808694548",
+			"base_seq": 0,
+			"kind": "delta",
+			"name": "Garden wall",
+			"delta_format": "o5/55"
+		},
+		{
+			"op_id": "c10000000000f00d0000000000000002",
+			"author": "019a2b3c4d5e7000a000000000000007",
+			"at": "2026-10-09T10:11:00.000Z",
+			"touched": [
+				"de2b4d7ac2a58be7be316b6d1625cafd"
+			],
+			"delta": "H4sIAAAAAAAECu1UwW7bMAz9lUJnA3OcOE19G3bYBnRAgQ7ooeiBlulWiCIZktw0C/LvoyQq6W477LYCAcJHU09Pj5SOYrRuB0F0wraf2lZUQg1edI9iwKZfDdcgG2g3PV73uFys+/WwWDethHGgyma5Wg3tTb1ZL1cbGOVms5T1UjbYQnNDP/FUiS0eIt2jsBMaZZ5FVVfLqnmiTz3S3ii640VD6N8mIoZpIkE/3Yw9vhF+ReeVNaJr20pIO5tAibgQNe7QkPpFJYwdiIyCPWidAofPaRXlpDU+OFBcq+GATnRNJfAtuDmTU9mgiO6MJg0Gb5VhWuu2dzHD3OMFlLPF3V/BKeh1rvIa+lTuUYaiZQSJd86Oiosm4syCpQa1S/XgPYbvpBmMZKqg5ParszNZQ9s8nyO/R5zurVZDXkkbveJtPiAVQsKstT5VIp099oRawP4xig5yGD3kMLvI4OIjJ87+MT47yPjsIeN9cZGxw+wjQ3YyoiNNYjrRHP//Zh5z46mpdhzJPupvXdc0D2oIL8TURuBVHI6bGL4gEHGzivFWmbxZMl50lDKwI+fF5+DUvLt6oAK7v3pAH2ggR62mbxCXjKA95sT9Ps53yQwHIlBSdDRfeCKv/UR9/0EW0/7HP6ZY2t1EQ50FeBVyw/tZ6SExUhd9oKtySHYknhxR6X1kzTYZFc7BZVB+WZ7YwkcDvU11ICV6f2fLpaBbFr5YQ9dsQWNSRHFjoiwOC1H5kqQVEOWUuMhjPJPAd2GSyDiK5LCwR5mceieUM1GqkqCj3Hyz0ocT6YaRHoePR+XjUaFXlaflHz8q9JB8PCr/06Ny+g2K5tOxJgkAAA==",
+			"server_seq": 0,
+			"author_kind": "person",
+			"replica_id": "25a7548b4dbe8e788815184808694548",
+			"base_seq": 0,
+			"kind": "delta",
+			"name": "Slide opening",
+			"delta_format": "o5/55"
+		},
+		{
+			"op_id": "c10000000000f00d0000000000000003",
+			"author": "019a2b3c4d5e7000a000000000000007",
+			"at": "2026-10-09T10:12:00.000Z",
+			"touched": [
+				"7b18b2c3e9698cb99e79b18849e2503c"
+			],
+			"delta": "H4sIAAAAAAAECu1VTWsbMRD9K0WnFhYa293G62tKSiEFgws9hBxm5VlXWCstktYfNf7vHUkjOzkVeisYHzxvNHp6njeST6KzrocgFsLWH+taVEKtvVg8i/t2Mm+ncobN52Yu26bB+4ZS808NTuu7mRQvldjiMdY+Cw1HdKK6q2bV5IUWWiRaFIvTlT60h4HYYRjorB9uxBYPhHfovLJGLOq6EtKOJlAibkSNPRoSNqmEsWsio2APWqfA4Sbtopy0xgcHimuzlMW0EngIbszkVLZWRHdBgwaDT8owrXXbZcwwd3cFdkCjzCYt7MApaHWu8hralPUoQ9HSgcSls53iooE4s2CpQfWpHrzH8I00g5FMFZTcfnV2pNaQ0s0l8nvEYWW1WueddNAOn1KvYyEkzFrvzlW2ITpyIhfTljF+/91LajH0JEZ8wQ5GHaIxyqv0W6mJSNRWbpG4OtCeoCd7ZMjNyAXSauuI4WEeP4+PRLFHtfkVSMeZRoL9jOoIRUc5jJ5ymF1lcPWVExc/GV8cZXzxlPG+uMrYYfaVITvLyA9k3XdSRXad3gyitP1Ac5n76VXInrWj0usyGD7QtB9TwxNPjqh0FVmzEUbFTlRipODq9W/LQ1f4aCa3qQ6kRO+Xtsw1XZTwYA3dlAk5XUQV9XQWh4WorCRpBUQ5JS7yGEddr8IkkXEUyWFhjzI59UooZ6JUJUFHuflypIUz6YaO7vftXfjv3oWf8ZK+e7+C/sPtbbj+SZVrmG7s7W3IT+K/vQ3nP3+vEFuLCAAA",
+			"server_seq": 0,
+			"author_kind": "person",
+			"replica_id": "25a7548b4dbe8e788815184808694548",
+			"base_seq": 0,
+			"kind": "delta",
+			"name": "Rename layer",
+			"delta_format": "o5/55"
+		},
+		{
+			"op_id": "c10000000000f00d0000000000000004",
+			"author": "019a2b3c4d5e7000a000000000000007",
+			"at": "2026-10-09T10:13:00.000Z",
+			"touched": [
+				"bc66eb22fae3856793b2f3db4c7d1778"
+			],
+			"delta": "H4sIAAAAAAAECu1UPY/bMAz9K4VmA3dxzkma9YArClyBAOl2yCDLdCpYlgxJzkcD//dSEuW0041dggzmo+jnl0eKN9Ya23PPtsxUT1XFCiYbx7YfrBarFdRl2XJYbqrV+uuyLttlU7+IdbNYrzfsULAOrqH2gyl+BcuK56IsygMe1IC0wLa3O72vLwOy82HAb/20I9RwQXwC66TRbFtVBRNm1B4T4UVQ0INGYYuCadMgGQZnrlQMLBzjW5gTRjtvuaTaJGVbFgwu3o6JHMsaiXQzGhTX8C410Rrb7UKGuNs7MANoqY/x4MSt5LVKVU7xOmYdCJ+1tFzAzppWUtGAnEmwUFz2sZ47B/47auZaEJWXovtmzYjWoNLjHLkzwLA3SjbpTfzQCd6j16GQR0xan6citSF0BFtA/hEKDlIYPKQwuUjg7iMlZv8Izw4Snj0kfM4uEraQfCRIThJyA1r1A1WhPbd/Gi9MP+AcpL/spE8e1aNUTW6E8zhd1+R+4EkRlu5nNGqZZicEd29/G2py5sMZ6MhcAc7tTJ4jHEz/ajRO5gKdzaKyevwWhZkon0RpGQQ5Oc7yCAddf4VRIuEgksLMHmRSiotZKGWCVCm4CnLTMMaDCXXzFu/T4x7+r3t4w20ap2sMz893Kq463uM4sz3vv2gThgxXpHQybh1cZ4CX3IgOkK3lyiF0eNGFT2spFQijDPacvW7C7+0NKc4gj7/CfZgem+GxGQ7TNP0BZVFQwfkHAAA=",
+			"server_seq": 0,
+			"author_kind": "person",
+			"replica_id": "25a7548b4dbe8e788815184808694548",
+			"base_seq": 0,
+			"kind": "delta",
+			"name": "Layer",
+			"delta_format": "o5/55"
+		},
+		{
+			"op_id": "c10000000000f00d0000000000000005",
+			"author": "019a2b3c4d5e7000a000000000000007",
+			"at": "2026-10-09T10:14:00.000Z",
+			"touched": [
+				"6a5a2401b80c886f941c3e1fba6a23d7",
+				"7b3cc3c4f07d81cbae8ed91c1cd148a5"
+			],
+			"delta": "H4sIAAAAAAAECu1VwYrbMBD9F50NjeM4sX0rpZTCFha2t2UPsjzOiiiWkeRNtiH/3idZctpSaI+lbC6ZNxqN3jyNxhfWa3PkjjVMl+/KkmVMdpY1j2zXFkIUYtOvdl2Vi5ZTRV2di1x0+abiPnLX5lW7FgXV27oSbV3Troar2tS0LleFQMiWl3y9WeVttRJVte3rTY74vG/5lq+LbseeMnagV3/iIyNFRxocy1bZOtvVT9kjO3GlGFDAiG0JfIk1lxtv155HnMTHEUV8NRO1dAZ+IWOlHlhTlhkTehocHH5jOqXJMzboDslghHO8YWgfdsEUerDOcAlGfkXxVzKsWWeMzs5Mc3L4OwnSCxoVH+hODjGtNod77wkZDPU3oEca5LAPCy/cSN6qOcoq3gavJeESl54Luje6lzFoRE4VooTi8hgsbi25z+DMBxFTOSkOn4yeIA2Y7hfLnojGB61kN+/EQS90NxeIQB5w5Lq6xtr9JeEKon4ReQWj6TWM5qxiBDcdo2PRL+JFwYgXDSM+JRUjTjpGGJWMyI6Q6gtYQZ7LTxcv9HFEH8wlW+lmjdpJqi5dhHXortegScgzWwh98FkDmgY594M3btp+0/GSUz70wCGKK8jae536CI3pPugBnZlD2UQqscdZ0UyJ0kqgloCnk+xEL2LP6wczUIzYk4xmyu5pRhcXC9Ho8VSl4MrTnZsxLFzBm/d4T2/v8N94hxcM7bk5/f/fjG4MCYM2vrAza4oVfhlD2xdrWLhc8o9kXtv8uia4o702iN78OBPDm2UN8owSzYL9PVeWMIellWG0YWbSFfPjNxNj5l9kbAr8//jRwLPBd4KMWuas7NwzFChx/jPJ/TNqK7a+KqVBOExRgE5azCh9epirjwyT96OvOvqEIj74sbkkfD85zZpUxNuA2//XA+76HZ6oYQEZCQAA",
+			"server_seq": 0,
+			"author_kind": "person",
+			"replica_id": "25a7548b4dbe8e788815184808694548",
+			"base_seq": 0,
+			"kind": "delta",
+			"name": "Garden wall",
+			"delta_format": "o5/55"
+		},
+		{
+			"op_id": "c10000000000f00d0000000000000006",
+			"author": "019a2b3c4d5e7000a000000000000007",
+			"at": "2026-10-09T10:15:00.000Z",
+			"touched": [
+				"dbcd813458b38580bd5aec84f0c22f6b"
+			],
+			"delta": "H4sIAAAAAAAECu1UwY7bIBD9lYqzpZLY3nV9baW20lZaKb2t9gB4nEUhYAFONo3y7x3w2ElvPfRU5eR54+HxeDNwZr3zexFZy1z9sa5ZwXQXWPvCOqm6ZlVWdSPLpm647GoBqql6rtbr/kFiZQecP65KeKjKqqmh+/TIleCSr2VVrmTJ2WvBdnBKdC/MDWC13bKCF2VRv+IvCbg3sPZ81RDl+4DEYhhQ0E8/goR3xAfwQTvL2roumHKjjZhIC8HAHiyqXxXMug7JMDgKY3LgYZtXYU45G6IXmmqNOIFn7bpg8B79OJFjWaeRbkGDERaetCVa53fPKUPc/RXMZ0u7H4TXQpqpKhghc3kAFWctvVDw7F2vqWhAzkmwMkLvc70IAeJ31CysIqqo1e6rdyNag9tslygcAYaNM7qbVuJGB3iaDoiFImPSyi8Fy2dPPcEWkH+EkoMUJg8pnFwkcPWREot/hBcHCS8eEj7OLhL2MPlIkJxM6IyTmE80pu/fzOPUeGyq63u0j7WPnHOcB93FN2TKIOg0HJh9A4G06ypV7LTFGINse46s2KPvbAP+oBV8+OKcx0HsjR6+iVTcCxNgSmyOaa7nTHfCpVqxFucKLuhxGLDfP9Ba3Pf8x/Qqtx9wmJEN+xR0nBotR226zJiyEa/IaSpIPEvpZkGj1TGnU3AdkF+OJnXmw0He5TqhFITw7ObLgLcrfnYWr9cKx2MWRQ1JsiicieY/WdoMkpw5xiVZHuGk6ybMEgknkRTO7EkmpW6EUiZJ1UqYJHe6UfnHBXWLHh+F+2Nyf0zwNaVp+bePyUPT3B+T21v63z4ml9+sH906FgkAAA==",
+			"server_seq": 0,
+			"author_kind": "person",
+			"replica_id": "25a7548b4dbe8e788815184808694548",
+			"base_seq": 0,
+			"kind": "delta",
+			"name": "Slide opening",
+			"delta_format": "o5/55"
+		},
+		{
+			"op_id": "c10000000000f00d0000000000000007",
+			"author": "019a2b3c4d5e7000a000000000000007",
+			"at": "2026-10-09T10:16:00.000Z",
+			"touched": [
+				"08514e79624b820e865bf4a1a56e7194",
+				"11b49436d5ae8143bfdbdf45c6803412",
+				"39dd55e5e2e084c1ae24427b9ba0c6f0",
+				"3b13839a03608c93821844078dd9e46c",
+				"44fe9ea478058c0fbd29608e8983cf68",
+				"5525f9e22b2f82da96e2959fbc2c1331",
+				"6420117b4f6280ce8d9a0993844d96c3",
+				"71eaf5edc0b98af1bf0a972f9ffc7a92",
+				"7e6442d77d018df9ab5861991b670115",
+				"f635216de0d5802a81a2ec225fb9d0e7"
+			],
+			"delta": "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",
+			"server_seq": 0,
+			"author_kind": "person",
+			"replica_id": "25a7548b4dbe8e788815184808694548",
+			"base_seq": 0,
+			"kind": "delta",
+			"name": "Move",
+			"delta_format": "o5/55"
+		},
+		{
+			"op_id": "c10000000000f00d0000000000000008",
+			"author": "019a2b3c4d5e7000a000000000000007",
+			"at": "2026-10-09T10:17:00.000Z",
+			"touched": [
+				"2d435b547bfd847eaeea4f0befd6b88c",
+				"c81d9033317d8b75a76f8e3bb72e2461"
+			],
+			"delta": "H4sIAAAAAAAECu1VTW/bMAz9LzobmGPH8cdtGIZhQAcU6G5FD5JMp0IUy5DkJl2Q/z5Kppxul+04DD2Zj6KoxyeKvrDB2CP3rGOm+lBVLGOqd6x7ZLLZ9G1eluWm7htRV7zeDQ2UQtQFFNvdBiNrsWlEIUtod20jRdtC3aKr2bZQVHkpMaTot2Ulqm0thr7Z1sAB+HbIBQz9TjSNZE8ZO8BrOPGRgYYjjJ5leVZkTf6UPbIT15ohihhjcaOxwLrLjbcX5wlP4tOERXy3Mwg4I34B65QZWVdVGZNmHj06wsZ0SrfJ2Gh6TIZGPCcYFvZxF5rSjM5brpBRWNH8FSzriozB2dt5SY7+XiHpFU2aj3CnRkpr7OE+eGIGC8MNmAlGNe7jwgu3igu9RDnNRfQ6kD5xGbiEe2sGRUET5tQxSmqujtHizoH/ipz5KCmVV/LwxZoZpUGm+9VyJ4DpwWjVLzvxoBe4WwrEQB4xcc2vVHu4JLwC0o9QUJDMoCGZi4oEbjqSY9WP8Kog4VVDwqekIuGkI0FSkpCbUKpvyArlufxy8dIcJ+yDpWSn/KKRmJXu00U4j931GjWJeRYLQx9C1ojmUS39EIybtj8MXXLKhz1wIHElOHdvUh9hY/pPZsTO3KCyiVRij2eRmRKllUgtgUAn2Yke4cDrjRkpEg4kyUzZA01ycbkSJU+gqiTXge7SjHHhirz5gO/p/R3+G+/wgkN7ac7w/ZvRjUPCYhtf2Jl15S7P84xh25dohOcO4ZH8vhYWQ8NyD3tjMXr7dibGN8s6zDMpbBbcP3DtAOewciqONpyZcH1aZi71V5oYC/8yY3Pk/8efBrLA/wRYvc5Z1ftnnM2hjmdQ+2esLZSFDA0SjlMUQa8czihzeliqJ4bJ+zlUTT6pgY9hbK4JP87esC4V8T7g9v/1gLv+BAgBZ/sZCQAA",
+			"server_seq": 0,
+			"author_kind": "person",
+			"replica_id": "25a7548b4dbe8e788815184808694548",
+			"base_seq": 0,
+			"kind": "delta",
+			"name": "Shed wall",
+			"delta_format": "o5/55"
+		},
+		{
+			"op_id": "c10000000000f00d0000000000000009",
+			"author": "019a2b3c4d5e7000a000000000000007",
+			"at": "2026-10-09T10:18:00.000Z",
+			"touched": [
+				"148c460b3f4e808db869e261abd57e58"
+			],
+			"delta": "H4sIAAAAAAAECu1UsW7bMBD9lYKzgEq25cheW6AtkAIG0i3IQFHHhLBMCiJlxzX8732kTnK6ZehUZNK90/Hx8fF4F6Fdf5BBbIUrP5elyIRpvNg+imJVqdU6r5d6RVVeNXW13tBiXci6Ke+orFC50rpSVXW3WZV5tWjWUut1oYvlcnO3pmKhxVMm9nSOdI/CdWSNfRZZni2z6gm/asLeJLaXm4ZQv3Ygll0HQb/6gWp6BT5S742zYluWmVBusAGJuJBaOpCF+iIT1jUgQ3CSbZuCnp7TKuSUsz700nBtK8/Ui+0iE/Qa+mEkR1ljQDejrpWW7o1lWtfvdzHD3PoGprPF3Y+yN7JuxyrfyjqVe1Jh0qKlol3vtOGiDpyjYNVKc0j10nsKP6BZWsVUwaj9t94NsAbbPM+RPxF1D641zbgSGx3pfjwgCmXCrDW/ZiKdPd4JroD9YxQd5DB6yOHoIoObj5yY/WM8O8h49pDxaXKRcU+jjwzZyYgu6MR0oiF+39OP48XjUp3WsA+L8zxHP5gmvAAAZcKb2BwIXkiCdpGSe2MRI5lsT5GVB/gu7o0On74616MLdWu67zJWatl6GhMPp9jUU6Y5Y51RYoumoisM9h0u+yd8xaaXv1pXuUOHTgYbLsmbMN5yPZi2SYwxG/A+zmNB5JlLH2Y0WBNSOga37vjtuE0nPnTxPtVJpcj7nZteAp5W+OIs3laB3phE8W1EWRxORNOfJG0CUc4UY0mSxzjqehMmiYyjSA4n9iiTU2+EciZKNUq2Ue74nNKPK3RLjYnwMUk+JglGKXfLv54km49JkibTfz1Jrn8AYhOALRAJAAA=",
+			"server_seq": 0,
+			"author_kind": "person",
+			"replica_id": "25a7548b4dbe8e788815184808694548",
+			"base_seq": 0,
+			"kind": "delta",
+			"name": "Slide opening",
+			"delta_format": "o5/55"
+		},
+		{
+			"op_id": "c10000000000f00d000000000000000a",
+			"author": "019a2b3c4d5e7000a000000000000007",
+			"at": "2026-10-09T10:19:00.000Z",
+			"touched": [
+				"483bf3064e238e54be5a54b1d793f529"
+			],
+			"delta": "H4sIAAAAAAAECu1UTYvbMBD9LzobmsRxm/V1YUthC4H0tuQgy+NUWJaMJOejwf+9I2nktKceewmBZN5o/PzyZjR31hk7cM9qZqpPVcUKJlvH6g+23ZVNV64+b2FT7qDaNlBx/F63X17Krtq8sGPBeriF2g+m+A0sK1bFpiiPeNAA0gKr7w9631xHZOfjiO/6YSdo4Ir4DNZJo1ldVQUTZtIeE+FBUDCARmHrgmnTIhkGF65UDCyc4lOYE0Y7b7mk2iSl3hQMrt5OiRzLWol0CxoV1/AuNdEa2+9Dhri7BzAjaKlP8eDMreSNSlVO8SZmHQiftXRcwN6aTlLRiJxJsFBcDrGeOwf+G2rmWhCVl6L/as2E1qDS0xK5C8B4MEq26Ul80Rneo9ehkEdMWldzkdoQOoItIP8IBQcpDB5SmFwk8PCREot/hBcHCS8eEr5kFwlbSD4SJCcJuRGt+o6q0J77X40XZhhxDtJfdtInj5pJqjY3wnmcrltyP/CkCEsPC5q0TLMTgoe3vww1OfPhDPRkrgDn9ibPEQ6mfzUaJ3ONzmZRWT2+i8JMlE+itAyCnBxneYSDrj/CKJFwEElhZg8yKcXFIpQyQaoUXAW5aRjjwYy6eYf36XkP/9c9vOM2jdM1hd9/71RcdXzAcWaHMPe4HaWTceHgJgO830b0gEQdVw6hwzsufNpIqUAYZbDd7HUXPm9vSHEBefoZrsL8XArPpXCc5/k3Gv/lafQHAAA=",
+			"server_seq": 0,
+			"author_kind": "person",
+			"replica_id": "25a7548b4dbe8e788815184808694548",
+			"base_seq": 0,
+			"kind": "delta",
+			"name": "Layer",
+			"delta_format": "o5/55"
+		},
+		{
+			"op_id": "c10000000000f00d000000000000000b",
+			"author": "019a2b3c4d5e7000a000000000000007",
+			"at": "2026-10-09T10:20:00.000Z",
+			"touched": [
+				"16e180192a07859fa7117365321ef938",
+				"d4a523984fcf890c9b23ae3d9cad6db4"
+			],
+			"delta": "H4sIAAAAAAAECu1VTYvbMBD9Lzob6o84sX0rpZTCFha2t2UPsjzOiiiWkeRNtiH/vSNp5Gyh0B5L2VwybzQavXkajS9s1ObIHeuYrj/UNcuYHCzrHtmw4XVZtc1mFGPT5qLty4pDNbSCD9uh32Dkri+avhQVtNu2EX3bwq5FV7NpoazzSmBIsYWiyYu25PmuqduR74piV23rqixgbKuGPWXsAK/+xEcGCo4wOZblWZk1xVP2yE5cKYYoYIztAfkC6y433q4/z3gSn2cs4rtZoIcz4hcwVuqJdXWdMaGXyaHDb0yndEXGJj1gMjTCOd4wsA+70BR6ss5wiYz8iuKvYFhXZgzOziwxOfoHiaRXNCs+wZ2cKK02h3vvCRkMjDegZ5jktA8LL9xI3qsYZRXvg9eCcInLyAXcGz1KCpoxpwpRQnF5DBa3FtxX5MwnQamcFIcvRi8oDTLdr5Y9AcwPWskh7sSDXuAuFoiBPGDiml+pdn9JeAWkHyGvIJleQzKjigRuOpJj1Y/wqiDhVUPCp6Qi4aQjQVKSkJ1Rqm/ICuW5/HLxQh9n7INYspUuatQvUg3pIqzD7noNmoQ80cLQB581oGWSsR+8cdP2h6ZLTvmwBw4krgBr73XqI2xM90lP2JkFKptIJfZ4FpkpUVoJ1BLwdJKd6BH2vN6YgSJhT5LMlN3TJBcXK1HyeKpScOXpxmYMC1fkzUd8T+/v8N94hxcc2rE5/f/fjG4cEgbb+MLOrKty/GUM277aoIWXC/6RxDW/+Mua4A722mD05u1MDG+WdRg7S2wW3D9yZQHnsLQyjDacmXDF+fGbiRH5VxlbAv8/fjTw2eB3Aoxa56wc3DPOZs/1GeT+GWurth4pjYTDFEUwSIszSp8eYvXEMHk/+6rJJxTwyY/NNeHHxWnWpSLeB9z+vx5w15/ledrrGQkAAA==",
+			"server_seq": 0,
+			"author_kind": "person",
+			"replica_id": "25a7548b4dbe8e788815184808694548",
+			"base_seq": 0,
+			"kind": "delta",
+			"name": "Garden wall",
+			"delta_format": "o5/55"
+		},
+		{
+			"op_id": "c10000000000f00d000000000000000c",
+			"author": "019a2b3c4d5e7000a000000000000007",
+			"at": "2026-10-09T10:21:00.000Z",
+			"touched": [
+				"6dd26186d09e88ea845635bfb81bcd1e",
+				"70a1ec1f82db873d8ffa35b41e143b7b"
+			],
+			"delta": "H4sIAAAAAAAECu1VwYrbMBD9F50Nje04cXwrpZTCFha2t2UPkjzOiiiWkeRNtiH/3pE0ctpSaI+lbC6ZNxqN3jyNxhc2GHvknnXMNO+ahhVM9Y51j2y74iXIcmirXrTbum+HgdeNWJdQrmuxFRi5FWUrKlnDbrNrpdjtYLtDV7veQdWsaokhm76vNmW76Vc7aFvg7brZYJZBtKWQfQnsqWAHeA0nPjLQcITRs2JVVEVbPRWP7MS1ZogixlgByBdYd7nx9uI84Ul8mrCIr3YGAWfEL2CdMiPrmqZg0syjR0fYmE/pyoKNpsdkaMRzgmFhH3ehKc3ovOUKGYUVzV/Bsq4qGJy9nVNy9PcKSS9o0nyEOzVSWmMP98ETM1gYbsBMMKpxHxdeuFVc6BTlNBfR60D6zGXgEu6tGRQFTZhTxyipuTpGizsH/jNy5qOkVF7JwydrZpQGme4Xy50ApgejVZ924kEvcJcKxEAeMXFdXan2cEl4BaQfoaAgmUFDMpOKBG46kmPRj/CiIOFFQ8KnrCLhrCNBUpKQm1CqL8gK5bn8dPHSHCfsg1SyUz5pJGal+3wRzmN3vUZNYp5kYehDyBrRPKrUD8G4afvN0CXnfNgDBxJXgnP3JvcRNqb/YEbszBKVzaQyezyLzJwor0RqGQQ62c70CAdeP5iRIuFAksycPdAkF5cLUfIEqkpyHeimZowLV+TNB3xPb+/w33iHFxzaqTnD/9+MbhwSFtv4ws6sW6/wVzBs+zpYeLkQHsmva1Vak9zD3liMXv84E+ObZR3mmRQ2C+4fuHaAc1g5FUcbzky44vz4zcRI/OuCzZH/Hz8a+GzwOwFWL3NW9f4ZZ3Oo4xnU/hlrqzcBaYOE4xRF0CuHM8qcHlL1xDB7P4aqySc18DGMzSXh+9kb1uUi3gbc/r8ecNfvpEoIXRkJAAA=",
+			"server_seq": 0,
+			"author_kind": "person",
+			"replica_id": "25a7548b4dbe8e788815184808694548",
+			"base_seq": 0,
+			"kind": "delta",
+			"name": "Fence",
+			"delta_format": "o5/55"
+		}
+	]
 }

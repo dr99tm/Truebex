@@ -130,8 +130,12 @@ def _check_action(action: dict, where: str) -> None:
         raise _invalid(f"{where}.args.kind", "place travels in the log only for object and product")
     if action.get("permission") != "edit":
         raise _invalid(f"{where}.permission", "log actions carry the edit permission")
+    # PF4a: optional. agent-interface §6.4 adds them to a live call; a kernel
+    # replica replays a log action from its tool and args alone (CL1's
+    # FRouter::Replay mints its own session), and the app's own action-move.json
+    # carries neither. Checked when present.
     for key in ("session", "request_id"):
-        if not is_hex32(str(action.get(key, "")).lower()):
+        if key in action and not (isinstance(action[key], str) and is_hex32(action[key].lower())):
             raise _invalid(f"{where}.{key}", "32 hex characters")
 
 

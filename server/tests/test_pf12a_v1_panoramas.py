@@ -67,7 +67,7 @@ def test_v1_panoramas_list_with_key(client):
     listed = client.get(f"/v1/projects/{pid}/panoramas", headers=kh(key, **PL))
     assert listed.status_code == 200, listed.text
     assert listed.headers["cache-control"] == "private, no-store"
-    assert listed.headers["x-truebex-contract"] == "project-log/1.0" and "x-ratelimit-remaining" in listed.headers
+    assert listed.headers["x-truebex-contract"] == "project-log/1.1" and "x-ratelimit-remaining" in listed.headers
     # The same body as the session route answers the same account.
     assert listed.json() == client.get(f"/projects/{pid}/panoramas", headers=owner.web).json()
     sets = listed.json()["sets"]
@@ -228,7 +228,7 @@ def test_v1_panoramas_documented():
     one = doc["paths"]["/v1/projects/{project_id}/panoramas/{set_id}"]["get"]
     assert listed["operationId"] == "projects_panoramas_list" and one["operationId"] == "projects_panoramas_get"
     for op, model in ((listed, "PanoramaSetList"), (one, "PanoramaSetState")):
-        assert op["x-truebex-scope"] == "projects:read" and op["x-truebex-contract"] == "project-log/1.0"
+        assert op["x-truebex-scope"] == "projects:read" and op["x-truebex-contract"] == "project-log/1.1"
         assert op["tags"] == ["projects"] and op["description"]
         assert op["responses"]["200"]["content"]["application/json"]["schema"]["$ref"] == f"#/components/schemas/{model}"
         for code in ("401", "403", "404", "429"):

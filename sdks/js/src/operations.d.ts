@@ -34,7 +34,7 @@ export interface ProjectsApi {
   /** Invite someone by e-mail with a role (5.14; owner). Truebex sends the e-mail. (POST /v1/projects/{project_id}/members; scope projects:write) */
   inviteMember(projectId: string, params: components["schemas"]["MemberInvite"], options?: CallOptions): Promise<components["schemas"]["Member"]>;
   /** The newest snapshot with download URLs valid 15 minutes (5.9); 404 before the first. (GET /v1/projects/{project_id}/snapshots/latest; scope projects:read) */
-  latestSnapshot(projectId: string, options?: CallOptions): Promise<components["schemas"]["Snapshot"]>;
+  latestSnapshot(projectId: string, params?: NonNullable<operations["projects_latest_snapshot"]["parameters"]["query"]>, options?: CallOptions): Promise<components["schemas"]["Snapshot"]>;
   /** Projects the key's account owns or is a member of (5.2). (GET /v1/projects; scope projects:read) */
   list(params?: NonNullable<operations["projects_list"]["parameters"]["query"]>, options?: CallOptions): Promise<components["schemas"]["ProjectList"]>;
   /** Members and invitations (5.13). (GET /v1/projects/{project_id}/members; scope projects:read) */

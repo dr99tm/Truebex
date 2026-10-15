@@ -24,10 +24,20 @@ class AccountUsage(TypedDict):
 
 
 class AgentAction(TypedDict):
+    """
+    A log-safe tool call (agent-interface §6.4); refs in `args` are `<kind>#<id>` (§6.2), e.g. `wall#<32 hex>`.
+    """
+
     args: dict[str, Any]
     permission: NotRequired[str]
-    request_id: str
-    session: str
+    request_id: NotRequired[str | None]
+    """
+    32 hex; optional in the log
+    """
+    session: NotRequired[str | None]
+    """
+    32 hex; the session of a live call, optional in the log
+    """
     tool: str
 
 
@@ -191,7 +201,7 @@ class Member(TypedDict):
     accepted_at: NotRequired[str | None]
     author_id: NotRequired[str | None]
     """
-    The member's author id, as on their operations (PF9); null until they have one
+    The member's author id, as on their operations (1.1.0): set for every active member, null for an invitation
     """
     email: str
     invited_at: NotRequired[str | None]

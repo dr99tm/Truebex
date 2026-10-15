@@ -4,7 +4,12 @@
 // log-safe tool with its arguments, and every kernel replica applies it through
 // the same tool at its server_seq.
 //
-// `touched` is the sorted, unique set of entity refs in the arguments (§6.2);
+// Entities in the arguments are `Ref`s, `<kind>#<id>` (agent-interface §6.2;
+// PF4a), exactly as the app's own action-move.json writes them: a kernel
+// replica turns `wall#<32 hex>` into its own row and looks a bare id up as
+// nothing. A pick always knows its kind from the digest section it came from
+// (`DigestKinds`); the builder refuses a bare id rather than send one.
+// `touched` is the sorted, unique set of the refs' ids (§6.2);
 // `name` is the undo-step name the desktop shows. Checked against the contract
 // fixture action-move.json (test/action_builder_test.dart), as PF9's self-test is.
 
@@ -19,7 +24,31 @@ final _colour = RegExp(r'^#[0-9A-Fa-f]{6}$');
 const _refKeys = ['refs', 'target', 'host', 'room', 'replace'];
 const _maxMm = 1000000;
 
+/// agent-interface §6.2: the kinds of `Cad3DFastEyeView.h`, door / window (aliases of opening), storey, stair, sheet, layer.
+const refKinds = [
+  'wall', 'opening', 'room', 'slab', 'object', 'extrusion', 'model', 'sweep', 'dim', 'refplane', 'line', 'curve',
+  'door', 'window', 'storey', 'stair', 'sheet', 'layer',
+];
+
+/// The kind of what a digest section lists: a placed product is an `object` row, as in the app's own selection.
+abstract final class DigestKinds {
+  static const room = 'room';
+  static const wall = 'wall';
+  static const product = 'object';
+  static const opening = 'opening';
+}
+
+final _ref = RegExp('^(${refKinds.join('|')})#([0-9a-f]{32})\$');
+
 bool isHex32(Object? value) => value is String && _hex32.hasMatch(value);
+
+/// A `Ref` (agent-interface §6.2): `<kind>#<id>`, the id CL0's 32-hex entity id (`wall#dc64…6b30d`).
+String ref(String kind, String id) => '$kind#${id.toLowerCase()}';
+
+/// The entity id a ref names, or null for anything else (a bare id, a name, an unknown kind).
+String? refId(Object? value) => value is String ? _ref.firstMatch(value.toLowerCase())?.group(2) : null;
+
+bool isRef(Object? value) => refId(value) != null;
 
 final Random _random = Random.secure();
 
@@ -58,16 +87,17 @@ class ToolCall {
   final Map<String, Object?> args;
 }
 
-/// Every entity ref in a tool's arguments, sorted and unique: the operation's `touched`.
+/// The ids of every entity ref in a tool's arguments, sorted and unique: the operation's `touched` (bare ids).
 List<String> touchedOf(Map<String, Object?> args) {
-  final refs = <String>{};
+  final ids = <String>{};
   for (final key in _refKeys) {
     final value = args[key];
     for (final v in value is List ? value : [value]) {
-      if (v is String && _hex32.hasMatch(v.toLowerCase())) refs.add(v.toLowerCase());
+      final id = refId(v);
+      if (id != null) ids.add(id);
     }
   }
-  return refs.toList()..sort();
+  return ids.toList()..sort();
 }
 
 bool _finiteMm(Object? v) => v is num && v.isFinite && v.abs() <= _maxMm;
@@ -76,10 +106,10 @@ bool _isP3(Object? v) => v is List && v.length == 3 && v.every(_finiteMm);
 /// The checks of agent-interface §5.7–5.11 a light client can make without the model.
 void validateCall(ToolCall call) {
   final a = call.args;
-  bool refsOk(Object? refs) => refs is List && refs.isNotEmpty && refs.length <= 100 && refs.every(isHex32);
+  bool refsOk(Object? refs) => refs is List && refs.isNotEmpty && refs.length <= 100 && refs.every(isRef);
   switch (call.tool) {
     case 'move':
-      if (!refsOk(a['refs'])) _fail('move.refs: 1 to 100 entity ids');
+      if (!refsOk(a['refs'])) _fail('move.refs: 1 to 100 refs <kind>#<id>');
       final given = ['by_mm', 'to_mm', 'along_mm', 'rotate_deg'].where((k) => a[k] != null).length;
       if (given != 1) _fail('move: exactly one of by_mm, to_mm, along_mm, rotate_deg');
       if (a['by_mm'] != null && !_isP3(a['by_mm'])) _fail('move.by_mm: three numbers (mm)');
@@ -90,7 +120,7 @@ void validateCall(ToolCall call) {
       final rotate = a['rotate_deg'];
       if (rotate != null && !(rotate is num && rotate.abs() <= 360)) _fail('move.rotate_deg: -360 to 360');
     case 'fill':
-      if (!isHex32(a['target'])) _fail('fill.target: an entity id');
+      if (!isRef(a['target'])) _fail('fill.target: a ref <kind>#<id>');
       final f = a['finish'];
       if (f is! Map || !const ['paint', 'wallpaper', 'pattern3d', 'none'].contains(f['kind'])) _fail('fill.finish.kind');
       final colour = f['colour'];
@@ -100,7 +130,7 @@ void validateCall(ToolCall call) {
       final texture = f['texture'];
       if (texture != null && !(texture is String && texture.length <= 120)) _fail('fill.finish.texture: at most 120 characters');
     case 'apply_theme':
-      if (!isHex32(a['target'])) _fail('apply_theme.target: an entity id');
+      if (!isRef(a['target'])) _fail('apply_theme.target: a ref <kind>#<id>');
       final theme = a['theme'];
       if (theme is! String || theme.isEmpty || theme.length > 120) _fail('apply_theme.theme: 1 to 120 characters');
     case 'place':
@@ -116,8 +146,8 @@ void validateCall(ToolCall call) {
           (p['variant_id'] as String).length > 64) {
         _fail('place.product: supplier_id, sku, variant_id');
       }
-      if (a['replace'] != null && !isHex32(a['replace'])) _fail('place.replace: an entity id');
-      if (a['room'] != null && !isHex32(a['room'])) _fail('place.room: an entity id');
+      if (a['replace'] != null && !isRef(a['replace'])) _fail('place.replace: a ref <kind>#<id>');
+      if (a['room'] != null && !isRef(a['room'])) _fail('place.room: a ref <kind>#<id>');
       if (a['room'] == null && a['at_mm'] == null && a['replace'] == null) _fail('place: room, at_mm or replace');
     default:
       _fail('not a log-safe tool');
@@ -236,6 +266,7 @@ P3 nudgeVector(double bearingDeg, Nudge dir, int stepMm) {
   return [(v[0] * stepMm).round(), (v[1] * stepMm).round(), 0];
 }
 
+// Every entity argument below is a ref, `ref(kind, id)` (§6.2).
 ToolCall moveBy(List<String> refs, P3 by) => ToolCall('move', {'refs': refs, 'by_mm': by});
 
 ToolCall slideAlong(String ref, int along) => ToolCall('move', {

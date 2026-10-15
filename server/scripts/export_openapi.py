@@ -52,7 +52,7 @@ MARKET = {
 # The contract each group speaks; the SDKs send it as X-Truebex-Contract
 # (tests/test_pf12_openapi_sdks.py checks the routes echo the same).
 CONTRACTS = {
-    "projects": "project-log/1.0",
+    "projects": "project-log/1.1",
     "jobs": "render-jobs/1.1",
     "uploads": "share-bundle/1.1",
     "shares": "share-bundle/1.1",
