@@ -1032,9 +1032,10 @@ def test_demo_replica_script_human_test_path(client, monkeypatch, capsys):
     demo_replica.main(["--token", tb, "move", "--project", pid, "--base", "12"])
     out = capsys.readouterr().out
     assert "rejected (conflict): replaced by" in out and "13  Move wall" in out
-    # The latest snapshot is at 12, ready to be named as a version.
+    # The only snapshot is the fixture's at 0 (PF4a: the app's deltas are real, so a copy at 12 would
+    # claim a state they are not in); it can be named as a version.
     latest = client.get(f"/projects/{pid}/snapshots/latest", headers=dev(ta)).json()
-    assert latest["at_seq"] == 12
+    assert latest["at_seq"] == 0
     demo_replica.main(["--token", tb, "presence", "--project", pid, "--seconds", "0"])
     assert "left the project" in capsys.readouterr().out
 

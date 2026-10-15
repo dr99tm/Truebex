@@ -16,7 +16,9 @@ named in project.json (CL1's "House (fixture)"), uploads the fixture snapshot
 (share-bundle §5, purpose snapshot), pushes the 12 operations of
 ops-remote.json as this account (their `author` becomes the account's
 author_id; each keeps its real delta and its own replica_id, unless
---fresh-replica) and registers a snapshot at the new head. `pull` lists the
+--fresh-replica). The only snapshot is the fixture's at 0: the deltas are
+real now, so a copy at the head would claim a state they are not in (a
+replica opening the project loads snapshot 0 and applies 1-12). `pull` lists the
 log with each delta's format and size. `move` pushes the app's own web edit
 (action-move.json: `move` of the fixture's wall by 600 mm, refs as
 `<kind>#<id>`) made at --base (default the head) from a fresh replica: two
@@ -167,8 +169,6 @@ def cmd_push(api: Api, args) -> None:
     replicas = sorted({op["replica_id"] for op in ops})
     formats = sorted({op.get("delta_format") or op["kind"] for op in ops})
     print(f"replica {', '.join(r[:8] + '...' for r in replicas)}; deltas {', '.join(formats)}")
-    register_snapshot(api, pid, head, tbxp, doc_version)
-    print(f"snapshot registered at {head}")
     print(f"project {project['name']}, head {head}")
     print(f"project id: {pid}")
 

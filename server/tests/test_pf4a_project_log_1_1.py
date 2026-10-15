@@ -458,7 +458,9 @@ def test_pf4a_demo_replica_pushes_the_apps_set(client, monkeypatch, capsys):
     assert {op["replica_id"] for op in log["ops"]} == {remote[0]["replica_id"]}
     assert {op["delta_format"] for op in log["ops"]} == {"o5/55"}
     record = client.get(f"/projects/{pid}", headers=dev(token)).json()
-    assert record["doc_version"] == 55 and record["latest_snapshot"]["at_seq"] == 12
+    # The fixture's snapshot at 0 only: a replica opening the project applies the 12 real deltas on it.
+    assert record["doc_version"] == 55 and record["latest_snapshot"]["at_seq"] == 0
+    assert "snapshot registered" not in out
     demo_replica.main(["--token", token, "pull", "--project", pid])
     out = capsys.readouterr().out
     assert "12 operations, head 12" in out and out.count("o5/55") == 12
