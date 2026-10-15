@@ -286,6 +286,11 @@ class StripeProvider(BillingProvider):
                 payment.provider_subscription_id = (
                     _id_of(session.get("subscription")) or payment.provider_subscription_id
                 )
+                # PF2e: the customer it was paid on (Stripe makes one for a
+                # session that named none), so a pack's is found again.
+                payment.provider_customer_id = (
+                    _id_of(session.get("customer")) or payment.provider_customer_id
+                )
                 service.mark_payment_paid(db, payment)
                 db.commit()
                 # Sessions are created only by this server, so its metadata holds.

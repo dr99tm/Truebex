@@ -318,6 +318,10 @@ class PaddleProvider(BillingProvider):
             )
             if txn.get("business_id"):
                 payment.business = True
+            # PF2e: the customer it was paid on, so a pack's is found again.
+            payment.provider_customer_id = (
+                str_or_none(txn.get("customer_id")) or payment.provider_customer_id
+            )
             if payment.country is None:
                 payment.country = self._txn_country(txn)
             service.mark_payment_paid(db, payment)

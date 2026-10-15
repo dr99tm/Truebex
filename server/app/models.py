@@ -242,6 +242,11 @@ class Payment(Base):
     # The subscription the provider creates from it is attached to that
     # organisation from this row, never from custom_data.
     organisation_id: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    # PF2e: the provider customer the payment was paid on, from the provider's
+    # verified state when it is marked paid (Stripe's session, Paddle's
+    # transaction). A person's own one-off items (AI credit packs) are found
+    # again through it: billing.service.customer_id, org_billing.personal_scope.
+    provider_customer_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
 
 
 class SubscriptionNotice(Base):

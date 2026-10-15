@@ -147,6 +147,10 @@ _ADDED_COLUMNS.setdefault("shares", []).extend(
     [("version", "INTEGER"), ("pending_bundle_id", "VARCHAR(32)"), ("pending_manifest", "JSON")]
 )
 
+# PF2e (one-off payments' customer): the provider customer a payment was paid
+# on, recorded when it is marked paid. NULL = paid before PF2e (not back-filled).
+_ADDED_COLUMNS.setdefault("payments", []).append(("provider_customer_id", "VARCHAR(128)"))
+
 
 def _migrate(bind: Engine) -> None:
     insp = inspect(bind)
