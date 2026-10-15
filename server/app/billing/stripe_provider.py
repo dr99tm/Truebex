@@ -14,7 +14,8 @@ A supplier's listing plan (PF8, `listing_<plan>`) is paid on the supplier's
 own customer (`suppliers.billing_customer_id`, or a new one), an
 organisation's plan on the organisation's (`org_billing.org_customer`, or a
 new one; PF3e), and a person's own plans and top-ups on theirs
-(`service.customer_id`, which skips listing and organisation plans): Checkout
+(`service.customer_id`, which skips listing and organisation plans and, with
+no subscription of their own, is their latest pack's customer; PF2e): Checkout
 saves the VAT id it collects onto the customer it ran on, and a later session
 reporting that id makes its payment a business one (PF8b, PF3e). An
 organisation's portal opens on its subscription's customer, so on the
