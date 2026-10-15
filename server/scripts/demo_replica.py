@@ -1,6 +1,6 @@
-"""A scripted replica of a cloud project, for testing PF4 before the app's
-cloud save (CL1) lands. It speaks contract project-log v1.0 exactly as the
-desktop app will, with a device token.
+"""A scripted replica of a cloud project, for testing PF4 without the app.
+It speaks contract project-log v1.1 as the desktop app's cloud save (CL1)
+does, with a device token, and pushes the app's own fixture operations.
 
     cd server
     .venv\\Scripts\\python.exe scripts\\demo_replica.py login --email a@example.com --password … --trial
@@ -11,17 +11,23 @@ desktop app will, with a device token.
 
 `login` signs in with e-mail and password, activates this "computer" as a
 device (licence 5.4) and, with --trial, starts the Pro trial so the device
-holds `cloud.sync`; it prints the device token. `push` creates the project,
-uploads the fixture snapshot (share-bundle §5, purpose snapshot), pushes the
-12 operations of ops-remote.json as this account (their `author` becomes the
-account's author_id) and registers a snapshot at the new head. `move` pushes
-one "Move wall" operation made at --base (default the head), touching the
-fixture's first wall (or --entity),
-from a fresh replica: two people doing it at the same base show the conflict
-rule. API: --api (default http://127.0.0.1:8000).
+holds `cloud.sync`; it prints the device token. `push` creates the project
+named in project.json (CL1's "House (fixture)"), uploads the fixture snapshot
+(share-bundle §5, purpose snapshot), pushes the 12 operations of
+ops-remote.json as this account (their `author` becomes the account's
+author_id; each keeps its real delta and its own replica_id, unless
+--fresh-replica). The only snapshot is the fixture's at 0: the deltas are
+real now, so a copy at the head would claim a state they are not in (a
+replica opening the project loads snapshot 0 and applies 1-12). `pull` lists the
+log with each delta's format and size. `move` pushes the app's own web edit
+(action-move.json: `move` of the fixture's wall by 600 mm, refs as
+`<kind>#<id>`) made at --base (default the head) from a fresh replica: two
+people doing it at the same base show the conflict rule, and a CL1 app
+following the project applies it. API: --api (default http://127.0.0.1:8000).
 """
 
 import argparse
+import base64
 import hashlib
 import json
 import secrets
@@ -31,7 +37,7 @@ from pathlib import Path
 
 import requests
 
-LOG = {"X-Truebex-Contract": "project-log/1.0"}
+LOG = {"X-Truebex-Contract": "project-log/1.1"}
 LICENCE = {"X-Truebex-Contract": "licence-api/1.0"}
 UPLOADS = {"X-Truebex-Contract": "share-bundle/1.0"}
 DEFAULT_FIXTURE = Path(__file__).resolve().parents[1] / "tests" / "contracts" / "project-log"
@@ -107,43 +113,63 @@ def upload_file(api: Api, data: bytes) -> tuple[str, str]:
     return opened["upload_id"], sha
 
 
-def register_snapshot(api: Api, pid: str, at_seq: int, data: bytes) -> dict:
+def register_snapshot(api: Api, pid: str, at_seq: int, data: bytes, doc_version: int) -> dict:
     upload_id, sha = upload_file(api, data)
     return api.call(
         "POST", f"/projects/{pid}/snapshots", headers={**LOG, "Idempotency-Key": secrets.token_hex(16)},
-        json={"at_seq": at_seq, "doc_version": 38, "upload_id": upload_id, "files": {"tbxp": sha, "tbxpack": None}},
+        json={"at_seq": at_seq, "doc_version": doc_version, "upload_id": upload_id, "files": {"tbxp": sha, "tbxpack": None}},
     )
+
+
+def _runs(ops: list[dict]) -> list[tuple[str, list[dict]]]:
+    """A push names one replica: consecutive operations of the same replica_id go together."""
+    runs: list[tuple[str, list[dict]]] = []
+    for op in ops:
+        if runs and runs[-1][0] == op["replica_id"]:
+            runs[-1][1].append(op)
+        else:
+            runs.append((op["replica_id"], [op]))
+    return runs
 
 
 def cmd_push(api: Api, args) -> None:
     _need_token(api)
     fixture = Path(args.fixture)
+    # CL1's truebex-project-log-ops/1: each operation names its own replica (no push-level replica_id).
     remote = json.loads((fixture / "ops-remote.json").read_text(encoding="utf-8"))
     tbxp = (fixture / "snapshot-0000.tbxp").read_bytes()
+    record = json.loads((fixture / "project.json").read_text(encoding="utf-8"))
+    doc_version = record.get("doc_version", 55)
     author = api.call("GET", "/licence/account", headers=LICENCE)["author_id"]
     if args.project:
         pid = args.project
         project = api.call("GET", f"/projects/{pid}", headers=LOG)
     else:
+        name = args.name or record.get("name") or "House"
         project = api.call(
             "POST", "/projects", headers={**LOG, "Idempotency-Key": secrets.token_hex(16)},
-            json={"name": args.name, "doc_version": 38},
+            json={"name": name, "doc_version": doc_version},
         )
         pid = project["project_id"]
-        register_snapshot(api, pid, 0, tbxp)
-        print(f"created {args.name} ({pid}) with the fixture snapshot at 0")
-    replica = secrets.token_hex(16)
+        register_snapshot(api, pid, 0, tbxp, doc_version)
+        print(f"created {name} ({pid}) with the fixture snapshot at 0")
+    fresh = secrets.token_hex(16)
     ops = []
     for op in remote["ops"]:
+        replica = fresh if args.fresh_replica else op.get("replica_id") or fresh
         ops.append(dict(op, author=author, replica_id=replica, op_id=secrets.token_hex(16), base_seq=project["head_seq"]))
-    answer = api.call("POST", f"/projects/{pid}/ops", headers=LOG, json={"replica_id": replica, "ops": ops})
     counts: dict[str, int] = {}
-    for r in answer["results"]:
-        counts[r["status"]] = counts.get(r["status"], 0) + 1
+    head = project["head_seq"]
+    for replica, run in _runs(ops):
+        answer = api.call("POST", f"/projects/{pid}/ops", headers=LOG, json={"replica_id": replica, "ops": run})
+        head = answer["head_seq"]
+        for r in answer["results"]:
+            counts[r["status"]] = counts.get(r["status"], 0) + 1
     print("pushed: " + ", ".join(f"{n} {s}" for s, n in counts.items()))
-    register_snapshot(api, pid, answer["head_seq"], tbxp)
-    print(f"snapshot registered at {answer['head_seq']}")
-    print(f"project {project['name']}, head {answer['head_seq']}")
+    replicas = sorted({op["replica_id"] for op in ops})
+    formats = sorted({op.get("delta_format") or op["kind"] for op in ops})
+    print(f"replica {', '.join(r[:8] + '...' for r in replicas)}; deltas {', '.join(formats)}")
+    print(f"project {project['name']}, head {head}")
     print(f"project id: {pid}")
 
 
@@ -155,7 +181,11 @@ def cmd_pull(api: Api, args) -> None:
         for op in page["ops"]:
             total += 1
             what = op["restore"] and f"restore of version {op['restore']['version_id'][:8]}" or op["kind"]
-            print(f"{op['server_seq']:>5}  {op['name'] or '(no name)':<22} {what:<10} author {op['author'][:8]}...  touched {len(op['touched'])}")
+            if op["kind"] == "delta" and op["delta"]:
+                what = f"delta {op['delta_format']}, {len(base64.b64decode(op['delta']))} bytes"
+            elif op["kind"] == "action" and op["action"]:
+                what = f"action {op['action']['tool']} {' '.join(str(r)[:13] for r in op['action']['args'].get('refs', []))}"
+            print(f"{op['server_seq']:>5}  {op['name'] or '(no name)':<16} {what:<28} author {op['author'][:8]}...  touched {len(op['touched'])}")
             after = op["server_seq"]
         if not page["more"]:
             break
@@ -164,23 +194,25 @@ def cmd_pull(api: Api, args) -> None:
 
 def cmd_move(api: Api, args) -> None:
     _need_token(api)
-    remote = json.loads((Path(args.fixture) / "ops-remote.json").read_text(encoding="utf-8"))
-    entity = (args.entity or remote["ops"][0]["touched"][0]).lower()
+    # The app's own web edit (action-move.json): a log-safe `move`, refs `<kind>#<id>`
+    # (agent-interface §6.2), which every kernel replica applies through its tool.
+    sample = json.loads((Path(args.fixture) / "action-move.json").read_text(encoding="utf-8"))
+    entity = (args.entity or sample["touched"][0]).lower()
     author = api.call("GET", "/licence/account", headers=LICENCE)["author_id"]
     if args.base is None:  # made at the head: accepted unless someone pushes first
         args.base = api.call("GET", f"/projects/{args.project}", headers=LOG)["head_seq"]
     replica = secrets.token_hex(16)
+    action = sample["action"]
     op = {
         "op_id": secrets.token_hex(16),
         "author": author,
         "author_kind": "person",
         "at": time.strftime("%Y-%m-%dT%H:%M:%S.000Z", time.gmtime()),
         "touched": [entity],
-        "kind": "delta",
-        "name": "Move wall",
+        "kind": "action",
+        "name": sample.get("name") or "Move wall",
         "base_seq": args.base,
-        "delta_format": "o5/38",
-        "delta": "VEJYRHsic3RhbmRfaW4iOnRydWV9",  # stand-in bytes: TBXD{"stand_in":true}
+        "action": {**action, "args": {**action["args"], "refs": [f"{args.kind}#{entity}"]}},
     }
     answer = api.call("POST", f"/projects/{args.project}/ops", headers=LOG, json={"replica_id": replica, "ops": [op]})
     result = answer["results"][0]
@@ -224,16 +256,18 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--trial", action="store_true", help="start the 14-day Pro trial (cloud.sync)")
     p = sub.add_parser("push", help="create a project from the fixture and push its operations")
     p.add_argument("--fixture", default=str(DEFAULT_FIXTURE))
-    p.add_argument("--name", default="House")
+    p.add_argument("--name", help="the new project's name (default: project.json's)")
     p.add_argument("--project", help="push into this project instead of creating one")
+    p.add_argument("--fresh-replica", action="store_true", help="push as one new replica, not the operations' own")
     p = sub.add_parser("pull", help="pull the log")
     p.add_argument("--project", required=True)
     p.add_argument("--after", type=int, default=0)
     p.add_argument("--wait", type=int, default=0, help="long-poll seconds (0-25)")
-    p = sub.add_parser("move", help="push one Move wall operation made at --base")
+    p = sub.add_parser("move", help="push the app's Move wall action made at --base")
     p.add_argument("--project", required=True)
     p.add_argument("--base", type=int, help="the sequence it was made at (default: the head)")
-    p.add_argument("--entity", help="32-hex entity id (default: the fixture's first wall)")
+    p.add_argument("--entity", help="32-hex entity id (default: action-move.json's wall)")
+    p.add_argument("--kind", default="wall", help="the entity's kind in its ref (agent-interface §6.2; default wall)")
     p.add_argument("--fixture", default=str(DEFAULT_FIXTURE))
     p = sub.add_parser("presence", help="stay present (heartbeats every 10 s), then leave")
     p.add_argument("--project", required=True)

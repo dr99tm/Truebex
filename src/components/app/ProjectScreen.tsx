@@ -15,7 +15,7 @@ import type { TileView } from "@/lib/jobs";
 import type { ProjectRole } from "@/lib/projects";
 import { useIsAuthenticated } from "@/lib/useAuth";
 import { cn } from "@/lib/utils";
-import { applyTheme, fillFace } from "@/viewer/actions";
+import { applyTheme, DIGEST_KINDS, fillFace, ref } from "@/viewer/actions";
 import type { CubeHotspot } from "@/viewer/cube";
 import { bearingTo, orientationAvailable, requestOrientation, type Look } from "@/viewer/orientation";
 import type { XrScene } from "@/viewer/xr";
@@ -180,11 +180,11 @@ function ProjectView({ pid }: { pid: string }) {
       const [kind, value] = id.split(":");
       if (kind === "theme") {
         const t = digest.digest.themes.find((x) => x.id === value);
-        if (t) edit({ name: APP.opNames.theme, label: `${APP.edit.theme}: ${t.name}`, subject: room.id, call: applyTheme(room.id, t.id) });
+        if (t) edit({ name: APP.opNames.theme, label: `${APP.edit.theme}: ${t.name}`, subject: room.id, call: applyTheme(ref(DIGEST_KINDS.room, room.id), t.id) });
       } else if (kind === "floor") {
         const f = FLOOR_FINISHES.find((x) => x.id === value);
         if (f) {
-          edit({ name: APP.opNames.floor, label: `${APP.edit.floor}: ${f.label} (${room.name})`, subject: room.id, call: fillFace(room.id, "floor", f.finish) });
+          edit({ name: APP.opNames.floor, label: `${APP.edit.floor}: ${f.label} (${room.name})`, subject: room.id, call: fillFace(ref(DIGEST_KINDS.room, room.id), "floor", f.finish) });
         }
       }
     },

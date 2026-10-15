@@ -201,7 +201,7 @@ class _RoomEditState extends State<_RoomEdit> {
           _chip(t.name,
               key: Key('theme-${t.id}'),
               selected: t.id == room.theme,
-              onTap: can ? () => c.edit(EditRequest(name: s.roomTheme, label: '${s.roomTheme}: ${t.name}', subject: room.id, call: applyTheme(room.id, t.id))) : null),
+              onTap: can ? () => c.edit(EditRequest(name: s.roomTheme, label: '${s.roomTheme}: ${t.name}', subject: room.id, call: applyTheme(ref(DigestKinds.room, room.id), t.id))) : null),
       ]),
       SectionTitle(s.floorFinish),
       Wrap(children: [
@@ -214,7 +214,7 @@ class _RoomEditState extends State<_RoomEdit> {
                         name: s.floorFinish,
                         label: '${s.floorFinish}: ${finishLabel(s, f.id)} (${room.name})',
                         subject: room.id,
-                        call: fillFace(room.id, 'floor', f.finish),
+                        call: fillFace(ref(DigestKinds.room, room.id), 'floor', f.finish),
                       ))
                   : null),
       ]),
@@ -236,7 +236,7 @@ class _RoomEditState extends State<_RoomEdit> {
                           name: s.wallFinish,
                           label: '${s.wallFinish}: ${finishLabel(s, f.id)} (${room.name}, ${wall.name})',
                           subject: room.id,
-                          call: fillFace(wall.id, wall.face, f.finish),
+                          call: fillFace(ref(DigestKinds.wall, wall.id), wall.face, f.finish),
                         ))
                     : null),
         ]),
@@ -333,7 +333,7 @@ class _ProductEditState extends State<_ProductEdit> {
           name: s.opMove(p.name),
           label: '${s.move} ${p.name}: $label ${s.mm(_step)}',
           subject: p.id,
-          call: moveBy([p.id], nudgeVector(c.yawDeg, dir, _step)),
+          call: moveBy([ref(DigestKinds.product, p.id)], nudgeVector(c.yawDeg, dir, _step)),
         ));
     Widget pad(Nudge dir, IconData icon, String label) => Padding(
           padding: const EdgeInsets.all(4),
@@ -368,7 +368,7 @@ class _ProductEditState extends State<_ProductEdit> {
             name: s.opSwap(p.name),
             label: '${s.swapFor} ${choice.name}${choice.options.isEmpty ? '' : ' (${choice.options})'}',
             subject: p.id,
-            call: swapProduct(p.id, choice.ref, room: p.room),
+            call: swapProduct(ref(DigestKinds.product, p.id), choice.ref, room: p.room == null ? null : ref(DigestKinds.room, p.room!)),
           )),
         ),
     ]);
@@ -396,7 +396,7 @@ class _OpeningEditState extends State<_OpeningEdit> {
           name: s.opMove(o.name),
           label: '${o.name}: ${sign > 0 ? s.slideRight(_step) : s.slideLeft(_step)}',
           subject: o.id,
-          call: slideAlong(o.id, sign * _step),
+          call: slideAlong(ref(DigestKinds.opening, o.id), sign * _step),
         ));
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Text(o.name, style: Theme.of(context).textTheme.titleLarge),

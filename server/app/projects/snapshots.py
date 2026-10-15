@@ -240,6 +240,13 @@ def get(db: Session, project: Project, snapshot_id: str) -> ProjectSnapshot:
     return snap
 
 
+def by_id(db: Session, project: Project, snapshot_id: str) -> dict:
+    """5.9 `?id=` (project-log 1.1.0): that snapshot with fresh URLs, so a
+    replica that reaches a `restore` loads the version's state; 404 for an id
+    that is malformed, unknown or another project's."""
+    return snapshot_json(project, get(db, project, snapshot_id.lower()))
+
+
 # --- projects.snapshots.prune ------------------------------------------------------
 
 

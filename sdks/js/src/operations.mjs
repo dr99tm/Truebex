@@ -44,7 +44,7 @@ export const OPERATIONS = {
       "name"
     ],
     "scope": "projects:write",
-    "contract": "project-log/1.0"
+    "contract": "project-log/1.1"
   },
   "projects_create_snapshot": {
     "group": "projects",
@@ -66,7 +66,7 @@ export const OPERATIONS = {
       "upload_id"
     ],
     "scope": "projects:write",
-    "contract": "project-log/1.0"
+    "contract": "project-log/1.1"
   },
   "projects_create_version": {
     "group": "projects",
@@ -88,7 +88,7 @@ export const OPERATIONS = {
       "snapshot_id"
     ],
     "scope": "projects:write",
-    "contract": "project-log/1.0"
+    "contract": "project-log/1.1"
   },
   "projects_delete": {
     "group": "projects",
@@ -103,7 +103,7 @@ export const OPERATIONS = {
     "body": null,
     "bodyProps": [],
     "scope": null,
-    "contract": "project-log/1.0"
+    "contract": "project-log/1.1"
   },
   "projects_get": {
     "group": "projects",
@@ -118,7 +118,7 @@ export const OPERATIONS = {
     "body": null,
     "bodyProps": [],
     "scope": "projects:read",
-    "contract": "project-log/1.0"
+    "contract": "project-log/1.1"
   },
   "projects_heartbeat": {
     "group": "projects",
@@ -140,7 +140,7 @@ export const OPERATIONS = {
       "view"
     ],
     "scope": "projects:write",
-    "contract": "project-log/1.0"
+    "contract": "project-log/1.1"
   },
   "projects_invite_member": {
     "group": "projects",
@@ -160,7 +160,7 @@ export const OPERATIONS = {
       "role"
     ],
     "scope": "projects:write",
-    "contract": "project-log/1.0"
+    "contract": "project-log/1.1"
   },
   "projects_latest_snapshot": {
     "group": "projects",
@@ -170,12 +170,14 @@ export const OPERATIONS = {
     "pathParams": [
       "project_id"
     ],
-    "query": [],
+    "query": [
+      "id"
+    ],
     "headers": [],
     "body": null,
     "bodyProps": [],
     "scope": "projects:read",
-    "contract": "project-log/1.0"
+    "contract": "project-log/1.1"
   },
   "projects_list": {
     "group": "projects",
@@ -191,7 +193,7 @@ export const OPERATIONS = {
     "body": null,
     "bodyProps": [],
     "scope": "projects:read",
-    "contract": "project-log/1.0"
+    "contract": "project-log/1.1"
   },
   "projects_list_members": {
     "group": "projects",
@@ -206,7 +208,7 @@ export const OPERATIONS = {
     "body": null,
     "bodyProps": [],
     "scope": "projects:read",
-    "contract": "project-log/1.0"
+    "contract": "project-log/1.1"
   },
   "projects_list_versions": {
     "group": "projects",
@@ -221,7 +223,7 @@ export const OPERATIONS = {
     "body": null,
     "bodyProps": [],
     "scope": "projects:read",
-    "contract": "project-log/1.0"
+    "contract": "project-log/1.1"
   },
   "projects_panoramas_get": {
     "group": "projects",
@@ -240,7 +242,7 @@ export const OPERATIONS = {
     "body": null,
     "bodyProps": [],
     "scope": "projects:read",
-    "contract": "project-log/1.0"
+    "contract": "project-log/1.1"
   },
   "projects_panoramas_list": {
     "group": "projects",
@@ -255,7 +257,7 @@ export const OPERATIONS = {
     "body": null,
     "bodyProps": [],
     "scope": "projects:read",
-    "contract": "project-log/1.0"
+    "contract": "project-log/1.1"
   },
   "projects_presence": {
     "group": "projects",
@@ -270,7 +272,7 @@ export const OPERATIONS = {
     "body": null,
     "bodyProps": [],
     "scope": "projects:read",
-    "contract": "project-log/1.0"
+    "contract": "project-log/1.1"
   },
   "projects_pull_ops": {
     "group": "projects",
@@ -289,7 +291,7 @@ export const OPERATIONS = {
     "body": null,
     "bodyProps": [],
     "scope": "projects:read",
-    "contract": "project-log/1.0"
+    "contract": "project-log/1.1"
   },
   "projects_push_ops": {
     "group": "projects",
@@ -307,7 +309,7 @@ export const OPERATIONS = {
       "replica_id"
     ],
     "scope": "projects:write",
-    "contract": "project-log/1.0"
+    "contract": "project-log/1.1"
   },
   "projects_remove_member": {
     "group": "projects",
@@ -323,7 +325,7 @@ export const OPERATIONS = {
     "body": null,
     "bodyProps": [],
     "scope": "projects:write",
-    "contract": "project-log/1.0"
+    "contract": "project-log/1.1"
   },
   "projects_restore_version": {
     "group": "projects",
@@ -341,7 +343,7 @@ export const OPERATIONS = {
     "body": null,
     "bodyProps": [],
     "scope": "projects:write",
-    "contract": "project-log/1.0"
+    "contract": "project-log/1.1"
   },
   "projects_update": {
     "group": "projects",
@@ -358,7 +360,7 @@ export const OPERATIONS = {
       "name"
     ],
     "scope": "projects:write",
-    "contract": "project-log/1.0"
+    "contract": "project-log/1.1"
   },
   "projects_update_member": {
     "group": "projects",
@@ -376,7 +378,7 @@ export const OPERATIONS = {
       "role"
     ],
     "scope": "projects:write",
-    "contract": "project-log/1.0"
+    "contract": "project-log/1.1"
   },
   "jobs_cancel": {
     "group": "jobs",

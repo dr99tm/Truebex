@@ -2680,7 +2680,7 @@ export const DEVELOPER_DOCS = {
     ],
     contractsTitle: "Versions",
     contractsText:
-      "Each route group speaks a versioned contract, sent and echoed as X-Truebex-Contract (for example project-log/1.0). Additions never break a version; the SDKs send it for you.",
+      "Each route group speaks a versioned contract, sent and echoed as X-Truebex-Contract (for example project-log/1.1). Additions never break a version; the SDKs send it for you.",
   },
   pages: {
     projects: {

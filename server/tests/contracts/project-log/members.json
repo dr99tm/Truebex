@@ -1,24 +1,24 @@
 {
-  "members": [
-    {
-      "user_id": 42,
-      "invite_id": null,
-      "email": "owner@example.test",
-      "name": "Alex",
-      "role": "owner",
-      "state": "active",
-      "invited_at": "2026-10-09T10:00:00Z",
-      "accepted_at": "2026-10-09T10:00:00Z"
-    },
-    {
-      "user_id": 7,
-      "invite_id": null,
-      "email": "editor@example.test",
-      "name": "Sam",
-      "role": "editor",
-      "state": "active",
-      "invited_at": "2026-10-09T10:00:00Z",
-      "accepted_at": "2026-10-09T10:05:00Z"
-    }
-  ]
+	"members": [
+		{
+			"user_id": 42,
+			"email": "ana@example.com",
+			"name": "Ana Owner",
+			"role": "owner",
+			"state": "active",
+			"invited_at": "2026-10-09T10:00:00.000Z",
+			"accepted_at": "2026-10-09T10:01:00.000Z",
+			"author_id": "019a2b3c4d5e7000a000000000000042"
+		},
+		{
+			"user_id": 7,
+			"email": "sam@example.com",
+			"name": "Sam Editor",
+			"role": "editor",
+			"state": "active",
+			"invited_at": "2026-10-09T10:00:00.000Z",
+			"accepted_at": "2026-10-09T10:01:00.000Z",
+			"author_id": "019a2b3c4d5e7000a000000000000007"
+		}
+	]
 }

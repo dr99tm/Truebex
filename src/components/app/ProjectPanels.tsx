@@ -22,7 +22,7 @@ import { formatMoney } from "@/lib/market";
 import type { Member, Presence, ProjectRole } from "@/lib/projects";
 import { timeAgo } from "@/lib/time";
 import { cn } from "@/lib/utils";
-import { applyTheme, fillFace, moveBy, nudgeVector, slideAlong, swapProduct, type Nudge } from "@/viewer/actions";
+import { applyTheme, DIGEST_KINDS, fillFace, moveBy, nudgeVector, ref, slideAlong, swapProduct, type Nudge } from "@/viewer/actions";
 import type { Look } from "@/viewer/orientation";
 import { conflictLine, type ConflictText, type OutboxEntry } from "@/viewer/outbox";
 
@@ -224,7 +224,7 @@ function RoomEdit({
               disabled={!canEdit}
               className={cn(chip, t.id === room.theme ? chipOn : chipIdle)}
               onClick={() =>
-                onEdit({ name: APP.opNames.theme, label: `${APP.edit.theme}: ${t.name}`, subject: room.id, call: applyTheme(room.id, t.id) })
+                onEdit({ name: APP.opNames.theme, label: `${APP.edit.theme}: ${t.name}`, subject: room.id, call: applyTheme(ref(DIGEST_KINDS.room, room.id), t.id) })
               }
             >
               {t.name}
@@ -245,7 +245,7 @@ function RoomEdit({
                   name: APP.opNames.floor,
                   label: `${APP.edit.floor}: ${f.label} (${room.name})`,
                   subject: room.id,
-                  call: fillFace(room.id, "floor", f.finish),
+                  call: fillFace(ref(DIGEST_KINDS.room, room.id), "floor", f.finish),
                 })
               }
             >
@@ -282,7 +282,7 @@ function RoomEdit({
                     name: APP.opNames.wall,
                     label: `${APP.edit.wall}: ${f.label} (${room.name}, ${wall.name})`,
                     subject: room.id,
-                    call: fillFace(wall.id, wall.face, f.finish),
+                    call: fillFace(ref(DIGEST_KINDS.wall, wall.id), wall.face, f.finish),
                   })
                 }
               >
@@ -348,7 +348,7 @@ function ProductEdit({
       name: fill(APP.opNames.move, { name: product.name }),
       label: `${APP.edit.move} ${product.name}: ${label} ${fill(APP.edit.mm, { n: step })}`,
       subject: product.id,
-      call: moveBy([product.id], nudgeVector(lookRef.current.yawDeg, dir, step)),
+      call: moveBy([ref(DIGEST_KINDS.product, product.id)], nudgeVector(lookRef.current.yawDeg, dir, step)),
     });
   const pad: { dir: Nudge; label: string; icon: React.ReactNode; area: string }[] = [
     { dir: "forward", label: APP.edit.forward, icon: <ArrowUp className="h-4 w-4" />, area: "col-start-2" },
@@ -394,7 +394,7 @@ function ProductEdit({
                     name: fill(APP.opNames.swap, { name: product.name }),
                     label: `${APP.edit.swap} ${c.name}${c.options ? ` (${c.options})` : ""}`,
                     subject: product.id,
-                    call: swapProduct(product.id, c.ref, product.room ?? undefined),
+                    call: swapProduct(ref(DIGEST_KINDS.product, product.id), c.ref, product.room ? ref(DIGEST_KINDS.room, product.room) : undefined),
                   })
                 }
               >
@@ -419,7 +419,7 @@ function OpeningEdit({ opening, canEdit, onEdit }: { opening: DigestOpening; can
       name: fill(APP.opNames.slide, { name: opening.name }),
       label: `${opening.name}: ${fill(sign > 0 ? APP.edit.slideRight : APP.edit.slideLeft, { step })}`,
       subject: opening.id,
-      call: slideAlong(opening.id, sign * step),
+      call: slideAlong(ref(DIGEST_KINDS.opening, opening.id), sign * step),
     });
   return (
     <div>

@@ -1538,3 +1538,30 @@ canonical, and links to the home page, the download and pricing. `scripts/serve-
 `Access-Control-Allow-Origin: *`. Components in the root layout read the route segment, not the address bar, because
 the one `404.html` is served at every missing address (the Navbar). `server/tests/test_site_pf13c.py` checks the built
 files and the server. Doc: `docs/roadmap/40/PF13c-not-found-page.md`.
+
+## Cloud projects on project-log 1.1 (PF4a)
+
+The project service follows `project-log` **1.1.0** (CL1, the app's cloud save): every project route, on
+`/projects` and `/v1/projects`, now echoes `X-Truebex-Contract: project-log/1.1` and still serves 1.0 clients.
+
+- **The app's fixtures.** `server/tests/contracts/project-log/` is CL1's own set, copied byte for byte with
+  `scripts\sync-contract-fixtures.ps1 -Contract project-log` (blob ids in `APP_BLOBS`,
+  `server/tests/test_pf4a_project_log_1_1.py`): 12 operations with real deltas (`o5/55`), the web's move of a
+  wall, members with author ids. `server/scripts/make_project_log_fixtures.py` is retired.
+- **A version's snapshot.** `GET /projects/{pid}/snapshots/latest?id=<snapshot_id>` answers that snapshot
+  (a restore operation's `restore.snapshot_id`) with fresh URLs, or 404 `not_found`.
+- **Author ids.** Every active member carries `author_id`; an invitation has `null`.
+- **Web and phone edits** name entities as the app applies them, `<kind>#<id>` (`wall#…`, `room#…`,
+  `object#…`, `opening#…`); `touched` stays the bare ids.
+
+Try it against a local API (`server\run.bat`, a licence signing key in `server\.env`):
+
+```powershell
+cd server
+.venv\Scripts\python.exe scripts\demo_replica.py login --email you@example.com --password <pw> --trial
+.venv\Scripts\python.exe scripts\demo_replica.py --token tbx_dev_... push --fixture tests\contracts\project-log
+.venv\Scripts\python.exe scripts\demo_replica.py --token tbx_dev_... pull --project <id>
+```
+
+`push` prints "project House (fixture), head 12"; `pull` lists the 12 operations, each "delta o5/55". Details:
+`docs/roadmap/40/PF4a-project-log-1-1-0.md`.

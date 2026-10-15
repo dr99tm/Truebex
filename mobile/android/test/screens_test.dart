@@ -73,9 +73,9 @@ void main() {
       await services.auth.signInWithPassword('alex@example.com', 'password123');
       await services.engine.syncProject(pid);
       // Two edits made offline wait in the outbox.
-      for (final ref in ['c0000000000000000000000000000001', 'c0000000000000000000000000000002']) {
+      for (final id in ['c0000000000000000000000000000001', 'c0000000000000000000000000000002']) {
         final op = buildActionOp(author: alexAuthor, replicaId: await services.session.replicaId(pid), baseSeq: 0, session: hex32(),
-            name: 'Move', call: moveBy([ref], [0, 50, 0]));
+            name: 'Move', call: moveBy([ref(DigestKinds.product, id)], [0, 50, 0]));
         await services.outbox.add(pid, op.toJson(), label: 'Move');
       }
     });

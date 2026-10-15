@@ -106,7 +106,7 @@ class Member(_Doc):
     user_id: int | None
     email: str
     name: str | None = None
-    author_id: str | None = Field(default=None, description="The member's author id, as on their operations (PF9); null until they have one")
+    author_id: str | None = Field(default=None, description="The member's author id, as on their operations (1.1.0): set for every active member, null for an invitation")
     role: Literal["viewer", "editor", "owner"]
     state: Literal["active", "invited"]
     invited_at: str | None = None
@@ -138,11 +138,13 @@ class ProjectRename(_projects.RenameIn):
 
 
 class AgentAction(_Doc):
+    """A log-safe tool call (agent-interface §6.4); refs in `args` are `<kind>#<id>` (§6.2), e.g. `wall#<32 hex>`."""
+
     tool: str
     args: dict[str, Any]
     permission: Literal["edit"]
-    session: str
-    request_id: str
+    session: str | None = Field(default=None, description="32 hex; the session of a live call, optional in the log")
+    request_id: str | None = Field(default=None, description="32 hex; optional in the log")
 
 
 class Operation(_Doc):
