@@ -1,22 +1,25 @@
 {
-  "schema": "truebex-render-job/1",
-  "job_id": "a11ce000000000000000000000000001",
-  "kind": "panorama",
-  "quality": "standard",
-  "seed": 1,
-  "project": {
-    "tbxp": "Docs/roadmap/fixtures/Z0-baseline.tbxp",
-    "tbxpack": null,
-    "ops": "Docs/roadmap/fixtures/contracts/render-jobs/ops-empty.json",
-    "at_seq": 0
-  },
-  "views": [
-    "0199c6a2e00070058000000000000001"
-  ],
-  "changed": [],
-  "base_manifest": null,
-  "face_px": 1024,
-  "tile_px": 512,
-  "jpeg_quality": 85,
-  "out_dir": "Saved/RenderJobs/a11ce000000000000000000000000001/out"
+	"schema": "truebex-render-job/1",
+	"job_id": "c3000000000000000000000000000001",
+	"kind": "panorama",
+	"quality": "standard",
+	"seed": 1,
+	"project":
+	{
+		"tbxp": "../../PR3-pano-rooms.tbxp",
+		"tbxpack": null,
+		"ops": null,
+		"at_seq": 0
+	},
+	"views": [
+		"ecaf16d70fa5862cbba8f2288b9fd593",
+		"8388104cbff98d2dba07fd23c19c83b5",
+		"aee49319c0d48a7a953f247b52c948be"
+	],
+	"changed": [],
+	"base_manifest": null,
+	"face_px": 512,
+	"tile_px": 256,
+	"jpeg_quality": 85,
+	"out_dir": "out"
 }
