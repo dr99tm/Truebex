@@ -1,4 +1,4 @@
-"""The worker protocol (contract render-jobs v1.0, 5.7-5.10).
+"""The worker protocol (contract render-jobs v1.1, 5.7-5.10).
 
 Auth: a worker token (`tbx_wrk_…`), scoped to kinds; a revoked one answers
 401 `worker_revoked`. 5.7 is an `async` long-poll (`wait_s` ≤ 20, inside
@@ -24,7 +24,9 @@ from ..render import queue, service
 from ..render.models import Worker
 from ..render.workers import get_worker
 
-router = APIRouter(prefix="/workers", tags=["workers"], dependencies=[contract("render-jobs", 1, 0)])
+router = APIRouter(prefix="/workers", tags=["workers"], dependencies=[contract("render-jobs", 1, 1)])
+# 5.7 answers with its own Response, which the dependency's echo does not reach.
+ECHO = {"X-Truebex-Contract": "render-jobs/1.1"}
 COMPLETE_MAX_BYTES = 8 * 1024 * 1024
 
 
@@ -121,10 +123,10 @@ async def claim(body: ClaimIn, worker: Worker = Depends(get_worker), db: Session
             # Registered before this try: a job queued after it wakes the wait.
             payload = await run_in_threadpool(_claim_once, worker_id, kinds, body.doc_version_max)
             if payload is not None:
-                return JSONResponse(payload, headers={"X-Truebex-Contract": "render-jobs/1.0"})
+                return JSONResponse(payload, headers=ECHO)
             remaining = deadline - loop.time()
             if remaining <= 0:
-                return Response(status_code=204, headers={"X-Truebex-Contract": "render-jobs/1.0"})
+                return Response(status_code=204, headers=ECHO)
             await waiter.wait(min(waiters.RECHECK_S, remaining))
     finally:
         waiter.close()

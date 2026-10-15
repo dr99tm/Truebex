@@ -391,7 +391,7 @@ export const OPERATIONS = {
     "body": null,
     "bodyProps": [],
     "scope": "jobs:write",
-    "contract": "render-jobs/1.0"
+    "contract": "render-jobs/1.1"
   },
   "jobs_create": {
     "group": "jobs",
@@ -417,7 +417,7 @@ export const OPERATIONS = {
       "views"
     ],
     "scope": "jobs:write",
-    "contract": "render-jobs/1.0"
+    "contract": "render-jobs/1.1"
   },
   "jobs_get": {
     "group": "jobs",
@@ -435,7 +435,7 @@ export const OPERATIONS = {
     "body": null,
     "bodyProps": [],
     "scope": "projects:read",
-    "contract": "render-jobs/1.0"
+    "contract": "render-jobs/1.1"
   },
   "jobs_list": {
     "group": "jobs",
@@ -454,7 +454,7 @@ export const OPERATIONS = {
     "body": null,
     "bodyProps": [],
     "scope": "projects:read",
-    "contract": "render-jobs/1.0"
+    "contract": "render-jobs/1.1"
   },
   "jobs_output": {
     "group": "jobs",
@@ -469,7 +469,7 @@ export const OPERATIONS = {
     "body": null,
     "bodyProps": [],
     "scope": "projects:read",
-    "contract": "render-jobs/1.0"
+    "contract": "render-jobs/1.1"
   },
   "jobs_usage": {
     "group": "jobs",
@@ -482,7 +482,7 @@ export const OPERATIONS = {
     "body": null,
     "bodyProps": [],
     "scope": "projects:read",
-    "contract": "render-jobs/1.0"
+    "contract": "render-jobs/1.1"
   },
   "uploads_create": {
     "group": "uploads",

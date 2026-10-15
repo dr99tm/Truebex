@@ -843,9 +843,9 @@ organisation's invoices; admins and members see the plan read-only.
 
 ## Cloud rendering
 
-The render queue follows the contract `render-jobs` v1.0.0 (Unreal project,
+The render queue follows the contract `render-jobs` v1.1.0 (Unreal project,
 `Docs/roadmap/40/contracts/render-jobs.md`; the app side is authoritative).
-Every route echoes `X-Truebex-Contract: render-jobs/1.0`; errors use the shared
+Every route echoes `X-Truebex-Contract: render-jobs/1.1`; errors use the shared
 envelope. The code is `server/app/render/`, the routes `server/app/routers/jobs.py`
 (5.1–5.6), `workers.py` (5.7–5.10), `tiles.py` and `admin_render.py`.
 

@@ -41,7 +41,7 @@ from app.projects.models import Project, ProjectMember  # noqa: E402
 from app.render import quotas as render_quotas  # noqa: E402
 from app.render.models import RenderJob  # noqa: E402
 
-VIEW = "0199c6a2e00070058000000000000001"  # the render-jobs fixtures' "Living room"
+VIEW = "aee49319c0d48a7a953f247b52c948be"  # the app's render-jobs fixtures' "living" (PR3)
 JOB_CU = Decimal("0.2")
 
 
