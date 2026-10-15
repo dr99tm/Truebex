@@ -14,8 +14,8 @@ const phone = 'e0000000000000000000000000000003';
 const wall = '0199c6a2e00070018000000000000001';
 const sofa = '0199c6a2e00070018000000000000099';
 
-Map<String, Object?> op(String ref, {int base = 0}) =>
-    buildActionOp(author: alexAuthor, replicaId: phone, baseSeq: base, session: phone, name: 'Move', call: moveBy([ref], [0, 50, 0])).toJson();
+Map<String, Object?> op(String id, {int base = 0}) =>
+    buildActionOp(author: alexAuthor, replicaId: phone, baseSeq: base, session: phone, name: 'Move', call: moveBy([ref('wall', id)], [0, 50, 0])).toJson();
 
 void main() {
   for (final store in ['memory', 'replica']) {

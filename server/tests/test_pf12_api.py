@@ -75,7 +75,7 @@ def test_v1_projects_mirror_shapes(client):
     # 5.1 create: the contract's record, the contract header echoed.
     res = client.post("/v1/projects", json={"name": "API House", "doc_version": 38}, headers=auth)
     assert res.status_code == 201, res.text
-    assert res.headers["X-Truebex-Contract"] == "project-log/1.0" and "X-RateLimit-Remaining" in res.headers
+    assert res.headers["X-Truebex-Contract"] == "project-log/1.1" and "X-RateLimit-Remaining" in res.headers
     rec = res.json()
     contract_rec = create_project(client, owner.dev, "App House")
     assert set(rec) == set(contract_rec)

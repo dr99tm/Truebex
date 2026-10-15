@@ -16,7 +16,7 @@ class SnapshotsApi {
 
   final ApiClient apiClient;
 
-  /// The newest snapshot (5.9) with signed URLs; `files.digest` is the project digest.
+  /// The newest snapshot (5.9) with signed URLs, or the one `id` names (a restore's); `files.digest` is the project digest.
   ///
   /// Note: This method returns the HTTP [Response].
   ///
@@ -24,9 +24,11 @@ class SnapshotsApi {
   ///
   /// * [String] projectId (required):
   ///
+  /// * [String] id:
+  ///
   /// * [String] xTruebexContract:
   ///   The contract and version the client speaks; a MAJOR the server does not serve is 400 `contract_version`.
-  Future<Response> snapshotsLatestWithHttpInfo(String projectId, { String? xTruebexContract, Future<void>? abortTrigger, }) async {
+  Future<Response> snapshotsLatestWithHttpInfo(String projectId, { String? id, String? xTruebexContract, Future<void>? abortTrigger, }) async {
     // ignore: prefer_const_declarations
     final path = r'/projects/{project_id}/snapshots/latest'
       .replaceAll('{project_id}', projectId);
@@ -37,6 +39,10 @@ class SnapshotsApi {
     final queryParams = <QueryParam>[];
     final headerParams = <String, String>{};
     final formParams = <String, String>{};
+
+    if (id != null) {
+      queryParams.addAll(_queryParams('', 'id', id));
+    }
 
     if (xTruebexContract != null) {
       headerParams[r'X-Truebex-Contract'] = parameterToString(xTruebexContract);
@@ -57,16 +63,18 @@ class SnapshotsApi {
     );
   }
 
-  /// The newest snapshot (5.9) with signed URLs; `files.digest` is the project digest.
+  /// The newest snapshot (5.9) with signed URLs, or the one `id` names (a restore's); `files.digest` is the project digest.
   ///
   /// Parameters:
   ///
   /// * [String] projectId (required):
   ///
+  /// * [String] id:
+  ///
   /// * [String] xTruebexContract:
   ///   The contract and version the client speaks; a MAJOR the server does not serve is 400 `contract_version`.
-  Future<Snapshot?> snapshotsLatest(String projectId, { String? xTruebexContract, Future<void>? abortTrigger, }) async {
-    final response = await snapshotsLatestWithHttpInfo(projectId, xTruebexContract: xTruebexContract, abortTrigger: abortTrigger,);
+  Future<Snapshot?> snapshotsLatest(String projectId, { String? id, String? xTruebexContract, Future<void>? abortTrigger, }) async {
+    final response = await snapshotsLatestWithHttpInfo(projectId, id: id, xTruebexContract: xTruebexContract, abortTrigger: abortTrigger,);
     if (response.statusCode >= HttpStatus.badRequest) {
       throw ApiException(response.statusCode, await _decodeBodyBytes(response));
     }

@@ -21,7 +21,7 @@ import type { Presence } from "@/lib/projects";
 
 type Wire = components["schemas"];
 
-const LOG = { "X-Truebex-Contract": "project-log/1.0" };
+const LOG = { "X-Truebex-Contract": "project-log/1.1" };
 const MARKET = { "X-Truebex-Contract": "marketplace-api/1.1" };
 const path = (pid: string) => `/projects/${encodeURIComponent(pid)}`;
 

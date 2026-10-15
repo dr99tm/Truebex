@@ -546,6 +546,7 @@ export interface paths {
         /**
          * Latest Snapshot
          * @description The newest snapshot with download URLs valid 15 minutes (5.9); 404 before the first.
+         *     With `id`, that snapshot (a restore operation's `restore.snapshot_id`), or 404.
          */
         get: operations["projects_latest_snapshot"];
         put?: never;
@@ -905,7 +906,10 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
-        /** AgentAction */
+        /**
+         * AgentAction
+         * @description A log-safe tool call (agent-interface §6.4); refs in `args` are `<kind>#<id>` (§6.2), e.g. `wall#<32 hex>`.
+         */
         AgentAction: {
             /** Args */
             args: Record<string, never>;
@@ -914,10 +918,16 @@ export interface components {
              * @constant
              */
             permission: "edit";
-            /** Request Id */
-            request_id: string;
-            /** Session */
-            session: string;
+            /**
+             * Request Id
+             * @description 32 hex; optional in the log
+             */
+            request_id?: string | null;
+            /**
+             * Session
+             * @description 32 hex; the session of a live call, optional in the log
+             */
+            session?: string | null;
             /** Tool */
             tool: string;
         } & {
@@ -1345,7 +1355,7 @@ export interface components {
             accepted_at?: string | null;
             /**
              * Author Id
-             * @description The member's author id, as on their operations (PF9); null until they have one
+             * @description The member's author id, as on their operations (1.1.0): set for every active member, null for an invitation
              */
             author_id?: string | null;
             /** Email */
@@ -4585,7 +4595,10 @@ export interface operations {
     };
     projects_latest_snapshot: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description A snapshot id: that snapshot instead of the newest (1.1.0) */
+                id?: string | null;
+            };
             header?: never;
             path: {
                 project_id: string;

@@ -92,6 +92,7 @@
       },
       "AgentAction": {
         "additionalProperties": true,
+        "description": "A log-safe tool call (agent-interface §6.4); refs in `args` are `<kind>#<id>` (§6.2), e.g. `wall#<32 hex>`.",
         "properties": {
           "args": {
             "title": "Args",
@@ -103,12 +104,28 @@
             "type": "string"
           },
           "request_id": {
-            "title": "Request Id",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "32 hex; optional in the log",
+            "title": "Request Id"
           },
           "session": {
-            "title": "Session",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "32 hex; the session of a live call, optional in the log",
+            "title": "Session"
           },
           "tool": {
             "title": "Tool",
@@ -118,9 +135,7 @@
         "required": [
           "tool",
           "args",
-          "permission",
-          "session",
-          "request_id"
+          "permission"
         ],
         "title": "AgentAction",
         "type": "object"
@@ -1086,7 +1101,7 @@
                 "type": "null"
               }
             ],
-            "description": "The member's author id, as on their operations (PF9); null until they have one",
+            "description": "The member's author id, as on their operations (1.1.0): set for every active member, null for an invitation",
             "title": "Author Id"
           },
           "email": {
@@ -5672,7 +5687,7 @@
         "tags": [
           "projects"
         ],
-        "x-truebex-contract": "project-log/1.0",
+        "x-truebex-contract": "project-log/1.1",
         "x-truebex-scope": "projects:read"
       },
       "post": {
@@ -5780,7 +5795,7 @@
         "tags": [
           "projects"
         ],
-        "x-truebex-contract": "project-log/1.0",
+        "x-truebex-contract": "project-log/1.1",
         "x-truebex-scope": "projects:write"
       }
     },
@@ -5856,7 +5871,7 @@
         "tags": [
           "projects"
         ],
-        "x-truebex-contract": "project-log/1.0"
+        "x-truebex-contract": "project-log/1.1"
       },
       "get": {
         "description": "Open a project: its record, members and the owner's storage quota (5.3).",
@@ -5948,7 +5963,7 @@
         "tags": [
           "projects"
         ],
-        "x-truebex-contract": "project-log/1.0",
+        "x-truebex-contract": "project-log/1.1",
         "x-truebex-scope": "projects:read"
       },
       "patch": {
@@ -6051,7 +6066,7 @@
         "tags": [
           "projects"
         ],
-        "x-truebex-contract": "project-log/1.0",
+        "x-truebex-contract": "project-log/1.1",
         "x-truebex-scope": "projects:write"
       }
     },
@@ -6146,7 +6161,7 @@
         "tags": [
           "projects"
         ],
-        "x-truebex-contract": "project-log/1.0",
+        "x-truebex-contract": "project-log/1.1",
         "x-truebex-scope": "projects:read"
       },
       "post": {
@@ -6273,7 +6288,7 @@
         "tags": [
           "projects"
         ],
-        "x-truebex-contract": "project-log/1.0",
+        "x-truebex-contract": "project-log/1.1",
         "x-truebex-scope": "projects:write"
       }
     },
@@ -6368,7 +6383,7 @@
         "tags": [
           "projects"
         ],
-        "x-truebex-contract": "project-log/1.0",
+        "x-truebex-contract": "project-log/1.1",
         "x-truebex-scope": "projects:write"
       },
       "patch": {
@@ -6480,7 +6495,7 @@
         "tags": [
           "projects"
         ],
-        "x-truebex-contract": "project-log/1.0",
+        "x-truebex-contract": "project-log/1.1",
         "x-truebex-scope": "projects:write"
       }
     },
@@ -6605,7 +6620,7 @@
         "tags": [
           "projects"
         ],
-        "x-truebex-contract": "project-log/1.0",
+        "x-truebex-contract": "project-log/1.1",
         "x-truebex-scope": "projects:read"
       },
       "post": {
@@ -6718,7 +6733,7 @@
         "tags": [
           "projects"
         ],
-        "x-truebex-contract": "project-log/1.0",
+        "x-truebex-contract": "project-log/1.1",
         "x-truebex-scope": "projects:write"
       }
     },
@@ -6813,7 +6828,7 @@
         "tags": [
           "projects"
         ],
-        "x-truebex-contract": "project-log/1.0",
+        "x-truebex-contract": "project-log/1.1",
         "x-truebex-scope": "projects:read"
       }
     },
@@ -6943,7 +6958,7 @@
         "tags": [
           "projects"
         ],
-        "x-truebex-contract": "project-log/1.0",
+        "x-truebex-contract": "project-log/1.1",
         "x-truebex-scope": "projects:read"
       }
     },
@@ -7038,7 +7053,7 @@
         "tags": [
           "projects"
         ],
-        "x-truebex-contract": "project-log/1.0",
+        "x-truebex-contract": "project-log/1.1",
         "x-truebex-scope": "projects:read"
       },
       "put": {
@@ -7141,7 +7156,7 @@
         "tags": [
           "projects"
         ],
-        "x-truebex-contract": "project-log/1.0",
+        "x-truebex-contract": "project-log/1.1",
         "x-truebex-scope": "projects:write"
       }
     },
@@ -7270,13 +7285,13 @@
         "tags": [
           "projects"
         ],
-        "x-truebex-contract": "project-log/1.0",
+        "x-truebex-contract": "project-log/1.1",
         "x-truebex-scope": "projects:write"
       }
     },
     "/v1/projects/{project_id}/snapshots/latest": {
       "get": {
-        "description": "The newest snapshot with download URLs valid 15 minutes (5.9); 404 before the first.",
+        "description": "The newest snapshot with download URLs valid 15 minutes (5.9); 404 before the first.\nWith `id`, that snapshot (a restore operation's `restore.snapshot_id`), or 404.",
         "operationId": "projects_latest_snapshot",
         "parameters": [
           {
@@ -7286,6 +7301,24 @@
             "schema": {
               "title": "Project Id",
               "type": "string"
+            }
+          },
+          {
+            "description": "A snapshot id: that snapshot instead of the newest (1.1.0)",
+            "in": "query",
+            "name": "id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "A snapshot id: that snapshot instead of the newest (1.1.0)",
+              "title": "Id"
             }
           }
         ],
@@ -7365,7 +7398,7 @@
         "tags": [
           "projects"
         ],
-        "x-truebex-contract": "project-log/1.0",
+        "x-truebex-contract": "project-log/1.1",
         "x-truebex-scope": "projects:read"
       }
     },
@@ -7460,7 +7493,7 @@
         "tags": [
           "projects"
         ],
-        "x-truebex-contract": "project-log/1.0",
+        "x-truebex-contract": "project-log/1.1",
         "x-truebex-scope": "projects:read"
       },
       "post": {
@@ -7577,7 +7610,7 @@
         "tags": [
           "projects"
         ],
-        "x-truebex-contract": "project-log/1.0",
+        "x-truebex-contract": "project-log/1.1",
         "x-truebex-scope": "projects:write"
       }
     },
@@ -7695,7 +7728,7 @@
         "tags": [
           "projects"
         ],
-        "x-truebex-contract": "project-log/1.0",
+        "x-truebex-contract": "project-log/1.1",
         "x-truebex-scope": "projects:write"
       }
     },

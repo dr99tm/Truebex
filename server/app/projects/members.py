@@ -6,6 +6,12 @@ to whoever accepts it signed in with the token: password accounts have no
 e-mail verification (server/app/routers/auth.py), so a matching address alone
 never grants access. Until then the owner names it by `invite_id` (a
 member's `user_id` in the path of 5.15 and 5.16 may be either).
+
+Every active member carries the account's `author_id` (5.13, project-log
+1.1.0), minted on the read when the person never used a device or the
+website's project pages; an invitation without an account has `author_id`
+null (the contract's "no author_id": the key stays, so a generated client's
+nullable field reads it).
 """
 
 import hashlib
@@ -13,12 +19,15 @@ import logging
 import re
 import secrets
 
-from sqlalchemy import select
+from collections.abc import Iterable
+
+from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
 from ..config import get_settings
 from ..contract_http import ContractError
 from ..licence import clock
+from ..licence.ids import uuid7_hex
 from ..mail import send_mail
 from ..models import User
 from . import quotas
@@ -36,10 +45,26 @@ def token_hash(token: str) -> str:
     return hashlib.sha256(token.encode()).hexdigest()
 
 
+def ensure_author_ids(db: Session, users: Iterable[User]) -> None:
+    """Mint the missing author ids of these accounts, once (as licence 5.7's
+    `ensure_author_id`). The UPDATE only fills an empty one, so two reads
+    that race keep the first id."""
+    missing = [u for u in users if not u.author_id]
+    if not missing:
+        return
+    for user in missing:
+        db.execute(update(User).where(User.id == user.id, User.author_id.is_(None)).values(author_id=uuid7_hex()))
+    db.commit()
+    for user in missing:
+        db.refresh(user)
+
+
 def member_json(db: Session, m: ProjectMember, users: dict[int, User] | None = None) -> dict:
     user = None
     if m.user_id is not None:
         user = (users or {}).get(m.user_id) or db.get(User, m.user_id)
+        if user is not None:
+            ensure_author_ids(db, [user])
     return {
         "user_id": m.user_id,
         "invite_id": m.invite_id if m.state == "invited" else None,
@@ -49,8 +74,8 @@ def member_json(db: Session, m: ProjectMember, users: dict[int, User] | None = N
         "state": m.state,
         "invited_at": clock.rfc3339(m.invited_at),
         "accepted_at": clock.rfc3339(m.accepted_at),
-        # PF9 (a MINOR proposal for 5.13): who wrote an operation, so a light
-        # client names the winner of a conflict; null for an invitation.
+        # Who wrote an operation, so a client names its author (PF9's proposal,
+        # project-log 1.1.0): always set for an active member, null for an invitation.
         "author_id": user.author_id if user else None,
     }
 
@@ -65,6 +90,7 @@ def list_json(db: Session, project_id: str) -> list[dict]:
     found = rows(db, project_id)
     ids = {m.user_id for m in found if m.user_id is not None}
     users = {u.id: u for u in db.scalars(select(User).where(User.id.in_(ids)))} if ids else {}
+    ensure_author_ids(db, users.values())
     return [member_json(db, m, users) for m in found]
 
 

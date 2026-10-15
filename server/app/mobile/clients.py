@@ -24,7 +24,7 @@ from ..projects.ops import PushIn
 from ..projects.presence import PresenceIn
 from ..schemas import GoogleLogin, Token, UserLogin, UserOut
 
-LOG = "project-log/1.0"
+LOG = "project-log/1.1"
 MARKET = "marketplace-api/1.1"
 
 
@@ -84,7 +84,8 @@ class ProjectList(_Open):
 
 
 class Member(_Open):
-    """5.13; `author_id` names who wrote an operation (PF9's MINOR proposal)."""
+    """5.13; `author_id` names who wrote an operation (project-log 1.1.0): set for
+    every active member, null for an invitation."""
 
     user_id: int | None
     invite_id: str | None
@@ -155,13 +156,15 @@ class Snapshot(_Open):
 
 
 class OperationAction(_Open):
-    """`FTruebexAgentAction` (agent-interface §6.4): a log-safe tool and its arguments."""
+    """`FTruebexAgentAction` (agent-interface §6.4): a log-safe tool and its arguments.
+    `session` and `request_id` come with a live call; the desktop's own log actions
+    may carry neither (PF4a). Refs in `args` are `<kind>#<id>` (§6.2)."""
 
     tool: str
     args: dict[str, Any]
     permission: str
-    session: str
-    request_id: str
+    session: str | None = None
+    request_id: str | None = None
 
 
 class Operation(_Open):
@@ -396,7 +399,7 @@ TEXT = {
     "auth_me": "The signed-in person, with the author_id every operation they write carries.",
     "projects_list": "Projects I own or that are shared with me (5.2), newest activity first.",
     "projects_open": "Open a project (5.3): the record, its head, members and quota.",
-    "snapshots_latest": "The newest snapshot (5.9) with signed URLs; `files.digest` is the project digest.",
+    "snapshots_latest": "The newest snapshot (5.9) with signed URLs, or the one `id` names (a restore's); `files.digest` is the project digest.",
     "ops_pull": "Operations after a sequence number (5.7); long-polls up to wait_s (≤ 25).",
     "ops_push": "Push operations (5.6), at most 200; each answers accepted, duplicate, rejected or not_processed (§6.3).",
     "presence_put": "Heartbeat (5.17) with the client kind and view; `leaving` removes it.",

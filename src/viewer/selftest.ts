@@ -1,15 +1,15 @@
 // The mobile web client's JavaScript self-tests (PF9), bundled by
 // scripts/build-app.mjs into out/viewer/selftest.mjs and run by the verify
 // gate (`node out/viewer/selftest.mjs`, test_site_pf9_js_selftests): the
-// action builder against the contract fixture (project-log §9
-// action-move.json), the tile diff against the render-jobs fixtures, the
+// action builder against the app's contract fixture (project-log 1.1.0 §9
+// action-move.json, refs `<kind>#<id>`), the tile diff against the render-jobs fixtures, the
 // cache policy, the outbox's §6.3 handling, who a rejection names (PF9a) and
 // the orientation maths. Exits non-zero on the first failed check.
 
 import fixture from "../../server/tests/contracts/project-log/action-move.json";
 import panorama from "../../server/tests/contracts/render-jobs/manifest-panorama.json";
 import partial from "../../server/tests/contracts/render-jobs/manifest-tiles.json";
-import { applyTheme, buildActionOp, fillFace, moveBy, nudgeVector, slideAlong, swapProduct, touchedOf } from "./actions";
+import { applyTheme, buildActionOp, DIGEST_KINDS, fillFace, moveBy, nudgeVector, ref, refId, slideAlong, swapProduct, touchedOf } from "./actions";
 import { isTileUrl, pageKey, planEviction, requestRule, TILE_BUDGET_BYTES } from "./cachepolicy";
 import { conflictLine, flush, MemoryOutbox, PushError, type ConflictText, type OutboxEntry, type PushAnswer, type Winner } from "./outbox";
 import { angleDelta, bearingTo, lookFromOrientation } from "./orientation";
@@ -37,46 +37,69 @@ const throws = (fn: () => unknown) => {
 // --- the action builder against action-move.json ----------------------------------------------
 
 function builder(): void {
-  const op = fixture.op;
+  // The app's own action-move.json (CL1, project-log 1.1.0): a bare §6.2 operation whose
+  // refs are `<kind>#<id>` and whose touched is the bare id. A move of the picked wall
+  // writes its tool, args, permission and touched exactly; author, op_id, replica_id and
+  // at are per client (the fixture's are passed in), session and request_id our own.
+  const op = fixture;
+  const wall = op.touched[0];
+  const session = "5e55000000000000000000000000000a";
   const built = buildActionOp({
     author: op.author,
-    replicaId: fixture.replica_id,
+    replicaId: op.replica_id,
     baseSeq: op.base_seq,
-    session: op.action.session,
-    requestId: op.action.request_id,
+    session,
     opId: op.op_id,
     at: op.at,
     name: op.name,
-    call: moveBy(op.action.args.refs, op.action.args.by_mm as [number, number, number]),
+    call: moveBy([ref(DIGEST_KINDS.wall, wall)], [0, 600, 0]),
   });
+  check("builder.refs", same(built.action.args, { refs: [`wall#${wall}`], by_mm: [0, 600, 0] }), JSON.stringify(built.action.args));
+  check("builder.touched", same(built.touched, [wall]) && same(built.touched, op.touched), JSON.stringify(built.touched));
+  check("builder.tool", built.action.tool === op.action.tool);
+  check("builder.args bytes", JSON.stringify(built.action.args) === JSON.stringify(op.action.args), JSON.stringify(op.action.args));
+  check("builder.permission", built.action.permission === op.action.permission);
   const wire = built as unknown as Record<string, unknown>;
   const want = op as unknown as Record<string, unknown>;
-  for (const key of Object.keys(wire)) check(`builder.${key}`, same(wire[key], want[key]), `${JSON.stringify(wire[key])} != ${JSON.stringify(want[key])}`);
-  for (const key of Object.keys(want).filter((k) => !(k in wire))) {
-    check(`builder omits ${key}`, want[key] === null || want[key] === 0, `the fixture has ${JSON.stringify(want[key])}`);
+  for (const key of Object.keys(wire).filter((k) => k !== "action")) {
+    check(`builder.${key}`, same(wire[key], want[key]), `${JSON.stringify(wire[key])} != ${JSON.stringify(want[key])}`);
   }
-  check("builder.action bytes", JSON.stringify(built.action) === JSON.stringify(op.action));
+  for (const key of Object.keys(want).filter((k) => !(k in wire))) {
+    check(`builder omits ${key}`, key === "server_seq" && want[key] === 0, `the fixture has ${JSON.stringify(want[key])}`);
+  }
+  // agent-interface §6.4 adds session and request_id to a live call; the app's log action carries neither.
+  const { session: s1, request_id: r1, ...core } = built.action;
+  check("builder.action core", same(core, op.action), JSON.stringify(core));
+  check("builder session", s1 === session && /^[0-9a-f]{32}$/.test(r1) && !("session" in op.action));
 
-  // touched: every ref in the arguments, sorted and unique, lowercase.
+  // A pick with no kind is refused, never sent as a bare id; an unknown kind too.
+  const base = { author: op.author, replicaId: op.replica_id, baseSeq: 3, session, name: "Edit" };
+  check("bare id refused", throws(() => buildActionOp({ ...base, call: moveBy([wall], [0, 600, 0]) })));
+  check("unknown kind refused", throws(() => buildActionOp({ ...base, call: moveBy([`sofa#${wall}`], [0, 600, 0]) })));
+  check("bare target refused", throws(() => buildActionOp({ ...base, call: fillFace(wall, "left", { kind: "paint", colour: "#C8B79E" }) })));
+  check("ref parse", refId(`WALL#${wall.toUpperCase()}`) === wall && refId(wall) === null && refId("wall#nope") === null);
+  check("digest kinds", ref(DIGEST_KINDS.product, wall) === `object#${wall}` && ref(DIGEST_KINDS.opening, wall) === `opening#${wall}`);
+
+  // touched: the ids of every ref in the arguments, sorted and unique, lowercase.
   const [a, b] = ["0199c6a2e00070028000000000000001", "0199c6a2e00070068000000000000002"];
+  const [room, sofa] = [ref(DIGEST_KINDS.room, a), ref(DIGEST_KINDS.product, b)];
   const product = { supplier_id: "f8afe1ba2b0bf97f23ef888f040cf46a", sku: "TABLE-FJORD-CT", variant_id: "default" };
-  check("touched swap", same(touchedOf(swapProduct(b, product, a).args), [a, b]));
-  check("touched dedupe", same(touchedOf({ refs: [b, a.toUpperCase(), b] }), [a, b]));
-  check("touched ignores names", same(touchedOf({ theme: "nordic-calm", target: a }), [a]));
-  const base = { author: op.author, replicaId: fixture.replica_id, baseSeq: 3, session: op.action.session, name: "Edit" };
-  const swap = buildActionOp({ ...base, name: "Swap coffee table", call: swapProduct(b, product, a) });
-  check("swap tool", swap.action.tool === "place" && same(swap.action.args, { kind: "product", product, replace: b, room: a }));
+  check("touched swap", same(touchedOf(swapProduct(sofa, product, room).args), [a, b]));
+  check("touched dedupe", same(touchedOf({ refs: [sofa, room.toUpperCase(), sofa] }), [a, b]));
+  check("touched ignores names and bare ids", same(touchedOf({ theme: "nordic-calm", target: room, refs: [b] }), [a]));
+  const swap = buildActionOp({ ...base, name: "Swap coffee table", call: swapProduct(sofa, product, room) });
+  check("swap tool", swap.action.tool === "place" && same(swap.action.args, { kind: "product", product, replace: sofa, room }));
   check("swap touched", same(swap.touched, [a, b]) && swap.base_seq === 3 && swap.kind === "action");
-  const fill = buildActionOp({ ...base, call: fillFace(a, "floor", { kind: "paint", colour: "#C8B79E" }) });
-  check("fill args", same(fill.action.args, { target: a, face: "floor", finish: { kind: "paint", colour: "#C8B79E" } }));
-  check("theme args", same(applyTheme(a, "nordic-calm").args, { theme: "nordic-calm", target: a, keep_products: true }));
+  const fill = buildActionOp({ ...base, call: fillFace(room, "floor", { kind: "paint", colour: "#C8B79E" }) });
+  check("fill args", same(fill.action.args, { target: room, face: "floor", finish: { kind: "paint", colour: "#C8B79E" } }));
+  check("theme args", same(applyTheme(room, "nordic-calm").args, { theme: "nordic-calm", target: room, keep_products: true }));
   check("ids minted", /^[0-9a-f]{32}$/.test(fill.op_id) && fill.op_id !== swap.op_id && /^[0-9a-f]{32}$/.test(fill.action.request_id));
   check("at is RFC 3339 ms", /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{3}Z$/.test(fill.at));
-  check("name capped at 80", buildActionOp({ ...base, name: "x".repeat(200), call: slideAlong(a, 50) }).name.length === 80);
-  check("move needs exactly one", throws(() => buildActionOp({ ...base, call: { tool: "move", args: { refs: [a], by_mm: [1, 0, 0], along_mm: 5 } } })));
-  check("bad colour refused", throws(() => buildActionOp({ ...base, call: fillFace(a, "floor", { kind: "paint", colour: "beige" }) })));
-  check("bad author refused", throws(() => buildActionOp({ ...base, author: "me", call: moveBy([a], [0, 0, 0]) })));
-  check("negative base refused", throws(() => buildActionOp({ ...base, baseSeq: -1, call: moveBy([a], [0, 0, 0]) })));
+  check("name capped at 80", buildActionOp({ ...base, name: "x".repeat(200), call: slideAlong(ref(DIGEST_KINDS.opening, a), 50) }).name.length === 80);
+  check("move needs exactly one", throws(() => buildActionOp({ ...base, call: { tool: "move", args: { refs: [room], by_mm: [1, 0, 0], along_mm: 5 } } })));
+  check("bad colour refused", throws(() => buildActionOp({ ...base, call: fillFace(room, "floor", { kind: "paint", colour: "beige" }) })));
+  check("bad author refused", throws(() => buildActionOp({ ...base, author: "me", call: moveBy([room], [0, 0, 0]) })));
+  check("negative base refused", throws(() => buildActionOp({ ...base, baseSeq: -1, call: moveBy([room], [0, 0, 0]) })));
   check("place object refused", throws(() => buildActionOp({ ...base, call: { tool: "place", args: { kind: "object" } } as never })));
 
   // Nudges relative to where the person looks (0 = north, 90 = east).
@@ -139,13 +162,13 @@ function cachePolicy(): void {
 // --- the outbox (§6.3 for a light client) ---------------------------------------------------------
 
 async function outbox(): Promise<void> {
-  const op = fixture.op;
+  const op = fixture;
   const store = new MemoryOutbox();
   const pid = "0199c6a2f1007a3c8b5e2d4f6a7b8c9d";
-  const make = (n: number, ref: string): OutboxEntry => {
+  const make = (n: number, id: string): OutboxEntry => {
     const built = buildActionOp({
-      author: op.author, replicaId: fixture.replica_id, baseSeq: 12, session: op.action.session, name: `Edit ${n}`,
-      call: moveBy([ref], [0, 50, 0]),
+      author: op.author, replicaId: op.replica_id, baseSeq: 12, session: "5e55000000000000000000000000000a", name: `Edit ${n}`,
+      call: moveBy([ref(DIGEST_KINDS.product, id)], [0, 50, 0]),
     });
     return { op_id: built.op_id, pid, op: built, state: "pending", label: `Edit ${n}`, created: n };
   };

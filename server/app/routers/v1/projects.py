@@ -28,7 +28,7 @@ from .. import projects as c
 from . import models as m
 from .common import AnyKey, carry, doc, project_caller, scope
 
-router = APIRouter(prefix="/projects", tags=["projects"], dependencies=[contract("project-log", 1, 0)])
+router = APIRouter(prefix="/projects", tags=["projects"], dependencies=[contract("project-log", 1, 1)])
 
 Read = scope("projects:read")
 Write = scope("projects:write")
@@ -156,9 +156,15 @@ def register_snapshot(
 
 
 @router.get("/{project_id}/snapshots/latest", operation_id="projects_latest_snapshot", **doc("projects:read", m.Snapshot))
-def latest_snapshot(project_id: str, api: ApiCaller = Read, db: Session = Depends(get_db)) -> dict:
-    """The newest snapshot with download URLs valid 15 minutes (5.9); 404 before the first."""
-    return c.latest_snapshot(project_id=project_id, caller=project_caller(api), db=db)
+def latest_snapshot(
+    project_id: str,
+    snapshot_id: str | None = Query(default=None, alias="id", description="A snapshot id: that snapshot instead of the newest (1.1.0)"),
+    api: ApiCaller = Read,
+    db: Session = Depends(get_db),
+) -> dict:
+    """The newest snapshot with download URLs valid 15 minutes (5.9); 404 before the first.
+    With `id`, that snapshot (a restore operation's `restore.snapshot_id`), or 404."""
+    return c.latest_snapshot(project_id=project_id, snapshot_id=snapshot_id, caller=project_caller(api), db=db)
 
 
 # --- 5.10-5.12 versions ----------------------------------------------------------------------------

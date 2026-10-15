@@ -14,7 +14,7 @@ from app.models import User
 from .conftest import signup
 from .licence_helpers import activated, fp
 
-CONTRACT = {"X-Truebex-Contract": "project-log/1.0"}
+CONTRACT = {"X-Truebex-Contract": "project-log/1.1"}
 UPLOADS = {"X-Truebex-Contract": "share-bundle/1.0"}
 FIXTURES = Path(__file__).parent / "contracts" / "project-log"
 
