@@ -1503,3 +1503,29 @@ $env:DATABASE_URL="sqlite:///./pf3e-test.db"; $env:EU_WITHDRAWAL_ENABLED="true"
 
 The organisation's Team opens on a new customer (`cus_sim_1`, with DE123456789) and the buyer's own Pro on another
 (`cus_sim_2`). The Pro payment is not business, and the EU withdrawal is offered.
+
+## Cloud rendering on render-jobs 1.1 (PF6a)
+
+The render queue speaks render-jobs 1.1.0, the version the app's headless render service mode (CL3,
+`Truebex.exe -mwrender=<job.json>`) is built against; every render-jobs route answers
+`X-Truebex-Contract: render-jobs/1.1` and still serves a 1.0 client. The worker wrapper (`worker/truebex_worker.py`)
+writes the job file 1.1.0 describes: `project.snapshot_seq` (the sequence the downloaded snapshot stands at; the
+operations file starts after it), `project.project_id`, a pack's `params.items`, absolute paths, and no `levels` (the
+app halves `face_px` down to `tile_px`). When the app exits without `out_dir/error.json`, the exit code says what
+failed: 2 `bad_input` and 3 `doc_too_new` (not retried), 4 `render_crash`, 5 `out_of_memory`, 6 `timeout`, 7
+`engine_error`, anything else `render_crash`; `error.json`'s code wins when the app wrote one. Doc:
+`docs/roadmap/40/PF6a-render-jobs-1-1-0.md`.
+
+`server/tests/contracts/render-jobs/` is now the app's own set: CL3's renders of PR3's three rooms (bedroom, entry,
+living; 18 faces, then 13 re-rendered after one wall moved), re-copied with
+`scripts\sync-contract-fixtures.ps1 -Contract render-jobs`. PF6's `claim.json` and ops files and PF11's wind result
+moved to `server/tests/fixtures/render/` (`server\scripts\make_render_job_fixtures.py [--check]`).
+`worker/tests/fake_truebex.py` answers jobs from the app's set; `FAKE_TRUEBEX_EXIT=<n>` makes it exit `n` without
+`error.json`, to see the wrapper's failure for each code:
+
+```powershell
+$env:FAKE_TRUEBEX_EXIT='3'; py -3.12 worker\truebex_worker.py --config worker\worker.toml --once; Remove-Item Env:FAKE_TRUEBEX_EXIT
+```
+
+It prints `failed <job>: doc_too_new: exit 3 without out_dir/error.json (doc_too_new)` and the job ends failed.
+`demo_render.py submit` now submits the app's three saved views unless `--view` (repeatable) names others.
