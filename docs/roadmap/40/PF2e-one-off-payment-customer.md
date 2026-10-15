@@ -176,7 +176,7 @@ For contrast, on `master` (cc905d3) step 2 prints "the payment records customer 
 * **Date, branch, commits:** 2026-10-15, `ap/t82-pf2e-a-persons-one-off-payments` from `master` cc905d3.
   * `5187db4`: the 8 tests, failing on the unchanged code.
   * `7720481`: the column and the recording (Scope 1).
-  * `e4b830d`: `customer_id`'s fallback, `personal_scope`, the PDF link, `org_customer` (Scopes 2 and 3).
+  * `e4b830d`: `customer_id`'s fallback, `personal_scope`, the PDF link, `org_customer` (Scopes 2 and 3); it also corrects one assertion of `test_customer_id_ignores_listing_and_organisation_payments`, which had expected no exclusions in a scope that holds the person's organisation checkouts.
   * `dd58d27`: `seed_one_off_customers.py`.
   * The next commit: this doc, the tracker row, the README section and a docstring line in `stripe_provider.py`.
 * **Counts:** pytest collected 824 → 832 (`test_pf2e_one_off_customer.py`: 7 test functions, one parametrized in two; test functions 755 → 762). One column, no endpoint, page, public copy or route.
