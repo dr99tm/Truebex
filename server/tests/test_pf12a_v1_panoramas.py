@@ -25,7 +25,7 @@ from .conftest import LongPoll
 from .licence_helpers import error_of
 from .pf12_helpers import PL, ROOT, kh, make_key, make_legacy
 from .project_helpers import CONTRACT, Person, create, hex32, invite_and_accept
-from .render_helpers import WALL, admin, claimed, finish, issue_worker, project, push_touch, rj, submitted
+from .render_helpers import MOVED, admin, claimed, finish, issue_worker, project, push_touch, rj, submitted
 from .test_mobile import _followed_set
 from .test_pf12_api import _usage
 from .test_pf12_openapi_sdks import live_api  # noqa: F401  (the fixture)
@@ -134,18 +134,18 @@ def test_v1_panorama_set_long_poll(client, wakeups):
     key = make_key(client, owner.session, ["projects:read"])
     url = f"/v1/projects/{pid}/panoramas/{set_id}"
     first = client.get(url, headers=kh(key, **PL)).json()
-    assert first["rev"] == 1 and first["manifest"]["faces_rendered"] == 6
+    assert first["rev"] == 1 and first["manifest"]["faces_rendered"] == 18
     waiting_on, wait_s = queue.job_key(set_id), queue.STATUS_WAIT_MAX_S
 
     # An edit while the key waits: the worker's tiles job moves the set's rev and wakes the read.
     reader = LongPoll(lambda: client.get(url, params={"rev": 1, "wait_s": wait_s}, headers=kh(key, **PL)))
     wakeups.until_waiting(waiting_on)
-    push_touch(client, owner, pid, [WALL])
+    push_touch(client, owner, pid, MOVED)
     finish(client, token, claimed(client, token), "manifest-tiles.json", wall_s=20)
     moved = reader.answer()
     assert moved.status_code == 200, moved.text
     assert moved.headers["cache-control"] == "private, no-store"
-    assert moved.json()["rev"] == 2 and moved.json()["manifest"]["faces_rendered"] == 2
+    assert moved.json()["rev"] == 2 and moved.json()["manifest"]["faces_rendered"] == 13
     wakeups.assert_woken(waiting_on, "the tiles job")
     assert reader.took < wait_s / 2
     assert moved.json() == client.get(f"/projects/{pid}/panoramas/{set_id}", headers=owner.web).json()

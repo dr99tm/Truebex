@@ -1,4 +1,5 @@
-"""Cloud render orchestration (PF6, contract render-jobs v1.0): the contract's
+"""Cloud render orchestration (PF6, contract render-jobs v1.0; since PF6a 1.1.0
+and the app's own fixtures, CL3's render of PR3's three rooms): the contract's
 §10 platform tests first, then PF6's per-endpoint tests (happy path, auth
 failure, validation failure on each)."""
 
@@ -23,10 +24,12 @@ from .conftest import LongPoll, signup
 from .licence_helpers import Clock, error_of
 from .project_helpers import UPLOADS, Person, hex32
 from .render_helpers import (
+    APP_PROJECT,
     FIX,
+    MOVED,
+    RENDER_FIXTURES,
     RJ,
-    VIEW,
-    WALL,
+    VIEWS,
     admin,
     claim,
     claimed,
@@ -61,9 +64,9 @@ def _clean_state():
 
 @pytest.fixture()
 def setup(client):
-    """A Pro-trial designer with a project of two operations, an admin and a worker."""
+    """A Pro-trial designer with the app's project (two operations), an admin and a worker."""
     a = Person(client, "a@example.com")
-    pid, head = project(client, a)
+    pid, head = project(client, a, project_id=APP_PROJECT)
     adm = admin(client)
     token = issue_worker(client, adm)
     return {"a": a, "pid": pid, "head": head, "admin": adm, "token": token}
@@ -79,12 +82,12 @@ def run(name: str, now) -> None:
 def test_submit_estimate_and_idempotency(client, setup):
     a, pid, head = setup["a"], setup["pid"], setup["head"]
     key = hex32()
-    body = {"kind": "panorama", "project_id": pid, "at_seq": head, "views": [VIEW], "follow": False}
+    body = {"kind": "panorama", "project_id": pid, "at_seq": head, "views": VIEWS, "follow": False}
     first = client.post("/jobs", json=body, headers={**rj(a), "Idempotency-Key": key})
     assert first.status_code == 201, first.text
     rec = first.json()
     assert rec["state"] == "queued" and rec["rev"] == 1 and rec["attempts"] == 0
-    assert rec["cost_units_estimate"] == 1.5  # 90 s seed per view on gpu-std
+    assert rec["cost_units_estimate"] == 4.5  # 90 s seed per view on gpu-std, three views
     assert rec["cost_units"] is None and rec["output_ready"] is False and rec["error"] is None
     for k in ("job_id", "kind", "project_id", "at_seq", "progress", "message", "created_at", "started_at", "finished_at"):
         assert k in rec
@@ -121,8 +124,8 @@ def test_claim_lease_heartbeat_complete(client, setup):
     again = complete(client, token, c, fixture_manifest("manifest-panorama.json", c))
     assert again.status_code == 200 and again.json()["rev"] == done["rev"]
     assert client.get("/jobs/usage", headers=rj(a)).json()["used_cu"] == 1.5
-    # The claim answer has the fixture's shape (claim.json).
-    assert set(json.loads((FIX / "claim.json").read_text("utf-8"))) <= set(c)
+    # The claim answer has the shape of PF6's stand-in (claim.json; the app publishes no 5.7 answer).
+    assert set(json.loads((RENDER_FIXTURES / "claim.json").read_text("utf-8"))) <= set(c)
 
 
 def test_lease_expiry_requeues_three_times(client, setup, monkeypatch):
@@ -189,7 +192,7 @@ def test_follow_set_enqueues_tiles_on_push(client, setup):
     follow = submitted(client, rj(a), project_id=pid, at_seq=setup["head"], follow=True)
     assert follow["follow"] is True
     # Pushes while the panorama renders: one tiles job waits for it.
-    head = push_touch(client, a, pid, [WALL])
+    head = push_touch(client, a, pid, MOVED)
     c = claimed(client, token)
     assert c["job"]["job_id"] == follow["job_id"]  # the waiting tiles job is not claimable yet
     finish(client, token, c)
@@ -197,24 +200,24 @@ def test_follow_set_enqueues_tiles_on_push(client, setup):
     assert len(tiles_jobs) == 1
     t = tiles_jobs[0]
     assert t["state"] == "queued" and t["at_seq"] == head and t["base_job_id"] == follow["job_id"]
-    assert t["changed_count"] == 1 and t["views"] == [VIEW]
+    assert t["changed_count"] == len(MOVED) and t["views"] == VIEWS
     with SessionLocal() as db:
-        assert db.get(RenderJob, t["job_id"]).changed == [WALL]
+        assert db.get(RenderJob, t["job_id"]).changed == MOVED
     c2 = claimed(client, token)
     assert c2["job"]["job_id"] == t["job_id"] and c2["inputs"]["base_manifest_url"]
     base = client.get(c2["inputs"]["base_manifest_url"]).json()
     assert base["job_id"] == follow["job_id"]
     ops = client.get(c2["inputs"]["ops_url"]).json()
-    assert ops["ops"][-1]["touched"] == [WALL]
+    assert ops["ops"][-1]["touched"] == MOVED
     rev_before = job(client, rj(a), follow["job_id"])["rev"]
     finish(client, token, c2, "manifest-tiles.json", wall_s=30)
     after = job(client, rj(a), follow["job_id"])
     assert after["rev"] > rev_before and after["state"] == "succeeded" and after["at_seq"] == head
     out = client.get(f"/jobs/{follow['job_id']}/output", headers=rj(a)).json()
-    assert out["job_id"] == t["job_id"] and out["faces_rendered"] == 2
+    assert out["job_id"] == t["job_id"] and out["faces_rendered"] == 13
     # A push to a project with no followed set enqueues nothing.
     other_pid, _ = project(client, a, ops=0)
-    push_touch(client, a, other_pid, [WALL])
+    push_touch(client, a, other_pid, MOVED)
     assert len(client.get("/jobs", params={"kind": "tiles"}, headers=rj(a)).json()["jobs"]) == 1
 
 
@@ -223,15 +226,15 @@ def test_tiles_jobs_coalesce(client, setup):
     follow = submitted(client, rj(a), project_id=pid, at_seq=setup["head"], follow=True)
     finish(client, token, claimed(client, token))
     w2 = hex32()
-    push_touch(client, a, pid, [WALL])
+    push_touch(client, a, pid, MOVED)
     head = push_touch(client, a, pid, [w2])
     jobs = client.get("/jobs", params={"kind": "tiles", "state": "queued"}, headers=rj(a)).json()["jobs"]
     assert len(jobs) == 1 and jobs[0]["at_seq"] == head
     with SessionLocal() as db:
-        assert db.get(RenderJob, jobs[0]["job_id"]).changed == sorted([WALL, w2])
+        assert db.get(RenderJob, jobs[0]["job_id"]).changed == sorted([*MOVED, w2])
     # A client's tiles job against the set joins it too.
     joined = submitted(client, rj(a), kind="tiles", project_id=pid, at_seq=head, base_job_id=follow["job_id"], changed=[hex32()])
-    assert joined["job_id"] == jobs[0]["job_id"] and joined["coalesced"] is True and joined["changed_count"] == 3
+    assert joined["job_id"] == jobs[0]["job_id"] and joined["coalesced"] is True and joined["changed_count"] == len(MOVED) + 2
     # A restore touches everything: [] = every face.
     from app.database import SessionLocal as S
     from app.render import sets
@@ -316,11 +319,11 @@ def test_cost_units_and_quota(client, setup):
 def test_contract_header_and_error_envelope(client, setup):
     a = setup["a"]
     ok = client.get("/jobs/usage", headers=rj(a))
-    assert ok.status_code == 200 and ok.headers["X-Truebex-Contract"] == "render-jobs/1.0"
+    assert ok.status_code == 200 and ok.headers["X-Truebex-Contract"] == "render-jobs/1.1"
     body = error_of(
         client.get("/jobs/usage", headers={**rj(a), "X-Truebex-Contract": "render-jobs/2.0"}), 400, "contract_version"
     )
-    assert body["data"]["supported"] == ["render-jobs/1.0"]
+    assert body["data"]["supported"] == ["render-jobs/1.1"]
     error_of(
         client.post("/workers/claim", json={}, headers={**wk(setup["token"]), "X-Truebex-Contract": "render-jobs/2.0"}),
         400, "contract_version",
@@ -339,7 +342,7 @@ def test_jobs_submit_requires_feature_and_auth(client, setup):
     pid, head = setup["pid"], setup["head"]
     body = error_of(submit(client, rj(free), project_id=pid, at_seq=head), 403, "plan_required")
     assert body["data"]["feature"] == "cloud.panoramas"
-    error_of(client.post("/jobs", json={"kind": "panorama", "project_id": pid, "at_seq": head, "views": [VIEW]}, headers=RJ), 401, "unauthenticated")
+    error_of(client.post("/jobs", json={"kind": "panorama", "project_id": pid, "at_seq": head, "views": VIEWS}, headers=RJ), 401, "unauthenticated")
     error_of(submit(client, wk(setup["token"]), project_id=pid, at_seq=head), 401, "unauthenticated")
     # Another account's project is not found.
     b = Person(client, "b@example.com")
@@ -452,7 +455,7 @@ def test_jobs_cancel_finished_and_output_not_ready(client, setup):
     finish(client, token, claimed(client, token))
     stopped = client.post(f"/jobs/{follow['job_id']}/cancel", headers=rj(a)).json()
     assert stopped["state"] == "succeeded" and stopped["follow"] is False
-    push_touch(client, a, setup["pid"], [WALL])
+    push_touch(client, a, setup["pid"], MOVED)
     assert client.get("/jobs", params={"kind": "tiles"}, headers=rj(a)).json()["jobs"] == []
     error_of(client.post(f"/jobs/{follow['job_id']}/cancel", headers=rj(a)), 409, "job_finished")
 
@@ -461,7 +464,7 @@ def test_jobs_usage_by_kind(client, setup):
     a, token, pid = setup["a"], setup["token"], setup["pid"]
     submitted(client, rj(a), project_id=pid, at_seq=setup["head"], follow=True)
     finish(client, token, claimed(client, token), wall_s=84.2)  # 1.5 cu
-    push_touch(client, a, pid, [WALL])
+    push_touch(client, a, pid, MOVED)
     finish(client, token, claimed(client, token), "manifest-tiles.json", wall_s=30)  # 0.5 cu
     usage = client.get("/jobs/usage", headers=rj(a)).json()
     expected = json.loads((FIX / "usage.json").read_text("utf-8"))
@@ -484,7 +487,7 @@ def test_jobs_usage_by_kind(client, setup):
 def test_workers_claim_respects_doc_version(client, setup):
     a, pid, token = setup["a"], setup["pid"], setup["token"]
     old = submitted(client, rj(a), project_id=pid, at_seq=setup["head"])
-    head = push_touch(client, a, pid, [WALL], delta_format="o5/54")
+    head = push_touch(client, a, pid, MOVED, delta_format="o5/54")
     new = submitted(client, rj(a), project_id=pid, at_seq=head)
     first = claimed(client, token, doc_version_max=38)
     assert first["job"]["job_id"] == old["job_id"]
@@ -629,7 +632,7 @@ def test_follow_set_stops_when_its_account_leaves_the_project(client, setup):
     invite_and_accept(client, a, pid, b, role="viewer")
     follow = submitted(client, rj(b), project_id=pid, at_seq=setup["head"], follow=True)
     finish(client, token, claimed(client, token))
-    push_touch(client, a, pid, [WALL])
+    push_touch(client, a, pid, MOVED)
     queued = client.get("/jobs", params={"kind": "tiles", "state": "queued"}, headers=rj(b)).json()["jobs"]
     assert len(queued) == 1
     res = client.delete(f"/projects/{pid}/members/{b.user_id}", headers=a.web)
@@ -638,7 +641,7 @@ def test_follow_set_stops_when_its_account_leaves_the_project(client, setup):
     assert claim(client, token).status_code == 204
     ended = job(client, rj(b), queued[0]["job_id"])
     assert ended["state"] == "failed" and ended["error"]["code"] == "bad_input"
-    push_touch(client, a, pid, [WALL])
+    push_touch(client, a, pid, MOVED)
     assert client.get("/jobs", params={"kind": "tiles", "state": "queued"}, headers=rj(b)).json()["jobs"] == []
     assert job(client, rj(b), follow["job_id"])["follow"] is False
 
@@ -647,7 +650,7 @@ def test_follow_set_coalesce_keeps_doc_version_and_stale_sets_render_everything(
     a, token, pid = setup["a"], setup["token"], setup["pid"]
     submitted(client, rj(a), project_id=pid, at_seq=setup["head"], follow=True)
     finish(client, token, claimed(client, token))
-    push_touch(client, a, pid, [WALL])
+    push_touch(client, a, pid, MOVED)
     push_touch(client, a, pid, [hex32()], delta_format="o5/54")
     queued = client.get("/jobs", params={"kind": "tiles", "state": "queued"}, headers=rj(a)).json()["jobs"]
     assert len(queued) == 1
@@ -662,7 +665,7 @@ def test_follow_set_coalesce_keeps_doc_version_and_stale_sets_render_everything(
         headers=wk(token),
     )
     assert res.status_code == 200 and res.json()["state"] == "failed"
-    push_touch(client, a, pid, [WALL])
+    push_touch(client, a, pid, MOVED)
     nxt = client.get("/jobs", params={"kind": "tiles", "state": "queued"}, headers=rj(a)).json()["jobs"]
     assert len(nxt) == 1 and nxt[0]["changed_count"] == 0
 
@@ -770,7 +773,7 @@ def test_claim_is_atomic_postgres():
             db.add(
                 RenderJob(
                     job_id=f"{i:032x}", account_id=1, kind="panorama", worker_class="gpu-std", state="queued",
-                    views=[VIEW], changed=[], inputs={}, params={}, created_at=now, queued_at=now, updated_at=now,
+                    views=VIEWS, changed=[], inputs={}, params={}, created_at=now, queued_at=now, updated_at=now,
                 )
             )
         db.commit()
@@ -827,17 +830,17 @@ def test_share_live_follows_the_set(client, setup, wakeups):
     assert first.status_code == 200 and first.headers["Cache-Control"] == "no-store"
     data = first.json()
     assert data["following"] is True and data["job_id"] == follow["job_id"]
-    assert data["manifest"]["tiles_base"] == "http://testserver/tiles" and data["manifest"]["faces_rendered"] == 6
-    # An edit while a viewer waits: the tiles job's finish wakes the read with the two re-rendered faces.
+    assert data["manifest"]["tiles_base"] == "http://testserver/tiles" and data["manifest"]["faces_rendered"] == 18
+    # An edit while a viewer waits: the tiles job's finish wakes the read with the 13 re-rendered faces.
     key, wait_s = queue.job_key(follow["job_id"]), queue.STATUS_WAIT_MAX_S
     reader = LongPoll(lambda: client.get("/s/k3J9xQ2aTf/live", params={"rev": data["rev"], "wait_s": wait_s}))
     wakeups.until_waiting(key)
-    push_touch(client, a, pid, [WALL])
+    push_touch(client, a, pid, MOVED)
     finish(client, token, claimed(client, token), "manifest-tiles.json", wall_s=20)
     res = reader.answer()
     assert res.status_code == 200, res.text
     moved = res.json()
-    assert moved["rev"] > data["rev"] and moved["manifest"]["faces_rendered"] == 2
+    assert moved["rev"] > data["rev"] and moved["manifest"]["faces_rendered"] == 13
     wakeups.assert_woken(key, "the tiles job")
     assert reader.took < wait_s / 2
     # Only the share's own account's set; another panorama id is not live.
@@ -922,8 +925,8 @@ def test_fixture_manifests_follow_the_rules():
     pano = json.loads((FIX / "manifest-panorama.json").read_text("utf-8"))
     part = json.loads((FIX / "manifest-tiles.json").read_text("utf-8"))
     for m, kind in ((pano, "panorama"), (part, "tiles")):
-        job_ = SimpleNamespace(job_id=m["job_id"], project_id=m["project_id"], at_seq=m["at_seq"], views=[VIEW], kind=kind)
+        job_ = SimpleNamespace(job_id=m["job_id"], project_id=m["project_id"], at_seq=m["at_seq"], views=VIEWS, kind=kind)
         assert tiles.check_manifest(m, job_) == []
     every = tiles.all_tiles(pano) | tiles.all_tiles(part)
     assert every == {p.stem for p in (FIX / "tiles").iterdir()}
-    assert len(tiles.all_tiles(pano)) == 30 and part["faces_rendered"] == 2 and part["faces_reused"] == 4
+    assert len(tiles.all_tiles(pano)) == 90 and part["faces_rendered"] == 13 and part["faces_reused"] == 5

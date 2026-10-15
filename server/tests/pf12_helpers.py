@@ -13,7 +13,7 @@ from app.models import ApiKey
 ROOT = Path(__file__).resolve().parents[2]
 PL = {"X-Truebex-Contract": "project-log/1.0"}
 SB = {"X-Truebex-Contract": "share-bundle/1.0"}
-RJ = {"X-Truebex-Contract": "render-jobs/1.0"}
+RJ = {"X-Truebex-Contract": "render-jobs/1.1"}
 ALL_SCOPES = [
     "projects:read",
     "projects:write",

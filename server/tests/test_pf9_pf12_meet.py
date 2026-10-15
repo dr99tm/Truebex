@@ -19,7 +19,7 @@ from .conftest import LongPoll
 from .licence_helpers import error_of
 from .pf12_helpers import PL, ROOT, SB, kh, make_key, sha
 from .project_helpers import FIXTURES, Person, action_op, create, delta_op, hex32, invite_and_accept, pushed
-from .render_helpers import WALL, admin, claimed, finish, issue_worker, project, rj, submitted
+from .render_helpers import MOVED, admin, claimed, finish, issue_worker, project, rj, submitted
 from .test_mobile import digest_bytes
 from .test_pf12_openapi_sdks import live_api  # noqa: F401  (the fixture)
 from .test_site_pf13 import OUT, Doc, built  # noqa: F401  (built is a fixture)
@@ -211,7 +211,7 @@ def test_key_reads_a_followed_set_after_its_own_edit(client, wakeups):
     assert client.get(url, headers=kh(key, **PL)).json()["rev"] == 1
 
     # The key moves a wall as an agent: PF6 queues one tiles job for the set, and the key waits on its rev.
-    op = delta_op(owner.author_id, [WALL], base_seq=head)
+    op = delta_op(owner.author_id, MOVED, base_seq=head)
     del op["author"], op["author_kind"]
     res = client.post(f"/v1/projects/{pid}/ops", json={"replica_id": hex32(), "ops": [op]}, headers=kh(key, **PL))
     assert res.status_code == 200 and res.json()["results"][0]["status"] == "accepted", res.text
@@ -224,7 +224,7 @@ def test_key_reads_a_followed_set_after_its_own_edit(client, wakeups):
     res = reader.answer()
     after = res.json()
     assert res.status_code == 200 and after["rev"] == 2 and after["at_seq"] == head + 1
-    assert after["manifest"]["faces_rendered"] == 2 and after["job_id"] == tiles["job"]["job_id"]
+    assert after["manifest"]["faces_rendered"] == 13 and after["job_id"] == tiles["job"]["job_id"]
     wakeups.assert_woken(waiting_on, "the tiles job")
     assert reader.took < wait_s / 2
 

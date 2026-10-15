@@ -199,7 +199,7 @@ class FakeLog {
 
 const renderDir = '../../server/tests/contracts/render-jobs';
 
-/// PF6's fixture manifest, served from the stand-in tiles host.
+/// The app's fixture manifest (CL3's render of PR3's three rooms), served from the stand-in tiles host.
 Map<String, Object?> renderManifest() {
   final m = (jsonDecode(File('$renderDir/manifest-panorama.json').readAsStringSync()) as Map).cast<String, Object?>();
   return {...m, 'tiles_base': 'https://tiles.test/t'};

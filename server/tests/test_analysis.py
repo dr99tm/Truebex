@@ -24,7 +24,8 @@ from .project_helpers import UPLOADS, Person, hex32
 from .render_helpers import RJ, admin, claim, claimed, issue_worker, job, project, rj, wk
 
 ROOT = Path(__file__).resolve().parents[2]
-FIX = Path(__file__).parent / "contracts" / "render-jobs"
+# PF11's wind result stays the platform's own stand-in until AN3 publishes the app's (PF6a).
+FIX = Path(__file__).parent / "fixtures" / "render"
 FAKE_DOCKER = Path(__file__).parent / "fakes" / "stub_solver" / "fake_docker.py"
 ANALYSIS_KINDS = ("wind", "energy", "acoustics")
 

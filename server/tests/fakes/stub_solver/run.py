@@ -3,8 +3,9 @@
     python run.py <job dir>        (an image runs it with /job)
 
 Reads `<job>/job.json` (`truebex-analysis-job/1`), checks its inputs arrived,
-reports progress, and writes the render-jobs fixture's wind result
-(`wind-result.json`, `truebex-analysis/1`) for this job into `<job>/out/`
+reports progress, and writes the platform's stand-in wind result
+(tests/fixtures/render/wind-result.json, `truebex-analysis/1`; AN3 publishes
+the app's later) for this job into `<job>/out/`
 with its arrays named by SHA-256. `params.speed_ms` 13 makes it fail the way
 a solver does (exit 3 with `out/error.json`).
 """
@@ -14,7 +15,7 @@ import json
 import sys
 from pathlib import Path
 
-FIXTURES = Path(__file__).resolve().parents[2] / "contracts" / "render-jobs"
+FIXTURES = Path(__file__).resolve().parents[2] / "fixtures" / "render"
 
 
 def main(job_dir: Path) -> int:

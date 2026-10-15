@@ -89,7 +89,8 @@ void main() {
       c = ProjectController(services, pid, connectivity: const Stream.empty());
       await c.start();
     });
-    expect(fetchedOnline, 24);
+    // Every view of the app's set is kept (3 views x 6 faces x 4 tiles); the page shows one.
+    expect(fetchedOnline, 3 * 6 * 4);
     expect(c.offline, isTrue);
 
     final surface = FakeSurface();
