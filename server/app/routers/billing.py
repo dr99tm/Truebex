@@ -654,7 +654,6 @@ def invoice_pdf(
         adapter = None
     if user is None or adapter is None or not adapter.enabled():
         raise HTTPException(status_code=404, detail="Invoice not found.")
-    scope = None
     if o:
         # PF3a: still the organisation's owner or billing member, and its invoice.
         try:
@@ -662,8 +661,12 @@ def invoice_pdf(
         except ContractError:
             raise HTTPException(status_code=404, detail="Invoice not found.")
         scope = org_billing.org_scope(db, o, p)
-        if scope is None:
-            raise HTTPException(status_code=404, detail="Invoice not found.")
+    else:
+        # PF2e: the person's own list's scope (their packs' customers too), so
+        # every invoice it lists opens, and nothing else does.
+        scope = org_billing.personal_scope(db, user, p)
+    if scope is None:
+        raise HTTPException(status_code=404, detail="Invoice not found.")
     try:
         url = adapter.invoice_pdf_url(db, user, invoice_id, scope)
     except NotSupported:
