@@ -23,8 +23,8 @@
     "snapshot": {
       "at_seq": 0,
       "tbxp": {
-        "sha256": "68ace82a4d141d2ffeb60ddfbd6c5da8863f392a2ab8f428aab0c9d5f88cf928",
-        "bytes": 59984,
+        "sha256": "ad7672fe5f583e5fa9968fe7db867ec1030eb2944b1294b683f7a55f77998153",
+        "bytes": 74505,
         "url": "https://api.example.invalid/files/snapshot"
       },
       "tbxpack": null

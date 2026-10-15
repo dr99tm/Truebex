@@ -24,8 +24,8 @@ from pathlib import Path
 OUT = Path(__file__).resolve().parents[1] / "tests" / "fixtures" / "render"
 SNAPSHOT = Path(__file__).resolve().parents[1] / "tests" / "contracts" / "project-log" / "snapshot-0000.tbxp"
 
-PROJECT_ID = "0199c6a2f1007a3c8b5e2d4f6a7b8c9d"  # the project-log fixtures' "House"
-WALL_MOVED = "0199c6a2e00070018000000000000001"  # the project-log fixtures' first wall
+PROJECT_ID = "0199c6a2f1007a3c8b5e2d4f6a7b8c9d"  # PF4's project-log fixtures' "House"
+WALL_MOVED = "0199c6a2e00070018000000000000001"  # PF4's project-log fixtures' first wall
 JOB_TILES = "a11ce000000000000000000000000002"
 LEASE_ID = "1ea5e000000000000000000000000001"
 UPLOAD_ID = "0b10ad00000000000000000000000001"
@@ -73,7 +73,8 @@ which those files are re-copied into the contract folder and dropped here. Fixtu
 | `ops-empty.json`, `ops-move-wall.json` | the project-log 5.7 bodies PF6's own job files named: none, and one "Move wall" of the project-log fixtures' first wall | nothing since PF6a (the app's `ops-tiles.json` replaced them); kept with their history |
 | `wind-result.json`, `wind-*.bin` | an analysis result (§6.3, `truebex-analysis/1`) whose fields name the project-log fixtures' wall ids, and its three little-endian arrays named by SHA-256 | `test_analysis.py`, `tests/fakes/stub_solver/run.py` |
 
-The project id and the wall ids are the project-log fixtures' (`../../contracts/project-log/`).
+The project id and the wall ids are PF4's project-log fixtures' (PF4a re-copied CL1's set over them on 2026-10-15);
+`claim.json`'s snapshot SHA-256 and size are those of `../../contracts/project-log/snapshot-0000.tbxp` as it is now.
 """
 
 
