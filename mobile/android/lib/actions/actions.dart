@@ -26,7 +26,7 @@ const _maxMm = 1000000;
 
 /// agent-interface §6.2: the kinds of `Cad3DFastEyeView.h`, door / window (aliases of opening), storey, stair, sheet, layer.
 const refKinds = [
-  'wall', 'opening', 'room', 'slab', 'object', 'extrusion', 'model', 'sweep', 'dim', 'refplane', 'line', 'curve', //
+  'wall', 'opening', 'room', 'slab', 'object', 'extrusion', 'model', 'sweep', 'dim', 'refplane', 'line', 'curve',
   'door', 'window', 'storey', 'stair', 'sheet', 'layer',
 ];
 
