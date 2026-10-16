@@ -28,8 +28,11 @@ measured wall time (charged at the token's class, `cpu-8`).
 
 Network errors and 408, 429, 500, 502, 503, 504 and 530 are retried with
 backoff 1, 2, 4 ... 60 s (±20 %), honouring Retry-After (§8); a revoked token
-stops the worker. Standard library only (Python 3.12), so the worker image
-needs nothing else. Config: worker.toml (see worker.toml.example).
+stops the worker. Ctrl+C stops it at once, even mid claim (PF6b): the claim
+waits on a helper thread, so its connection closes with the process and the
+platform's long poll takes no job for a worker that is gone. Standard library
+only (Python 3.12), so the worker image needs nothing else. Config:
+worker.toml (see worker.toml.example).
 """
 
 import argparse
@@ -123,6 +126,32 @@ class Transport:
             return Response(err.code, {k.lower(): v for k, v in (err.headers or {}).items()}, err.read() or b"")
 
 
+def interruptible(call):
+    """Run `call` on a helper thread and wait for it in short slices (PF6b).
+
+    On Windows a blocking socket read ignores Ctrl+C until it returns: a worker
+    stopped mid claim stayed connected until the platform answered (measured:
+    12 s after Ctrl+C, with the answer), and an answer that was a job went to a
+    worker about to exit, so the job lost an attempt to the 120 s lease. Here
+    Ctrl+C raises within a slice; the process then exits and the OS closes the
+    connection, which the platform's claim sees before it takes a job."""
+    box: dict = {}
+
+    def run() -> None:
+        try:
+            box["value"] = call()
+        except BaseException as exc:  # noqa: BLE001 - raised again in the caller
+            box["error"] = exc
+
+    helper = threading.Thread(target=run, name="claim", daemon=True)
+    helper.start()
+    while helper.is_alive():
+        helper.join(0.25)
+    if "error" in box:
+        raise box["error"]
+    return box["value"]
+
+
 class HttpError(Exception):
     def __init__(self, status: int, code: str, detail: str) -> None:
         super().__init__(f"{status} {code}: {detail}")
@@ -184,13 +213,11 @@ class Api:
     # --- 5.7-5.10 ---
 
     def claim(self, wait_s: float) -> dict | None:
-        res = self.call(
-            "POST", "/workers/claim", timeout=wait_s + 30,
-            json_body={
-                "worker_id": self.cfg.worker_id, "kinds": list(self.cfg.kinds), "app_version": self.cfg.app_version,
-                "doc_version_max": self.cfg.doc_version_max, "wait_s": wait_s,
-            },
-        )
+        body = {
+            "worker_id": self.cfg.worker_id, "kinds": list(self.cfg.kinds), "app_version": self.cfg.app_version,
+            "doc_version_max": self.cfg.doc_version_max, "wait_s": wait_s,
+        }
+        res = interruptible(lambda: self.call("POST", "/workers/claim", timeout=wait_s + 30, json_body=body))
         return None if res.status == 204 else res.json()
 
     def heartbeat(self, job_id: str, lease_id: str, progress: float, message: str) -> dict:

@@ -1591,3 +1591,15 @@ $env:FAKE_TRUEBEX_EXIT='3'; py -3.12 worker\truebex_worker.py --config worker\wo
 
 It prints `failed <job>: doc_too_new: exit 3 without out_dir/error.json (doc_too_new)` and the job ends failed.
 `demo_render.py submit` now submits the app's three saved views unless `--view` (repeatable) names others.
+
+## Stopping a render worker (PF6b)
+
+A render worker can be stopped at any time, even while its claim long poll waits, without costing the next job an
+attempt. The claim (`POST /workers/claim`) checks that its worker is still connected before every try: a worker that
+went away takes no job, and a job claimed for it just as it went is given back (`queue.unclaim`: queued again in its
+old place, `attempts` unchanged, no "Trying again"). The API logs one INFO line on `truebex.render.claim`, for example
+`worker pc-rtx went away while its claim waited; no job taken` (shown with
+`uvicorn ... --log-config scripts\log-info.json`). On Windows the worker wrapper now waits for its claim on a helper
+thread, so Ctrl+C stops it at once and its connection closes; an older `worker/truebex_worker.py` stays connected until
+its claim answers, so update it on the worker PC with the API. A machine that loses power or network sends nothing, and
+§6.4's 120 s lease still covers it. Doc: `docs/roadmap/40/PF6b-claim-long-poll-gone-worker.md`.

@@ -14,7 +14,9 @@ worker can read (`doc_version_needed <= doc_version_max`). A set's `tiles`
 jobs run one at a time and only once the set has a manifest, so each starts
 from the newest picture. An ended attempt (a lapse, or a retryable failure)
 requeues the job three times; the fourth ends it `failed`. A worker holds one
-lease at a time: claiming again ends the one it still holds.
+lease at a time: claiming again ends the one it still holds. A claim made for
+a worker that went away before reading it is given back (`unclaim`, PF6b): no
+attempt ended, since the worker never had the job.
 """
 
 import json
@@ -229,6 +231,45 @@ def try_claim(db: Session, worker: Worker, kinds: list[str], doc_version_max: in
             return job_id
         db.rollback()  # another worker took it first: pick again
     return None
+
+
+def unclaim(db: Session, job_id: str, lease_id: str, now: datetime | None = None) -> bool:
+    """PF6b: give back a job claimed for a worker that went away before it read
+    the answer. The job was never the worker's, so this is not a lapse: no
+    attempt, no "Trying again". It is queued again as before the claim, in its
+    old place (`attempts` and `queued_at` unchanged), and the job-output
+    session the claim opened goes (nobody was told its id, so it holds no part).
+    `base_job_id` is left for the next claim to set (prepare_claim sets a set's
+    newest picture on every claim). Only a job still `claimed` under that
+    lease: a heartbeat (`running`), a lapse or a release in between wins. A
+    cancel asked meanwhile also wins: the job ends `cancelled`, at no charge."""
+    now = now or clock.now()
+    job = lock_job(db, job_id) if isinstance(job_id, str) and len(job_id) == 32 else None
+    if job is None or job.state != "claimed" or job.lease_id != lease_id:
+        db.rollback()
+        return False
+    session = db.get(UploadSession, job.output_upload_id) if job.output_upload_id else None
+    if session is not None:
+        db.delete(session)
+    job.output_upload_id = None
+    if job.cancel_requested:
+        end_attempt(db, job, retry=False, error={"code": "cancelled", "message": ""}, now=now)
+        job.ended_lease_id = lease_id
+    else:
+        worker_id = job.worker_id
+        job.state = "queued"
+        job.lease_id = None
+        job.lease_expires_at = None
+        job.worker_id = None
+        job.claimed_at = None
+        job.progress = 0.0
+        job.message = ""
+        bump(job, now)
+        _worker_idle(db, worker_id, now)
+    db.commit()
+    notify_job(job_id)
+    notify_claim()
+    return True
 
 
 def release_held(db: Session, worker: Worker, now: datetime) -> None:
