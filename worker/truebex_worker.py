@@ -30,8 +30,9 @@ Network errors and 408, 429, 500, 502, 503, 504 and 530 are retried with
 backoff 1, 2, 4 ... 60 s (±20 %), honouring Retry-After (§8); a revoked token
 stops the worker. Ctrl+C stops it at once, even mid claim (PF6b): the claim
 waits on a helper thread, so its connection closes with the process and the
-platform's long poll takes no job for a worker that is gone. Standard library only (Python 3.12), so the worker image
-needs nothing else. Config: worker.toml (see worker.toml.example).
+platform's long poll takes no job for a worker that is gone. Standard library
+only (Python 3.12), so the worker image needs nothing else. Config:
+worker.toml (see worker.toml.example).
 """
 
 import argparse
