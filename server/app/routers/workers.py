@@ -139,7 +139,7 @@ async def claim(
             # A worker gone while its claim waited (Ctrl+C, a stopping machine)
             # takes no job. Nobody reads this answer.
             if await request.is_disconnected():
-                log.info("claim: worker %s went away; no job taken", worker_id)
+                log.info("worker %s went away while its claim waited; no job taken", worker_id)
                 return Response(status_code=204, headers=ECHO)
             # Registered before this try: a job queued after it wakes the wait.
             payload = await run_in_threadpool(_claim_once, worker_id, kinds, body.doc_version_max)
@@ -150,8 +150,8 @@ async def claim(
                     job_id = payload["job"]["job_id"]
                     back = await run_in_threadpool(_unclaim, job_id, payload["lease_id"])
                     log.info(
-                        "claim: worker %s went away; job %s %s", worker_id, job_id,
-                        "given back, no attempt spent" if back else "already moved on",
+                        "worker %s went away as job %s was claimed for it; %s", worker_id, job_id,
+                        "given back, no attempt spent" if back else "it had already moved on",
                     )
                     return Response(status_code=204, headers=ECHO)
                 return JSONResponse(payload, headers=ECHO)
