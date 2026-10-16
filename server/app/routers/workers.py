@@ -5,9 +5,17 @@ Auth: a worker token (`tbx_wrk_…`), scoped to kinds; a revoked one answers
 Cloudflare's 100 s idle limit): 200 with a job and its lease, or 204 when
 nothing is queued for this worker. 5.8-5.10 need the claim's `lease_id`
 (409 `lease_lost` otherwise); 5.9 and 5.10 are safe to repeat per lease.
+
+PF6b: the claim long poll checks that its worker is still connected before
+every try, so a worker stopped while its claim waits takes no job, and a job
+claimed for a worker that went away in between goes back to the queue with
+no attempt spent (`queue.unclaim`). A worker that vanished without closing
+its connection (a machine powered off, a cut network) is still caught by
+§6.4's lease: `release_held` at its next claim, or the 120 s lapse.
 """
 
 import asyncio
+import logging
 from typing import Any
 
 from fastapi import APIRouter, Depends, Request, Response
@@ -24,6 +32,7 @@ from ..render import queue, service
 from ..render.models import Worker
 from ..render.workers import get_worker
 
+log = logging.getLogger("truebex.render.claim")
 router = APIRouter(prefix="/workers", tags=["workers"], dependencies=[contract("render-jobs", 1, 1)])
 # 5.7 answers with its own Response, which the dependency's echo does not reach.
 ECHO = {"X-Truebex-Contract": "render-jobs/1.1"}
@@ -90,8 +99,15 @@ def _claim_once(worker_id: str, kinds: list[str], doc_version_max: int) -> dict 
                 return payload
 
 
+def _unclaim(job_id: str, lease_id: str) -> bool:
+    with SessionLocal() as db:
+        return queue.unclaim(db, job_id, lease_id, clock.now())
+
+
 @router.post("/claim")
-async def claim(body: ClaimIn, worker: Worker = Depends(get_worker), db: Session = Depends(get_db)):
+async def claim(
+    request: Request, body: ClaimIn, worker: Worker = Depends(get_worker), db: Session = Depends(get_db)
+):
     worker_id, scope = worker.worker_id, list(worker.kinds or [])
     if body.worker_id.strip().lower() != worker_id:
         raise ContractError(
@@ -120,9 +136,24 @@ async def claim(body: ClaimIn, worker: Worker = Depends(get_worker), db: Session
     deadline = loop.time() + body.wait_s
     try:
         while True:
+            # A worker gone while its claim waited (Ctrl+C, a stopping machine)
+            # takes no job. Nobody reads this answer.
+            if await request.is_disconnected():
+                log.info("claim: worker %s went away; no job taken", worker_id)
+                return Response(status_code=204, headers=ECHO)
             # Registered before this try: a job queued after it wakes the wait.
             payload = await run_in_threadpool(_claim_once, worker_id, kinds, body.doc_version_max)
             if payload is not None:
+                if await request.is_disconnected():
+                    # It went while the job was being claimed for it: the job goes
+                    # back as it was, with no attempt spent.
+                    job_id = payload["job"]["job_id"]
+                    back = await run_in_threadpool(_unclaim, job_id, payload["lease_id"])
+                    log.info(
+                        "claim: worker %s went away; job %s %s", worker_id, job_id,
+                        "given back, no attempt spent" if back else "already moved on",
+                    )
+                    return Response(status_code=204, headers=ECHO)
                 return JSONResponse(payload, headers=ECHO)
             remaining = deadline - loop.time()
             if remaining <= 0:
