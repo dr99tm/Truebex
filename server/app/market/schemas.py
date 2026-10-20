@@ -52,7 +52,7 @@ class OrderLineIn(_Body):
 class ProjectIn(_Body):
     name: Annotated[str, Field(max_length=200)] | None = None
     project_id: Annotated[str, Field(max_length=64)] | None = None
-    # MK4's planned MINOR (CL0's ProjectUid); stored when sent.
+    # Contract 1.2.0 (MK4): CL0's ProjectUid, 32 hex; stored as sent, 5.8 filters on it.
     project_uid: Annotated[str, Field(max_length=32)] | None = None
 
 
