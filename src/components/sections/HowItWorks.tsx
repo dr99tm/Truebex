@@ -8,19 +8,19 @@ import {
   StaggerChildren,
   staggerItem,
 } from "@/components/animations/StaggerChildren";
-import { STEPS } from "@/lib/constants";
+import { STEPS, STEPS_SECTION } from "@/lib/constants";
 
 export function HowItWorks() {
   return (
     <Section id="how-it-works">
       <FadeInWhenVisible>
         <SectionHeading
-          title="How It Works"
-          subtitle="From the first wall to a reusable, daylit design — in one session."
+          title={STEPS_SECTION.title}
+          subtitle={STEPS_SECTION.subtitle}
         />
       </FadeInWhenVisible>
 
-      <StaggerChildren className="relative grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
+      <StaggerChildren className="relative grid gap-8 sm:grid-cols-2 lg:grid-cols-5">
         {/* Connecting line (desktop) */}
         <div className="absolute top-10 left-0 right-0 hidden h-[1px] bg-gradient-to-r from-transparent via-accent/30 to-transparent lg:block" />
 

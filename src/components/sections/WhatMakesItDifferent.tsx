@@ -8,15 +8,15 @@ import {
   StaggerChildren,
   staggerItem,
 } from "@/components/animations/StaggerChildren";
-import { PRINCIPLES } from "@/lib/constants";
+import { PRINCIPLES, WHY } from "@/lib/constants";
 
 export function WhatMakesItDifferent() {
   return (
     <Section id="why-truebex">
       <FadeInWhenVisible>
         <SectionHeading
-          title="Built on three ideas"
-          subtitle="Everything in Truebex follows from them."
+          title={WHY.title}
+          subtitle={WHY.subtitle}
         />
       </FadeInWhenVisible>
 
@@ -33,6 +33,19 @@ export function WhatMakesItDifferent() {
           </motion.div>
         ))}
       </StaggerChildren>
+
+      <FadeInWhenVisible>
+        <div className="mx-auto mt-20 max-w-3xl text-center">
+          <h3 className="text-2xl font-bold tracking-tight sm:text-3xl">
+            {WHY.philosophy.title}
+          </h3>
+          {WHY.philosophy.paragraphs.map((p) => (
+            <p key={p} className="mt-5 text-lg leading-relaxed text-text-secondary">
+              {p}
+            </p>
+          ))}
+        </div>
+      </FadeInWhenVisible>
     </Section>
   );
 }

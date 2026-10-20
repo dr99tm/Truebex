@@ -9,15 +9,15 @@ import {
   StaggerChildren,
   staggerItem,
 } from "@/components/animations/StaggerChildren";
-import { AUDIENCES } from "@/lib/constants";
+import { AUDIENCES, AUDIENCES_SECTION } from "@/lib/constants";
 
 export function WhoItsFor() {
   return (
     <Section id="who-its-for">
       <FadeInWhenVisible>
         <SectionHeading
-          title="Who It's For"
-          subtitle="For everyone who needs to understand a building before it exists."
+          title={AUDIENCES_SECTION.title}
+          subtitle={AUDIENCES_SECTION.subtitle}
         />
       </FadeInWhenVisible>
 

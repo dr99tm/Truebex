@@ -4,7 +4,7 @@ import Image from "next/image";
 import { motion } from "motion/react";
 import { Button } from "@/components/ui/Button";
 import { Lockup } from "@/components/brand/Logo";
-import { PRODUCT_SHOT } from "@/lib/constants";
+import { HERO, PRODUCT_SHOT } from "@/lib/constants";
 
 export function Hero() {
   return (
@@ -37,7 +37,7 @@ export function Hero() {
           transition={{ duration: 0.5, delay: 0.1 }}
         >
           <span className="inline-block rounded-full border border-accent/25 bg-accent/5 px-4 py-1.5 text-sm text-accent">
-            True Building Experience
+            {HERO.badge}
           </span>
         </motion.p>
 
@@ -47,7 +47,7 @@ export function Hero() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.15 }}
         >
-          See it before you <span className="gradient-text">build it.</span>
+          {HERO.titleStart} <span className="gradient-text">{HERO.titleAccent}</span>
         </motion.h1>
 
         <motion.p
@@ -56,9 +56,7 @@ export function Hero() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.3 }}
         >
-          The building design platform where daylight is measured through
-          every opening, surfaces design themselves, and one change updates
-          the whole project — instantly.
+          {HERO.subtitle}
         </motion.p>
 
         <motion.div
@@ -67,13 +65,22 @@ export function Hero() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.45 }}
         >
-          <Button href="/#contact" size="lg">
-            Request a Demo
+          <Button href={HERO.primary.href} size="lg">
+            {HERO.primary.label}
           </Button>
-          <Button href="/signup/" variant="secondary" size="lg">
-            Create free account
+          <Button href={HERO.secondary.href} variant="secondary" size="lg">
+            {HERO.secondary.label}
           </Button>
         </motion.div>
+
+        <motion.p
+          className="mt-6 text-sm italic text-text-muted"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.6, delay: 0.5 }}
+        >
+          {HERO.note}
+        </motion.p>
       </div>
 
       {/* Product showcase */}
