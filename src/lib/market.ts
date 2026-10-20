@@ -1,13 +1,13 @@
 "use client";
 
-// The marketplace API (contract marketplace-api v1.1) as the website uses it:
+// The marketplace API (contract marketplace-api v1.2) as the website uses it:
 // the buyer's orders and requests (5.7-5.10 with a session), the checkout
 // page, and the admin tools under /admin/market. Money is always an integer
 // of minor units with its currency's exponent; it is only turned into text
 // here, for display.
 import { api } from "@/lib/api";
 
-const CONTRACT = { "X-Truebex-Contract": "marketplace-api/1.1" };
+const CONTRACT = { "X-Truebex-Contract": "marketplace-api/1.2" };
 
 export interface Money {
   amount: number;
@@ -34,13 +34,29 @@ export interface OrderLine {
   total: Money;
 }
 
+/** 1.2.0: one of a supplier's lines, with the unit price it was placed at and the quoted one. */
+export interface OrderItem {
+  sku: string;
+  variant_id: string;
+  qty: number;
+  price_seen: Price;
+  /** The supplier's quoted unit price; null until it quotes. */
+  quoted: Price | null;
+}
+
 export interface OrderSupplier {
   supplier_id: string;
+  /** 1.2.0 (the same as `supplier_name`). */
+  name: string | null;
   supplier_name: string | null;
   state: string;
   lines: number;
   subtotal: Money;
   delivery: Money;
+  /** 1.2.0 (the same as `delivery_days`). */
+  days_min: number | null;
+  days_max: number | null;
+  items: OrderItem[];
   tax: Money;
   total: Money;
   delivery_days: { min: number | null; max: number | null };
@@ -57,7 +73,9 @@ export interface MarketOrder {
   currency: string;
   exponent: number;
   checkout_url: string | null;
-  project: { name?: string | null; project_id?: string | null };
+  /** 1.2.0: the order's page on the platform (/dashboard/orders/?order=<id>). */
+  web_url: string;
+  project: { name?: string | null; project_id?: string | null; project_uid?: string | null };
   delivery: { country: string; city?: string | null; postcode?: string | null; address?: string | null };
   contact?: { name: string; email: string; phone?: string | null; message?: string | null };
   suppliers: OrderSupplier[];

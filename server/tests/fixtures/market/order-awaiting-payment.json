@@ -67,6 +67,7 @@
     "currency": "AED",
     "exponent": 2,
     "checkout_url": "https://truebex.com/market/checkout/?order=1ce56654dc8372bbb7261b4079779e75",
+    "web_url": "https://truebex.com/dashboard/orders/?order=1ce56654dc8372bbb7261b4079779e75",
     "project": {
       "name": "House",
       "project_id": null,
@@ -81,7 +82,7 @@
     "suppliers": [
       {
         "supplier_id": "f8afe1ba2b0bf97f23ef888f040cf46a",
-        "supplier_name": "Nord Living",
+        "name": "Nord Living",
         "state": "pending",
         "lines": 2,
         "subtotal": {
@@ -94,6 +95,41 @@
           "currency": "AED",
           "exponent": 2
         },
+        "days_min": 7,
+        "days_max": 14,
+        "items": [
+          {
+            "sku": "SOFA-OSLO-3",
+            "variant_id": "oat-linen",
+            "qty": 1,
+            "price_seen": {
+              "amount": 129900,
+              "currency": "AED",
+              "exponent": 2,
+              "region": "AE",
+              "includes_tax": true,
+              "tax_rate_bp": 500,
+              "at": "2026-10-09T10:00:00Z"
+            },
+            "quoted": null
+          },
+          {
+            "sku": "PAINT-CHALK",
+            "variant_id": "2-5l",
+            "qty": 4,
+            "price_seen": {
+              "amount": 18900,
+              "currency": "AED",
+              "exponent": 2,
+              "region": "AE",
+              "includes_tax": true,
+              "tax_rate_bp": 500,
+              "at": "2026-10-09T10:00:00Z"
+            },
+            "quoted": null
+          }
+        ],
+        "supplier_name": "Nord Living",
         "tax": {
           "amount": 10500,
           "currency": "AED",

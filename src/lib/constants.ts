@@ -3390,3 +3390,10 @@ export const NOT_FOUND = {
     { label: "Pricing", href: "/pricing/" },
   ],
 } as const;
+
+// PF7e: the orders page opened from an order's link (contract marketplace-api
+// 1.2.0 `web_url`, the app's "Open on the web": /dashboard/orders/?order=<id>).
+export const MARKET_ORDER_LINK = {
+  linked: "The order you opened",
+  notFound: "This order is not in this account. Sign in with the account that sent it from Truebex.",
+} as const;

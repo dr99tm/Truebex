@@ -3,13 +3,22 @@
   "kind": "order",
   "state": "awaiting_payment",
   "checkout_url": "https://truebex.com/market/checkout/0d3e0000000000000000000000000001",
+  "created_at": "2026-10-09T10:00:00Z",
+  "region": "AE",
+  "project": {
+    "name": "MK4-living-room-basket",
+    "project_id": null,
+    "project_uid": "0192f6a13c4d7e5f8a6b1c2d3e4f5a6b"
+  },
+  "web_url": "https://truebex.com/market/orders/0d3e0000000000000000000000000001",
   "suppliers": [
     {
       "supplier_id": "4e6f72644c6976696e67000000000001",
+      "name": "Nord Living",
       "state": "pending",
-      "lines": 1,
+      "lines": 2,
       "subtotal": {
-        "amount": 129900,
+        "amount": 309700,
         "currency": "AED",
         "exponent": 2,
         "region": "AE",
@@ -21,11 +30,84 @@
         "amount": 15000,
         "currency": "AED",
         "exponent": 2
-      }
+      },
+      "days_min": 7,
+      "days_max": 14,
+      "items": [
+        {
+          "sku": "SOFA-OSLO-3",
+          "variant_id": "oat-linen",
+          "qty": 2,
+          "price_seen": {
+            "amount": 129900,
+            "currency": "AED",
+            "exponent": 2,
+            "region": "AE",
+            "includes_tax": true,
+            "tax_rate_bp": 500,
+            "at": "2026-10-09T10:00:00Z"
+          },
+          "quoted": null
+        },
+        {
+          "sku": "TABLE-FJORD",
+          "variant_id": "oak",
+          "qty": 1,
+          "price_seen": {
+            "amount": 49900,
+            "currency": "AED",
+            "exponent": 2,
+            "region": "AE",
+            "includes_tax": true,
+            "tax_rate_bp": 500,
+            "at": "2026-10-09T10:00:00Z"
+          },
+          "quoted": null
+        }
+      ]
+    },
+    {
+      "supplier_id": "4174656c6965724c756d656e00000002",
+      "name": "Atelier Lumen",
+      "state": "pending",
+      "lines": 1,
+      "subtotal": {
+        "amount": 15900,
+        "currency": "AED",
+        "exponent": 2,
+        "region": "AE",
+        "includes_tax": true,
+        "tax_rate_bp": 500,
+        "at": "2026-10-09T10:00:00Z"
+      },
+      "delivery": {
+        "amount": 2500,
+        "currency": "AED",
+        "exponent": 2
+      },
+      "days_min": 5,
+      "days_max": 9,
+      "items": [
+        {
+          "sku": "LIGHT-ARC-W",
+          "variant_id": "brass",
+          "qty": 1,
+          "price_seen": {
+            "amount": 15900,
+            "currency": "AED",
+            "exponent": 2,
+            "region": "AE",
+            "includes_tax": true,
+            "tax_rate_bp": 500,
+            "at": "2026-10-09T10:00:00Z"
+          },
+          "quoted": null
+        }
+      ]
     }
   ],
   "total": {
-    "amount": 144900,
+    "amount": 343100,
     "currency": "AED",
     "exponent": 2,
     "region": "AE",

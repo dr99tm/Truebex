@@ -82,6 +82,12 @@ def availability_json(variant: ProductVariant, a: VariantAvailability | None) ->
     }
 
 
+def withdrawn_availability() -> dict:
+    """How a line its supplier withdrew (or hid) reads in 5.5 and in 5.7's
+    409 `unavailable`: discontinued, whatever its stock row says."""
+    return {"state": "discontinued", "stock": None, "lead_time_days": None, "updated_at": None}
+
+
 def orderable(variant: ProductVariant, offer: Offer) -> bool:
     """Priced in the region and in a state that can be ordered (no row = not
     tracked = in stock)."""
@@ -257,7 +263,7 @@ def batch(db: Session, region: MarketRegion, items: list[dict]) -> dict:
         offer = offs.get((product.product_id, variant.variant_id), Offer(None, None))
         if not is_public(product, suppliers.get(product.supplier_id)) or variant.status == "hidden":
             line["status"] = "withdrawn"
-            line["availability"] = {"state": "discontinued", "stock": None, "lead_time_days": None, "updated_at": None}
+            line["availability"] = withdrawn_availability()
             line["substitutes"] = substitutes(db, product, region, offer.price.amount if offer.price else None)
             out.append(line)
             continue

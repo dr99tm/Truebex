@@ -643,7 +643,7 @@ export const OPERATIONS = {
     "body": null,
     "bodyProps": [],
     "scope": "market:read",
-    "contract": "marketplace-api/1.1"
+    "contract": "marketplace-api/1.2"
   },
   "market_prices": {
     "group": "market",
@@ -659,7 +659,7 @@ export const OPERATIONS = {
       "region"
     ],
     "scope": "market:read",
-    "contract": "marketplace-api/1.1"
+    "contract": "marketplace-api/1.2"
   },
   "market_product": {
     "group": "market",
@@ -676,7 +676,7 @@ export const OPERATIONS = {
     "body": null,
     "bodyProps": [],
     "scope": "market:read",
-    "contract": "marketplace-api/1.1"
+    "contract": "marketplace-api/1.2"
   },
   "market_regions": {
     "group": "market",
@@ -689,7 +689,7 @@ export const OPERATIONS = {
     "body": null,
     "bodyProps": [],
     "scope": "market:read",
-    "contract": "marketplace-api/1.1"
+    "contract": "marketplace-api/1.2"
   },
   "market_search": {
     "group": "market",
@@ -714,7 +714,7 @@ export const OPERATIONS = {
     "body": null,
     "bodyProps": [],
     "scope": "market:read",
-    "contract": "marketplace-api/1.1"
+    "contract": "marketplace-api/1.2"
   },
   "market_supplier": {
     "group": "market",
@@ -729,7 +729,7 @@ export const OPERATIONS = {
     "body": null,
     "bodyProps": [],
     "scope": "market:read",
-    "contract": "marketplace-api/1.1"
+    "contract": "marketplace-api/1.2"
   },
   "feeds_get": {
     "group": "feeds",
@@ -744,7 +744,7 @@ export const OPERATIONS = {
     "body": null,
     "bodyProps": [],
     "scope": "supplier:feed",
-    "contract": "marketplace-api/1.1"
+    "contract": "marketplace-api/1.2"
   },
   "feeds_set_source": {
     "group": "feeds",
@@ -761,7 +761,7 @@ export const OPERATIONS = {
       "url"
     ],
     "scope": "supplier:feed",
-    "contract": "marketplace-api/1.1"
+    "contract": "marketplace-api/1.2"
   },
   "feeds_upload": {
     "group": "feeds",
@@ -778,7 +778,7 @@ export const OPERATIONS = {
       "mode"
     ],
     "scope": "supplier:feed",
-    "contract": "marketplace-api/1.1"
+    "contract": "marketplace-api/1.2"
   },
   "webhooks_create": {
     "group": "webhooks",

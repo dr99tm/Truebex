@@ -17,8 +17,8 @@
         "at": "2026-10-09T10:00:00Z"
       },
       "availability": {
-        "state": "in_stock",
-        "stock": 12,
+        "state": "low_stock",
+        "stock": 3,
         "lead_time_days": null,
         "updated_at": "2026-10-09T10:00:00Z"
       },
@@ -86,7 +86,9 @@
         "updated_at": "2026-10-09T10:00:00Z"
       },
       "substitutes": [
-        "3f6c1e2a9b0d4c8e9a1b2c3d4e5f6a04"
+        "3f6c1e2a9b0d4c8e9a1b2c3d4e5f6a04",
+        "3f6c1e2a9b0d4c8e9a1b2c3d4e5f6a0e",
+        "3f6c1e2a9b0d4c8e9a1b2c3d4e5f6a0f"
       ]
     },
     {
@@ -253,6 +255,48 @@
         "state": "in_stock",
         "stock": 20,
         "lead_time_days": null,
+        "updated_at": "2026-10-09T10:00:00Z"
+      },
+      "substitutes": []
+    },
+    {
+      "supplier_id": "4e6f72644c6976696e67000000000001",
+      "sku": "TABLE-SUND",
+      "variant_id": "ash",
+      "price": {
+        "amount": 43900,
+        "currency": "AED",
+        "exponent": 2,
+        "region": "AE",
+        "includes_tax": true,
+        "tax_rate_bp": 500,
+        "at": "2026-10-09T10:00:00Z"
+      },
+      "availability": {
+        "state": "in_stock",
+        "stock": 7,
+        "lead_time_days": null,
+        "updated_at": "2026-10-09T10:00:00Z"
+      },
+      "substitutes": []
+    },
+    {
+      "supplier_id": "4e6f72644c6976696e67000000000001",
+      "sku": "TABLE-VIK",
+      "variant_id": "glass",
+      "price": {
+        "amount": 54900,
+        "currency": "AED",
+        "exponent": 2,
+        "region": "AE",
+        "includes_tax": true,
+        "tax_rate_bp": 500,
+        "at": "2026-10-09T10:00:00Z"
+      },
+      "availability": {
+        "state": "made_to_order",
+        "stock": null,
+        "lead_time_days": 21,
         "updated_at": "2026-10-09T10:00:00Z"
       },
       "substitutes": []

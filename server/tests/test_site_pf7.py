@@ -109,8 +109,9 @@ def test_site_pf7e_orders_page_shows_the_linked_order(client, monkeypatch, tmp_p
 
     assert plain["fetch"] is None and plain["focused"] is None and not plain["note"]
     assert shown(plain) == plain["ids"] == [o["order_id"] for o in listed] and "data-focused" not in plain["html"]
+    assert (listed_link["fetch"], upper["fetch"], from_59["fetch"]) == (None, None, link)
     for case in (listed_link, from_59, upper):
-        assert case["fetch"] is None and case["focused"] == link and not case["note"]
+        assert case["focused"] == link and not case["note"]
         assert shown(case)[0] == link and len(shown(case)) == len(set(shown(case)))
         assert re.search(rf'data-order="{link}"[^>]*data-focused="true"', case["html"]), case["html"][:400]
         assert case["html"].count('data-focused="true"') == 1 and copy["linked"] in case["html"]

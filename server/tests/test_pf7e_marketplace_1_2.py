@@ -183,13 +183,14 @@ def assert_suppliers_like(mine: dict, want: dict, *, quoted_at_masked: bool = Fa
 def assert_arithmetic(order: dict) -> None:
     """§5.7 (1.2.0): per supplier subtotal = Σ unit × qty (the quoted unit once
     quoted); total = Σ (subtotal + delivery), in the region's currency."""
-    total = 0
+    total, currency = 0, order["total"]["currency"]  # the stub's order names no top-level currency
+    assert currency == order.get("currency", currency) == {"AE": "AED", "GB": "GBP"}[order["region"]]
     for g in order["suppliers"]:
         units = [(i["quoted"] or i["price_seen"])["amount"] * i["qty"] for i in g["items"]]
         assert g["subtotal"]["amount"] == sum(units), g["name"]
-        assert {g["subtotal"]["currency"], g["delivery"]["currency"]} == {order["currency"]}
+        assert {g["subtotal"]["currency"], g["delivery"]["currency"]} == {currency}
         total += g["subtotal"]["amount"] + g["delivery"]["amount"]
-    assert order["total"]["amount"] == total and order["total"]["currency"] == order["currency"]
+    assert order["total"]["amount"] == total
 
 
 # --- The copy -------------------------------------------------------------------------------------
