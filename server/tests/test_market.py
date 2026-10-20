@@ -110,7 +110,7 @@ def test_categories_root_on_app_taxonomy(client):
     # Cached by the app: ETag and a day.
     assert res.headers["Cache-Control"] == "public, max-age=86400"
     again = client.get("/market/categories", headers={**CONTRACT, "If-None-Match": res.headers["ETag"]})
-    assert again.status_code == 304 and again.headers["X-Truebex-Contract"] == "marketplace-api/1.1"
+    assert again.status_code == 304 and again.headers["X-Truebex-Contract"] == "marketplace-api/1.2"
     # PF7's fixture is this server's answer (tests/fixtures/market; PF7c checks the app's set).
     assert _fixture("categories")["body"] == body
     if APP_TAXONOMY.is_file():  # the copy is byte-identical to the app's file
@@ -364,12 +364,12 @@ def test_quote_lifecycle(client, monkeypatch):
 def test_contract_header_and_error_envelope(client):
     load()
     res = client.get("/market/regions", headers=CONTRACT)
-    assert res.status_code == 200 and res.headers["X-Truebex-Contract"] == "marketplace-api/1.1"
-    # A 1.0 client is served (MINOR differences are additive); no header reads as current.
+    assert res.status_code == 200 and res.headers["X-Truebex-Contract"] == "marketplace-api/1.2"
+    # A 1.0 or 1.1 client is served (MINOR differences are additive; PF7e: 1.2); no header reads as current.
     assert client.get("/market/regions", headers={"X-Truebex-Contract": "marketplace-api/1.0"}).status_code == 200
-    assert client.get("/market/regions").headers["X-Truebex-Contract"] == "marketplace-api/1.1"
+    assert client.get("/market/regions").headers["X-Truebex-Contract"] == "marketplace-api/1.2"
     body = error_of(client.get("/market/regions", headers={"X-Truebex-Contract": "marketplace-api/2.0"}), 400, "contract_version")
-    assert body["data"]["supported"] == ["marketplace-api/1.1"] and body["retry_after_s"] is None
+    assert body["data"]["supported"] == ["marketplace-api/1.2"] and body["retry_after_s"] is None
     assert set(body) == {"detail", "code", "status", "request_id", "retry_after_s", "data"}
     error_of(client.get(f"/market/products/{'0' * 32}", headers=CONTRACT), 404, "not_found")
     error_of(client.get(f"/market/suppliers/{'0' * 32}", headers=CONTRACT), 404, "not_found")

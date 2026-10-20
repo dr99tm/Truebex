@@ -9,7 +9,8 @@ import { api } from "@/lib/api";
 import type { BasketItem, ItemRef, OrderLineOut } from "@/lib/basket";
 import type { MarketOrder, Price } from "@/lib/market";
 
-const CONTRACT = { "X-Truebex-Contract": "marketplace-api/1.1" };
+// 1.2: the basket places orders (5.7); its 5.2 / 5.5 reads are the same in 1.1.
+const CONTRACT = { "X-Truebex-Contract": "marketplace-api/1.2" };
 
 export interface Region {
   region: string;

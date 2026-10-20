@@ -2,8 +2,12 @@
 
 * 5.7 prices every line again on the server; prices are never taken from
   the client. The checks run in this order: region (422
-  `region_not_served`), availability and quote-only suppliers (409
-  `unavailable`), then the buyer's `price_seen` (409 `price_changed`).
+  `region_not_served`: a supplier that does not deliver there), availability
+  and quote-only suppliers (409 `unavailable`; a line its supplier does not
+  price in the region is unavailable there), then the buyer's `price_seen`
+  (409 `price_changed`). PF7e (contract 1.2.0, §7): every line of a 409
+  `unavailable` carries its §6.3 `availability` (null = not sold in the
+  region).
 * An `order` is split per supplier, totalled in the region's currency and
   answers `awaiting_payment` with `checkout_url` (the platform's checkout
   page); a `quote` sends one lead per supplier and answers `submitted`.
@@ -15,6 +19,11 @@
   is made from it) or `expired` 30 days after it was sent.
 * Supplier answers (`supplier_quote`, `supplier_accept`, …) are called by
   PF8's inbox and, for now, by the admin pages.
+* PF7e (contract 1.2.0): an order answers `web_url` (its page on the
+  platform) and, per supplier, `name`, `days_min` / `days_max` and `items`
+  ({sku, variant_id, qty, price_seen, quoted}: the unit price it was placed
+  at and the supplier's quoted unit price, null until it quotes), beside the
+  platform's own `supplier_name`, `delivery_days` and top-level `lines`.
 """
 
 import base64
@@ -40,8 +49,17 @@ from .models import (
     Product,
     ProductVariant,
     Supplier,
+    SupplierRegion,
 )
-from .prices import Offer, availability_json, offers, price_json, region_or_invalid, state_of
+from .prices import (
+    Offer,
+    availability_json,
+    offers,
+    price_json,
+    region_or_invalid,
+    state_of,
+    withdrawn_availability,
+)
 from .schemas import OrderRequest, SupplierQuoteIn
 
 IDEMPOTENCY_TTL = timedelta(hours=24)
@@ -54,6 +72,13 @@ QUOTE_STATES = ("submitted", "quoted", "accepted", "expired", "cancelled")
 
 def checkout_url(order: MarketOrder) -> str:
     return f"{get_settings().site_url.rstrip('/')}/market/checkout/?order={order.order_id}"
+
+
+def web_url(order: MarketOrder) -> str:
+    """The order's page on the platform (5.7 `web_url`, the app's "Open on the
+    web"): the buyer's orders page with this one first. A static page, so the
+    id goes in the query, as checkout_url's does (PF7c D6)."""
+    return f"{get_settings().site_url.rstrip('/')}/dashboard/orders/?order={order.order_id}"
 
 
 def request_hash(req: OrderRequest) -> str:
@@ -110,6 +135,17 @@ def _why_unavailable(r: _Resolved, kind: str) -> str | None:
     return None
 
 
+def _availability_of(r: _Resolved, why: str) -> dict | None:
+    """A 409 `unavailable` line's §6.3 availability (contract 1.2.0 §7):
+    null for a line unknown or not sold in the region, discontinued for a
+    withdrawn one (as 5.5 answers it), else the region's own."""
+    if why in ("not_found", "not_sold_in_region") or r.variant is None:
+        return None
+    if why == "withdrawn":
+        return withdrawn_availability()
+    return availability_json(r.variant, r.offer.availability)
+
+
 # --- 5.7 -----------------------------------------------------------------------------------
 
 
@@ -154,9 +190,22 @@ def place(
 
     resolved = _resolve(db, region, req.lines)
 
-    # 1. Unknown or withdrawn lines, and suppliers that do not deliver there.
+    # 1. Suppliers that do not deliver there, then unknown, withdrawn or
+    # unavailable lines and lines not sold in the region.
     unavailable = [(r, why) for r in resolved if (why := _why_unavailable(r, req.kind))]
-    not_served = [r for r in resolved if r not in [u for u, _ in unavailable] and r.offer.price is None]
+    gone = {id(r) for r, _ in unavailable}
+    unpriced = [r for r in resolved if id(r) not in gone and r.offer.price is None]
+    serving = set(
+        db.scalars(
+            select(SupplierRegion.supplier_id).where(
+                SupplierRegion.supplier_id.in_({r.supplier.supplier_id for r in unpriced}),
+                SupplierRegion.region == region.region,
+                SupplierRegion.active.is_(True),
+            )
+        )
+    ) if unpriced else set()
+    not_served = [r for r in unpriced if r.supplier.supplier_id not in serving]
+    unavailable += [(r, "not_sold_in_region") for r in unpriced if r.supplier.supplier_id in serving]
     if not_served:
         names = {r.supplier.supplier_id: r.supplier.name for r in not_served}
         raise ContractError(
@@ -176,14 +225,7 @@ def place(
             "Some products are no longer available.",
             {
                 "reason": "unavailable",
-                "lines": [
-                    {
-                        **r.ref,
-                        "reason": why,
-                        "availability": availability_json(r.variant, r.offer.availability) if r.variant else None,
-                    }
-                    for r, why in unavailable
-                ],
+                "lines": [{**r.ref, "reason": why, "availability": _availability_of(r, why)} for r, why in unavailable],
             },
         )
     # 2. Quote-only suppliers (payments off, or not onboarded to Connect).
@@ -197,7 +239,10 @@ def place(
                 {
                     "reason": "quote_only",
                     "suppliers": sorted({r.supplier.supplier_id for r in quote_only}),
-                    "lines": [{**r.ref, "reason": "quote_only"} for r in quote_only],
+                    "lines": [
+                        {**r.ref, "reason": "quote_only", "availability": _availability_of(r, "quote_only")}
+                        for r in quote_only
+                    ],
                 },
             )
     # 3. Prices the buyer saw.
@@ -341,17 +386,46 @@ def order_json(db: Session, order: MarketOrder, *, include_contact: bool = True)
         )
     }
     lines = _lines(db, order.order_id)
+
+    def unit(ln: MarketOrderLine, amount: int, at: datetime | None = None) -> dict:
+        return {
+            "amount": amount,
+            "currency": cur,
+            "exponent": exp,
+            "region": order.region,
+            "includes_tax": ln.includes_tax,
+            "tax_rate_bp": ln.tax_rate_bp,
+            "at": rfc3339(at or ln.price_at),
+        }
+
     groups = []
     for g in _groups(db, order.order_id):
         s = suppliers.get(g.supplier_id)
+        name = s.name if s else None
         groups.append(
             {
                 "supplier_id": g.supplier_id,
-                "supplier_name": s.name if s else None,
+                "name": name,  # 1.2.0
                 "state": g.state,
                 "lines": g.lines,
                 "subtotal": money(g.subtotal, cur, exp),
                 "delivery": money(g.delivery, cur, exp),
+                "days_min": g.delivery_days_min,  # 1.2.0
+                "days_max": g.delivery_days_max,  # 1.2.0
+                # 1.2.0: the unit price each line was placed at, and the supplier's
+                # quoted unit price (stamped when it quoted), null until it quotes.
+                "items": [
+                    {
+                        "sku": ln.sku,
+                        "variant_id": ln.variant_id,
+                        "qty": ln.qty,
+                        "price_seen": unit(ln, ln.unit_amount),
+                        "quoted": unit(ln, ln.quoted_unit_amount, g.quoted_at) if ln.quoted_unit_amount is not None else None,
+                    }
+                    for ln in lines
+                    if ln.supplier_id == g.supplier_id
+                ],
+                "supplier_name": name,
                 "tax": money(g.tax, cur, exp),
                 "total": money(g.total, cur, exp),
                 "delivery_days": {"min": g.delivery_days_min, "max": g.delivery_days_max},
@@ -365,17 +439,6 @@ def order_json(db: Session, order: MarketOrder, *, include_contact: bool = True)
             }
         )
 
-    def unit(ln: MarketOrderLine, amount: int) -> dict:
-        return {
-            "amount": amount,
-            "currency": cur,
-            "exponent": exp,
-            "region": order.region,
-            "includes_tax": ln.includes_tax,
-            "tax_rate_bp": ln.tax_rate_bp,
-            "at": rfc3339(ln.price_at),
-        }
-
     out = {
         "order_id": order.order_id,
         "kind": order.kind,
@@ -385,6 +448,7 @@ def order_json(db: Session, order: MarketOrder, *, include_contact: bool = True)
         "currency": cur,
         "exponent": exp,
         "checkout_url": checkout_url(order) if order.state == "awaiting_payment" else None,
+        "web_url": web_url(order),  # 1.2.0
         "project": order.project or {},
         "delivery": order.delivery or {},
         "suppliers": groups,

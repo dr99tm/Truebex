@@ -6,7 +6,8 @@ turned into the basket link's lines with `default` for each variant (the app
 knows only the included products' ids), is named by the basket route and
 priced through 5.5 at the prices the app's prices-<region>.json give. Its
 Halden table is discontinued in the app's set, so the page offers the Fjord
-table instead, and the order then goes through 5.7 on the app's catalogue."""
+table instead (PF7e: the first of three, MK2 added the Sund and Vik tables),
+and the order then goes through 5.7 on the app's catalogue."""
 
 import json
 
@@ -97,10 +98,12 @@ def test_apps_theme_basket_named_and_priced_like_the_app(client, region):
         assert (p["price"], p["availability"]) == (theirs["price"], theirs["availability"])
         # D5: the platform's substitutes are objects; the app's file lists their ids.
         assert [s["product_id"] for s in p["substitutes"]] == theirs["substitutes"]
-    # The discontinued table: the page's "Use this instead" is the Fjord table at its price.
+    # The discontinued table: the page's "Use this instead" is the first
+    # substitute, the Fjord table, at its price (PF7e: then MK2's Sund and Vik).
     halden = priced[1]
     assert halden["availability"]["state"] == "discontinued"
-    (sub,) = halden["substitutes"]
+    assert [s["sku"] for s in halden["substitutes"]] == ["TABLE-FJORD", "TABLE-SUND", "TABLE-VIK"]
+    sub = halden["substitutes"][0]
     assert (sub["product_id"], sub["supplier_id"], sub["sku"], sub["variant_id"]) == (
         FJORD["product_id"], FJORD["supplier_id"], FJORD["sku"], FJORD["variants"][0]["variant_id"],
     )  # fmt: skip

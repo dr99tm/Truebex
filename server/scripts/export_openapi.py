@@ -56,8 +56,8 @@ CONTRACTS = {
     "jobs": "render-jobs/1.1",
     "uploads": "share-bundle/1.1",
     "shares": "share-bundle/1.1",
-    "market": "marketplace-api/1.1",
-    "feeds": "marketplace-api/1.1",
+    "market": "marketplace-api/1.2",
+    "feeds": "marketplace-api/1.2",
 }
 # What each of those operations does (PF7's and PF8's routes carry no docstring).
 MARKET_TEXT = {

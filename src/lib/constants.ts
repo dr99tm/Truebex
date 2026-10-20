@@ -1,25 +1,25 @@
 import {
   Sun,
-  LayoutPanelTop,
   Layers,
-  Link2,
-  Zap,
-  Bookmark,
   FileText,
-  Armchair,
   Paintbrush,
+  Ruler,
+  Eye,
+  Lightbulb,
   Building2,
   Palette,
+  Landmark,
   HardHat,
-  Wrench,
   Users,
 } from "lucide-react";
 
-// Content follows .claude/skills/truebex-brand-voice:
+// Content follows .claude/skills/truebex-brand-voice and the messaging brief
+// (docs/brand/messaging-brief.md):
+// - The slogan is "Imagine More. Build Better." Lead with the outcome (more
+//   options explored, better-informed decisions, fewer surprises), then the
+//   connected workflow that delivers it.
 // - Truebex is its own platform. Never name or compare to other software or
 //   engines.
-// - Lead with what is distinctive; skip table-stakes features every design
-//   tool has.
 // - Claims must be true of the shipping app; planned work goes in
 //   src/content/roadmap.json (shown as "On the roadmap", never as shipped).
 
@@ -27,17 +27,45 @@ export const SITE = {
   name: "Truebex",
   url: "https://truebex.com",
   tagline: "True Building Experience",
-  title: "Truebex — See It Before You Build It",
+  slogan: "Imagine More. Build Better.",
+  title: "Truebex — Imagine More. Build Better.",
   description:
-    "Truebex is a building design platform where daylight is measured through every opening, surfaces design themselves, and one change updates the whole project — instantly.",
+    "Building design software for architects and interior designers: explore more options, compare finishes in context and experience the space before you build.",
   email: "dr99tm@gmail.com",
+} as const;
+
+// The home page's hero (Hero.tsx).
+export const HERO = {
+  badge: "True Building Experience",
+  titleStart: "Imagine More.",
+  titleAccent: "Build Better.",
+  subtitle:
+    "Explore design options, compare materials and finishes in context, check dimensions and areas, and step inside your space in realistic light — before construction begins, in one connected workflow.",
+  primary: { label: "Request a Demo", href: "/#contact" },
+  secondary: { label: "Explore the Platform", href: "/#features" },
+  note: "Make room for better ideas — and make decisions with greater confidence.",
+} as const;
+
+// "A design is more than an image." (WhatIsTruebex.tsx).
+export const ABOUT = {
+  title: "A design is more than an image.",
+  subtitle: "More possibilities. Clearer decisions. Better-informed outcomes.",
+  paragraphs: [
+    "Design decisions shape how a space looks, how it works, what it needs and how it feels to be there. Yet these parts of the process are often split across separate tools and files.",
+    "Truebex brings them together around one evolving design. Explore alternatives, judge each choice in context, read the dimensions and areas, and step inside the space before it is built.",
+  ],
+  highlights: [
+    { icon: Lightbulb, label: "Explore more options" },
+    { icon: Palette, label: "Compare in context" },
+    { icon: Eye, label: "Experience the space" },
+  ],
 } as const;
 
 // Absolute hrefs (/#section, not #section) so the links work from any route,
 // not just the homepage. From /dashboard/ a bare #features would resolve to
 // /dashboard/#features (no such section); /#features navigates home first.
 export const NAV_LINKS = [
-  { label: "Product", href: "/#features" },
+  { label: "Platform", href: "/#features" },
   { label: "How It Works", href: "/#how-it-works" },
   { label: "Who It's For", href: "/#who-its-for" },
   { label: "Pricing", href: "/pricing/" },
@@ -55,73 +83,60 @@ export const NAV_UI = {
   toggle: "Toggle menu",
 } as const;
 
+// "Everything works together." (CoreFeatures.tsx). One connected workflow;
+// every card is shipping today, and anything planned says so in its own words.
+export const FEATURES_SECTION = {
+  title: "Everything works together.",
+  subtitle:
+    "One connected workflow, from the first wall to the finished drawings. Everything below ships in the app today.",
+} as const;
+
 export const FEATURES = [
   {
-    id: "daylight",
-    href: "/features/daylight/",
-    icon: Sun,
-    title: "Daylight, measured — not painted",
+    id: "precision",
+    icon: Ruler,
+    title: "Design with precision",
     description:
-      "Every window and door reads the sky and sun on its far side and lets exactly that light into the room. Open a door between a bright room and a dark one, and the light follows.",
-  },
-  {
-    id: "fills",
-    href: "/features/surfaces/",
-    icon: LayoutPanelTop,
-    title: "Surfaces that design themselves",
-    description:
-      "Split any wall into panels and fill them with rule-based patterns — start, end, centre, alternating. They re-flow on their own when the wall grows, shrinks or gains an opening.",
-  },
-  {
-    id: "assets",
-    href: "/features/assets/",
-    icon: Layers,
-    title: "Make it once, update everywhere",
-    description:
-      "Save a finished wall face as an asset and place it anywhere. Open the asset, change it, and every copy across the project updates in one step.",
-  },
-  {
-    id: "intent",
-    icon: Link2,
-    title: "Design intent that holds",
-    description:
-      "Offsets, links, locked dimensions and reference planes keep shapes in relationship while the walls they belong to move and resize.",
-  },
-  {
-    id: "instant",
-    icon: Zap,
-    title: "Instant at any size",
-    description:
-      "An edit costs only what it changes. Moving a wall in a full building takes milliseconds — 240 ms became 4.3 ms in our benchmark — so the model never lags behind your idea.",
-  },
-  {
-    id: "memory",
-    icon: Bookmark,
-    title: "A project that remembers its light",
-    description:
-      "Lighting setups and the exact view — camera, section, storey — are saved inside the project, and every lighting change can be undone like any other edit.",
-  },
-  {
-    id: "sheets",
-    href: "/features/sheets/",
-    icon: FileText,
-    title: "Drawings that draw themselves",
-    description:
-      "One command lays out plans, sections, stair sheets and schedules, with forms you fill once. Export a vector PDF with selectable text and fillable fields, or DXF.",
-  },
-  {
-    id: "objects",
-    icon: Armchair,
-    title: "Doors, cabinets and stairs from numbers",
-    description:
-      "Describe a door, a window, a cabinet or a stair by its parameters and it builds itself, regenerates with its host, and keeps its handles and hardware in place.",
+      "Draw walls, rooms, openings, slabs and stairs at real scale. Locked dimensions, offsets and reference planes keep the design the way you meant it while everything around it changes.",
   },
   {
     id: "finishes",
+    href: "/features/surfaces/",
     icon: Paintbrush,
-    title: "Finishes on any face",
+    title: "Explore materials and finishes",
     description:
-      "Paint, wallpaper and three-dimensional patterns on walls, floors, ceilings and models, driven by the same panel system — with mouldings that stop at door jambs and follow curved walls.",
+      "Try paint, wallpaper, panelling and three-dimensional patterns on any wall, floor or ceiling. Patterns re-flow on their own when the wall grows, shrinks or gains an opening.",
+  },
+  {
+    id: "light",
+    href: "/features/daylight/",
+    icon: Sun,
+    title: "Light that follows the design",
+    description:
+      "Every window and door measures the sky and sun outside it and lets that light in. Move a window or open a door, and the light in every room follows.",
+  },
+  {
+    id: "experience",
+    icon: Eye,
+    title: "Experience the space",
+    description:
+      "Walk the rooms at eye level and full scale to judge proportion, circulation and feel, and render any view in ray-traced light. Stepping inside with a headset is on the roadmap.",
+  },
+  {
+    id: "understand",
+    href: "/features/sheets/",
+    icon: FileText,
+    title: "Understand and document it",
+    description:
+      "Rooms report their areas as you draw, and one command lays out plans, sections and schedules as a vector PDF or DXF. Full quantities and cost estimates are on the roadmap.",
+  },
+  {
+    id: "connected",
+    href: "/features/assets/",
+    icon: Layers,
+    title: "Keep every decision connected",
+    description:
+      "Save a wall, an object or a detail as an asset and change it once: every copy updates. An edit costs only what it changes — 240 ms became 4.3 ms in our benchmark.",
   },
 ] as const;
 
@@ -135,89 +150,137 @@ export const PRODUCT_SHOT = {
   height: 1196,
 } as const;
 
+// "From possibility to confident decisions." (HowItWorks.tsx).
+export const STEPS_SECTION = {
+  title: "From possibility to confident decisions.",
+  subtitle:
+    "The goal: a clear, shared understanding of the space before anyone commits to build.",
+} as const;
+
 export const STEPS = [
   {
     number: "01",
-    title: "Draw the plan",
+    title: "Explore",
     description:
-      "Lay out walls, rooms and openings. The building forms in 3D with every line.",
+      "Draw the design and develop alternative layouts, forms and ideas. Every edit updates the model as you make it.",
   },
   {
     number: "02",
-    title: "Shape the surfaces",
+    title: "Compare",
     description:
-      "Panel the walls and set fill rules. Patterns arrange themselves and keep up with every change.",
+      "Review materials, finishes and furnishings in context, in the light each room receives.",
   },
   {
     number: "03",
-    title: "Let the light in",
+    title: "Understand",
     description:
-      "Daylight is measured through every opening, room by room, as you design.",
+      "Check dimensions and room areas as you go, so you know what each option involves.",
   },
   {
     number: "04",
-    title: "Make it reusable",
+    title: "Experience",
     description:
-      "Save what works as an asset. Change it once and the whole project follows.",
+      "Step inside at full scale and see the space from the point of view of the people who will use it.",
+  },
+  {
+    number: "05",
+    title: "Refine",
+    description:
+      "Discuss the options, adjust, and lay out the drawing sheets from the version you choose.",
   },
 ] as const;
+
+// "One shared vision. Different perspectives." (WhoItsFor.tsx).
+export const AUDIENCES_SECTION = {
+  title: "One shared vision. Different perspectives.",
+  subtitle: "For everyone who needs to understand a space before it exists.",
+} as const;
 
 export const AUDIENCES = [
   {
     icon: Building2,
     title: "Architects",
     description:
-      "Judge daylight and proportion while you draw — not weeks later.",
+      "Explore design alternatives and communicate spatial intent with greater clarity.",
   },
   {
     icon: Palette,
     title: "Interior Designers",
     description:
-      "Panels, fills and finishes that adapt when the room changes.",
+      "Help clients compare layouts, materials and finishes in the context of the whole space.",
+  },
+  {
+    icon: Landmark,
+    title: "Real Estate Developers",
+    description:
+      "Evaluate design directions and help stakeholders understand a proposed project earlier.",
   },
   {
     icon: HardHat,
-    title: "Developers & Contractors",
+    title: "Engineers & Contractors",
     description:
-      "One asset, placed across every unit, updated in one step.",
-  },
-  {
-    icon: Wrench,
-    title: "Engineers",
-    description:
-      "References and constraints that keep relationships intact as the design evolves.",
+      "Work from measurable geometry, locked dimensions and drawings taken from the same model.",
   },
   {
     icon: Users,
-    title: "Clients & Stakeholders",
+    title: "Clients & Property Owners",
     description:
-      "See the real light in the real room before anything is built.",
+      "Take part in design decisions and experience the proposed space before construction.",
   },
 ] as const;
 
-// The ideas Truebex is built on (shown in the "Why Truebex" section).
+// "Better decisions begin before construction." and the philosophy beneath it
+// (WhatMakesItDifferent.tsx, the "Why Truebex" section).
+export const WHY = {
+  title: "Better decisions begin before construction.",
+  subtitle: "Why Truebex",
+  philosophy: {
+    title: "Better spaces start with better understanding.",
+    paragraphs: [
+      "We believe better outcomes begin when people can explore possibilities, understand their choices and experience a space before it exists.",
+      "Truebex is built to connect the visual, spatial and measurable sides of design — helping designers and owners move from uncertainty to a clear, shared vision.",
+    ],
+  },
+} as const;
+
 export const PRINCIPLES = [
   {
-    title: "Truth, not decoration",
-    description:
-      "What you see is computed from the sun, the sky and the openings you placed — not dressed up afterwards.",
+    title: "Explore more options",
+    description: "Consider alternatives while the design is still easy to change.",
   },
   {
-    title: "Intent survives change",
+    title: "Make decisions together",
     description:
-      "Relationships, dimensions and patterns hold while the design moves around them.",
+      "Give designers and owners a clearer, shared view of what is being proposed.",
   },
   {
-    title: "Make it once",
+    title: "Understand the space",
     description:
-      "Every good detail becomes an asset you can place, refine and update everywhere at once.",
+      "Go beyond flat images to judge layout, proportion, materials and light.",
+  },
+  {
+    title: "Make informed choices earlier",
+    description:
+      "Raise concerns and settle expectations before changes become disruptive or costly.",
+  },
+  {
+    title: "Connect design and information",
+    description:
+      "Keep what you see and what you measure in one model, so a change carries through everywhere.",
   },
 ] as const;
+
+// The closing call to action (CTAContact.tsx).
+export const CONTACT_CTA = {
+  titleStart: "Your next project has",
+  titleAccent: "more possibilities.",
+  body: "Explore a more connected way to design, compare options and experience your ideas before construction begins. Request a demo and we'll show you Truebex on a project like yours.",
+} as const;
 
 export const FAQS = [
   {
     q: "What is Truebex?",
-    a: "Truebex is a building design platform for Windows. You draw in plan and design in 3D at the same time, with daylight measured through every opening, surfaces that arrange themselves, and assets that update everywhere when you change them.",
+    a: "Truebex is building design software for Windows. Architects and interior designers use it to explore design options, compare materials and finishes in context, check dimensions and areas, experience the space at full scale and produce the drawings — all from one connected model.",
   },
   {
     q: "How is the lighting in Truebex different?",
@@ -255,7 +318,7 @@ export const FAQS = [
 export const DOWNLOAD = {
   metaTitle: "Download Truebex for Windows",
   description:
-    "Download Truebex for Windows: the building design platform with measured daylight. The installer needs no account; a free account holds your licence.",
+    "Download Truebex for Windows: building design software to explore more options and experience the space before you build. No account needed to install.",
   eyebrow: "Download",
   h1: "Download Truebex for Windows",
   intro:
@@ -1061,7 +1124,7 @@ export const FEATURE_PAGE_UI = {
   downloadFallback: "Request a demo",
   signup: "Create free account",
   ctaTitle: "See it in your own project",
-  ctaBody: "Create a free account and design with measured daylight today.",
+  ctaBody: "Create a free account and start exploring your next design today.",
   roadmapCtaTitle: "Follow it as it is built",
   roadmapCtaBody: "Create a free account to design with Truebex today, and watch the roadmap for this work.",
   roadmapLink: "See the roadmap",
@@ -1164,7 +1227,7 @@ export const LANGUAGE_SWITCH = {
 
 export const FOOTER = {
   blurb:
-    "The building design platform where daylight is measured, surfaces design themselves and every change is instant.",
+    "Architectural design, materials and finishes, measurable project information and the experience of the space — connected in one workflow.",
   product: "Product",
   features: "Features",
   resources: "Resources",
@@ -1230,13 +1293,13 @@ export const WEBSITE_ANALYTICS_NOTICE = {
 
 export const AR_HOME = {
   meta: {
-    title: "Truebex — شاهده قبل أن تبنيه",
+    title: "Truebex — تخيّل أكثر. ابنِ أفضل.",
     description:
-      "Truebex منصة لتصميم المباني: يُقاس فيها ضوء النهار عبر كل نافذة وباب، وتُرتّب الأسطح نفسها بنفسها، ويحدّث تعديل واحد المشروع كله فورًا.",
+      "Truebex برنامج لتصميم المباني للمعماريين ومصممي الديكور الداخلي: استكشف خيارات أكثر، وقارن التشطيبات في سياقها، وعِش المساحة قبل أن تبنيها.",
     ogLocale: "ar_AR",
   },
   nav: [
-    { label: "المنتج", href: "/ar/#features" },
+    { label: "المنصة", href: "/ar/#features" },
     { label: "كيف يعمل", href: "/ar/#how-it-works" },
     { label: "لمن صُمّم", href: "/ar/#who-its-for" },
     { label: "الأسعار", href: "/ar/#pricing" },
@@ -1250,93 +1313,79 @@ export const AR_HOME = {
   toggleMenu: "فتح القائمة وإغلاقها",
   hero: {
     badge: "تجربة بناء حقيقية",
-    titleStart: "شاهده قبل أن",
-    titleAccent: "تبنيه.",
+    titleStart: "تخيّل أكثر.",
+    titleAccent: "ابنِ أفضل.",
     subtitle:
-      "منصة لتصميم المباني يُقاس فيها ضوء النهار عبر كل فتحة، وتصمّم الأسطح نفسها بنفسها، ويحدّث تعديل واحد المشروع كله — فورًا.",
+      "استكشف خيارات التصميم، وقارن المواد والتشطيبات في سياقها، وتحقّق من الأبعاد والمساحات، وادخل إلى مساحتك في إضاءة واقعية — قبل أن يبدأ البناء، في سير عمل واحد متصل.",
     primary: { label: "اطلب عرضًا توضيحيًا", href: "/ar/#contact" },
-    secondary: { label: "أنشئ حسابًا مجانيًا", href: "/signup/" },
+    secondary: { label: "استكشف المنصة", href: "/ar/#features" },
     alt: "ضوء نهار ناعم يدخل عبر مدخل باب إلى غرفة بيضاء هادئة، صُمّمت وأُضيئت في Truebex",
     caption: "ضوء النهار مقيسًا عبر مدخل باب — لقطة من Truebex.",
   },
   about: {
-    title: "ما هو Truebex؟",
-    subtitle: "منصة لتصميم المباني، ما ترسمه فيها هو ما تراه — في ضوء حقيقي وبمقياس حقيقي.",
+    title: "التصميم أكثر من مجرد صورة.",
+    subtitle: "إمكانات أكثر. قرارات أوضح. نتائج أفضل.",
     paragraphs: [
-      "يتعامل Truebex مع المبنى كنموذج واحد حيّ. المسقط الذي ترسمه، والأسطح التي تشكّلها، والضوء الذي يملأ كل غرفة، كلها شيء واحد — فلا شيء يُصدَّر، ولا شيء يُعاد إخراجه، ولا شيء يخرج عن التزامن.",
-      "يُقاس الضوء من الشمس والسماء والفتحات التي وضعتها. تعرف الأنماط الجدران التي تقع عليها. والتفاصيل التي تصمّمها مرة واحدة تتحدّث في كل مكان تُستخدم فيه.",
+      "قرارات التصميم تحدّد شكل المساحة وطريقة عملها وما تحتاجه وإحساس من يكون فيها. ومع ذلك تتوزّع هذه الجوانب عادةً على أدوات وملفات منفصلة.",
+      "يجمعها Truebex حول تصميم واحد يتطوّر معك. استكشف البدائل، واحكم على كل خيار في سياقه، واقرأ الأبعاد والمساحات، وادخل إلى المساحة قبل أن تُبنى.",
     ],
   },
   features: {
-    title: "ما يقدّمه Truebex وحده",
-    subtitle: "تسع قدرات في صميم المنصة، كلها متاحة في التطبيق اليوم.",
+    title: "كل شيء يعمل معًا.",
+    subtitle: "سير عمل واحد متصل، من أول جدار إلى اللوحات المكتملة. كل ما يلي متاح في التطبيق اليوم.",
     items: {
-      daylight: {
-        title: "ضوء النهار مقيس — لا مرسوم",
+      precision: {
+        title: "صمّم بدقة",
         description:
-          "تقرأ كل نافذة وكل باب السماء والشمس على جانبها الآخر، وتُدخل إلى الغرفة ذلك الضوء بالضبط. افتح بابًا بين غرفة مضيئة وأخرى مظلمة، فيتبعه الضوء.",
-      },
-      fills: {
-        title: "أسطح تصمّم نفسها",
-        description:
-          "قسّم أي جدار إلى ألواح واملأها بأنماط تحكمها قواعد: البداية والنهاية والوسط والتناوب. تعيد ترتيب نفسها حين يطول الجدار أو يقصر أو تُضاف إليه فتحة.",
-      },
-      assets: {
-        title: "اصنعه مرة، وحدّثه في كل مكان",
-        description:
-          "احفظ واجهة جدار مكتملة كأصل وضعها أينما شئت. افتح الأصل وعدّله، فتتحدّث كل نسخة منه في المشروع بخطوة واحدة.",
-      },
-      intent: {
-        title: "نيّة التصميم ثابتة",
-        description:
-          "الإزاحات والروابط والأبعاد المقفلة والمستويات المرجعية تحفظ العلاقات بين الأشكال بينما تتحرك الجدران التي تنتمي إليها ويتغيّر حجمها.",
-      },
-      instant: {
-        title: "فوري مهما كبر المشروع",
-        description:
-          "لا يكلّف التعديل إلا ما يغيّره. تحريك جدار في مبنى كامل يستغرق أجزاءً من الألف من الثانية — من 240 ملّي ثانية إلى 4.3 ملّي ثانية في اختبارنا — فلا يتأخر النموذج عن فكرتك.",
-      },
-      memory: {
-        title: "مشروع يتذكّر ضوءه",
-        description:
-          "تُحفظ إعدادات الإضاءة والمشهد بدقة — الكاميرا والمقطع والطابق — داخل المشروع، ويمكن التراجع عن أي تغيير في الإضاءة كأي تعديل آخر.",
-      },
-      sheets: {
-        title: "لوحات ترسم نفسها",
-        description:
-          "أمر واحد يرتّب المساقط والمقاطع ولوحات السلالم والجداول، مع نماذج تملؤها مرة واحدة. صدّر ملف PDF متجهيًا بنص قابل للتحديد وحقول قابلة للتعبئة، أو ملف DXF.",
-      },
-      objects: {
-        title: "أبواب وخزائن وسلالم من الأرقام",
-        description:
-          "صِف بابًا أو نافذة أو خزانة أو سلّمًا بمعاملاته فيُبنى من تلقاء نفسه، ويُعاد توليده مع الجدار الحامل له، ويحافظ على مقابضه وتجهيزاته في مكانها.",
+          "ارسم الجدران والغرف والفتحات والبلاطات والسلالم بمقياسها الحقيقي. الأبعاد المقفلة والإزاحات والمستويات المرجعية تحفظ التصميم كما أردته بينما يتغيّر كل ما حوله.",
       },
       finishes: {
-        title: "تشطيبات على أي سطح",
+        title: "استكشف المواد والتشطيبات",
         description:
-          "طلاء وورق جدران وأنماط ثلاثية الأبعاد على الجدران والأرضيات والأسقف والنماذج، يقودها نظام الألواح نفسه — مع كرانيش تتوقف عند حلوق الأبواب وتتبع الجدران المنحنية.",
+          "جرّب الطلاء وورق الجدران والألواح والأنماط ثلاثية الأبعاد على أي جدار أو أرضية أو سقف. تعيد الأنماط ترتيب نفسها حين يطول الجدار أو يقصر أو تُضاف إليه فتحة.",
+      },
+      light: {
+        title: "ضوء يتبع التصميم",
+        description:
+          "تقيس كل نافذة وكل باب السماء والشمس خارجها وتُدخل ذلك الضوء. حرّك نافذة أو افتح بابًا، فيتبعه الضوء في كل غرفة.",
+      },
+      experience: {
+        title: "عِش المساحة",
+        description:
+          "تجوّل في الغرف بمستوى النظر وبالمقياس الكامل لتحكم على التناسب والحركة والإحساس، واعرض أي مشهد بإضاءة تتبّع الأشعة. أما الدخول بنظارة العرض فعلى خارطة الطريق.",
+      },
+      understand: {
+        title: "افهمه ووثّقه",
+        description:
+          "تعرض الغرف مساحاتها أثناء الرسم، وأمر واحد يرتّب المساقط والمقاطع والجداول في ملف PDF متجهي أو DXF. أما الكميات الكاملة وتقديرات التكلفة فعلى خارطة الطريق.",
+      },
+      connected: {
+        title: "اجعل كل قرار متصلًا",
+        description:
+          "احفظ جدارًا أو عنصرًا أو تفصيلة كأصل وغيّره مرة واحدة: تتحدّث كل نسخة منه. لا يكلّف التعديل إلا ما يغيّره — من 240 ملّي ثانية إلى 4.3 ملّي ثانية في اختبارنا.",
       },
     },
   },
   steps: {
-    title: "كيف يعمل",
-    subtitle: "من المسقط إلى الضوء في أربع خطوات.",
+    title: "من الفكرة إلى قرارات واثقة.",
+    subtitle: "الهدف: فهم واضح ومشترك للمساحة قبل الالتزام بالبناء.",
     items: [
-      { number: "01", title: "ارسم المسقط", description: "ضع الجدران والغرف والفتحات. يتشكّل المبنى بالأبعاد الثلاثية مع كل خط." },
-      { number: "02", title: "شكّل الأسطح", description: "قسّم الجدران إلى ألواح وحدّد قواعد التعبئة. تترتب الأنماط من تلقاء نفسها وتواكب كل تغيير." },
-      { number: "03", title: "أدخل الضوء", description: "يُقاس ضوء النهار عبر كل فتحة، غرفةً غرفة، أثناء التصميم." },
-      { number: "04", title: "اجعله قابلًا لإعادة الاستخدام", description: "احفظ ما ينجح كأصل. غيّره مرة واحدة فيتبعه المشروع كله." },
+      { number: "01", title: "استكشف", description: "ارسم التصميم وطوّر تخطيطات وأشكالًا وأفكارًا بديلة. كل تعديل يحدّث النموذج لحظة تجريه." },
+      { number: "02", title: "قارن", description: "راجع المواد والتشطيبات والأثاث في سياقها، وفي الضوء الذي تتلقاه كل غرفة." },
+      { number: "03", title: "افهم", description: "تحقّق من الأبعاد ومساحات الغرف أثناء العمل، لتعرف ما يتطلّبه كل خيار." },
+      { number: "04", title: "عِش التجربة", description: "ادخل إلى المساحة بمقياسها الكامل وانظر إليها بعين من سيستخدمها." },
+      { number: "05", title: "حسّن", description: "ناقش الخيارات، وعدّل، ورتّب لوحات الرسم من النسخة التي تختارها." },
     ],
   },
   audiences: {
-    title: "لمن صُمّم Truebex",
-    subtitle: "لكل من يحتاج أن يرى المبنى قبل أن يُبنى.",
+    title: "رؤية واحدة مشتركة. زوايا نظر مختلفة.",
+    subtitle: "لكل من يحتاج أن يفهم المساحة قبل أن توجد.",
     items: [
-      { title: "المعماريون", description: "احكم على ضوء النهار والتناسب أثناء الرسم — لا بعد أسابيع." },
-      { title: "مصممو الديكور الداخلي", description: "ألواح وتعبئات وتشطيبات تتكيّف حين تتغيّر الغرفة." },
-      { title: "المطوّرون والمقاولون", description: "أصل واحد يوضع في كل وحدة ويُحدَّث بخطوة واحدة." },
-      { title: "المهندسون", description: "مراجع وقيود تحفظ العلاقات بينما يتطوّر التصميم." },
-      { title: "العملاء وأصحاب القرار", description: "شاهد الضوء الحقيقي في الغرفة الحقيقية قبل أن يُبنى أي شيء." },
+      { title: "المعماريون", description: "استكشف بدائل التصميم وأوصل فكرتك المكانية بوضوح أكبر." },
+      { title: "مصممو الديكور الداخلي", description: "ساعد عملاءك على مقارنة التخطيطات والمواد والتشطيبات في سياق المساحة كلها." },
+      { title: "المطوّرون العقاريون", description: "قيّم اتجاهات التصميم وساعد أصحاب القرار على فهم المشروع المقترح مبكرًا." },
+      { title: "المهندسون والمقاولون", description: "اعمل من هندسة قابلة للقياس وأبعاد مقفلة ورسومات مأخوذة من النموذج نفسه." },
+      { title: "العملاء وأصحاب العقارات", description: "شارك في قرارات التصميم وعِش المساحة المقترحة قبل البناء." },
     ],
   },
   pricing: {
@@ -1425,7 +1474,7 @@ export const AR_HOME = {
     items: [
       {
         q: "ما هو Truebex؟",
-        a: "Truebex منصة لتصميم المباني تعمل على Windows. ترسم المسقط وتصمّم بالأبعاد الثلاثية في الوقت نفسه، مع ضوء نهار يُقاس عبر كل فتحة، وأسطح ترتّب نفسها، وأصول تتحدّث في كل مكان حين تغيّرها.",
+        a: "Truebex برنامج لتصميم المباني يعمل على Windows. يستخدمه المعماريون ومصممو الديكور الداخلي لاستكشاف خيارات التصميم، ومقارنة المواد والتشطيبات في سياقها، والتحقّق من الأبعاد والمساحات، وعيش المساحة بمقياسها الكامل، وإخراج الرسومات — كل ذلك من نموذج واحد متصل.",
       },
       {
         q: "كيف تختلف الإضاءة في Truebex؟",
@@ -1450,15 +1499,15 @@ export const AR_HOME = {
     ],
   },
   contact: {
-    titleStart: "هل أنت مستعد لتصميم",
-    titleAccent: "ما سيُبنى فعلًا؟",
-    body: "شاهد مبنى يُصمَّم ويُضاء ويُحسَّن في جلسة حيّة واحدة. اطلب عرضًا توضيحيًا وسنريك Truebex على مشروع يشبه مشروعك.",
+    titleStart: "لمشروعك القادم",
+    titleAccent: "إمكانات أكثر.",
+    body: "اكتشف طريقة أكثر ترابطًا للتصميم ومقارنة الخيارات وعيش أفكارك قبل أن يبدأ البناء. اطلب عرضًا توضيحيًا وسنريك Truebex على مشروع يشبه مشروعك.",
     email: "راسلنا بالبريد الإلكتروني",
     form: "نموذج طلب العرض (بالإنجليزية)",
   },
   footer: {
     tagline: "تجربة بناء حقيقية",
-    blurb: "منصة تصميم المباني حيث يُقاس ضوء النهار، وتصمّم الأسطح نفسها، وكل تعديل فوري.",
+    blurb: "التصميم المعماري، والمواد والتشطيبات، ومعلومات المشروع القابلة للقياس، وتجربة المساحة — متصلة في سير عمل واحد.",
     product: "المنتج",
     features: "الميزات",
     resources: "مصادر",
@@ -3389,4 +3438,11 @@ export const NOT_FOUND = {
     { label: "Download for Windows", href: "/download/" },
     { label: "Pricing", href: "/pricing/" },
   ],
+} as const;
+
+// PF7e: the orders page opened from an order's link (contract marketplace-api
+// 1.2.0 `web_url`, the app's "Open on the web": /dashboard/orders/?order=<id>).
+export const MARKET_ORDER_LINK = {
+  linked: "The order you opened",
+  notFound: "This order is not in this account. Sign in with the account that sent it from Truebex.",
 } as const;

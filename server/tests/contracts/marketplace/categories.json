@@ -1,11 +1,11 @@
 {
-  "taxonomy_sha256": "7720dcfbd63ceb9f51e6d3e4c9972611e490f75a50dc39553a7264968d9970a9",
+  "taxonomy_sha256": "57e1159e84b2f65779c5a371cf38b7e79b23ff985f6852a75a6a5af366221915",
   "categories": [
     {
       "path": "furniture",
       "label": "Furniture",
       "app_path": "furniture",
-      "products": 10
+      "products": 12
     },
     {
       "path": "furniture/seating",
@@ -29,13 +29,13 @@
       "path": "furniture/tables",
       "label": "Tables",
       "app_path": "furniture/tables",
-      "products": 2
+      "products": 4
     },
     {
       "path": "furniture/tables/coffee",
       "label": "Coffee tables",
       "app_path": "furniture/tables",
-      "products": 2
+      "products": 4
     },
     {
       "path": "furniture/storage",

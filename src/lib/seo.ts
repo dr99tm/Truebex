@@ -8,7 +8,7 @@ export const OG_IMAGE = {
   url: "/images/og-image.jpg",
   width: 1200,
   height: 630,
-  alt: "Truebex — see it before you build it. The building design platform with measured daylight.",
+  alt: "Truebex — Imagine More. Build Better. Building design software for architects and interior designers.",
 };
 
 // The English home and the Arabic landing page, paired for search engines.

@@ -1,4 +1,4 @@
-"""The marketplace API (contract marketplace-api v1.1, §5.1–5.10) and the
+"""The marketplace API (contract marketplace-api v1.2, §5.1–5.10) and the
 platform's own marketplace routes (checkout, Stripe webhook, picture search,
 reviews, product images).
 

@@ -1604,6 +1604,35 @@ thread, so Ctrl+C stops it at once and its connection closes; an older `worker/t
 its claim answers, so update it on the worker PC with the API. A machine that loses power or network sends nothing, and
 §6.4's 120 s lease still covers it. Doc: `docs/roadmap/40/PF6b-claim-long-poll-gone-worker.md`.
 
+## Marketplace API 1.2.0 (PF7e)
+
+The marketplace speaks contract marketplace-api 1.2.0 (`X-Truebex-Contract: marketplace-api/1.2`; a 1.1 client is served
+the same), so the app's Orders tab (MK4) reads the platform's own figures. An order or a request for quote (5.7-5.10)
+now also answers `web_url`, the order's page on the site (`https://truebex.com/dashboard/orders/?order=<id>`, built
+from `SITE_URL`), and for each supplier its `name`, `days_min` / `days_max` and `items`: each line's `sku`,
+`variant_id`, `qty`, `price_seen` (the unit price it was placed at) and `quoted` (the supplier's quoted unit price,
+`null` until it quotes in the supplier inbox). The older keys (`supplier_name`, `delivery_days`, the top-level `lines`)
+stay. Every line of a 409 `unavailable` carries its `availability` (`null` when it is not sold in the region); a line
+its supplier does not price in a region it delivers to is 409 `unavailable`, and 422 `region_not_served` is kept for a
+supplier that does not deliver there.
+
+The dashboard's Orders page opens an order's link: `/dashboard/orders/?order=<id>` shows that order first, framed, and
+fetches it when it is not on the first page; a link to an order the signed-in account does not have shows a short
+note, and a signed-out visitor comes back to the same link after signing in.
+
+`server/tests/contracts/marketplace/` is again the app's set (app commit 123b88c59: MK2's Sund and Vik coffee tables,
+the Oslo sofa's Oat variant low stock in AE, MK4's order fixtures), and the seed reads a variant's per-region
+`availabilities`. To try MK4's basket against a local API seeded with the app's catalogue:
+
+```powershell
+cd server
+.venv\Scripts\python.exe scripts\seed_market.py --fixture tests\contracts\marketplace --owner you@example.com --payments-ready
+.venv\Scripts\python.exe scripts\market_try.py --email you@example.com --password ... --basket mk4 --kind quote --json
+```
+
+It prints the request (two Oslo sofas and the Fjord table from Nord Living, the Arc wall light from Atelier Lumen, AED
+3,431.00), its `web:` link and the whole answer. Doc: `docs/roadmap/40/PF7e-marketplace-api-1-2-0.md`.
+
 ## Comments in cloud projects (PF4b)
 
 The project service follows `project-log` **1.2.0** (CL2, several people in one model): the people in a cloud project

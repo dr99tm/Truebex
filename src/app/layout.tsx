@@ -54,7 +54,7 @@ export const metadata: Metadata = {
         url: "/images/og-image.jpg",
         width: 1200,
         height: 630,
-        alt: "Truebex — see it before you build it. The building design platform with measured daylight.",
+        alt: "Truebex — Imagine More. Build Better. Building design software for architects and interior designers.",
       },
     ],
   },
@@ -87,7 +87,7 @@ const organizationLd = {
       url: SITE.url,
       logo: `${SITE.url}/icon-512.png`,
       email: SITE.email,
-      slogan: SITE.tagline,
+      slogan: SITE.slogan,
       ...(socialLinks.length ? { sameAs: socialLinks.map((s) => s.url) } : {}),
     },
     {
