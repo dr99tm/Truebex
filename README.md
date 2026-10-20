@@ -1603,3 +1603,35 @@ old place, `attempts` unchanged, no "Trying again"). The API logs one INFO line 
 thread, so Ctrl+C stops it at once and its connection closes; an older `worker/truebex_worker.py` stays connected until
 its claim answers, so update it on the worker PC with the API. A machine that loses power or network sends nothing, and
 §6.4's 120 s lease still covers it. Doc: `docs/roadmap/40/PF6b-claim-long-poll-gone-worker.md`.
+
+## Comments in cloud projects (PF4b)
+
+The project service follows `project-log` **1.2.0** (CL2, several people in one model): the people in a cloud project
+pin comments on a wall or a view, reply, edit, resolve, reopen and delete them, and every route on `/projects` and
+`/v1/projects` now echoes `X-Truebex-Contract: project-log/1.2` (1.0 and 1.1 clients still work).
+
+- **Routes.** `GET /projects/{pid}/comments?after_rev=&state=` (5.19), `POST /projects/{pid}/comments` (5.20,
+  `Idempotency-Key`), `PATCH` and `DELETE /projects/{pid}/comments/{cid}` (5.21, 5.22), and the same under
+  `/v1/projects` for API keys (`projects:read` / `projects:write`; the comment is the key owner's). Every member
+  comments, a viewer included; the text is the author's; resolving and reopening the author's, an editor's or the
+  owner's; deleting the author's or the owner's.
+- **The comment revision.** Every create, edit, resolve, reopen or delete adds one to the project's
+  `comments_rev`, under the same row lock that numbers the log, so two people commenting at once never share or
+  skip a number. The presence heartbeat (5.17) and list (5.18) answer `comments_rev`; a client fetches 5.19 with
+  the last `rev` it read and gets each change once, oldest first, a deleted comment once as `state: deleted`.
+- **Plans.** A comment from the app (a device token) needs `collab.live` (a paid plan or the trial, else 403
+  `plan_required`); a session token (the website's and the phone's credential; neither shows comments yet) and an API
+  key comment with the role checks only. Presence and reading are never gated.
+- **Data.** `project_comments` (new table) and `projects.comments_rev` (added column, NULL = 0). Comments are
+  never in a snapshot or the log; a purged project takes its comments.
+
+Try it against a local API (`server\run.bat`, a licence signing key in `server\.env`); with `$p` a project and
+`$S` a member's headers (`Authorization` and `X-Truebex-Contract: project-log/1.2`):
+
+```powershell
+$c = Invoke-RestMethod -Method Post "http://127.0.0.1:8000/projects/$p/comments" -Headers $S -ContentType 'application/json' -Body '{"text":"Does the kitchen still fit?","anchor":{"entity":"dc643577cfb582fabd0d7f9edef6b30d"}}'
+(Invoke-RestMethod "http://127.0.0.1:8000/projects/$p/comments?after_rev=0" -Headers $S).rev
+```
+
+On a project with no comments before, the second line prints `1`. The full walk-through (two accounts, a viewer,
+reply, resolve, delete, the plan gate, `/v1`) is the human test in `docs/roadmap/40/PF4b-project-log-1-2-0.md`.
