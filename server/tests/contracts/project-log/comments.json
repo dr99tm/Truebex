@@ -1,0 +1,27 @@
+{
+	"schema": "truebex-project-log-comments/1",
+	"note": "The second author's comment on the wall presence.json names, as 5.19 returns it (contract 1.2.0); the stub's collab script posts it after he moved the wall. Written by TruebexSync::FSyncStub::WriteCollabFixtures (-mwcl1fixtures).",
+	"comments": [
+		{
+			"comment_id": "c1000000c0de00000000000000000001",
+			"parent_id": null,
+			"author":
+			{
+				"user_id": 7,
+				"name": "Sam Editor"
+			},
+			"created_at": "2026-10-09T10:45:00.000Z",
+			"edited_at": null,
+			"text": "I moved this wall 500 mm into the hall -- does the kitchen still fit?",
+			"state": "open",
+			"resolved_by": null,
+			"resolved_at": null,
+			"anchor":
+			{
+				"entity": "dc643577cfb582fabd0d7f9edef6b30d",
+				"point_mm": null,
+				"view": null
+			}
+		}
+	]
+}

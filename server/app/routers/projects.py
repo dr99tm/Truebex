@@ -1,11 +1,15 @@
-"""The project service (contract project-log v1.1, PF4 and PF4a): projects,
-the operation log, snapshots, versions and restore, members, presence.
+"""The project service (contract project-log v1.2, PF4, PF4a and PF4b): projects,
+the operation log, snapshots, versions and restore, members, presence and
+comments (5.19-5.22, 1.2.0).
 
 Auth: a device token or a session (contract §4); roles per the §4 matrix on
 every route, 404 for non-members. 5.5 needs a session (403
 `session_required`). Pushes from a device need `cloud.sync`. 5.6 and 5.7 are
 `async`: a pull long-polls on the event loop without holding a worker thread
-or a database connection while it waits. Every error uses the shared envelope.
+or a database connection while it waits. A comment from a device (5.20) needs
+`collab.live`, as a push from a device needs `cloud.sync`; presence (5.17,
+5.18) needs no paid feature and carries the comment revision. Every error uses
+the shared envelope.
 """
 
 import asyncio
@@ -21,10 +25,10 @@ from ..database import SessionLocal, get_db
 from ..idempotency import Idempotency, idempotent
 from ..licence.service import ensure_author_id
 from ..models import User
-from ..projects import hooks, members, ops, presence, quotas, service, snapshots, versions, waiters
+from ..projects import comments, hooks, members, ops, presence, quotas, service, snapshots, versions, waiters
 from ..projects.caller import ProjectCaller, get_any_caller, get_project_caller, require_session
 
-router = APIRouter(prefix="/projects", tags=["projects"], dependencies=[contract("project-log", 1, 1)])
+router = APIRouter(prefix="/projects", tags=["projects"], dependencies=[contract("project-log", 1, 2)])
 
 
 class CreateIn(BaseModel):
@@ -404,7 +408,10 @@ def heartbeat(
     db: Session = Depends(get_db),
 ) -> dict:
     service.open_project(db, caller, project_id)
-    return presence.heartbeat(db, project_id, caller.user, body)
+    out = presence.heartbeat(db, project_id, caller.user, body)
+    # 1.2.0: the comment revision tells the client when to fetch 5.19.
+    out["comments_rev"] = comments.current_rev(db, project_id)
+    return out
 
 
 @router.get("/{project_id}/presence")
@@ -412,4 +419,63 @@ def who_is_here(
     project_id: str, caller: ProjectCaller = Depends(get_project_caller), db: Session = Depends(get_db)
 ) -> dict:
     service.open_project(db, caller, project_id)
-    return presence.present(db, project_id)
+    out = presence.present(db, project_id)
+    out["comments_rev"] = comments.current_rev(db, project_id)
+    return out
+
+
+# --- 5.19-5.22 comments (1.2.0, PF4b) --------------------------------------------------------------
+
+
+@router.get("/{project_id}/comments")
+def list_comments(
+    project_id: str,
+    after_rev: int = Query(default=0, ge=0),
+    state: comments.Filter = "all",
+    caller: ProjectCaller = Depends(get_project_caller),
+    db: Session = Depends(get_db),
+) -> dict:
+    """Comments changed after a revision, oldest change first; a deleted one once, as a tombstone."""
+    service.open_project(db, caller, project_id)
+    return comments.list_after(db, project_id, after_rev, state)
+
+
+@router.post("/{project_id}/comments", status_code=201)
+def create_comment(
+    project_id: str,
+    body: comments.CommentIn,
+    caller: ProjectCaller = Depends(get_project_caller),
+    idem: Idempotency = idempotent("projects.comments"),
+    db: Session = Depends(get_db),
+):
+    """Pin a comment or reply; any member, a viewer included."""
+    project, _ = service.open_project(db, caller, project_id)
+    if caller.is_device:
+        comments.require_collab(db, caller.user)
+    return _idempotent_call(idem, db, caller.user, 201, lambda: comments.create(db, project, caller.user, body))
+
+
+@router.patch("/{project_id}/comments/{comment_id}")
+def update_comment(
+    project_id: str,
+    comment_id: str,
+    body: comments.CommentPatchIn,
+    caller: ProjectCaller = Depends(get_project_caller),
+    db: Session = Depends(get_db),
+) -> dict:
+    """Edit the text (the author), resolve or reopen (the author, an editor or the owner)."""
+    project, member = service.open_project(db, caller, project_id)
+    return comments.update_comment(db, project, member, comment_id, body)
+
+
+@router.delete("/{project_id}/comments/{comment_id}", status_code=204)
+def delete_comment(
+    project_id: str,
+    comment_id: str,
+    caller: ProjectCaller = Depends(get_project_caller),
+    db: Session = Depends(get_db),
+) -> Response:
+    """Delete (the author or the owner): a tombstone goes out once in 5.19."""
+    project, member = service.open_project(db, caller, project_id)
+    comments.delete_comment(db, project, member, comment_id)
+    return Response(status_code=204)

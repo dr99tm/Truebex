@@ -5,5 +5,6 @@ restore, members with roles, presence and quotas per tier.
 Modules: `service` (records, roles, quotas' callers), `ops` (validation, the
 §6.3 push rule, pulls), `waiters` (long-poll wake-ups), `snapshots`,
 `versions`, `members`, `presence`, `hooks` (`on_ops_accepted`), `quotas`,
-`caller` (who is calling), `jobs` (prune, purge, presence sweep).
+`caller` (who is calling), `jobs` (prune, purge, presence sweep), `comments`
+(5.19-5.22 and the comment revision, project-log 1.2.0, PF4b).
 """

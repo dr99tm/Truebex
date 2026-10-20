@@ -13,26 +13,30 @@ if TYPE_CHECKING:
 OPERATIONS: dict[str, dict[str, Any]] = {
     'account_get': {'method': 'GET', 'path': '/v1/account', 'path_params': [], 'query': [], 'headers': [], 'body': None, 'body_props': [], 'scope': None, 'contract': None},
     'account_ping': {'method': 'GET', 'path': '/v1/ping', 'path_params': [], 'query': [], 'headers': [], 'body': None, 'body_props': [], 'scope': None, 'contract': None},
-    'projects_create': {'method': 'POST', 'path': '/v1/projects', 'path_params': [], 'query': [], 'headers': ['idempotency-key'], 'body': 'json', 'body_props': ['doc_version', 'name'], 'scope': 'projects:write', 'contract': 'project-log/1.1'},
-    'projects_create_snapshot': {'method': 'POST', 'path': '/v1/projects/{project_id}/snapshots', 'path_params': ['project_id'], 'query': [], 'headers': ['idempotency-key'], 'body': 'json', 'body_props': ['at_seq', 'doc_version', 'files', 'upload_id'], 'scope': 'projects:write', 'contract': 'project-log/1.1'},
-    'projects_create_version': {'method': 'POST', 'path': '/v1/projects/{project_id}/versions', 'path_params': ['project_id'], 'query': [], 'headers': ['idempotency-key'], 'body': 'json', 'body_props': ['at_seq', 'name', 'note', 'snapshot_id'], 'scope': 'projects:write', 'contract': 'project-log/1.1'},
-    'projects_delete': {'method': 'DELETE', 'path': '/v1/projects/{project_id}', 'path_params': ['project_id'], 'query': [], 'headers': [], 'body': None, 'body_props': [], 'scope': None, 'contract': 'project-log/1.1'},
-    'projects_get': {'method': 'GET', 'path': '/v1/projects/{project_id}', 'path_params': ['project_id'], 'query': [], 'headers': [], 'body': None, 'body_props': [], 'scope': 'projects:read', 'contract': 'project-log/1.1'},
-    'projects_heartbeat': {'method': 'PUT', 'path': '/v1/projects/{project_id}/presence', 'path_params': ['project_id'], 'query': [], 'headers': [], 'body': 'json', 'body_props': ['client', 'editing', 'leaving', 'replica_id', 'selection', 'view'], 'scope': 'projects:write', 'contract': 'project-log/1.1'},
-    'projects_invite_member': {'method': 'POST', 'path': '/v1/projects/{project_id}/members', 'path_params': ['project_id'], 'query': [], 'headers': ['idempotency-key'], 'body': 'json', 'body_props': ['email', 'role'], 'scope': 'projects:write', 'contract': 'project-log/1.1'},
-    'projects_latest_snapshot': {'method': 'GET', 'path': '/v1/projects/{project_id}/snapshots/latest', 'path_params': ['project_id'], 'query': ['id'], 'headers': [], 'body': None, 'body_props': [], 'scope': 'projects:read', 'contract': 'project-log/1.1'},
-    'projects_list': {'method': 'GET', 'path': '/v1/projects', 'path_params': [], 'query': ['cursor', 'limit'], 'headers': [], 'body': None, 'body_props': [], 'scope': 'projects:read', 'contract': 'project-log/1.1'},
-    'projects_list_members': {'method': 'GET', 'path': '/v1/projects/{project_id}/members', 'path_params': ['project_id'], 'query': [], 'headers': [], 'body': None, 'body_props': [], 'scope': 'projects:read', 'contract': 'project-log/1.1'},
-    'projects_list_versions': {'method': 'GET', 'path': '/v1/projects/{project_id}/versions', 'path_params': ['project_id'], 'query': [], 'headers': [], 'body': None, 'body_props': [], 'scope': 'projects:read', 'contract': 'project-log/1.1'},
-    'projects_panoramas_get': {'method': 'GET', 'path': '/v1/projects/{project_id}/panoramas/{set_id}', 'path_params': ['project_id', 'set_id'], 'query': ['rev', 'wait_s'], 'headers': [], 'body': None, 'body_props': [], 'scope': 'projects:read', 'contract': 'project-log/1.1'},
-    'projects_panoramas_list': {'method': 'GET', 'path': '/v1/projects/{project_id}/panoramas', 'path_params': ['project_id'], 'query': [], 'headers': [], 'body': None, 'body_props': [], 'scope': 'projects:read', 'contract': 'project-log/1.1'},
-    'projects_presence': {'method': 'GET', 'path': '/v1/projects/{project_id}/presence', 'path_params': ['project_id'], 'query': [], 'headers': [], 'body': None, 'body_props': [], 'scope': 'projects:read', 'contract': 'project-log/1.1'},
-    'projects_pull_ops': {'method': 'GET', 'path': '/v1/projects/{project_id}/ops', 'path_params': ['project_id'], 'query': ['after', 'limit', 'wait_s'], 'headers': [], 'body': None, 'body_props': [], 'scope': 'projects:read', 'contract': 'project-log/1.1'},
-    'projects_push_ops': {'method': 'POST', 'path': '/v1/projects/{project_id}/ops', 'path_params': ['project_id'], 'query': [], 'headers': [], 'body': 'json', 'body_props': ['ops', 'replica_id'], 'scope': 'projects:write', 'contract': 'project-log/1.1'},
-    'projects_remove_member': {'method': 'DELETE', 'path': '/v1/projects/{project_id}/members/{member_ref}', 'path_params': ['project_id', 'member_ref'], 'query': [], 'headers': [], 'body': None, 'body_props': [], 'scope': 'projects:write', 'contract': 'project-log/1.1'},
-    'projects_restore_version': {'method': 'POST', 'path': '/v1/projects/{project_id}/versions/{version_id}/restore', 'path_params': ['project_id', 'version_id'], 'query': [], 'headers': ['idempotency-key'], 'body': None, 'body_props': [], 'scope': 'projects:write', 'contract': 'project-log/1.1'},
-    'projects_update': {'method': 'PATCH', 'path': '/v1/projects/{project_id}', 'path_params': ['project_id'], 'query': [], 'headers': [], 'body': 'json', 'body_props': ['name'], 'scope': 'projects:write', 'contract': 'project-log/1.1'},
-    'projects_update_member': {'method': 'PATCH', 'path': '/v1/projects/{project_id}/members/{member_ref}', 'path_params': ['project_id', 'member_ref'], 'query': [], 'headers': [], 'body': 'json', 'body_props': ['role'], 'scope': 'projects:write', 'contract': 'project-log/1.1'},
+    'projects_create': {'method': 'POST', 'path': '/v1/projects', 'path_params': [], 'query': [], 'headers': ['idempotency-key'], 'body': 'json', 'body_props': ['doc_version', 'name'], 'scope': 'projects:write', 'contract': 'project-log/1.2'},
+    'projects_create_comment': {'method': 'POST', 'path': '/v1/projects/{project_id}/comments', 'path_params': ['project_id'], 'query': [], 'headers': ['idempotency-key'], 'body': 'json', 'body_props': ['anchor', 'parent_id', 'text'], 'scope': 'projects:write', 'contract': 'project-log/1.2'},
+    'projects_create_snapshot': {'method': 'POST', 'path': '/v1/projects/{project_id}/snapshots', 'path_params': ['project_id'], 'query': [], 'headers': ['idempotency-key'], 'body': 'json', 'body_props': ['at_seq', 'doc_version', 'files', 'upload_id'], 'scope': 'projects:write', 'contract': 'project-log/1.2'},
+    'projects_create_version': {'method': 'POST', 'path': '/v1/projects/{project_id}/versions', 'path_params': ['project_id'], 'query': [], 'headers': ['idempotency-key'], 'body': 'json', 'body_props': ['at_seq', 'name', 'note', 'snapshot_id'], 'scope': 'projects:write', 'contract': 'project-log/1.2'},
+    'projects_delete': {'method': 'DELETE', 'path': '/v1/projects/{project_id}', 'path_params': ['project_id'], 'query': [], 'headers': [], 'body': None, 'body_props': [], 'scope': None, 'contract': 'project-log/1.2'},
+    'projects_delete_comment': {'method': 'DELETE', 'path': '/v1/projects/{project_id}/comments/{comment_id}', 'path_params': ['project_id', 'comment_id'], 'query': [], 'headers': [], 'body': None, 'body_props': [], 'scope': 'projects:write', 'contract': 'project-log/1.2'},
+    'projects_get': {'method': 'GET', 'path': '/v1/projects/{project_id}', 'path_params': ['project_id'], 'query': [], 'headers': [], 'body': None, 'body_props': [], 'scope': 'projects:read', 'contract': 'project-log/1.2'},
+    'projects_heartbeat': {'method': 'PUT', 'path': '/v1/projects/{project_id}/presence', 'path_params': ['project_id'], 'query': [], 'headers': [], 'body': 'json', 'body_props': ['client', 'editing', 'leaving', 'replica_id', 'selection', 'view'], 'scope': 'projects:write', 'contract': 'project-log/1.2'},
+    'projects_invite_member': {'method': 'POST', 'path': '/v1/projects/{project_id}/members', 'path_params': ['project_id'], 'query': [], 'headers': ['idempotency-key'], 'body': 'json', 'body_props': ['email', 'role'], 'scope': 'projects:write', 'contract': 'project-log/1.2'},
+    'projects_latest_snapshot': {'method': 'GET', 'path': '/v1/projects/{project_id}/snapshots/latest', 'path_params': ['project_id'], 'query': ['id'], 'headers': [], 'body': None, 'body_props': [], 'scope': 'projects:read', 'contract': 'project-log/1.2'},
+    'projects_list': {'method': 'GET', 'path': '/v1/projects', 'path_params': [], 'query': ['cursor', 'limit'], 'headers': [], 'body': None, 'body_props': [], 'scope': 'projects:read', 'contract': 'project-log/1.2'},
+    'projects_list_comments': {'method': 'GET', 'path': '/v1/projects/{project_id}/comments', 'path_params': ['project_id'], 'query': ['after_rev', 'state'], 'headers': [], 'body': None, 'body_props': [], 'scope': 'projects:read', 'contract': 'project-log/1.2'},
+    'projects_list_members': {'method': 'GET', 'path': '/v1/projects/{project_id}/members', 'path_params': ['project_id'], 'query': [], 'headers': [], 'body': None, 'body_props': [], 'scope': 'projects:read', 'contract': 'project-log/1.2'},
+    'projects_list_versions': {'method': 'GET', 'path': '/v1/projects/{project_id}/versions', 'path_params': ['project_id'], 'query': [], 'headers': [], 'body': None, 'body_props': [], 'scope': 'projects:read', 'contract': 'project-log/1.2'},
+    'projects_panoramas_get': {'method': 'GET', 'path': '/v1/projects/{project_id}/panoramas/{set_id}', 'path_params': ['project_id', 'set_id'], 'query': ['rev', 'wait_s'], 'headers': [], 'body': None, 'body_props': [], 'scope': 'projects:read', 'contract': 'project-log/1.2'},
+    'projects_panoramas_list': {'method': 'GET', 'path': '/v1/projects/{project_id}/panoramas', 'path_params': ['project_id'], 'query': [], 'headers': [], 'body': None, 'body_props': [], 'scope': 'projects:read', 'contract': 'project-log/1.2'},
+    'projects_presence': {'method': 'GET', 'path': '/v1/projects/{project_id}/presence', 'path_params': ['project_id'], 'query': [], 'headers': [], 'body': None, 'body_props': [], 'scope': 'projects:read', 'contract': 'project-log/1.2'},
+    'projects_pull_ops': {'method': 'GET', 'path': '/v1/projects/{project_id}/ops', 'path_params': ['project_id'], 'query': ['after', 'limit', 'wait_s'], 'headers': [], 'body': None, 'body_props': [], 'scope': 'projects:read', 'contract': 'project-log/1.2'},
+    'projects_push_ops': {'method': 'POST', 'path': '/v1/projects/{project_id}/ops', 'path_params': ['project_id'], 'query': [], 'headers': [], 'body': 'json', 'body_props': ['ops', 'replica_id'], 'scope': 'projects:write', 'contract': 'project-log/1.2'},
+    'projects_remove_member': {'method': 'DELETE', 'path': '/v1/projects/{project_id}/members/{member_ref}', 'path_params': ['project_id', 'member_ref'], 'query': [], 'headers': [], 'body': None, 'body_props': [], 'scope': 'projects:write', 'contract': 'project-log/1.2'},
+    'projects_restore_version': {'method': 'POST', 'path': '/v1/projects/{project_id}/versions/{version_id}/restore', 'path_params': ['project_id', 'version_id'], 'query': [], 'headers': ['idempotency-key'], 'body': None, 'body_props': [], 'scope': 'projects:write', 'contract': 'project-log/1.2'},
+    'projects_update': {'method': 'PATCH', 'path': '/v1/projects/{project_id}', 'path_params': ['project_id'], 'query': [], 'headers': [], 'body': 'json', 'body_props': ['name'], 'scope': 'projects:write', 'contract': 'project-log/1.2'},
+    'projects_update_comment': {'method': 'PATCH', 'path': '/v1/projects/{project_id}/comments/{comment_id}', 'path_params': ['project_id', 'comment_id'], 'query': [], 'headers': [], 'body': 'json', 'body_props': ['state', 'text'], 'scope': 'projects:write', 'contract': 'project-log/1.2'},
+    'projects_update_member': {'method': 'PATCH', 'path': '/v1/projects/{project_id}/members/{member_ref}', 'path_params': ['project_id', 'member_ref'], 'query': [], 'headers': [], 'body': 'json', 'body_props': ['role'], 'scope': 'projects:write', 'contract': 'project-log/1.2'},
     'jobs_cancel': {'method': 'POST', 'path': '/v1/jobs/{job_id}/cancel', 'path_params': ['job_id'], 'query': [], 'headers': [], 'body': None, 'body_props': [], 'scope': 'jobs:write', 'contract': 'render-jobs/1.1'},
     'jobs_create': {'method': 'POST', 'path': '/v1/jobs', 'path_params': [], 'query': [], 'headers': ['idempotency-key'], 'body': 'json', 'body_props': ['at_seq', 'base_job_id', 'changed', 'follow', 'inputs', 'kind', 'params', 'project_id', 'quality', 'views'], 'scope': 'jobs:write', 'contract': 'render-jobs/1.1'},
     'jobs_get': {'method': 'GET', 'path': '/v1/jobs/{job_id}', 'path_params': ['job_id'], 'query': ['rev', 'wait_s'], 'headers': [], 'body': None, 'body_props': [], 'scope': 'projects:read', 'contract': 'render-jobs/1.1'},
@@ -93,6 +97,13 @@ class Projects(Resource):
         POST /v1/projects · scope: projects:write"""
         return self._call('projects_create', values={'doc_version': doc_version, 'name': name}, idempotency_key=idempotency_key)
 
+    def create_comment(self, project_id: str, *, text: str, anchor: dict[str, Any] | None = UNSET, parent_id: str | None = UNSET, idempotency_key: str | None = None) -> models.Comment:
+        """Pin a comment on an entity or a view, or reply to one (5.20); any member, a viewer included.
+        The comment is the key owner's.
+
+        POST /v1/projects/{project_id}/comments · scope: projects:write"""
+        return self._call('projects_create_comment', project_id, values={'anchor': anchor, 'parent_id': parent_id, 'text': text}, idempotency_key=idempotency_key)
+
     def create_snapshot(self, project_id: str, *, at_seq: int, doc_version: int, files: models.SnapshotFilesIn, upload_id: str, idempotency_key: str | None = None) -> models.Snapshot:
         """Register a snapshot uploaded through /v1/uploads (purpose `snapshot`) at a sequence number (5.8).
 
@@ -111,6 +122,12 @@ class Projects(Resource):
         DELETE /v1/projects/{project_id} · scope: any key"""
         return self._call('projects_delete', project_id)
 
+    def delete_comment(self, project_id: str, comment_id: str) -> None:
+        """Delete a comment (its author or the owner) (5.22).
+
+        DELETE /v1/projects/{project_id}/comments/{comment_id} · scope: projects:write"""
+        return self._call('projects_delete_comment', project_id, comment_id)
+
     def get(self, project_id: str) -> models.ProjectDetail:
         """Open a project: its record, members and the owner's storage quota (5.3).
 
@@ -118,7 +135,7 @@ class Projects(Resource):
         return self._call('projects_get', project_id)
 
     def heartbeat(self, project_id: str, *, client: str, replica_id: str, editing: list[str] | None = UNSET, leaving: bool | None = UNSET, selection: list[str] | None = UNSET, view: models.ViewIn | None = UNSET) -> models.HeartbeatResult:
-        """Presence heartbeat (5.17): every 10-30 s while open; `leaving` removes it.
+        """Presence heartbeat (5.17): every 10-30 s while open; `leaving` removes it. `comments_rev` says when to fetch comments.
 
         PUT /v1/projects/{project_id}/presence · scope: projects:write"""
         return self._call('projects_heartbeat', project_id, values={'client': client, 'editing': editing, 'leaving': leaving, 'replica_id': replica_id, 'selection': selection, 'view': view})
@@ -141,6 +158,13 @@ class Projects(Resource):
 
         GET /v1/projects · scope: projects:read"""
         return self._call('projects_list', values={'cursor': cursor, 'limit': limit})
+
+    def list_comments(self, project_id: str, *, after_rev: int | None = UNSET, state: Literal["open", "resolved", "all"] | None = UNSET) -> models.CommentList:
+        """Comments created, edited, resolved, reopened or deleted after `after_rev`, oldest change first (5.19).
+        A deleted comment comes back once, with state `deleted` and empty text.
+
+        GET /v1/projects/{project_id}/comments · scope: projects:read"""
+        return self._call('projects_list_comments', project_id, values={'after_rev': after_rev, 'state': state})
 
     def list_members(self, project_id: str) -> models.MemberList:
         """Members and invitations (5.13).
@@ -167,7 +191,7 @@ class Projects(Resource):
         return self._call('projects_panoramas_list', project_id)
 
     def presence(self, project_id: str) -> models.PresenceList:
-        """Who is in the project now (5.18).
+        """Who is in the project now (5.18), and the comment revision.
 
         GET /v1/projects/{project_id}/presence · scope: projects:read"""
         return self._call('projects_presence', project_id)
@@ -201,6 +225,12 @@ class Projects(Resource):
 
         PATCH /v1/projects/{project_id} · scope: projects:write"""
         return self._call('projects_update', project_id, values={'name': name})
+
+    def update_comment(self, project_id: str, comment_id: str, *, state: str | None = UNSET, text: str | None = UNSET) -> models.Comment:
+        """Edit a comment's text (its author), or resolve or reopen it (its author, an editor or the owner) (5.21).
+
+        PATCH /v1/projects/{project_id}/comments/{comment_id} · scope: projects:write"""
+        return self._call('projects_update_comment', project_id, comment_id, values={'state': state, 'text': text})
 
     def update_member(self, project_id: str, member_ref: str, *, role: str) -> models.Member:
         """Change a member's role (5.15; owner). `member_ref` is a user id or an invitation id.

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "truebex"
-version = "1.0.0"
+version = "1.1.0"
 description = "The Truebex developer API: projects, exports, shares, the marketplace, supplier feeds and webhooks."
 readme = "README.md"
 requires-python = ">=3.11"

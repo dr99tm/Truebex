@@ -47,6 +47,10 @@ class Project(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow, index=True, nullable=False)
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # PF4b (project-log 1.2.0): the comment revision (5.19; 5.17 / 5.18's
+    # comments_rev). Every 5.20-5.22 adds one under this row's lock. NULL
+    # (a project from before PF4b) reads as 0.
+    comments_rev: Mapped[int | None] = mapped_column(BigInteger, nullable=True, default=0)
 
 
 class ProjectMember(Base):
@@ -168,3 +172,33 @@ class Presence(Base):
     client: Mapped[str] = mapped_column(String(16), nullable=False)
     payload: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
     seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True, nullable=False)
+
+
+class ProjectComment(Base):
+    """A comment or reply (contract 5.19-5.22, §6.6; PF4b). Platform data:
+    never part of a document, a snapshot or the log. `rev` is the project's
+    comment revision of the comment's latest change (unique per project); a
+    deleted comment stays as a tombstone (state `deleted`, empty text)."""
+
+    __tablename__ = "project_comments"
+    __table_args__ = (UniqueConstraint("project_id", "rev", name="uq_project_comments_rev"),)
+
+    comment_id: Mapped[str] = mapped_column(String(32), primary_key=True)
+    project_id: Mapped[str] = mapped_column(
+        ForeignKey("projects.project_id", ondelete="CASCADE"), index=True, nullable=False
+    )
+    # The thread's root; null on a root.
+    parent_id: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    # The author's account (no foreign key: a comment outlives its author's
+    # membership) and their name when they wrote it, shown if the account is gone.
+    author_user_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    author_name: Mapped[str] = mapped_column(String(200), nullable=False, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow, nullable=False)
+    edited_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    text: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    state: Mapped[str] = mapped_column(String(8), nullable=False)  # open | resolved | deleted
+    resolved_by: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # §6.6 {entity, point_mm, view}; a reply carries its root's.
+    anchor: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    rev: Mapped[int] = mapped_column(BigInteger, nullable=False)

@@ -233,10 +233,13 @@ class Presence(_Open):
 class PresenceAnswer(_Open):
     ttl_s: int
     others: list[Presence]
+    # project-log 1.2.0 (PF4b): when to fetch comments; the light clients show none yet.
+    comments_rev: int | None = None
 
 
 class PresenceList(_Open):
     present: list[Presence]
+    comments_rev: int | None = None
 
 
 # --- panoramas (PF9's members' read of followed sets; render-jobs §6.2 manifests) ---------------

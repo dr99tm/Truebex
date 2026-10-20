@@ -15,6 +15,7 @@ from pydantic.json_schema import SkipJsonSchema
 from .. import projects as _projects
 from .. import shares as _shares
 from .. import uploads as _uploads
+from ...projects import comments as _comments
 from ...projects import presence as _presence
 
 
@@ -65,7 +66,7 @@ class Account(_Doc):
     usage: AccountUsage
 
 
-# --- projects (project-log 5.1-5.18) ------------------------------------------------------
+# --- projects (project-log 5.1-5.22) ------------------------------------------------------
 
 
 class ProjectOwner(_Doc):
@@ -267,10 +268,65 @@ class Presence(_Doc):
 class HeartbeatResult(_Doc):
     ttl_s: int
     others: list[Presence]
+    comments_rev: int = Field(description="The project's comment revision (1.2.0): fetch comments when it passes the `rev` last read")
 
 
 class PresenceList(_Doc):
     present: list[Presence]
+    comments_rev: int = Field(description="The project's comment revision (1.2.0), as in the heartbeat's answer")
+
+
+# --- comments (project-log 5.19-5.22, §6.6; 1.2.0) ---------------------------------------------
+
+
+class CommentAuthor(_Doc):
+    user_id: int
+    name: str
+
+
+class CommentView(_Doc):
+    """The camera when the comment was made: `yaw_deg` counter-clockwise from the plan's +X (90 = north)."""
+
+    storey: str | None = Field(default=None, description="The storey's entity id (32 hex), null outside any storey")
+    eye_mm: list[float] = Field(description="The camera position in doc millimetres")
+    yaw_deg: float = 0
+    pitch_deg: float = 0
+
+
+class CommentAnchor(_Doc):
+    """An entity pin (`entity`, optionally `point_mm`) or a view pin (`view`)."""
+
+    entity: str | None = Field(default=None, description="32 hex: the entity the pin is on, null on a view pin")
+    point_mm: list[float] | None = Field(default=None, description="Where on the entity, in doc millimetres; null = its bounds' centre")
+    view: CommentView | None = None
+
+
+class Comment(_Doc):
+    """A comment or reply (§6.6). Replies hang under their thread's root and share its anchor."""
+
+    comment_id: str
+    parent_id: str | None = Field(description="The thread's root comment; null on a root")
+    author: CommentAuthor
+    created_at: str
+    edited_at: str | None
+    text: str = Field(description="1-4000 characters; empty when deleted")
+    state: Literal["open", "resolved", "deleted"] = Field(description="deleted only in the list, once")
+    resolved_by: int | None
+    resolved_at: str | None
+    anchor: CommentAnchor
+
+
+class CommentList(_Doc):
+    comments: list[Comment]
+    rev: int = Field(description="The project's comment revision: pass it as `after_rev` next time")
+
+
+class CommentCreate(_comments.CommentIn):
+    """5.20: a comment pinned on an entity or a view, or a reply (`parent_id`)."""
+
+
+class CommentUpdate(_comments.CommentPatchIn):
+    """5.21: new text (the author only) and/or a state, open or resolved (the author, an editor or the owner)."""
 
 
 # --- followed panorama sets (PF12a: PF9's member reads, a render-jobs §5 MINOR proposal) ----------------

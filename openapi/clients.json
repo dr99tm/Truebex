@@ -735,6 +735,18 @@
       "PresenceAnswer": {
         "additionalProperties": true,
         "properties": {
+          "comments_rev": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Comments Rev"
+          },
           "others": {
             "items": {
               "$ref": "#/components/schemas/Presence"
@@ -808,6 +820,18 @@
       "PresenceList": {
         "additionalProperties": true,
         "properties": {
+          "comments_rev": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Comments Rev"
+          },
           "present": {
             "items": {
               "$ref": "#/components/schemas/Presence"

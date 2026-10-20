@@ -1,5 +1,6 @@
-"""`/v1/projects…`: the project-log contract (5.1-5.18) for API keys (PF12),
-and a project's followed panorama sets (PF12a).
+"""`/v1/projects…`: the project-log contract (5.1-5.22; comments 5.19-5.22
+since PF4b, project-log 1.2.0) for API keys (PF12), and a project's followed
+panorama sets (PF12a).
 
 Every route hands the call to the contract router's own handler
 (`app/routers/projects.py`; for the panorama sets PF9's `app/routers/mobile.py`)
@@ -8,7 +9,8 @@ errors are the contract's. What the key adds:
 its scope (`projects:read` / `projects:write`), metering and the burst limit
 (`deps.api_key_auth`). Deleting stays the website's (403 `session_required`),
 and operations a key pushes are `author_kind: "agent"` with the key's own
-author id (`GET /v1/account` → `key.author`).
+author id (`GET /v1/account` → `key.author`). A comment a key writes is the
+key's owner's (their user id and name), with that member's role.
 """
 
 import json
@@ -21,14 +23,14 @@ from ...contract_http import ContractError, contract
 from ...database import get_db
 from ...deps import ApiCaller
 from ...idempotency import Idempotency, idempotent
-from ...projects import ops, service
+from ...projects import comments, ops, service
 from ...scopes import author_for_key
 from .. import mobile
 from .. import projects as c
 from . import models as m
 from .common import AnyKey, carry, doc, project_caller, scope
 
-router = APIRouter(prefix="/projects", tags=["projects"], dependencies=[contract("project-log", 1, 1)])
+router = APIRouter(prefix="/projects", tags=["projects"], dependencies=[contract("project-log", 1, 2)])
 
 Read = scope("projects:read")
 Write = scope("projects:write")
@@ -241,14 +243,56 @@ def remove_member(project_id: str, member_ref: str, api: ApiCaller = Write, db: 
 
 @router.put("/{project_id}/presence", operation_id="projects_heartbeat", **doc("projects:write", m.HeartbeatResult))
 def heartbeat(project_id: str, body: m.PresenceHeartbeat, api: ApiCaller = Write, db: Session = Depends(get_db)) -> dict:
-    """Presence heartbeat (5.17): every 10-30 s while open; `leaving` removes it."""
+    """Presence heartbeat (5.17): every 10-30 s while open; `leaving` removes it. `comments_rev` says when to fetch comments."""
     return c.heartbeat(project_id=project_id, body=body, caller=project_caller(api), db=db)
 
 
 @router.get("/{project_id}/presence", operation_id="projects_presence", **doc("projects:read", m.PresenceList))
 def who_is_here(project_id: str, api: ApiCaller = Read, db: Session = Depends(get_db)) -> dict:
-    """Who is in the project now (5.18)."""
+    """Who is in the project now (5.18), and the comment revision."""
     return c.who_is_here(project_id=project_id, caller=project_caller(api), db=db)
+
+
+# --- 5.19-5.22 comments (project-log 1.2.0, PF4b) -------------------------------------------------
+
+
+@router.get("/{project_id}/comments", operation_id="projects_list_comments", **doc("projects:read", m.CommentList))
+def list_comments(
+    project_id: str,
+    after_rev: int = Query(default=0, ge=0, description="The `rev` (or `comments_rev`) last read; 0 for every comment"),
+    state: comments.Filter = Query(default="all", description="open, resolved or all; deleted comments come back with every filter"),
+    api: ApiCaller = Read,
+    db: Session = Depends(get_db),
+) -> dict:
+    """Comments created, edited, resolved, reopened or deleted after `after_rev`, oldest change first (5.19).
+    A deleted comment comes back once, with state `deleted` and empty text."""
+    return c.list_comments(project_id=project_id, after_rev=after_rev, state=state, caller=project_caller(api), db=db)
+
+
+@router.post("/{project_id}/comments", status_code=201, operation_id="projects_create_comment", **doc("projects:write", m.Comment, 201, errors=(401, 403, 404, 409, 422, 429)))
+def create_comment(
+    project_id: str,
+    body: m.CommentCreate,
+    response: Response,
+    api: ApiCaller = Write,
+    idem: Idempotency = idempotent("v1.projects.comments"),
+    db: Session = Depends(get_db),
+):
+    """Pin a comment on an entity or a view, or reply to one (5.20); any member, a viewer included.
+    The comment is the key owner's."""
+    return carry(c.create_comment(project_id=project_id, body=body, caller=project_caller(api), idem=idem, db=db), response)
+
+
+@router.patch("/{project_id}/comments/{comment_id}", operation_id="projects_update_comment", **doc("projects:write", m.Comment, errors=(401, 403, 404, 422, 429)))
+def update_comment(project_id: str, comment_id: str, body: m.CommentUpdate, api: ApiCaller = Write, db: Session = Depends(get_db)) -> dict:
+    """Edit a comment's text (its author), or resolve or reopen it (its author, an editor or the owner) (5.21)."""
+    return c.update_comment(project_id=project_id, comment_id=comment_id, body=body, caller=project_caller(api), db=db)
+
+
+@router.delete("/{project_id}/comments/{comment_id}", status_code=204, operation_id="projects_delete_comment", **doc("projects:write", errors=(401, 403, 404, 429)))
+def delete_comment(project_id: str, comment_id: str, api: ApiCaller = Write, db: Session = Depends(get_db)) -> Response:
+    """Delete a comment (its author or the owner) (5.22)."""
+    return c.delete_comment(project_id=project_id, comment_id=comment_id, caller=project_caller(api), db=db)
 
 
 # --- followed panorama sets (PF12a: PF9's member reads, a render-jobs §5 MINOR proposal) -------------

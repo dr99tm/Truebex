@@ -51,6 +51,9 @@ APP_COPIED_FROM = "ad3aa5c45e63924d77d1210f375fdf2135b12aed"
 APP_DIR = "Docs/roadmap/fixtures/contracts/project-log"
 APP_BLOBS = {
     "action-move.json": "c1bafb73e39fb6891f821b739214673557a25083",
+    # PF4b: CL2 added comments.json (project-log 1.2.0, app 83fdeedad); the
+    # other seven are CL1's, unchanged (test_pf4b_project_log_1_2.py).
+    "comments.json": "589a9e56fe998619f9dc4a9a449ba1b1b5d07087",
     "members.json": "300dd137d78aa9ca3130063dcde1953e99b2daf6",
     "ops-remote.json": "5fa4a75898adb1cad1874d48ceb67471cbdac153",
     "presence.json": "c8f6dbca3a68f4c61ba6e9e3263fbb7c1c4ad2e8",
@@ -59,6 +62,8 @@ APP_BLOBS = {
     "versions.json": "5024595cbd3b79f62894c66c08207fdf90209ef6",
 }
 V1 = {"X-Truebex-Contract": "project-log/1.1"}
+# CL1's commits hold the seven files before comments.json.
+CL1_BLOBS = {k: v for k, v in APP_BLOBS.items() if k != "comments.json"}
 OLD = {"X-Truebex-Contract": "project-log/1.0"}
 
 
@@ -112,8 +117,9 @@ def _replayed(client):
 
 
 def test_pf4a_fixture_folder_is_the_apps_copy():
-    """tests/contracts/project-log/ holds the app's seven files and this
-    folder's README, each the app's blob byte for byte."""
+    """tests/contracts/project-log/ holds the app's files (CL1's seven, and
+    CL2's comments.json since PF4b) and this folder's README, each the app's
+    blob byte for byte."""
     files = {p.name for p in FIXTURES.iterdir() if p.is_file()}
     assert files == set(APP_BLOBS) | {"README.md"}
     for name, blob in APP_BLOBS.items():
@@ -139,7 +145,7 @@ def test_pf4a_fixture_folder_is_the_apps_copy():
         for line in tree.stdout.splitlines():
             meta, path = line.split("\t", 1)
             listed[path.rsplit("/", 1)[1]] = meta.split()[2]
-        assert listed == APP_BLOBS, commit
+        assert listed == CL1_BLOBS, commit
     for name, blob in APP_BLOBS.items():
         here = subprocess.run(
             [git, "hash-object", "--no-filters", "--", str(FIXTURES / name)], capture_output=True, text=True, timeout=60
@@ -254,7 +260,7 @@ def test_pf4a_snapshot_by_id_after_a_newer_one(client):
     # Without ?id= the answer is unchanged: the newest.
     latest = client.get(f"/projects/{pid}/snapshots/latest", headers=editor.dev)
     assert latest.status_code == 200 and latest.json()["snapshot_id"] == newer["snapshot_id"]
-    assert latest.headers["X-Truebex-Contract"] == "project-log/1.1"
+    assert latest.headers["X-Truebex-Contract"] == "project-log/1.2"
     # A restore names the version's snapshot; 5.9 ?id= answers that one, with fresh URLs.
     restored = client.post(f"/projects/{pid}/versions/{version['version_id']}/restore", headers=editor.dev)
     assert restored.status_code == 201, restored.text
@@ -298,7 +304,7 @@ def test_pf4a_v1_snapshot_by_id(client):
     auth = kh(key, **V1)
     latest = client.get(f"/v1/projects/{pid}/snapshots/latest", headers=auth)
     assert latest.status_code == 200 and latest.json()["snapshot_id"] == newer["snapshot_id"]
-    assert latest.headers["X-Truebex-Contract"] == "project-log/1.1"
+    assert latest.headers["X-Truebex-Contract"] == "project-log/1.2"
     res = client.get(f"/v1/projects/{pid}/snapshots/latest", params={"id": first["snapshot_id"]}, headers=auth)
     assert res.status_code == 200, res.text
     assert res.json()["snapshot_id"] == first["snapshot_id"] and res.json()["at_seq"] == 0
@@ -373,7 +379,7 @@ def test_pf4a_v1_members_carry_author_ids(client):
 def test_pf4a_routes_speak_project_log_1_1(client):
     owner = Person(client, "ana@example.com")
     res = client.post("/projects", json={"name": "House", "doc_version": 55}, headers=owner.dev)
-    assert res.status_code == 201 and res.headers["X-Truebex-Contract"] == "project-log/1.1"
+    assert res.status_code == 201 and res.headers["X-Truebex-Contract"] == "project-log/1.2"
     pid = res.json()["project_id"]
     key = make_key(client, owner.session, ["projects:read"])
     plain = {"Authorization": f"Bearer {owner.token}"}
@@ -385,13 +391,14 @@ def test_pf4a_routes_speak_project_log_1_1(client):
         (f"/v1/projects/{pid}/panoramas", kh(key)),
     ]
     for path, auth in routes:
-        # The app's 1.1, a 1.0 client, a later MINOR and no header at all: 200, 1.1 echoed.
+        # The app's 1.1, a 1.0 client, a later MINOR and no header at all: 200, the server's
+        # version echoed (1.2 since PF4b).
         for sent in ({}, V1, OLD, {"X-Truebex-Contract": "project-log/1.9"}):
             got = client.get(path, headers={**auth, **sent})
             assert got.status_code == 200, (path, sent, got.text)
-            assert got.headers["X-Truebex-Contract"] == "project-log/1.1", path
+            assert got.headers["X-Truebex-Contract"] == "project-log/1.2", path
         body = error_of(client.get(path, headers={**auth, "X-Truebex-Contract": "project-log/2.0"}), 400, "contract_version")
-        assert body["data"]["supported"] == ["project-log/1.1"]
+        assert body["data"]["supported"] == ["project-log/1.2"]
 
 
 def test_pf4a_api_documents_name_1_1_and_id():
@@ -399,23 +406,25 @@ def test_pf4a_api_documents_name_1_1_and_id():
     clients generated from them) carry 1.1, 5.9's `id` and the optional action fields."""
     v1 = json.loads((ROOT / "openapi" / "v1.json").read_text(encoding="utf-8"))
     clients = json.loads((ROOT / "openapi" / "clients.json").read_text(encoding="utf-8"))
-    for doc, path, action in (
-        (v1, "/v1/projects/{project_id}/snapshots/latest", "AgentAction"),
-        (clients, "/projects/{project_id}/snapshots/latest", "OperationAction"),
+    # The routes speak 1.2 since PF4b (v1.json); clients.json names what the
+    # light clients send, still 1.1 (they call no comment route).
+    for doc, path, action, speaks in (
+        (v1, "/v1/projects/{project_id}/snapshots/latest", "AgentAction", "project-log/1.2"),
+        (clients, "/projects/{project_id}/snapshots/latest", "OperationAction", "project-log/1.1"),
     ):
         op = doc["paths"][path]["get"]
-        assert op["x-truebex-contract"] == "project-log/1.1"
+        assert op["x-truebex-contract"] == speaks
         query = {p["name"]: p for p in op["parameters"] if p["in"] == "query"}
         assert "id" in query and not query["id"].get("required", False)
         schema = doc["components"]["schemas"][action]
         assert {"tool", "args", "permission"} <= set(schema["required"])
         assert "session" not in schema["required"] and "request_id" not in schema["required"]
         assert {"session", "request_id"} <= set(schema["properties"])
-    for doc in (v1, clients):
+    for doc, speaks in ((v1, "project-log/1.2"), (clients, "project-log/1.1")):
         for path, ops in doc["paths"].items():
             for method, op in ops.items():
                 if isinstance(op, dict) and str(op.get("x-truebex-contract", "")).startswith("project-log/"):
-                    assert op["x-truebex-contract"] == "project-log/1.1", (path, method)
+                    assert op["x-truebex-contract"] == speaks, (path, method)
     ops_py = (ROOT / "sdks" / "python" / "truebex" / "_operations.py").read_text(encoding="utf-8")
     assert "'projects_latest_snapshot': {" in ops_py and "'query': ['id']" in ops_py.split("'projects_latest_snapshot'")[1].split("\n")[0]
     assert "project-log/1.0" not in ops_py

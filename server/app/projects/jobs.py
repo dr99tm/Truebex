@@ -3,7 +3,7 @@
 * `projects.snapshots.prune` (1 h): the newest five snapshots plus every
   version's stay; other snapshots and the blobs nothing names go.
 * `projects.purge_deleted` (24 h): projects deleted more than 30 days ago go
-  with their rows and every blob under `projects/{pid}/`.
+  with their rows (comments included, PF4b) and every blob under `projects/{pid}/`.
 * `projects.presence.sweep` (10 s): presence older than 30 s goes.
 """
 
@@ -16,7 +16,7 @@ from ..database import SessionLocal
 from ..storage import get_store
 from ..tasks import periodic
 from . import presence, snapshots
-from .models import OpTouched, Project, ProjectMember, ProjectOp, ProjectSnapshot, ProjectVersion
+from .models import OpTouched, Project, ProjectComment, ProjectMember, ProjectOp, ProjectSnapshot, ProjectVersion
 
 PURGE_AFTER = timedelta(days=30)
 
@@ -33,7 +33,7 @@ def purge_project(db: Session, project: Project) -> None:
         store.delete(info.key)
     pid = project.project_id
     presence.backend().drop_project(db, pid)
-    for model in (OpTouched, ProjectOp, ProjectVersion, ProjectSnapshot, ProjectMember):
+    for model in (OpTouched, ProjectOp, ProjectVersion, ProjectSnapshot, ProjectMember, ProjectComment):
         db.execute(delete(model).where(model.project_id == pid))
     db.delete(project)
     db.commit()

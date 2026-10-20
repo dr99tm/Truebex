@@ -21,15 +21,19 @@ export interface AccountApi {
 export interface ProjectsApi {
   /** Create a project (5.1). The plan needs cloud projects (403 `plan_required`). (POST /v1/projects; scope projects:write) */
   create(params: components["schemas"]["ProjectCreate"], options?: CallOptions): Promise<components["schemas"]["Project"]>;
+  /** Pin a comment on an entity or a view, or reply to one (5.20); any member, a viewer included. (POST /v1/projects/{project_id}/comments; scope projects:write) */
+  createComment(projectId: string, params: components["schemas"]["CommentCreate"], options?: CallOptions): Promise<components["schemas"]["Comment"]>;
   /** Register a snapshot uploaded through /v1/uploads (purpose `snapshot`) at a sequence number (5.8). (POST /v1/projects/{project_id}/snapshots; scope projects:write) */
   createSnapshot(projectId: string, params: components["schemas"]["SnapshotRequest"], options?: CallOptions): Promise<components["schemas"]["Snapshot"]>;
   /** Name a version at a snapshot that sits exactly at `at_seq` (5.11). (POST /v1/projects/{project_id}/versions; scope projects:write) */
   createVersion(projectId: string, params: components["schemas"]["VersionRequest"], options?: CallOptions): Promise<components["schemas"]["Version"]>;
   /** Always 403 `session_required`: projects are deleted on truebex.com only (5.5). (DELETE /v1/projects/{project_id}; scope any key) */
   delete(projectId: string, options?: CallOptions): Promise<void>;
+  /** Delete a comment (its author or the owner) (5.22). (DELETE /v1/projects/{project_id}/comments/{comment_id}; scope projects:write) */
+  deleteComment(projectId: string, commentId: string, options?: CallOptions): Promise<void>;
   /** Open a project: its record, members and the owner's storage quota (5.3). (GET /v1/projects/{project_id}; scope projects:read) */
   get(projectId: string, options?: CallOptions): Promise<components["schemas"]["ProjectDetail"]>;
-  /** Presence heartbeat (5.17): every 10-30 s while open; `leaving` removes it. (PUT /v1/projects/{project_id}/presence; scope projects:write) */
+  /** Presence heartbeat (5.17): every 10-30 s while open; `leaving` removes it. `comments_rev` says when to fetch comments. (PUT /v1/projects/{project_id}/presence; scope projects:write) */
   heartbeat(projectId: string, params: components["schemas"]["PresenceHeartbeat"], options?: CallOptions): Promise<components["schemas"]["HeartbeatResult"]>;
   /** Invite someone by e-mail with a role (5.14; owner). Truebex sends the e-mail. (POST /v1/projects/{project_id}/members; scope projects:write) */
   inviteMember(projectId: string, params: components["schemas"]["MemberInvite"], options?: CallOptions): Promise<components["schemas"]["Member"]>;
@@ -37,6 +41,8 @@ export interface ProjectsApi {
   latestSnapshot(projectId: string, params?: NonNullable<operations["projects_latest_snapshot"]["parameters"]["query"]>, options?: CallOptions): Promise<components["schemas"]["Snapshot"]>;
   /** Projects the key's account owns or is a member of (5.2). (GET /v1/projects; scope projects:read) */
   list(params?: NonNullable<operations["projects_list"]["parameters"]["query"]>, options?: CallOptions): Promise<components["schemas"]["ProjectList"]>;
+  /** Comments created, edited, resolved, reopened or deleted after `after_rev`, oldest change first (5.19). (GET /v1/projects/{project_id}/comments; scope projects:read) */
+  listComments(projectId: string, params?: NonNullable<operations["projects_list_comments"]["parameters"]["query"]>, options?: CallOptions): Promise<components["schemas"]["CommentList"]>;
   /** Members and invitations (5.13). (GET /v1/projects/{project_id}/members; scope projects:read) */
   listMembers(projectId: string, options?: CallOptions): Promise<components["schemas"]["MemberList"]>;
   /** Named versions (5.10). (GET /v1/projects/{project_id}/versions; scope projects:read) */
@@ -45,7 +51,7 @@ export interface ProjectsApi {
   panoramasGet(projectId: string, setId: string, params?: NonNullable<operations["projects_panoramas_get"]["parameters"]["query"]>, options?: CallOptions): Promise<components["schemas"]["PanoramaSetState"]>;
   /** The project's followed panorama sets, kept current by its members' accounts (any role); never cached. (GET /v1/projects/{project_id}/panoramas; scope projects:read) */
   panoramasList(projectId: string, options?: CallOptions): Promise<components["schemas"]["PanoramaSetList"]>;
-  /** Who is in the project now (5.18). (GET /v1/projects/{project_id}/presence; scope projects:read) */
+  /** Who is in the project now (5.18), and the comment revision. (GET /v1/projects/{project_id}/presence; scope projects:read) */
   presence(projectId: string, options?: CallOptions): Promise<components["schemas"]["PresenceList"]>;
   /** Operations after a sequence number (5.7); `wait_s` ≤ 25 long-polls until the next push. (GET /v1/projects/{project_id}/ops; scope projects:read) */
   pullOps(projectId: string, params?: NonNullable<operations["projects_pull_ops"]["parameters"]["query"]>, options?: CallOptions): Promise<components["schemas"]["PullResult"]>;
@@ -57,6 +63,8 @@ export interface ProjectsApi {
   restoreVersion(projectId: string, versionId: string, options?: CallOptions): Promise<components["schemas"]["RestoreResult"]>;
   /** Rename a project (5.4; owner). (PATCH /v1/projects/{project_id}; scope projects:write) */
   update(projectId: string, params: components["schemas"]["ProjectRename"], options?: CallOptions): Promise<components["schemas"]["Project"]>;
+  /** Edit a comment's text (its author), or resolve or reopen it (its author, an editor or the owner) (5.21). (PATCH /v1/projects/{project_id}/comments/{comment_id}; scope projects:write) */
+  updateComment(projectId: string, commentId: string, params?: components["schemas"]["CommentUpdate"], options?: CallOptions): Promise<components["schemas"]["Comment"]>;
   /** Change a member's role (5.15; owner). `member_ref` is a user id or an invitation id. (PATCH /v1/projects/{project_id}/members/{member_ref}; scope projects:write) */
   updateMember(projectId: string, memberRef: string, params: components["schemas"]["MemberRole"], options?: CallOptions): Promise<components["schemas"]["Member"]>;
 }
