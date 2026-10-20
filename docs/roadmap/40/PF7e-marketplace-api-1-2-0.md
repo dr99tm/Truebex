@@ -186,4 +186,4 @@ Optional, the app (not run by this task): the MK4 build with `run.bat -mwmarket=
   * PF8: the supplier inbox's JSON is unchanged (its lines, `quoted_unit`); nothing needed for 1.2.0.
   * The next re-copy: run the script, update `APP_BLOBS` and `APP_TREE` / `APP_COMMIT` (`test_pf7e_marketplace_1_2.py`), then the counts the tests name; re-copy the taxonomy too when 5.1's hash moves.
 * **Merge note:** shares `server/app/market/`, `server/tests/contracts/marketplace/`, the market tests, `src/app/dashboard/orders/`, `src/components/market/`, `openapi/v1.json` and the SDK operations. PF4b (project-log 1.2.0) may regenerate the same generated files: re-run `server\scripts\export_openapi.py --v1` and `sdks\generate.py` after resolving `export_openapi.py`'s `CONTRACTS` instead of hand-merging; README.md and the tracker gain one end-of-file entry each.
-* **Verify gate** (`scripts/autopilot-verify.ps1`): see below.
+* **Verify gate** (`scripts/autopilot-verify.ps1`, on the docs commit e0b7de0): green in 617 s; lint, build, pytest 883 passed + 18 skipped (the Postgres-only tests) of 901 collected in 554 s.
