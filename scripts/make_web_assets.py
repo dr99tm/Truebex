@@ -3,6 +3,7 @@
     py -3.12 scripts/make_web_assets.py
     py -3.12 scripts/make_web_assets.py --features     (only the feature-page crops)
     py -3.12 scripts/make_web_assets.py --icons        (only the icons)
+    py -3.12 scripts/make_web_assets.py --og           (only the social card)
 
 Sources (the Unreal project owns the brand; this script only reads it):
     T:/unreal5_7_4_projects/truebex_compact/Brand/Truebex/logo/figma_original/*.svg
@@ -221,11 +222,11 @@ def og_image(shots: dict[str, Image.Image]) -> None:
     img.alpha_composite(lockup, (72, 92))
 
     d = ImageDraw.Draw(img)
-    d.text((72, 210), "See it before", font=font("Segoe UI Bold.ttf", 66), fill=(237, 237, 237))
-    d.text((72, 286), "you build it.", font=font("Segoe UI Bold.ttf", 66), fill=ACCENT)
+    d.text((72, 210), "Imagine More.", font=font("Segoe UI Bold.ttf", 66), fill=(237, 237, 237))
+    d.text((72, 286), "Build Better.", font=font("Segoe UI Bold.ttf", 66), fill=ACCENT)
     d.text(
         (72, 392),
-        "The building design platform where\ndaylight is measured, surfaces design\nthemselves, and every change is instant.",
+        "Explore more options, compare finishes\nin context and experience the space\nbefore construction begins.",
         font=font("Segoe UI.ttf", 28),
         fill=(168, 168, 168),
         spacing=10,
@@ -239,6 +240,10 @@ if __name__ == "__main__":
 
     if "--features" in sys.argv:
         feature_shots()
+        sys.exit(0)
+    if "--og" in sys.argv:
+        og_image(product_shots())
+        print("og image written")
         sys.exit(0)
     if "--icons" in sys.argv:
         icons()

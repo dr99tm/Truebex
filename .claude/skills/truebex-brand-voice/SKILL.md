@@ -5,24 +5,51 @@ description: Truebex brand identity, voice and content rules for truebex.com. Us
 
 # Truebex brand voice
 
-Truebex — **True Building Experience**. A building design platform where
-daylight is measured, surfaces design themselves, and one change updates the
-whole project. The brand promise is in the name: *what you see is true.* Every
-word on the site has to keep that promise.
+Truebex — **True Building Experience**. Slogan: **Imagine More. Build Better.**
+(Arabic adaptation: «تخيّل أكثر. ابنِ أفضل.»)
 
-## Positioning rules (from the owner, 2026-10-07)
+Truebex helps architects, interior designers and owners explore more
+possibilities, make better-informed decisions together, and experience a
+space before construction — so they can move forward with greater confidence.
+It connects the visual, spatial and measurable sides of design in one
+workflow. The brand promise is in the name: *what you see is true.* Every word
+on the site has to keep that promise.
+
+## Messaging (from the owner's brief, 2026-10-20)
+
+Source: `docs/brand/messaging-brief.md` (the brief as given, plus the table of
+which of its claims ship). It replaces the daylight-first positioning of
+2026-10-07: daylight is one capability among several, not the message.
+
+1. **Lead with the outcome, not the feature list.** More options explored →
+   better-informed decisions → fewer avoidable surprises → better spaces.
+   Features come after, as how Truebex delivers that.
+2. **The slogan stands alone.** "Imagine More. Build Better." creates the
+   impression; the sentence beside it explains. Don't append features to it.
+3. **A connected workflow.** The differentiator is how design, materials and
+   finishes, measurable information (dimensions, areas, schedules) and the
+   experience of the space work together on one model.
+4. **Decisions together.** Designers and owners review and decide on one
+   design. Never imply several people edit one model (on the roadmap).
+5. **Ambitious but credible.** Promise clarity, fewer surprises and more
+   confidence before construction — never a flawless build or exact costs.
+6. **Audiences:** architects, interior designers, real estate developers,
+   engineers and contractors, clients and property owners.
+
+## Positioning rules (from the owner, 2026-10-07; rule 2 updated 2026-10-20)
 
 1. **Truebex stands alone.** Never name, compare to, or position against any
    other software, engine or vendor in public copy: no "built on <engine>",
    no "<tool> alternative", no "<tool>-style", no engine feature names
    (render tech, upscalers) and no engine trademarks. Describe what Truebex
    does in its own words. (Internal docs and code may name the stack.)
-2. **Lead with what's distinctive.** Don't market table-stakes features every
-   design tool has (room areas, walking around the model, basic modelling).
-   The headline features are: measured daylight through every opening,
-   self-arranging surface fills, assets that update everywhere, design
-   intent that holds (constraints/references), instant edits at any size,
-   projects that remember their light and view.
+2. **Features serve the outcome.** The home page's six capability cards
+   (`FEATURES`) are: design with precision, materials and finishes, light
+   that follows the design, experiencing the space, understanding and
+   documenting it (areas, schedules, sheets), and keeping every decision
+   connected (assets, instant edits). Areas and walking the rooms may be
+   named when they serve "understand" and "experience"; never headline basic
+   modelling on its own.
 3. **One image, clean.** Only show captures with no HUD, labels or debug
    overlays. Today the site uses exactly one: daylight through a doorway
    (`public/images/product/daylight-doorway*.jpg`). Add others only when they
@@ -93,18 +120,23 @@ paid tier says "Price at launch" while the billing page lists the API's prices.
 | Visual — what you *see* and *feel* in the space | Abstract platform-speak ("unified ecosystem", "single source of truth") |
 | Honest about limits | Implying features we don't have |
 
-Signature lines (reuse, don't dilute): **"See it before you build it."** ·
-"What you draw is what you see." · "Daylight, measured — not painted." ·
-"Make it once, update everywhere."
+The slogan: **"Imagine More. Build Better."** (Title Case, two sentences,
+nothing appended). Supporting lines, for headings and campaigns — never
+competing with the slogan: "See it before you build it." · "More than a plan."
+· "Better choices. Better spaces." · "Explore more. Choose better." · "Make
+ideas real." Feature lines still usable inside their own section: "Daylight,
+measured — not painted." · "Make it once, update everywhere."
 
-Headline pattern: concrete promise + payoff. ("Daylight, measured — not
-painted." / "Make it once, update everywhere.") Keep H2s ≤ 6 words, subtitles
-one sentence.
+Headline pattern: short outcome statements, often in two beats ("A design is
+more than an image." / "One shared vision. Different perspectives."). Keep
+H2s ≤ 8 words, subtitles one sentence.
 
-Vocabulary: say *design, draw, shape, light, daylight, room, wall, opening,
-surface, asset, platform*. Avoid *metaverse, AI-powered* (unless true),
-*synergy*, *VR*, *walkthrough*, *area calculation*, and any other product's
-or engine's name.
+Vocabulary: say *explore, compare, understand, experience, refine, decide,
+design, space, room, materials, finishes, light, connected workflow*. Avoid
+*metaverse, AI-powered* (unless true), *synergy*, *VR* (say "headset", and
+only as "on the roadmap"), *walkthrough* (say "walk the rooms" / "step
+inside"), *area calculation*, *world-leading* or any other unprovable
+superlative, and any other product's or engine's name.
 
 ## Visual identity (source of truth: the app)
 

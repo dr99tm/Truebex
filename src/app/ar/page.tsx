@@ -122,7 +122,7 @@ export default function ArabicHome() {
         {/* How it works */}
         <Section id="how-it-works">
           <SectionHeading title={t.steps.title} subtitle={t.steps.subtitle} />
-          <ol className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
+          <ol className="grid gap-8 sm:grid-cols-2 lg:grid-cols-5">
             {t.steps.items.map((step) => (
               <li key={step.number} className="flex flex-col items-center text-center">
                 <span className="flex h-20 w-20 items-center justify-center rounded-full border border-accent/30 bg-background text-2xl font-bold text-accent">
