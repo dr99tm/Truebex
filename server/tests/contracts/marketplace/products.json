@@ -130,6 +130,14 @@
             "stock": 12,
             "lead_time_days": null,
             "updated_at": "2026-10-09T10:00:00Z"
+          },
+          "availabilities": {
+            "AE": {
+              "state": "low_stock",
+              "stock": 3,
+              "lead_time_days": null,
+              "updated_at": "2026-10-09T10:00:00Z"
+            }
           }
         },
         {
@@ -403,7 +411,9 @@
       ],
       "brand": "Nord Living",
       "substitutes": [
-        "3f6c1e2a9b0d4c8e9a1b2c3d4e5f6a04"
+        "3f6c1e2a9b0d4c8e9a1b2c3d4e5f6a04",
+        "3f6c1e2a9b0d4c8e9a1b2c3d4e5f6a0e",
+        "3f6c1e2a9b0d4c8e9a1b2c3d4e5f6a0f"
       ]
     },
     {
@@ -1365,6 +1375,194 @@
       ],
       "brand": "Nord Living",
       "substitutes": []
+    },
+    {
+      "product_id": "3f6c1e2a9b0d4c8e9a1b2c3d4e5f6a0e",
+      "supplier_id": "4e6f72644c6976696e67000000000001",
+      "supplier_name": "Nord Living",
+      "sku": "TABLE-SUND",
+      "name": "Sund coffee table",
+      "kind": "object",
+      "category": "furniture/tables/coffee",
+      "app_path": "furniture/tables",
+      "description": "A square ash coffee table with a central pedestal.",
+      "images": [
+        "https://market.truebex.com/files/thumbs/table-sund.png"
+      ],
+      "thumbnail_url": "https://market.truebex.com/files/thumbs/table-sund.png",
+      "includes": [],
+      "variants": [
+        {
+          "variant_id": "ash",
+          "options": {
+            "colour": "Ash"
+          },
+          "dims_mm": [
+            900,
+            380,
+            900
+          ],
+          "materials": [
+            "ash"
+          ],
+          "geometry": {
+            "asset": {
+              "name": "Sund coffee table",
+              "rev": 1,
+              "kind": "object"
+            },
+            "format": "glb",
+            "url": "https://market.truebex.com/files/geometry/table-sund.glb",
+            "sha256": "bfcbee78faf474981ae7faed2c1ec2cb2c4baae3944f48403258654da2d8c074",
+            "bytes": 1628
+          },
+          "prices": {
+            "GB": {
+              "amount": 36900,
+              "currency": "GBP",
+              "exponent": 2,
+              "region": "GB",
+              "includes_tax": true,
+              "tax_rate_bp": 2000,
+              "at": "2026-10-09T10:00:00Z"
+            },
+            "AE": {
+              "amount": 43900,
+              "currency": "AED",
+              "exponent": 2,
+              "region": "AE",
+              "includes_tax": true,
+              "tax_rate_bp": 500,
+              "at": "2026-10-09T10:00:00Z"
+            }
+          },
+          "deliveries": {
+            "GB": {
+              "fee": {
+                "amount": 2900,
+                "currency": "GBP",
+                "exponent": 2
+              },
+              "days_min": 5,
+              "days_max": 10
+            },
+            "AE": {
+              "fee": {
+                "amount": 7500,
+                "currency": "AED",
+                "exponent": 2
+              },
+              "days_min": 7,
+              "days_max": 14
+            }
+          },
+          "availability": {
+            "state": "in_stock",
+            "stock": 7,
+            "lead_time_days": null,
+            "updated_at": "2026-10-09T10:00:00Z"
+          }
+        }
+      ],
+      "brand": "Nord Living",
+      "substitutes": [
+        "3f6c1e2a9b0d4c8e9a1b2c3d4e5f6a03"
+      ]
+    },
+    {
+      "product_id": "3f6c1e2a9b0d4c8e9a1b2c3d4e5f6a0f",
+      "supplier_id": "4e6f72644c6976696e67000000000001",
+      "supplier_name": "Nord Living",
+      "sku": "TABLE-VIK",
+      "name": "Vik coffee table",
+      "kind": "object",
+      "category": "furniture/tables/coffee",
+      "app_path": "furniture/tables",
+      "description": "A smoked glass top on a black steel frame.",
+      "images": [
+        "https://market.truebex.com/files/thumbs/table-vik.png"
+      ],
+      "thumbnail_url": "https://market.truebex.com/files/thumbs/table-vik.png",
+      "includes": [],
+      "variants": [
+        {
+          "variant_id": "glass",
+          "options": {
+            "colour": "Smoke",
+            "finish": "Glass"
+          },
+          "dims_mm": [
+            1100,
+            360,
+            600
+          ],
+          "materials": [
+            "glass",
+            "steel"
+          ],
+          "geometry": {
+            "asset": {
+              "name": "Vik coffee table",
+              "rev": 1,
+              "kind": "object"
+            },
+            "format": "glb",
+            "url": "https://market.truebex.com/files/geometry/table-vik.glb",
+            "sha256": "cb0c5019abf64f23bc2e7c5ea24b9889a3e2ed65c45d4607a1e491b1f5398621",
+            "bytes": 1624
+          },
+          "prices": {
+            "GB": {
+              "amount": 45900,
+              "currency": "GBP",
+              "exponent": 2,
+              "region": "GB",
+              "includes_tax": true,
+              "tax_rate_bp": 2000,
+              "at": "2026-10-09T10:00:00Z"
+            },
+            "AE": {
+              "amount": 54900,
+              "currency": "AED",
+              "exponent": 2,
+              "region": "AE",
+              "includes_tax": true,
+              "tax_rate_bp": 500,
+              "at": "2026-10-09T10:00:00Z"
+            }
+          },
+          "deliveries": {
+            "GB": {
+              "fee": {
+                "amount": 2900,
+                "currency": "GBP",
+                "exponent": 2
+              },
+              "days_min": 5,
+              "days_max": 10
+            },
+            "AE": {
+              "fee": {
+                "amount": 7500,
+                "currency": "AED",
+                "exponent": 2
+              },
+              "days_min": 7,
+              "days_max": 14
+            }
+          },
+          "availability": {
+            "state": "made_to_order",
+            "stock": null,
+            "lead_time_days": 21,
+            "updated_at": "2026-10-09T10:00:00Z"
+          }
+        }
+      ],
+      "brand": "Nord Living",
+      "substitutes": [
+        "3f6c1e2a9b0d4c8e9a1b2c3d4e5f6a03"
+      ]
     }
   ]
 }

@@ -3902,7 +3902,7 @@
           "market"
         ],
         "x-truebex-auth": "optional",
-        "x-truebex-contract": "marketplace-api/1.1",
+        "x-truebex-contract": "marketplace-api/1.2",
         "x-truebex-scope": "market:read"
       }
     },
@@ -3984,7 +3984,7 @@
         "tags": [
           "feeds"
         ],
-        "x-truebex-contract": "marketplace-api/1.1",
+        "x-truebex-contract": "marketplace-api/1.2",
         "x-truebex-scope": "supplier:feed"
       }
     },
@@ -4066,7 +4066,7 @@
         "tags": [
           "feeds"
         ],
-        "x-truebex-contract": "marketplace-api/1.1",
+        "x-truebex-contract": "marketplace-api/1.2",
         "x-truebex-scope": "supplier:feed"
       }
     },
@@ -4149,7 +4149,7 @@
         "tags": [
           "feeds"
         ],
-        "x-truebex-contract": "marketplace-api/1.1",
+        "x-truebex-contract": "marketplace-api/1.2",
         "x-truebex-scope": "supplier:feed"
       }
     },
@@ -4233,7 +4233,7 @@
           "market"
         ],
         "x-truebex-auth": "optional",
-        "x-truebex-contract": "marketplace-api/1.1",
+        "x-truebex-contract": "marketplace-api/1.2",
         "x-truebex-scope": "market:read"
       }
     },
@@ -4335,7 +4335,7 @@
           "market"
         ],
         "x-truebex-auth": "optional",
-        "x-truebex-contract": "marketplace-api/1.1",
+        "x-truebex-contract": "marketplace-api/1.2",
         "x-truebex-scope": "market:read"
       }
     },
@@ -4409,7 +4409,7 @@
           "market"
         ],
         "x-truebex-auth": "optional",
-        "x-truebex-contract": "marketplace-api/1.1",
+        "x-truebex-contract": "marketplace-api/1.2",
         "x-truebex-scope": "market:read"
       }
     },
@@ -4660,7 +4660,7 @@
           "market"
         ],
         "x-truebex-auth": "optional",
-        "x-truebex-contract": "marketplace-api/1.1",
+        "x-truebex-contract": "marketplace-api/1.2",
         "x-truebex-scope": "market:read"
       }
     },
@@ -4745,7 +4745,7 @@
           "market"
         ],
         "x-truebex-auth": "optional",
-        "x-truebex-contract": "marketplace-api/1.1",
+        "x-truebex-contract": "marketplace-api/1.2",
         "x-truebex-scope": "market:read"
       }
     },

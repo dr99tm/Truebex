@@ -11,7 +11,8 @@ from ..contract_http import ContractError
 from ..licence import clock
 
 CONTRACT_NAME = "marketplace-api"
-CONTRACT_MAJOR, CONTRACT_MINOR = 1, 1
+# PF7e: 1.2 (MK4's orders and leads, 2026-10-18); a 1.0 or 1.1 reader is served the same (§3).
+CONTRACT_MAJOR, CONTRACT_MINOR = 1, 2
 CONTRACT_VERSION = f"{CONTRACT_NAME}/{CONTRACT_MAJOR}.{CONTRACT_MINOR}"
 
 HEX32 = re.compile(r"^[0-9a-f]{32}$")

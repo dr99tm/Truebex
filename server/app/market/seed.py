@@ -10,7 +10,9 @@ generator and the tests share it. Two shapes are read:
 * The app's stub (`truebex-market-stub/1`, MK1's set copied into
   server/tests/contracts/marketplace/, contract §9): suppliers and products
   each written once, a variant's `prices` and `deliveries` keyed by region,
-  one `availability`, a product's `substitutes`. Its files are named by
+  one `availability` (and, since MK2, `availabilities` keyed by region for a
+  region where it differs, projected like prices: PF7e), a product's
+  `substitutes`. Its files are named by
   `https://market.truebex.com/files/<path>`, served from the folder (PF7c).
 """
 
@@ -287,6 +289,7 @@ def _load_stub(db: Session, folder: Path, *, store: Store, payments_ready: bool,
         for sort, v in enumerate(p["variants"]):
             variant = _variant(db, product, v["variant_id"])
             a = v["availability"]
+            per_region = v.get("availabilities") or {}
             variant.sort, variant.gtin = sort, v.get("gtin")
             variant.options, variant.dims_mm, variant.materials = v.get("options", {}), v.get("dims_mm"), v.get("materials", [])
             variant.status = "discontinued" if a["state"] == "discontinued" else "active"
@@ -302,7 +305,8 @@ def _load_stub(db: Session, folder: Path, *, store: Store, payments_ready: bool,
             for region, pr in v["prices"].items():
                 if region not in regions or pr["currency"] != regions[region].currency:
                     raise ValueError(f"{p['sku']} / {v['variant_id']}: {region} {pr['currency']} is not a marketplace price list")
-                _offer(db, product, v["variant_id"], region, pr, (v.get("deliveries") or {}).get(region), a, at)
+                deliveries = (v.get("deliveries") or {}).get(region)
+                _offer(db, product, v["variant_id"], region, pr, deliveries, per_region.get(region, a), at)
         db.flush()
         reindex(db, product, supplier)
     db.commit()

@@ -62,7 +62,7 @@ def test_feed_csv_two_regions(client, monkeypatch):
     res = post_feed(client, key, FEED_CSV)
     assert res.status_code == 202, res.text
     assert res.json()["state"] == "queued" and len(res.json()["feed_id"]) == 32
-    assert res.headers["X-Truebex-Contract"] == "marketplace-api/1.1"
+    assert res.headers["X-Truebex-Contract"] == "marketplace-api/1.2"
     feed_id = res.json()["feed_id"]
     assert client.get(f"/market/feeds/{feed_id}", headers=key_headers(key)).json()["state"] == "queued"
 
@@ -177,16 +177,16 @@ def test_contract_header_and_error_envelope(client, monkeypatch):
     h, _sid = verified(client)
     key = supplier_key(client, h)
     ok = post_feed(client, key, FEED_CSV)
-    assert ok.headers["X-Truebex-Contract"] == "marketplace-api/1.1"
+    assert ok.headers["X-Truebex-Contract"] == "marketplace-api/1.2"
     feed_id = ok.json()["feed_id"]
     got = client.get(f"/market/feeds/{feed_id}", headers=key_headers(key))
-    assert got.headers["X-Truebex-Contract"] == "marketplace-api/1.1"
+    assert got.headers["X-Truebex-Contract"] == "marketplace-api/1.2"
     # A 1.0 client is served; MAJOR 2 is 400 contract_version on each of 5.11–5.13.
     v10 = {**key_headers(key), "X-Truebex-Contract": "marketplace-api/1.0"}
     assert client.get(f"/market/feeds/{feed_id}", headers=v10).status_code == 200
     v2 = {**key_headers(key), "X-Truebex-Contract": "marketplace-api/2.0"}
     body = error_of(client.get(f"/market/feeds/{feed_id}", headers=v2), 400, "contract_version")
-    assert body["data"]["supported"] == ["marketplace-api/1.1"]
+    assert body["data"]["supported"] == ["marketplace-api/1.2"]
     error_of(post_feed(client, key, FEED_CSV, headers=v2), 400, "contract_version")
     error_of(client.put("/market/feeds/source", json={"url": "https://x.example.com/f.csv", "format": "csv"}, headers=v2), 400, "contract_version")
     # Errors carry the envelope (code, status, request_id; detail a string).

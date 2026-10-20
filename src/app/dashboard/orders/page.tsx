@@ -1,25 +1,69 @@
 "use client";
 
-import { useState } from "react";
-import Link from "next/link";
+import { Suspense, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { ErrorNote, PageHeader, Panel } from "@/components/dashboard/DashboardShell";
 import { useApiData } from "@/components/dashboard/useApiData";
-import { OrderSummary, StateChip } from "@/components/market/OrderSummary";
-import { Button } from "@/components/ui/Button";
-import { formatDate } from "@/lib/api";
+import { OrderList, type OrderAction } from "@/components/market/OrderList";
+import { ApiError } from "@/lib/api";
 import { MARKET } from "@/lib/constants";
-import { acceptQuote, cancelOrder, listOrders, type MarketOrder } from "@/lib/market";
+import { acceptQuote, cancelOrder, getOrder, listOrders, type MarketOrder } from "@/lib/market";
+import { linkedOrderToFetch, orderLinkView } from "@/lib/order-link";
 
 const O = MARKET.orders;
 
 // The buyer's orders and requests for quote (contract marketplace-api 5.8),
-// each with its suppliers' states; pay, accept a quote or cancel.
+// each with its suppliers' states; pay, accept a quote or cancel. PF7e: an
+// order's `web_url` opens this page with ?order=<id>, which shows that order
+// first and highlighted (read on the client: the static export has one page).
 export default function OrdersPage() {
+  return (
+    <Suspense fallback={null}>
+      <LinkedOrders />
+    </Suspense>
+  );
+}
+
+// A new link starts afresh (its own 5.9 answer).
+function LinkedOrders() {
+  const link = useSearchParams().get("order");
+  return <Orders key={link ?? ""} link={link} />;
+}
+
+function Orders({ link }: { link: string | null }) {
   const { data, error, loading, reload } = useApiData(listOrders);
   const [busy, setBusy] = useState<string | null>(null);
   const [actionError, setActionError] = useState("");
+  // 5.9's answer for a linked order that is not on 5.8's first page: undefined
+  // while not asked, null when it is not this account's (404 / 403).
+  const [fetched, setFetched] = useState<MarketOrder | null | undefined>(undefined);
+  const toFetch = data ? linkedOrderToFetch(data.orders, link) : null;
 
-  async function act(order: MarketOrder, action: "accept" | "cancel") {
+  useEffect(() => {
+    if (!toFetch) return;
+    let cancelled = false;
+    getOrder(toFetch).then(
+      (order) => {
+        if (!cancelled) setFetched(order);
+      },
+      (err) => {
+        if (cancelled) return;
+        if (err instanceof ApiError && (err.status === 404 || err.status === 403)) setFetched(null);
+        else setActionError(err instanceof Error ? err.message : "Something went wrong.");
+      }
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, [toFetch]);
+
+  const view = orderLinkView(data?.orders ?? [], link, fetched);
+
+  useEffect(() => {
+    if (view.focused) document.getElementById(`order-${view.focused}`)?.scrollIntoView({ block: "start" });
+  }, [view.focused]);
+
+  async function act(order: MarketOrder, action: OrderAction) {
     if (action === "cancel" && !window.confirm(O.confirmCancel)) return;
     setBusy(order.order_id);
     setActionError("");
@@ -34,6 +78,8 @@ export default function OrdersPage() {
         await cancelOrder(order.order_id);
       }
       await reload();
+      // The linked order shown from 5.9 is not in the reloaded list: read it again.
+      if (fetched && fetched.order_id === order.order_id) setFetched(await getOrder(order.order_id));
     } catch (err) {
       setActionError(err instanceof Error ? err.message : "Something went wrong.");
     } finally {
@@ -41,7 +87,6 @@ export default function OrdersPage() {
     }
   }
 
-  const orders = data?.orders ?? [];
   return (
     <>
       <PageHeader title={O.title} description={O.description} />
@@ -51,62 +96,12 @@ export default function OrdersPage() {
         </div>
       )}
       {loading && !data && <p className="text-sm text-text-muted" role="status">…</p>}
-      {data && orders.length === 0 && (
+      {data && view.orders.length === 0 && !view.note && (
         <Panel>
           <p className="text-text-secondary">{O.empty}</p>
         </Panel>
       )}
-      <div className="space-y-6">
-        {orders.map((order) => {
-          const cancellable =
-            (order.kind === "quote" && (order.state === "submitted" || order.state === "quoted")) ||
-            (order.kind === "order" &&
-              (order.state === "awaiting_payment" || order.state === "paid") &&
-              order.suppliers.every((s) => s.state === "pending"));
-          return (
-            <Panel key={order.order_id}>
-              <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
-                <div>
-                  <p className="text-sm text-text-muted">
-                    {order.kind === "quote" ? O.quote : O.order} · {formatDate(order.created_at)}
-                    {order.project?.name ? ` · ${O.project}: ${order.project.name}` : ""}
-                  </p>
-                  <p className="mt-1 font-mono text-xs text-text-muted">{order.order_id}</p>
-                </div>
-                <StateChip state={order.state} />
-              </div>
-              <OrderSummary order={order} />
-              {order.kind === "quote" && order.expires_at && (order.state === "submitted" || order.state === "quoted") && (
-                <p className="mt-3 text-xs text-text-muted">
-                  {O.expires} {formatDate(order.expires_at)}
-                </p>
-              )}
-              {order.payment === "offline" && <p className="mt-3 text-sm text-text-secondary">{O.paidOffline}</p>}
-              {order.quote_id && <p className="mt-1 text-xs text-text-muted">{O.fromQuote}</p>}
-              <div className="mt-5 flex flex-wrap gap-3">
-                {order.state === "awaiting_payment" && (
-                  <Button href={`/market/checkout/?order=${order.order_id}`}>{O.pay}</Button>
-                )}
-                {order.kind === "quote" && order.state === "quoted" && (
-                  <Button onClick={() => act(order, "accept")} disabled={busy === order.order_id}>
-                    {O.accept}
-                  </Button>
-                )}
-                {cancellable && (
-                  <Button variant="secondary" onClick={() => act(order, "cancel")} disabled={busy === order.order_id}>
-                    {O.cancel}
-                  </Button>
-                )}
-                {order.order_ref && (
-                  <Link href={`/market/checkout/?order=${order.order_ref}`} className="self-center text-sm text-accent hover:underline">
-                    {O.order} {order.order_ref.slice(0, 8)}
-                  </Link>
-                )}
-              </div>
-            </Panel>
-          );
-        })}
-      </div>
+      <OrderList view={view} busy={busy} onAct={act} />
     </>
   );
 }

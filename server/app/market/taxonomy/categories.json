@@ -24,7 +24,7 @@
     { "path": "plants",                "label": "Plants",      "align": "FloorFree",        "bounds_mm": [500, 1200, 500],   "tags": ["plant", "pot", "tree"] },
     { "path": "decoration",            "label": "Decoration",  "align": "WallMounted",      "bounds_mm": [600, 800, 40],     "mount_mm": 1500, "tags": ["picture", "mirror", "art", "rug"] },
     { "path": "mep",                   "label": "MEP",         "align": "WallMounted",      "bounds_mm": [150, 150, 60],     "mount_mm": 1100, "tags": ["socket", "switch", "radiator", "duct"] },
-    { "path": "outdoor",               "label": "Outdoor",     "align": "FloorFree",        "bounds_mm": [1200, 800, 800],   "tags": ["garden", "terrace", "fence", "parasol"] },
+    { "path": "outdoor",               "label": "Outdoor",     "align": "OnTerrain",        "bounds_mm": [1200, 800, 800],   "tags": ["garden", "terrace", "fence", "parasol", "tree", "shrub", "bollard"] },
 
     { "path": "finishes",              "label": "Finishes",    "align": "OnFace",           "bounds_mm": [1000, 1000, 5],    "tags": ["finish"] },
     { "path": "finishes/paint",        "label": "Paint",       "align": "OnFace",           "bounds_mm": [1000, 1000, 1],    "tags": ["paint", "colour", "emulsion"] },

@@ -3,18 +3,25 @@ contract fixtures (contracts/marketplace-api.md §9). MK1 wrote them in the
 app repo (Docs/roadmap/fixtures/contracts/marketplace/, app main 90799860);
 they are copied byte for byte into tests/contracts/marketplace/. PF7d
 re-copied them after AU2 added its bedroom set (app commit 180b2d53, on the
-app's main since 7caa26aa; copied from main 7fe6b2c2): 13 products.
+app's main since 7caa26aa; copied from main 7fe6b2c2): 13 products. PF7e
+re-copied them after MK2 and MK4 (app commit 123b88c59, copied from main
+689da345d): 15 products (MK2's Sund and Vik coffee tables), the Oslo sofa's
+Oat variant low stock in AE (`availabilities` per region), and the order
+fixtures in contract 1.2.0's shape (MK4's basket; test_pf7e_marketplace_1_2.py
+checks their 1.2.0 keys).
 
 The platform is seeded from the app's products.json (the stub's catalogue:
-three suppliers, thirteen products, per-region prices and deliveries) and
+three suppliers, fifteen products, per-region prices, deliveries and, where
+one differs, availabilities) and
 asked what the stub answers from the same files. Only what is volatile is
 masked: the ids and times the server mints, and URLs (the stub serves
 https://market.truebex.com/files/<path>; the platform its own picture and
 geometry links). Every other difference is asserted as the platform's
 behaviour with its number in PF7c's As-built ("Differences",
 docs/roadmap/40/PF7c-marketplace-fixtures-from-mk1.md; D17 on in PF7d's,
-docs/roadmap/40/PF7d-marketplace-fixtures-au2-bedroom-set.md), where the
-PATCH line for the app side is written. PF7's own catalogue, which the older
+docs/roadmap/40/PF7d-marketplace-fixtures-au2-bedroom-set.md; D18 on in
+PF7e's, docs/roadmap/40/PF7e-marketplace-api-1-2-0.md), where the PATCH line
+for the app side is written. PF7's own catalogue, which the older
 marketplace tests count on, is tests/fixtures/market/.
 """
 
@@ -55,14 +62,18 @@ REGIONS = ("GB", "AE")
 FILES = "https://market.truebex.com/files/"
 # Keys the stub keeps in products.json but drops from 5.4 (its README).
 STUB_ONLY = ("substitutes", "supplier_name", "thumbnail_url")
+# A variant's per-region lists the stub projects to §6.1's one value for the region (MK2: `availabilities`).
+PER_REGION = ("prices", "deliveries", "availabilities")
 # The app's set as committed (tests/contracts/marketplace/README.md): its git
 # blob ids, as `git ls-tree -r <app main> -- Docs/roadmap/fixtures/contracts/marketplace/`
-# prints them. PF7d: app commit 180b2d53 (AU2's bedroom set; the folder is the
-# same at main 7caa26aa and 7fe6b2c2). A re-copy (scripts/sync-contract-fixtures.ps1
+# prints them. PF7d: app commit 180b2d53 (AU2's bedroom set). PF7e: app commit
+# 123b88c59 (MK2's coffee tables and per-region availability, MK4's 1.2.0 order
+# fixtures; the folder is the same at main 689da345d; its git tree id is pinned in
+# test_pf7e_marketplace_1_2.py). A re-copy (scripts/sync-contract-fixtures.ps1
 # -Contract marketplace) updates this table from the same listing.
 APP_BLOBS = {
-    "README.md": "a98aaed770c05ca63192957eff71e70c982f7795",
-    "categories.json": "663d721377b193b4c88be732fca71b778a118e8f",
+    "README.md": "5f683b8656c06b5694d604fc162434626c2ae4f4",
+    "categories.json": "f433b43f14c7d942ab068fb0cf3a58e5b304f786",
     "feed-report.json": "6345d627b877ddd11ecd39e13d9e94c683c879ea",
     "feed-two-regions.csv": "afc7711a2830ade310412e6fa54dc02e02bc99ec",
     "feed-two-regions.json": "a88c8f7ea97c2ad9bffd3b73bbceacb86b77a938",
@@ -76,12 +87,14 @@ APP_BLOBS = {
     "geometry/sofa-oslo.tbxa": "5a26f8274d49002ef90a2befadb0d834a70f595f",
     "geometry/table-fjord.glb": "2d44ddffa7746bb5e9294e6a42298db3d0780f9f",
     "geometry/table-halden.glb": "ca070d1bb6a5b8072512987be064e1b0c46771da",
+    "geometry/table-sund.glb": "3bf5b837f959f839758684abf3393295312176b7",
+    "geometry/table-vik.glb": "f4c2eea73dfc780ea15f4585657d9529355c359d",
     "geometry/wardrobe-nord.glb": "25907e2a6270f3aa50c4cc9665fa9bc01e44f328",
-    "order-awaiting-payment.json": "0f777162c5278d69af0604b536d3848ddfdc81b3",
-    "order-quoted.json": "1e9f21f9fc8f1b16e61b4f7d25c2dca759516a99",
-    "prices-ae.json": "9e29a1555cd02b4812f3ffd3a5e4dc5091b4fd5a",
-    "prices-gb.json": "a185245d61104e115fc7af16e6156361dee9d6a7",
-    "products.json": "407d8319dc33088cfe46ec12fd65434204b59b2e",
+    "order-awaiting-payment.json": "c8ad07b368e0a40fedc0145db2d4b9b9e7780551",
+    "order-quoted.json": "cdad3037cd0f7df31ed580b69e9664443521d5c4",
+    "prices-ae.json": "0f7f1126f249422beeec667bd31819669281c0e4",
+    "prices-gb.json": "fe65313425139579990a08c84c362fe35a02b514",
+    "products.json": "28365264cd11512fd4e38eb8849f636053baa41a",
     "regions.json": "8dd0bb1d2201c4e91270a5f6df3920a78e4262ce",
     "thumbs/bed-fjell-single.png": "0c715a3a1eeb6c4466c5e9459dcb81efa9931434",
     "thumbs/bed-fjell.png": "2b5e38b5877204939be737d2c39dc28a05cb8038",
@@ -94,6 +107,8 @@ APP_BLOBS = {
     "thumbs/sofa-oslo.png": "1fecd9320a4a5ea39a85d6dbc8d2e9dcff1b2d7e",
     "thumbs/table-fjord.png": "467921e85b5c039aa5dbb2ed8e5a2e465ec086e2",
     "thumbs/table-halden.png": "da105a3a994d1959f7343ab0da1628a5947386fb",
+    "thumbs/table-sund.png": "6bb2c4495ff393605f15f31af271f74d0871eaba",
+    "thumbs/table-vik.png": "017f71418b0f2f9006d4aa92dee0f2c4fa8d6d90",
     "thumbs/theme-calm.png": "c75de08eb1ec66c8e85dc7b07687a505102e7f0f",
     "thumbs/wallpaper-palm.png": "6155674e314377b8de39942cf896e6e377c32f0e",
     "thumbs/wardrobe-nord.png": "c8ae85689e0e70bc2ccde8d6781c14d2e727181d",
@@ -101,9 +116,11 @@ APP_BLOBS = {
 APP_FILES = set(APP_BLOBS)
 # AU2's bedroom set (the products `Layout.Products` swaps an auto layout's boxes for).
 BEDROOM = ("BED-FJELL-160", "BED-FJELL-90", "WARDROBE-NORD-120", "BEDSIDE-FJELL")
+# MK2's two coffee tables (so the discontinued Halden lists three substitutes).
+COFFEE = ("TABLE-SUND", "TABLE-VIK")
 # Variants that carry a file: MK1's eight (four .tbxa uses, three .glb, the second
-# sideboard size) and AU2's four .glb.
-GEOMETRY_VARIANTS = 12
+# sideboard size), AU2's four .glb and MK2's two.
+GEOMETRY_VARIANTS = 14
 
 
 def stub(name: str) -> dict:
@@ -149,27 +166,35 @@ def when(text: str) -> datetime:
 def projected(p: dict, region: str) -> dict:
     """What the stub answers for 5.4 `?region=`: the product without its
     stub-only keys, each variant's `prices` / `deliveries` lists projected to
-    §6.1's `price` / `delivery` for the region."""
+    §6.1's `price` / `delivery` for the region, and (MK2) its `availabilities`
+    to `availability` where it names the region."""
     out = {k: v for k, v in p.items() if k not in STUB_ONLY}
     out["variants"] = []
     for v in p["variants"]:
-        pv = {k: x for k, x in v.items() if k not in ("prices", "deliveries")}
+        pv = {k: x for k, x in v.items() if k not in PER_REGION}
         pv["price"], pv["delivery"] = v["prices"][region], v["deliveries"][region]
+        pv["availability"] = v.get("availabilities", {}).get(region, v["availability"])
         out["variants"].append(pv)
     return out
 
 
 def order_request(kind: str) -> dict:
-    """5.7 for the Oslo sofa (oat-linen) in AE, as the app sends it."""
-    oat = SOFA["variants"][0]
+    """5.7 for the order fixtures' basket in AE, as the app sends it (PF7e:
+    MK4's two Oslo sofas, Oat, and the Fjord table from Nord Living, the Arc
+    wall light from Atelier Lumen; before, the one sofa)."""
+    want = stub("order-awaiting-payment.json")
     return {
         "kind": kind,
         "region": "AE",
-        "project": {"name": "House", "project_id": None},
+        "project": want["project"],
         "contact": {"name": "Layla Haddad", "email": "buyer@example.com", "phone": None, "message": "Delivery after 1 Dec"},
         "delivery": {"country": "AE", "city": "Dubai", "postcode": None},
-        "lines": [{"supplier_id": NORD, "sku": SOFA["sku"], "variant_id": oat["variant_id"], "qty": 1, "price_seen": oat["prices"]["AE"]}],
-    }
+        "lines": [
+            {"supplier_id": s["supplier_id"], "sku": i["sku"], "variant_id": i["variant_id"], "qty": i["qty"], "price_seen": i["price_seen"]}
+            for s in want["suppliers"]
+            for i in s["items"]
+        ],
+    }  # fmt: skip
 
 
 def assert_groups_like_the_stub(mine: dict, want: dict) -> None:
@@ -196,9 +221,9 @@ def test_contract_folder_is_the_apps_copy():
     files = {p.relative_to(CONTRACT_FIXTURES).as_posix() for p in CONTRACT_FIXTURES.rglob("*") if p.is_file()}
     assert files == APP_FILES
     assert STUB["schema"] == "truebex-market-stub/1"
-    # PF7d: MK1's nine products and AU2's bedroom set.
-    assert len(STUB["suppliers"]) == 3 and len(STUB["products"]) == 13
-    assert all(BY_SKU.get(sku, {}).get("supplier_id") == NORD for sku in BEDROOM)
+    # PF7d: MK1's nine products and AU2's bedroom set; PF7e: MK2's two coffee tables.
+    assert len(STUB["suppliers"]) == 3 and len(STUB["products"]) == 15
+    assert all(BY_SKU.get(sku, {}).get("supplier_id") == NORD for sku in (*BEDROOM, *COFFEE))
     # Copied as the app's blobs: no line ending converted on the way.
     for rel in APP_FILES:
         if rel.endswith((".json", ".csv", ".md")):
@@ -226,8 +251,8 @@ def test_contract_folder_is_the_apps_copy():
 
 
 def test_contract_folder_blobs_are_the_apps():
-    """PF7d: every file is the app's blob at AU2's commit (on the app's main
-    since 7caa26aa): its git blob id (`git hash-object --no-filters`) equals
+    """PF7d: every file is the app's blob at the recorded commit (PF7e:
+    123b88c59): its git blob id (`git hash-object --no-filters`) equals
     `git ls-tree`'s, so no byte differs, line endings included."""
     mine = {
         p.relative_to(CONTRACT_FIXTURES).as_posix(): git_blob_id(p.read_bytes())
@@ -243,9 +268,10 @@ def test_contract_folder_blobs_are_the_apps():
 
 def test_seed_reads_the_apps_catalogue(client, capsys):
     """seed_market.py --fixture with the app's set: its three suppliers
-    (verified) and thirteen products (approved; PF7d: AU2's bedroom set
-    among them), each found by 5.3 with the price products.json gives it in
-    GB and AE. A second run prints and leaves the same."""
+    (verified) and fifteen products (approved; PF7d: AU2's bedroom set, PF7e:
+    MK2's coffee tables among them), each found by 5.3 with the price
+    products.json gives it in GB and AE. A second run prints and leaves the
+    same."""
     from scripts import seed_market
 
     runs = []
@@ -260,9 +286,9 @@ def test_seed_reads_the_apps_catalogue(client, capsys):
     out, (suppliers, products) = runs[0], runs[1]
     for s in STUB["suppliers"]:
         assert f"supplier {s['name']} ({s['supplier_id']}): verified" in out
-    assert (suppliers, len(products)) == (3, 13)
+    assert (suppliers, len(products)) == (3, 15)
     assert dict(products) == {pid: "approved" for pid in PRODUCTS}
-    for sku in BEDROOM:
+    for sku in (*BEDROOM, *COFFEE):
         assert f"approved        {sku:<22} {BY_SKU.get(sku, {}).get('name')}" in out
 
     listed = client.get("/market/search", params={"region": "GB", "limit": 100}, headers=CONTRACT).json()
@@ -332,10 +358,10 @@ def test_categories_like_the_stub(client):
         assert mine["products"] == counts[c["path"]], c
         if c["path"] != "furniture":
             assert c["products"] == mine["products"], c
-    # D1: the stub's categories.json says 10 under furniture (6 before AU2);
-    # products.json files 9 there (5 before).
-    assert next(c for c in want["categories"] if c["path"] == "furniture")["products"] == 10
-    assert counts["furniture"] == 9
+    # D1: the stub's categories.json says 12 under furniture (10 before MK2's
+    # two tables, 6 before AU2); products.json files 11 there (9, 5 before).
+    assert next(c for c in want["categories"] if c["path"] == "furniture")["products"] == 12
+    assert counts["furniture"] == 11
     # D4: 5.1 is the platform's whole tree; the rest of it holds no fixture product.
     assert got and all(c["products"] == 0 for c in got.values())
     assert got["furniture/beds/double-beds"]["products"] == got["furniture/beds/single-beds"]["products"] == 0
@@ -378,12 +404,17 @@ def test_batch_prices_like_the_stub(client, region):
         assert {**mine, "substitutes": theirs["substitutes"]} == theirs
     halden = next(i for i in body["items"] if i["sku"] == "TABLE-HALDEN")
     assert halden["availability"]["state"] == "discontinued" and halden["substitutes"]
-    # PF7d: every line of the new file, AU2's bedroom set (one variant each) included.
-    assert len(body["items"]) == 12
-    assert [i["sku"] for i in body["items"][-4:]] == list(BEDROOM)
-    for i in body["items"][-4:]:
+    # PF7d: every line of the new file, AU2's bedroom set (one variant each)
+    # included; PF7e: then MK2's two coffee tables.
+    assert len(body["items"]) == 14
+    assert [i["sku"] for i in body["items"][8:12]] == list(BEDROOM)
+    assert [i["sku"] for i in body["items"][12:]] == list(COFFEE)
+    for i in body["items"][8:]:
         (v,) = BY_SKU[i["sku"]]["variants"]
         assert (i["variant_id"], i["price"], i["availability"]) == (v["variant_id"], v["prices"][region], v["availability"])
+    # PF7e (MK2): the Oslo sofa's Oat variant is low stock in AE, in stock in GB.
+    oat = body["items"][0]
+    assert (oat["sku"], oat["variant_id"], oat["availability"]["state"]) == ("SOFA-OSLO-3", "oat-linen", {"AE": "low_stock", "GB": "in_stock"}[region])
 
 
 # --- 5.7, 5.9 ---------------------------------------------------------------------------------
@@ -406,7 +437,7 @@ def test_order_awaiting_payment_like_the_stub(client, monkeypatch):
     assert url.path == "/market/checkout/" and parse_qs(url.query) == {"order": [mine["order_id"]]}
     assert theirs.path == f"/market/checkout/{want['order_id']}" and not theirs.query
     assert_groups_like_the_stub(mine, want)
-    assert want["total"]["amount"] == want["suppliers"][0]["subtotal"]["amount"] + want["suppliers"][0]["delivery"]["amount"]
+    assert want["total"]["amount"] == sum(s["subtotal"]["amount"] + s["delivery"]["amount"] for s in want["suppliers"])
     # 5.9 answers the same order the same way.
     again = client.get(f"/market/orders/{mine['order_id']}", headers=h).json()
     assert_groups_like_the_stub(again, want)
@@ -417,21 +448,22 @@ def test_order_quoted_like_the_stub(client):
     signup(client, email="owner@nord.example.com")
     load_stub(owner_email="owner@nord.example.com")
     owner = client.post("/auth/login", json={"email": "owner@nord.example.com", "password": "password123"}).json()
-    owner = as_supplier({"Authorization": f"Bearer {owner['access_token']}"}, NORD)
+    owner = {"Authorization": f"Bearer {owner['access_token']}"}
     want = stub("order-quoted.json")
     h = with_contract(signup(client, email="buyer@example.com"))
     res = client.post("/market/orders", json=order_request("quote"), headers=h)
     assert res.status_code == 201, res.text
     placed = res.json()
     assert placed["state"] == "submitted" and placed["checkout_url"] is None
-    # Nord Living quotes in its inbox (PF8): the stub's quoted subtotal, no delivery fee.
-    quoted = want["suppliers"][0]
-    body = {
-        "lines": [{"sku": SOFA["sku"], "variant_id": "oat-linen", "price": format_major(quoted["subtotal"]["amount"], 2)}],
-        "delivery_fee": format_major(quoted["delivery"]["amount"], 2),
-    }
-    res = client.post(f"/supplier/inbox/{placed['order_id']}/quote", json=body, headers=owner)
-    assert res.status_code == 200, res.text
+    # Each supplier quotes in its inbox (PF8): the stub's quoted unit prices
+    # (PF7e: its items' `quoted`) and its delivery fee.
+    for quoted in want["suppliers"]:
+        body = {
+            "lines": [{"sku": i["sku"], "variant_id": i["variant_id"], "price": format_major(i["quoted"]["amount"], 2)} for i in quoted["items"]],
+            "delivery_fee": format_major(quoted["delivery"]["amount"], 2),
+        }  # fmt: skip
+        res = client.post(f"/supplier/inbox/{placed['order_id']}/quote", json=body, headers=as_supplier(owner, quoted["supplier_id"]))
+        assert res.status_code == 200, res.text
     mine = client.get(f"/market/orders/{placed['order_id']}", headers=h).json()
     assert is_hex32(mine["order_id"]) and is_hex32(want["order_id"])  # masked: minted
     assert (mine["kind"], mine["state"], mine["checkout_url"]) == (want["kind"], want["state"], want["checkout_url"])
@@ -474,11 +506,18 @@ def test_feed_import_like_the_stub_report(client, monkeypatch, fmt):
         assert (got["name"], got["category"], got["description"], got["brand"]) == (
             expected["name"], expected["category"], expected["description"], expected["brand"],
         )  # fmt: skip
-        for v, w in zip(got["variants"], expected["variants"], strict=True):
+        for v, w, sv in zip(got["variants"], expected["variants"], SOFA["variants"], strict=True):
             assert (v["variant_id"], v["gtin"], v["options"], v["dims_mm"]) == (w["variant_id"], w["gtin"], w["options"], w["dims_mm"])
             assert {**v["price"], "at": None} == {**w["price"], "at": None}  # masked: stamped at import
             assert v["delivery"] == w["delivery"]
-            assert {**v["availability"], "updated_at": None} == {**w["availability"], "updated_at": None}
+            # D19 (PF7e): the app's feed files still give the Oat sofa 12 in stock in
+            # AE (MK2 left them as they were), where products.json's `availabilities`
+            # says low stock (3); the platform serves what the feed says.
+            assert {**v["availability"], "updated_at": None} == {**sv["availability"], "updated_at": None}
+            if region == "AE" and v["variant_id"] == "oat-linen":
+                assert (v["availability"]["state"], v["availability"]["stock"], w["availability"]["state"]) == ("in_stock", 12, "low_stock")
+            else:
+                assert v["availability"]["state"] == w["availability"]["state"]
             assert (v["geometry"]["format"], v["geometry"]["sha256"], v["geometry"]["bytes"]) == (
                 w["geometry"]["format"], w["geometry"]["sha256"], w["geometry"]["bytes"],
             )  # fmt: skip
@@ -494,8 +533,9 @@ def test_feed_import_like_the_stub_report(client, monkeypatch, fmt):
 
 def test_products_and_suppliers_like_the_stub(client):
     load_stub()
-    # PF7d: all thirteen, AU2's bedroom set included, in both regions.
-    assert {p["sku"] for p in STUB["products"]} >= set(BEDROOM) and len(STUB["products"]) == 13
+    # PF7d: all of them, AU2's bedroom set and (PF7e) MK2's coffee tables
+    # included, in both regions; the Oslo sofa's Oat availability per region.
+    assert {p["sku"] for p in STUB["products"]} >= {*BEDROOM, *COFFEE} and len(STUB["products"]) == 15
     for p in STUB["products"]:
         for region in REGIONS:
             res = client.get(f"/market/products/{p['product_id']}", params={"region": region}, headers=CONTRACT)
@@ -536,9 +576,12 @@ def test_products_and_suppliers_like_the_stub(client):
 
 def test_withdrawn_substitutes_like_the_stub(client):
     """5.4's 410 `product_withdrawn` names the substitutes products.json
-    gives, but for four products. D13: the platform offers only a substitute
+    gives, but for six products. D13: the platform offers only a substitute
     that can be ordered in the region, and the stub offers the discontinued
-    Halden table for the Fjord table. D17 (PF7d): the platform's rule is the
+    Halden table for the Fjord table (PF7e: and for MK2's Sund and Vik
+    tables), where the platform offers the other orderable coffee tables,
+    nearest in price. The Halden table's three (MK2) are the platform's too.
+    D17 (PF7d): the platform's rule is the
     same category, then the same app path, nearest in price, so the three
     `furniture/storage` products (MK1's sideboard, AU2's wardrobe and bedside
     table) offer each other where the stub lists none; the stub's own
@@ -551,11 +594,16 @@ def test_withdrawn_substitutes_like_the_stub(client):
         "WARDROBE-NORD-120": ["SIDEBOARD-NORD", "BEDSIDE-FJELL"],
         "BEDSIDE-FJELL": ["WARDROBE-NORD-120", "SIDEBOARD-NORD"],
     }
-    platform = {
-        "TABLE-FJORD": [],  # D13
-        **{sku: [BY_SKU[s]["product_id"] for s in subs] for sku, subs in storage.items() if set(subs) <= set(BY_SKU)},
+    # D13 (PF7e: the coffee tables MK2 added are orderable substitutes), GB and AE alike.
+    coffee = {
+        "TABLE-FJORD": ["TABLE-VIK", "TABLE-SUND"],
+        "TABLE-SUND": ["TABLE-FJORD", "TABLE-VIK"],
+        "TABLE-VIK": ["TABLE-FJORD", "TABLE-SUND"],
     }
-    assert set(platform) == {"TABLE-FJORD", *storage}
+    platform = {
+        sku: [BY_SKU[s]["product_id"] for s in subs] for sku, subs in {**coffee, **storage}.items() if set(subs) <= set(BY_SKU)
+    }
+    assert set(platform) == {*coffee, *storage}
     for p in STUB["products"]:
         with SessionLocal() as db:
             db.get(Product, p["product_id"]).status = "withdrawn"
@@ -568,7 +616,8 @@ def test_withdrawn_substitutes_like_the_stub(client):
         with SessionLocal() as db:
             db.get(Product, p["product_id"]).status = "approved"
             db.commit()
-    assert BY_SKU["TABLE-FJORD"]["substitutes"] == [BY_SKU["TABLE-HALDEN"]["product_id"]]
+    assert all(BY_SKU[sku]["substitutes"] == [BY_SKU["TABLE-HALDEN"]["product_id"]] for sku in coffee)
+    assert BY_SKU["TABLE-HALDEN"]["substitutes"] == [BY_SKU[s]["product_id"] for s in ("TABLE-FJORD", "TABLE-SUND", "TABLE-VIK")]
     assert all(BY_SKU[sku]["substitutes"] == [] for sku in storage)
     # The stub's beds name each other (another category, the same app path), as the platform does.
     assert BY_SKU["BED-FJELL-160"]["substitutes"] == [BY_SKU["BED-FJELL-90"]["product_id"]]
@@ -601,7 +650,9 @@ def test_app_geometry_through_the_seed_and_the_product_link(client):
                 downloaded.append(w["geometry"]["url"][len(FILES) :])
                 seen += 1
     assert seen == 2 * GEOMETRY_VARIANTS
-    assert set(downloaded) >= {f"geometry/{n}.glb" for n in ("bed-fjell", "bed-fjell-single", "wardrobe-nord", "bedside-fjell")}
+    assert set(downloaded) >= {
+        f"geometry/{n}.glb" for n in ("bed-fjell", "bed-fjell-single", "wardrobe-nord", "bedside-fjell", "table-sund", "table-vik")
+    }
 
 
 def test_app_geometry_survives_the_portal_upload(client):
@@ -658,7 +709,7 @@ def test_app_geometry_survives_the_portal_upload(client):
             assert asset["id"] == importer.asset_id(pid, v["variant_id"]) and asset["kind"] == "object"
             if w["geometry"]["asset"].get("id"):
                 assert asset["id"] != w["geometry"]["asset"]["id"] and "-" in w["geometry"]["asset"]["id"]
-    assert uploaded == GEOMETRY_VARIANTS  # PF7d: AU2's four GLBs too, PF8's checks warning about none
+    assert uploaded == GEOMETRY_VARIANTS  # AU2's four GLBs and MK2's two too, PF8's checks warning about none
 
 
 # --- Theme includes ---------------------------------------------------------------------------
