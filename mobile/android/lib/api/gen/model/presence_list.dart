@@ -13,25 +13,35 @@ part of truebex.api;
 class PresenceList {
   /// Returns a new [PresenceList] instance.
   PresenceList({
+    this.commentsRev,
     this.present = const [],
   });
+
+  int? commentsRev;
 
   List<Presence> present;
 
   @override
   bool operator ==(Object other) => identical(this, other) || other is PresenceList &&
+    other.commentsRev == commentsRev &&
     _deepEquality.equals(other.present, present);
 
   @override
   int get hashCode =>
     // ignore: unnecessary_parenthesis
+    (commentsRev == null ? 0 : commentsRev!.hashCode) +
     (present.hashCode);
 
   @override
-  String toString() => 'PresenceList[present=$present]';
+  String toString() => 'PresenceList[commentsRev=$commentsRev, present=$present]';
 
   Map<String, dynamic> toJson() {
     final json = <String, dynamic>{};
+    if (this.commentsRev != null) {
+      json[r'comments_rev'] = this.commentsRev;
+    } else {
+      json[r'comments_rev'] = null;
+    }
       json[r'present'] = this.present;
     return json;
   }
@@ -53,6 +63,7 @@ class PresenceList {
       }());
 
       return PresenceList(
+        commentsRev: mapValueOfType<int>(json, r'comments_rev'),
         present: Presence.listFromJson(json[r'present']),
       );
     }

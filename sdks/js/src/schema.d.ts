@@ -380,6 +380,56 @@ export interface paths {
         patch: operations["projects_update"];
         trace?: never;
     };
+    "/v1/projects/{project_id}/comments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Comments
+         * @description Comments created, edited, resolved, reopened or deleted after `after_rev`, oldest change first (5.19).
+         *     A deleted comment comes back once, with state `deleted` and empty text.
+         */
+        get: operations["projects_list_comments"];
+        put?: never;
+        /**
+         * Create Comment
+         * @description Pin a comment on an entity or a view, or reply to one (5.20); any member, a viewer included.
+         *     The comment is the key owner's.
+         */
+        post: operations["projects_create_comment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/projects/{project_id}/comments/{comment_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete Comment
+         * @description Delete a comment (its author or the owner) (5.22).
+         */
+        delete: operations["projects_delete_comment"];
+        options?: never;
+        head?: never;
+        /**
+         * Update Comment
+         * @description Edit a comment's text (its author), or resolve or reopen it (its author, an editor or the owner) (5.21).
+         */
+        patch: operations["projects_update_comment"];
+        trace?: never;
+    };
     "/v1/projects/{project_id}/members": {
         parameters: {
             query?: never;
@@ -501,12 +551,12 @@ export interface paths {
         };
         /**
          * Who Is Here
-         * @description Who is in the project now (5.18).
+         * @description Who is in the project now (5.18), and the comment revision.
          */
         get: operations["projects_presence"];
         /**
          * Heartbeat
-         * @description Presence heartbeat (5.17): every 10-30 s while open; `leaving` removes it.
+         * @description Presence heartbeat (5.17): every 10-30 s while open; `leaving` removes it. `comments_rev` says when to fetch comments.
          */
         put: operations["projects_heartbeat"];
         post?: never;
@@ -959,6 +1009,147 @@ export interface components {
             [key: string]: unknown;
         };
         /**
+         * Comment
+         * @description A comment or reply (§6.6). Replies hang under their thread's root and share its anchor.
+         */
+        Comment: {
+            anchor: components["schemas"]["CommentAnchor"];
+            author: components["schemas"]["CommentAuthor"];
+            /** Comment Id */
+            comment_id: string;
+            /** Created At */
+            created_at: string;
+            /** Edited At */
+            edited_at: string | null;
+            /**
+             * Parent Id
+             * @description The thread's root comment; null on a root
+             */
+            parent_id: string | null;
+            /** Resolved At */
+            resolved_at: string | null;
+            /** Resolved By */
+            resolved_by: number | null;
+            /**
+             * State
+             * @description deleted only in the list, once
+             * @enum {string}
+             */
+            state: "open" | "resolved" | "deleted";
+            /**
+             * Text
+             * @description 1-4000 characters; empty when deleted
+             */
+            text: string;
+        } & {
+            [key: string]: unknown;
+        };
+        /**
+         * CommentAnchor
+         * @description An entity pin (`entity`, optionally `point_mm`) or a view pin (`view`).
+         */
+        CommentAnchor: {
+            /**
+             * Entity
+             * @description 32 hex: the entity the pin is on, null on a view pin
+             */
+            entity?: string | null;
+            /**
+             * Point Mm
+             * @description Where on the entity, in doc millimetres; null = its bounds' centre
+             */
+            point_mm?: number[] | null;
+            view?: components["schemas"]["CommentView"] | null;
+        } & {
+            [key: string]: unknown;
+        };
+        /** CommentAuthor */
+        CommentAuthor: {
+            /** Name */
+            name: string;
+            /** User Id */
+            user_id: number;
+        } & {
+            [key: string]: unknown;
+        };
+        /**
+         * CommentCreate
+         * @description 5.20: a comment pinned on an entity or a view, or a reply (`parent_id`).
+         */
+        CommentCreate: {
+            /**
+             * Anchor
+             * @description §6.6: {entity, point_mm, view}. A root comment pins an entity (32 hex) or a view ({storey, eye_mm, yaw_deg, pitch_deg}); a reply takes its parent's anchor.
+             */
+            anchor?: Record<string, never> | null;
+            /**
+             * Parent Id
+             * @description 32 hex: reply to this comment (the reply hangs under its thread's root)
+             */
+            parent_id?: string | null;
+            /**
+             * Text
+             * @description 1-4000 characters once trimmed
+             */
+            text: string;
+        };
+        /** CommentList */
+        CommentList: {
+            /** Comments */
+            comments: components["schemas"]["Comment"][];
+            /**
+             * Rev
+             * @description The project's comment revision: pass it as `after_rev` next time
+             */
+            rev: number;
+        } & {
+            [key: string]: unknown;
+        };
+        /**
+         * CommentUpdate
+         * @description 5.21: new text (the author only) and/or a state, open or resolved (the author, an editor or the owner).
+         */
+        CommentUpdate: {
+            /**
+             * State
+             * @description open or resolved; the author, an editor or the owner
+             */
+            state?: string | null;
+            /**
+             * Text
+             * @description 1-4000 characters once trimmed; the author only
+             */
+            text?: string | null;
+        };
+        /**
+         * CommentView
+         * @description The camera when the comment was made: `yaw_deg` counter-clockwise from the plan's +X (90 = north).
+         */
+        CommentView: {
+            /**
+             * Eye Mm
+             * @description The camera position in doc millimetres
+             */
+            eye_mm: number[];
+            /**
+             * Pitch Deg
+             * @default 0
+             */
+            pitch_deg: number;
+            /**
+             * Storey
+             * @description The storey's entity id (32 hex), null outside any storey
+             */
+            storey?: string | null;
+            /**
+             * Yaw Deg
+             * @default 0
+             */
+            yaw_deg: number;
+        } & {
+            [key: string]: unknown;
+        };
+        /**
          * ErrorEnvelope
          * @description The shared error envelope of every contract (`code` is what to branch on).
          */
@@ -1086,6 +1277,11 @@ export interface components {
         };
         /** HeartbeatResult */
         HeartbeatResult: {
+            /**
+             * Comments Rev
+             * @description The project's comment revision (1.2.0): fetch comments when it passes the `rev` last read
+             */
+            comments_rev: number;
             /** Others */
             others: components["schemas"]["Presence"][];
             /** Ttl S */
@@ -1625,6 +1821,11 @@ export interface components {
         };
         /** PresenceList */
         PresenceList: {
+            /**
+             * Comments Rev
+             * @description The project's comment revision (1.2.0), as in the heartbeat's answer
+             */
+            comments_rev: number;
             /** Present */
             present: components["schemas"]["Presence"][];
         } & {
@@ -3748,6 +3949,298 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Project"];
+                };
+            };
+            /** @description Missing, malformed, invalid or revoked API key (`unauthenticated`). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The key lacks the scope (`forbidden`, `data.needed`), the role is too low, or the plan lacks the feature. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unknown, or not visible to this key's account (`not_found`). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Validation failed (`validation_failed`, `data.fields`), or a contract rule (`code`). */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Burst limit or monthly quota reached (`rate_limited`, `retry_after_s`). */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    projects_list_comments: {
+        parameters: {
+            query?: {
+                /** @description The `rev` (or `comments_rev`) last read; 0 for every comment */
+                after_rev?: number;
+                /** @description open, resolved or all; deleted comments come back with every filter */
+                state?: "open" | "resolved" | "all";
+            };
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommentList"];
+                };
+            };
+            /** @description Missing, malformed, invalid or revoked API key (`unauthenticated`). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The key lacks the scope (`forbidden`, `data.needed`), the role is too low, or the plan lacks the feature. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unknown, or not visible to this key's account (`not_found`). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Validation failed (`validation_failed`, `data.fields`), or a contract rule (`code`). */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Burst limit or monthly quota reached (`rate_limited`, `retry_after_s`). */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    projects_create_comment: {
+        parameters: {
+            query?: never;
+            header?: {
+                "idempotency-key"?: string | null;
+            };
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CommentCreate"];
+            };
+        };
+        responses: {
+            /** @description Success */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Comment"];
+                };
+            };
+            /** @description Missing, malformed, invalid or revoked API key (`unauthenticated`). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The key lacks the scope (`forbidden`, `data.needed`), the role is too low, or the plan lacks the feature. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unknown, or not visible to this key's account (`not_found`). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Conflict with the resource's state (the `code` says which). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Validation failed (`validation_failed`, `data.fields`), or a contract rule (`code`). */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Burst limit or monthly quota reached (`rate_limited`, `retry_after_s`). */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    projects_delete_comment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+                comment_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Missing, malformed, invalid or revoked API key (`unauthenticated`). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The key lacks the scope (`forbidden`, `data.needed`), the role is too low, or the plan lacks the feature. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unknown, or not visible to this key's account (`not_found`). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Burst limit or monthly quota reached (`rate_limited`, `retry_after_s`). */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    projects_update_comment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+                comment_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CommentUpdate"];
+            };
+        };
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Comment"];
                 };
             };
             /** @description Missing, malformed, invalid or revoked API key (`unauthenticated`). */

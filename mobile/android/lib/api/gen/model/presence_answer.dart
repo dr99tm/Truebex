@@ -13,9 +13,12 @@ part of truebex.api;
 class PresenceAnswer {
   /// Returns a new [PresenceAnswer] instance.
   PresenceAnswer({
+    this.commentsRev,
     this.others = const [],
     required this.ttlS,
   });
+
+  int? commentsRev;
 
   List<Presence> others;
 
@@ -23,20 +26,27 @@ class PresenceAnswer {
 
   @override
   bool operator ==(Object other) => identical(this, other) || other is PresenceAnswer &&
+    other.commentsRev == commentsRev &&
     _deepEquality.equals(other.others, others) &&
     other.ttlS == ttlS;
 
   @override
   int get hashCode =>
     // ignore: unnecessary_parenthesis
+    (commentsRev == null ? 0 : commentsRev!.hashCode) +
     (others.hashCode) +
     (ttlS.hashCode);
 
   @override
-  String toString() => 'PresenceAnswer[others=$others, ttlS=$ttlS]';
+  String toString() => 'PresenceAnswer[commentsRev=$commentsRev, others=$others, ttlS=$ttlS]';
 
   Map<String, dynamic> toJson() {
     final json = <String, dynamic>{};
+    if (this.commentsRev != null) {
+      json[r'comments_rev'] = this.commentsRev;
+    } else {
+      json[r'comments_rev'] = null;
+    }
       json[r'others'] = this.others;
       json[r'ttl_s'] = this.ttlS;
     return json;
@@ -61,6 +71,7 @@ class PresenceAnswer {
       }());
 
       return PresenceAnswer(
+        commentsRev: mapValueOfType<int>(json, r'comments_rev'),
         others: Presence.listFromJson(json[r'others']),
         ttlS: mapValueOfType<int>(json, r'ttl_s')!,
       );

@@ -1,3 +1,3 @@
 """The SDK version (follows the developer API document, openapi/v1.json)."""
 
-__version__ = "1.0.0"
+__version__ = "1.1.0"

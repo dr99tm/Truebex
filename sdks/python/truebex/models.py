@@ -50,6 +50,62 @@ class Availability(TypedDict):
     updated_at: NotRequired[str | None]
 
 
+class CommentAuthor(TypedDict):
+    name: str
+    user_id: int
+
+
+class CommentCreate(TypedDict):
+    """
+    5.20: a comment pinned on an entity or a view, or a reply (`parent_id`).
+    """
+
+    anchor: NotRequired[dict[str, Any] | None]
+    """
+    §6.6: {entity, point_mm, view}. A root comment pins an entity (32 hex) or a view ({storey, eye_mm, yaw_deg, pitch_deg}); a reply takes its parent's anchor.
+    """
+    parent_id: NotRequired[str | None]
+    """
+    32 hex: reply to this comment (the reply hangs under its thread's root)
+    """
+    text: str
+    """
+    1-4000 characters once trimmed
+    """
+
+
+class CommentUpdate(TypedDict):
+    """
+    5.21: new text (the author only) and/or a state, open or resolved (the author, an editor or the owner).
+    """
+
+    state: NotRequired[str | None]
+    """
+    open or resolved; the author, an editor or the owner
+    """
+    text: NotRequired[str | None]
+    """
+    1-4000 characters once trimmed; the author only
+    """
+
+
+class CommentView(TypedDict):
+    """
+    The camera when the comment was made: `yaw_deg` counter-clockwise from the plan's +X (90 = north).
+    """
+
+    eye_mm: list[float]
+    """
+    The camera position in doc millimetres
+    """
+    pitch_deg: NotRequired[float]
+    storey: NotRequired[str | None]
+    """
+    The storey's entity id (32 hex), null outside any storey
+    """
+    yaw_deg: NotRequired[float]
+
+
 class ErrorEnvelope(TypedDict):
     """
     The shared error envelope of every contract (`code` is what to branch on).
@@ -337,6 +393,10 @@ class Presence(TypedDict):
 
 
 class PresenceList(TypedDict):
+    comments_rev: int
+    """
+    The project's comment revision (1.2.0), as in the heartbeat's answer
+    """
     present: list[Presence]
 
 
@@ -679,7 +739,27 @@ class Account(TypedDict):
     usage: AccountUsage
 
 
+class CommentAnchor(TypedDict):
+    """
+    An entity pin (`entity`, optionally `point_mm`) or a view pin (`view`).
+    """
+
+    entity: NotRequired[str | None]
+    """
+    32 hex: the entity the pin is on, null on a view pin
+    """
+    point_mm: NotRequired[list[float] | None]
+    """
+    Where on the entity, in doc millimetres; null = its bounds' centre
+    """
+    view: NotRequired[CommentView | None]
+
+
 class HeartbeatResult(TypedDict):
+    comments_rev: int
+    """
+    The project's comment revision (1.2.0): fetch comments when it passes the `rev` last read
+    """
     others: list[Presence]
     ttl_s: int
 
@@ -856,6 +936,40 @@ class Upload(TypedDict):
     files: list[UploadFileState]
     part_bytes: NotRequired[int | None]
     upload_id: str
+
+
+class Comment(TypedDict):
+    """
+    A comment or reply (§6.6). Replies hang under their thread's root and share its anchor.
+    """
+
+    anchor: CommentAnchor
+    author: CommentAuthor
+    comment_id: str
+    created_at: str
+    edited_at: str | None
+    parent_id: str | None
+    """
+    The thread's root comment; null on a root
+    """
+    resolved_at: str | None
+    resolved_by: int | None
+    state: Literal['open', 'resolved', 'deleted']
+    """
+    deleted only in the list, once
+    """
+    text: str
+    """
+    1-4000 characters; empty when deleted
+    """
+
+
+class CommentList(TypedDict):
+    comments: list[Comment]
+    rev: int
+    """
+    The project's comment revision: pass it as `after_rev` next time
+    """
 
 
 class PanoramaSetState(TypedDict):

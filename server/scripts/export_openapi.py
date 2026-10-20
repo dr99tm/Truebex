@@ -31,7 +31,7 @@ from pathlib import Path
 SERVER = Path(__file__).resolve().parents[1]
 ROOT = SERVER.parent
 OUT = ROOT / "openapi" / "v1.json"
-API_VERSION = "1.0.0"
+API_VERSION = "1.1.0"
 BASE_URL = "https://api.truebex.com"
 CLIENTS_OUT = ROOT / "openapi" / "clients.json"
 CLIENTS_VERSION = "1.0.0"
@@ -52,7 +52,7 @@ MARKET = {
 # The contract each group speaks; the SDKs send it as X-Truebex-Contract
 # (tests/test_pf12_openapi_sdks.py checks the routes echo the same).
 CONTRACTS = {
-    "projects": "project-log/1.1",
+    "projects": "project-log/1.2",
     "jobs": "render-jobs/1.1",
     "uploads": "share-bundle/1.1",
     "shares": "share-bundle/1.1",
@@ -75,7 +75,7 @@ MARKET_TEXT = {
 RENAME = {"Body_post_feed_market_feeds_post": "FeedUpload", "FeedSourceIn": "FeedSourceRequest"}
 TAG_TEXT = {
     "account": "Check a key: its owner, plan, scopes and usage.",
-    "projects": "Cloud projects: the operation log, snapshots, versions, members, presence and followed panorama sets (contract project-log).",
+    "projects": "Cloud projects: the operation log, snapshots, versions, members, presence, comments and followed panorama sets (contract project-log).",
     "jobs": "Render jobs and exports (contract render-jobs); `pack` gives the sheet PDF, renders, panoramas and the bill of quantities.",
     "uploads": "Content-addressed uploads in 8 MiB parts, resumable (contract share-bundle §5).",
     "shares": "Share links from a bundle: create, publish, visits, expiry, revoke (contract share-bundle).",

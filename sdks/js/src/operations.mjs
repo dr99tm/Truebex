@@ -44,7 +44,28 @@ export const OPERATIONS = {
       "name"
     ],
     "scope": "projects:write",
-    "contract": "project-log/1.1"
+    "contract": "project-log/1.2"
+  },
+  "projects_create_comment": {
+    "group": "projects",
+    "name": "createComment",
+    "method": "POST",
+    "path": "/v1/projects/{project_id}/comments",
+    "pathParams": [
+      "project_id"
+    ],
+    "query": [],
+    "headers": [
+      "idempotency-key"
+    ],
+    "body": "json",
+    "bodyProps": [
+      "anchor",
+      "parent_id",
+      "text"
+    ],
+    "scope": "projects:write",
+    "contract": "project-log/1.2"
   },
   "projects_create_snapshot": {
     "group": "projects",
@@ -66,7 +87,7 @@ export const OPERATIONS = {
       "upload_id"
     ],
     "scope": "projects:write",
-    "contract": "project-log/1.1"
+    "contract": "project-log/1.2"
   },
   "projects_create_version": {
     "group": "projects",
@@ -88,7 +109,7 @@ export const OPERATIONS = {
       "snapshot_id"
     ],
     "scope": "projects:write",
-    "contract": "project-log/1.1"
+    "contract": "project-log/1.2"
   },
   "projects_delete": {
     "group": "projects",
@@ -103,7 +124,23 @@ export const OPERATIONS = {
     "body": null,
     "bodyProps": [],
     "scope": null,
-    "contract": "project-log/1.1"
+    "contract": "project-log/1.2"
+  },
+  "projects_delete_comment": {
+    "group": "projects",
+    "name": "deleteComment",
+    "method": "DELETE",
+    "path": "/v1/projects/{project_id}/comments/{comment_id}",
+    "pathParams": [
+      "project_id",
+      "comment_id"
+    ],
+    "query": [],
+    "headers": [],
+    "body": null,
+    "bodyProps": [],
+    "scope": "projects:write",
+    "contract": "project-log/1.2"
   },
   "projects_get": {
     "group": "projects",
@@ -118,7 +155,7 @@ export const OPERATIONS = {
     "body": null,
     "bodyProps": [],
     "scope": "projects:read",
-    "contract": "project-log/1.1"
+    "contract": "project-log/1.2"
   },
   "projects_heartbeat": {
     "group": "projects",
@@ -140,7 +177,7 @@ export const OPERATIONS = {
       "view"
     ],
     "scope": "projects:write",
-    "contract": "project-log/1.1"
+    "contract": "project-log/1.2"
   },
   "projects_invite_member": {
     "group": "projects",
@@ -160,7 +197,7 @@ export const OPERATIONS = {
       "role"
     ],
     "scope": "projects:write",
-    "contract": "project-log/1.1"
+    "contract": "project-log/1.2"
   },
   "projects_latest_snapshot": {
     "group": "projects",
@@ -177,7 +214,7 @@ export const OPERATIONS = {
     "body": null,
     "bodyProps": [],
     "scope": "projects:read",
-    "contract": "project-log/1.1"
+    "contract": "project-log/1.2"
   },
   "projects_list": {
     "group": "projects",
@@ -193,7 +230,25 @@ export const OPERATIONS = {
     "body": null,
     "bodyProps": [],
     "scope": "projects:read",
-    "contract": "project-log/1.1"
+    "contract": "project-log/1.2"
+  },
+  "projects_list_comments": {
+    "group": "projects",
+    "name": "listComments",
+    "method": "GET",
+    "path": "/v1/projects/{project_id}/comments",
+    "pathParams": [
+      "project_id"
+    ],
+    "query": [
+      "after_rev",
+      "state"
+    ],
+    "headers": [],
+    "body": null,
+    "bodyProps": [],
+    "scope": "projects:read",
+    "contract": "project-log/1.2"
   },
   "projects_list_members": {
     "group": "projects",
@@ -208,7 +263,7 @@ export const OPERATIONS = {
     "body": null,
     "bodyProps": [],
     "scope": "projects:read",
-    "contract": "project-log/1.1"
+    "contract": "project-log/1.2"
   },
   "projects_list_versions": {
     "group": "projects",
@@ -223,7 +278,7 @@ export const OPERATIONS = {
     "body": null,
     "bodyProps": [],
     "scope": "projects:read",
-    "contract": "project-log/1.1"
+    "contract": "project-log/1.2"
   },
   "projects_panoramas_get": {
     "group": "projects",
@@ -242,7 +297,7 @@ export const OPERATIONS = {
     "body": null,
     "bodyProps": [],
     "scope": "projects:read",
-    "contract": "project-log/1.1"
+    "contract": "project-log/1.2"
   },
   "projects_panoramas_list": {
     "group": "projects",
@@ -257,7 +312,7 @@ export const OPERATIONS = {
     "body": null,
     "bodyProps": [],
     "scope": "projects:read",
-    "contract": "project-log/1.1"
+    "contract": "project-log/1.2"
   },
   "projects_presence": {
     "group": "projects",
@@ -272,7 +327,7 @@ export const OPERATIONS = {
     "body": null,
     "bodyProps": [],
     "scope": "projects:read",
-    "contract": "project-log/1.1"
+    "contract": "project-log/1.2"
   },
   "projects_pull_ops": {
     "group": "projects",
@@ -291,7 +346,7 @@ export const OPERATIONS = {
     "body": null,
     "bodyProps": [],
     "scope": "projects:read",
-    "contract": "project-log/1.1"
+    "contract": "project-log/1.2"
   },
   "projects_push_ops": {
     "group": "projects",
@@ -309,7 +364,7 @@ export const OPERATIONS = {
       "replica_id"
     ],
     "scope": "projects:write",
-    "contract": "project-log/1.1"
+    "contract": "project-log/1.2"
   },
   "projects_remove_member": {
     "group": "projects",
@@ -325,7 +380,7 @@ export const OPERATIONS = {
     "body": null,
     "bodyProps": [],
     "scope": "projects:write",
-    "contract": "project-log/1.1"
+    "contract": "project-log/1.2"
   },
   "projects_restore_version": {
     "group": "projects",
@@ -343,7 +398,7 @@ export const OPERATIONS = {
     "body": null,
     "bodyProps": [],
     "scope": "projects:write",
-    "contract": "project-log/1.1"
+    "contract": "project-log/1.2"
   },
   "projects_update": {
     "group": "projects",
@@ -360,7 +415,26 @@ export const OPERATIONS = {
       "name"
     ],
     "scope": "projects:write",
-    "contract": "project-log/1.1"
+    "contract": "project-log/1.2"
+  },
+  "projects_update_comment": {
+    "group": "projects",
+    "name": "updateComment",
+    "method": "PATCH",
+    "path": "/v1/projects/{project_id}/comments/{comment_id}",
+    "pathParams": [
+      "project_id",
+      "comment_id"
+    ],
+    "query": [],
+    "headers": [],
+    "body": "json",
+    "bodyProps": [
+      "state",
+      "text"
+    ],
+    "scope": "projects:write",
+    "contract": "project-log/1.2"
   },
   "projects_update_member": {
     "group": "projects",
@@ -378,7 +452,7 @@ export const OPERATIONS = {
       "role"
     ],
     "scope": "projects:write",
-    "contract": "project-log/1.1"
+    "contract": "project-log/1.2"
   },
   "jobs_cancel": {
     "group": "jobs",

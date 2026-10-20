@@ -151,6 +151,11 @@ _ADDED_COLUMNS.setdefault("shares", []).extend(
 # on, recorded when it is marked paid. NULL = paid before PF2e (not back-filled).
 _ADDED_COLUMNS.setdefault("payments", []).append(("provider_customer_id", "VARCHAR(128)"))
 
+# PF4b (project-log 1.2.0, comments): a project's comment revision, 5.19's
+# `rev` and 5.17 / 5.18's `comments_rev`. NULL = 0 (no comment yet). The
+# project_comments table itself comes from create_all.
+_ADDED_COLUMNS.setdefault("projects", []).append(("comments_rev", "BIGINT"))
+
 
 def _migrate(bind: Engine) -> None:
     insp = inspect(bind)

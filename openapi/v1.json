@@ -197,6 +197,298 @@
         "title": "Availability",
         "type": "object"
       },
+      "Comment": {
+        "additionalProperties": true,
+        "description": "A comment or reply (§6.6). Replies hang under their thread's root and share its anchor.",
+        "properties": {
+          "anchor": {
+            "$ref": "#/components/schemas/CommentAnchor"
+          },
+          "author": {
+            "$ref": "#/components/schemas/CommentAuthor"
+          },
+          "comment_id": {
+            "title": "Comment Id",
+            "type": "string"
+          },
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "edited_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Edited At"
+          },
+          "parent_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The thread's root comment; null on a root",
+            "title": "Parent Id"
+          },
+          "resolved_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resolved At"
+          },
+          "resolved_by": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resolved By"
+          },
+          "state": {
+            "description": "deleted only in the list, once",
+            "enum": [
+              "open",
+              "resolved",
+              "deleted"
+            ],
+            "title": "State",
+            "type": "string"
+          },
+          "text": {
+            "description": "1-4000 characters; empty when deleted",
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "comment_id",
+          "parent_id",
+          "author",
+          "created_at",
+          "edited_at",
+          "text",
+          "state",
+          "resolved_by",
+          "resolved_at",
+          "anchor"
+        ],
+        "title": "Comment",
+        "type": "object"
+      },
+      "CommentAnchor": {
+        "additionalProperties": true,
+        "description": "An entity pin (`entity`, optionally `point_mm`) or a view pin (`view`).",
+        "properties": {
+          "entity": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "32 hex: the entity the pin is on, null on a view pin",
+            "title": "Entity"
+          },
+          "point_mm": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "number"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Where on the entity, in doc millimetres; null = its bounds' centre",
+            "title": "Point Mm"
+          },
+          "view": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CommentView"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "title": "CommentAnchor",
+        "type": "object"
+      },
+      "CommentAuthor": {
+        "additionalProperties": true,
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "user_id": {
+            "title": "User Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "user_id",
+          "name"
+        ],
+        "title": "CommentAuthor",
+        "type": "object"
+      },
+      "CommentCreate": {
+        "description": "5.20: a comment pinned on an entity or a view, or a reply (`parent_id`).",
+        "properties": {
+          "anchor": {
+            "anyOf": [
+              {
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "§6.6: {entity, point_mm, view}. A root comment pins an entity (32 hex) or a view ({storey, eye_mm, yaw_deg, pitch_deg}); a reply takes its parent's anchor.",
+            "title": "Anchor"
+          },
+          "parent_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "32 hex: reply to this comment (the reply hangs under its thread's root)",
+            "title": "Parent Id"
+          },
+          "text": {
+            "description": "1-4000 characters once trimmed",
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text"
+        ],
+        "title": "CommentCreate",
+        "type": "object"
+      },
+      "CommentList": {
+        "additionalProperties": true,
+        "properties": {
+          "comments": {
+            "items": {
+              "$ref": "#/components/schemas/Comment"
+            },
+            "title": "Comments",
+            "type": "array"
+          },
+          "rev": {
+            "description": "The project's comment revision: pass it as `after_rev` next time",
+            "title": "Rev",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "comments",
+          "rev"
+        ],
+        "title": "CommentList",
+        "type": "object"
+      },
+      "CommentUpdate": {
+        "description": "5.21: new text (the author only) and/or a state, open or resolved (the author, an editor or the owner).",
+        "properties": {
+          "state": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "open or resolved; the author, an editor or the owner",
+            "title": "State"
+          },
+          "text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "1-4000 characters once trimmed; the author only",
+            "title": "Text"
+          }
+        },
+        "title": "CommentUpdate",
+        "type": "object"
+      },
+      "CommentView": {
+        "additionalProperties": true,
+        "description": "The camera when the comment was made: `yaw_deg` counter-clockwise from the plan's +X (90 = north).",
+        "properties": {
+          "eye_mm": {
+            "description": "The camera position in doc millimetres",
+            "items": {
+              "type": "number"
+            },
+            "title": "Eye Mm",
+            "type": "array"
+          },
+          "pitch_deg": {
+            "default": 0,
+            "title": "Pitch Deg",
+            "type": "number"
+          },
+          "storey": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The storey's entity id (32 hex), null outside any storey",
+            "title": "Storey"
+          },
+          "yaw_deg": {
+            "default": 0,
+            "title": "Yaw Deg",
+            "type": "number"
+          }
+        },
+        "required": [
+          "eye_mm"
+        ],
+        "title": "CommentView",
+        "type": "object"
+      },
       "ErrorEnvelope": {
         "additionalProperties": true,
         "description": "The shared error envelope of every contract (`code` is what to branch on).",
@@ -464,6 +756,11 @@
       "HeartbeatResult": {
         "additionalProperties": true,
         "properties": {
+          "comments_rev": {
+            "description": "The project's comment revision (1.2.0): fetch comments when it passes the `rev` last read",
+            "title": "Comments Rev",
+            "type": "integer"
+          },
           "others": {
             "items": {
               "$ref": "#/components/schemas/Presence"
@@ -478,7 +775,8 @@
         },
         "required": [
           "ttl_s",
-          "others"
+          "others",
+          "comments_rev"
         ],
         "title": "HeartbeatResult",
         "type": "object"
@@ -1699,6 +1997,11 @@
       "PresenceList": {
         "additionalProperties": true,
         "properties": {
+          "comments_rev": {
+            "description": "The project's comment revision (1.2.0), as in the heartbeat's answer",
+            "title": "Comments Rev",
+            "type": "integer"
+          },
           "present": {
             "items": {
               "$ref": "#/components/schemas/Presence"
@@ -1708,7 +2011,8 @@
           }
         },
         "required": [
-          "present"
+          "present",
+          "comments_rev"
         ],
         "title": "PresenceList",
         "type": "object"
@@ -3828,7 +4132,7 @@
   "info": {
     "description": "Projects, exports, shares, the marketplace, supplier feeds and webhooks, with an API key from https://truebex.com/dashboard/keys/ sent as `Authorization: Bearer tbx_live_…` or `X-API-Key`. Each operation names the scope it needs in `x-truebex-scope`. Errors use one envelope: `{detail, code, status, request_id, retry_after_s, data}`.",
     "title": "Truebex developer API",
-    "version": "1.0.0"
+    "version": "1.1.0"
   },
   "openapi": "3.1.0",
   "paths": {
@@ -5687,7 +5991,7 @@
         "tags": [
           "projects"
         ],
-        "x-truebex-contract": "project-log/1.1",
+        "x-truebex-contract": "project-log/1.2",
         "x-truebex-scope": "projects:read"
       },
       "post": {
@@ -5795,7 +6099,7 @@
         "tags": [
           "projects"
         ],
-        "x-truebex-contract": "project-log/1.1",
+        "x-truebex-contract": "project-log/1.2",
         "x-truebex-scope": "projects:write"
       }
     },
@@ -5871,7 +6175,7 @@
         "tags": [
           "projects"
         ],
-        "x-truebex-contract": "project-log/1.1"
+        "x-truebex-contract": "project-log/1.2"
       },
       "get": {
         "description": "Open a project: its record, members and the owner's storage quota (5.3).",
@@ -5963,7 +6267,7 @@
         "tags": [
           "projects"
         ],
-        "x-truebex-contract": "project-log/1.1",
+        "x-truebex-contract": "project-log/1.2",
         "x-truebex-scope": "projects:read"
       },
       "patch": {
@@ -6066,7 +6370,466 @@
         "tags": [
           "projects"
         ],
-        "x-truebex-contract": "project-log/1.1",
+        "x-truebex-contract": "project-log/1.2",
+        "x-truebex-scope": "projects:write"
+      }
+    },
+    "/v1/projects/{project_id}/comments": {
+      "get": {
+        "description": "Comments created, edited, resolved, reopened or deleted after `after_rev`, oldest change first (5.19).\nA deleted comment comes back once, with state `deleted` and empty text.",
+        "operationId": "projects_list_comments",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "The `rev` (or `comments_rev`) last read; 0 for every comment",
+            "in": "query",
+            "name": "after_rev",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "description": "The `rev` (or `comments_rev`) last read; 0 for every comment",
+              "minimum": 0,
+              "title": "After Rev",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "open, resolved or all; deleted comments come back with every filter",
+            "in": "query",
+            "name": "state",
+            "required": false,
+            "schema": {
+              "default": "all",
+              "description": "open, resolved or all; deleted comments come back with every filter",
+              "enum": [
+                "open",
+                "resolved",
+                "all"
+              ],
+              "title": "State",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommentList",
+                  "title": "Response Projects List Comments",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Missing, malformed, invalid or revoked API key (`unauthenticated`)."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The key lacks the scope (`forbidden`, `data.needed`), the role is too low, or the plan lacks the feature."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unknown, or not visible to this key's account (`not_found`)."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Validation failed (`validation_failed`, `data.fields`), or a contract rule (`code`)."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Burst limit or monthly quota reached (`rate_limited`, `retry_after_s`)."
+          }
+        },
+        "security": [
+          {
+            "bearerKey": []
+          },
+          {
+            "headerKey": []
+          }
+        ],
+        "summary": "List Comments",
+        "tags": [
+          "projects"
+        ],
+        "x-truebex-contract": "project-log/1.2",
+        "x-truebex-scope": "projects:read"
+      },
+      "post": {
+        "description": "Pin a comment on an entity or a view, or reply to one (5.20); any member, a viewer included.\nThe comment is the key owner's.",
+        "operationId": "projects_create_comment",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CommentCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Comment"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Missing, malformed, invalid or revoked API key (`unauthenticated`)."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The key lacks the scope (`forbidden`, `data.needed`), the role is too low, or the plan lacks the feature."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unknown, or not visible to this key's account (`not_found`)."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Conflict with the resource's state (the `code` says which)."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Validation failed (`validation_failed`, `data.fields`), or a contract rule (`code`)."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Burst limit or monthly quota reached (`rate_limited`, `retry_after_s`)."
+          }
+        },
+        "security": [
+          {
+            "bearerKey": []
+          },
+          {
+            "headerKey": []
+          }
+        ],
+        "summary": "Create Comment",
+        "tags": [
+          "projects"
+        ],
+        "x-truebex-contract": "project-log/1.2",
+        "x-truebex-scope": "projects:write"
+      }
+    },
+    "/v1/projects/{project_id}/comments/{comment_id}": {
+      "delete": {
+        "description": "Delete a comment (its author or the owner) (5.22).",
+        "operationId": "projects_delete_comment",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "comment_id",
+            "required": true,
+            "schema": {
+              "title": "Comment Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Missing, malformed, invalid or revoked API key (`unauthenticated`)."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The key lacks the scope (`forbidden`, `data.needed`), the role is too low, or the plan lacks the feature."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unknown, or not visible to this key's account (`not_found`)."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Burst limit or monthly quota reached (`rate_limited`, `retry_after_s`)."
+          }
+        },
+        "security": [
+          {
+            "bearerKey": []
+          },
+          {
+            "headerKey": []
+          }
+        ],
+        "summary": "Delete Comment",
+        "tags": [
+          "projects"
+        ],
+        "x-truebex-contract": "project-log/1.2",
+        "x-truebex-scope": "projects:write"
+      },
+      "patch": {
+        "description": "Edit a comment's text (its author), or resolve or reopen it (its author, an editor or the owner) (5.21).",
+        "operationId": "projects_update_comment",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "comment_id",
+            "required": true,
+            "schema": {
+              "title": "Comment Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CommentUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Comment",
+                  "title": "Response Projects Update Comment",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Missing, malformed, invalid or revoked API key (`unauthenticated`)."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The key lacks the scope (`forbidden`, `data.needed`), the role is too low, or the plan lacks the feature."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unknown, or not visible to this key's account (`not_found`)."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Validation failed (`validation_failed`, `data.fields`), or a contract rule (`code`)."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Burst limit or monthly quota reached (`rate_limited`, `retry_after_s`)."
+          }
+        },
+        "security": [
+          {
+            "bearerKey": []
+          },
+          {
+            "headerKey": []
+          }
+        ],
+        "summary": "Update Comment",
+        "tags": [
+          "projects"
+        ],
+        "x-truebex-contract": "project-log/1.2",
         "x-truebex-scope": "projects:write"
       }
     },
@@ -6161,7 +6924,7 @@
         "tags": [
           "projects"
         ],
-        "x-truebex-contract": "project-log/1.1",
+        "x-truebex-contract": "project-log/1.2",
         "x-truebex-scope": "projects:read"
       },
       "post": {
@@ -6288,7 +7051,7 @@
         "tags": [
           "projects"
         ],
-        "x-truebex-contract": "project-log/1.1",
+        "x-truebex-contract": "project-log/1.2",
         "x-truebex-scope": "projects:write"
       }
     },
@@ -6383,7 +7146,7 @@
         "tags": [
           "projects"
         ],
-        "x-truebex-contract": "project-log/1.1",
+        "x-truebex-contract": "project-log/1.2",
         "x-truebex-scope": "projects:write"
       },
       "patch": {
@@ -6495,7 +7258,7 @@
         "tags": [
           "projects"
         ],
-        "x-truebex-contract": "project-log/1.1",
+        "x-truebex-contract": "project-log/1.2",
         "x-truebex-scope": "projects:write"
       }
     },
@@ -6620,7 +7383,7 @@
         "tags": [
           "projects"
         ],
-        "x-truebex-contract": "project-log/1.1",
+        "x-truebex-contract": "project-log/1.2",
         "x-truebex-scope": "projects:read"
       },
       "post": {
@@ -6733,7 +7496,7 @@
         "tags": [
           "projects"
         ],
-        "x-truebex-contract": "project-log/1.1",
+        "x-truebex-contract": "project-log/1.2",
         "x-truebex-scope": "projects:write"
       }
     },
@@ -6828,7 +7591,7 @@
         "tags": [
           "projects"
         ],
-        "x-truebex-contract": "project-log/1.1",
+        "x-truebex-contract": "project-log/1.2",
         "x-truebex-scope": "projects:read"
       }
     },
@@ -6958,13 +7721,13 @@
         "tags": [
           "projects"
         ],
-        "x-truebex-contract": "project-log/1.1",
+        "x-truebex-contract": "project-log/1.2",
         "x-truebex-scope": "projects:read"
       }
     },
     "/v1/projects/{project_id}/presence": {
       "get": {
-        "description": "Who is in the project now (5.18).",
+        "description": "Who is in the project now (5.18), and the comment revision.",
         "operationId": "projects_presence",
         "parameters": [
           {
@@ -7053,11 +7816,11 @@
         "tags": [
           "projects"
         ],
-        "x-truebex-contract": "project-log/1.1",
+        "x-truebex-contract": "project-log/1.2",
         "x-truebex-scope": "projects:read"
       },
       "put": {
-        "description": "Presence heartbeat (5.17): every 10-30 s while open; `leaving` removes it.",
+        "description": "Presence heartbeat (5.17): every 10-30 s while open; `leaving` removes it. `comments_rev` says when to fetch comments.",
         "operationId": "projects_heartbeat",
         "parameters": [
           {
@@ -7156,7 +7919,7 @@
         "tags": [
           "projects"
         ],
-        "x-truebex-contract": "project-log/1.1",
+        "x-truebex-contract": "project-log/1.2",
         "x-truebex-scope": "projects:write"
       }
     },
@@ -7285,7 +8048,7 @@
         "tags": [
           "projects"
         ],
-        "x-truebex-contract": "project-log/1.1",
+        "x-truebex-contract": "project-log/1.2",
         "x-truebex-scope": "projects:write"
       }
     },
@@ -7398,7 +8161,7 @@
         "tags": [
           "projects"
         ],
-        "x-truebex-contract": "project-log/1.1",
+        "x-truebex-contract": "project-log/1.2",
         "x-truebex-scope": "projects:read"
       }
     },
@@ -7493,7 +8256,7 @@
         "tags": [
           "projects"
         ],
-        "x-truebex-contract": "project-log/1.1",
+        "x-truebex-contract": "project-log/1.2",
         "x-truebex-scope": "projects:read"
       },
       "post": {
@@ -7610,7 +8373,7 @@
         "tags": [
           "projects"
         ],
-        "x-truebex-contract": "project-log/1.1",
+        "x-truebex-contract": "project-log/1.2",
         "x-truebex-scope": "projects:write"
       }
     },
@@ -7728,7 +8491,7 @@
         "tags": [
           "projects"
         ],
-        "x-truebex-contract": "project-log/1.1",
+        "x-truebex-contract": "project-log/1.2",
         "x-truebex-scope": "projects:write"
       }
     },
@@ -9460,7 +10223,7 @@
       "name": "account"
     },
     {
-      "description": "Cloud projects: the operation log, snapshots, versions, members, presence and followed panorama sets (contract project-log).",
+      "description": "Cloud projects: the operation log, snapshots, versions, members, presence, comments and followed panorama sets (contract project-log).",
       "name": "projects"
     },
     {
