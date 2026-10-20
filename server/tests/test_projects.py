@@ -465,7 +465,7 @@ def test_presence_expires_after_ttl(client, monkeypatch, backend):
     beat = {k: v for k, v in seen.items() if k not in ("user_id", "name", "seen_at")}
     res = client.put(f"/projects/{pid}/presence", json=dict(beat, replica_id=b.replica), headers=b.dev)
     assert res.status_code == 200, res.text
-    assert res.json() == {"ttl_s": 30, "others": []}
+    assert res.json() == {"ttl_s": 30, "others": [], "comments_rev": 0}
     res = client.put(f"/projects/{pid}/presence", json={"replica_id": a.replica, "client": "web"}, headers=a.web)
     others = res.json()["others"]
     assert len(others) == 1
@@ -481,7 +481,7 @@ def test_presence_expires_after_ttl(client, monkeypatch, backend):
     # `leaving` removes at once.
     res = client.put(f"/projects/{pid}/presence", json={"replica_id": a.replica, "client": "web", "leaving": True}, headers=a.web)
     assert res.json()["others"] == []
-    assert client.get(f"/projects/{pid}/presence", headers=a.dev).json() == {"present": []}
+    assert client.get(f"/projects/{pid}/presence", headers=a.dev).json() == {"present": [], "comments_rev": 0}
     # The sweep drops stale entries from the store itself.
     client.put(f"/projects/{pid}/presence", json={"replica_id": b.replica, "client": "desktop"}, headers=b.dev)
     clk.advance(seconds=31)
@@ -498,20 +498,20 @@ def test_presence_expires_after_ttl(client, monkeypatch, backend):
 def test_contract_header_and_error_envelope(client):
     a = Person(client, "a@example.com")
     res = client.post("/projects", json={"name": "House", "doc_version": 38}, headers=a.dev)
-    assert res.headers["X-Truebex-Contract"] == "project-log/1.1"
+    assert res.headers["X-Truebex-Contract"] == "project-log/1.2"
     pid = res.json()["project_id"]
     # No header reads as the current version; a newer MINOR is served.
     plain = {"Authorization": f"Bearer {a.token}"}
     assert client.get(f"/projects/{pid}", headers=plain).status_code == 200
     assert client.get(f"/projects/{pid}", headers={**plain, "X-Truebex-Contract": "project-log/1.7"}).status_code == 200
     body = error_of(client.get(f"/projects/{pid}", headers={**plain, "X-Truebex-Contract": "project-log/2.0"}), 400, "contract_version")
-    assert body["data"]["supported"] == ["project-log/1.1"]
+    assert body["data"]["supported"] == ["project-log/1.2"]
     error_of(client.get(f"/projects/{hex32()}", headers=a.dev), 404, "not_found")
     error_of(client.get(f"/projects/not-an-id", headers=a.dev), 404, "not_found")
     body = error_of(client.get("/projects", headers=CONTRACT), 401, "unauthenticated")
     assert body["retry_after_s"] is None
     res = client.get(f"/projects/{hex32()}", headers=a.dev)
-    assert res.headers["X-Truebex-Contract"] == "project-log/1.1"
+    assert res.headers["X-Truebex-Contract"] == "project-log/1.2"
 
 
 # --- PF4 per-endpoint tests ---------------------------------------------------------------------
