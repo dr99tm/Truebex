@@ -165,8 +165,8 @@ def test_docs_creation_copy_follows_the_contract(built):
     checks = next(n for n in notes if "sanity rules" in n)
     for phrase in ("sanity rules", "never a building-code check", "no result claims compliance", "at most 3 times"):
         assert phrase in checks, (phrase, checks)
-    remove = next(n for n in notes if n.startswith("remove "))
-    assert "remove deletes only what this connection created" in remove and "nothing is removed" in remove, remove
+    remove = next(n for n in notes if "remove tool" in n)
+    assert "The remove tool deletes only what this connection created" in remove and "nothing is removed" in remove, remove
     # The never-list keeps its earlier rules (PF12b, PF12c).
     joined = " ".join(notes)
     assert "run console commands" in joined and "cannot change settings, with one exception: a tunable" in joined

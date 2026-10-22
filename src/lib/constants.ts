@@ -2959,7 +2959,7 @@ export const DEVELOPER_DOCS = {
         "It cannot change settings, with one exception: a tunable, which set_tunable sets by name. A tunable is typed and range-checked, a Design tunable (one that changes the picture or the drawing) is one undo step, and setting one is never a console command.",
         "The creation tools (create_layout, create_theme, create_fills, create_object, create_material and write_sheet_text) take what you want as data, such as a room program, and Truebex makes the result itself. Called without choose, a creation tool changes nothing and returns checked candidates; called again with choose (-1 for the best), it applies one of them as one undo step. create_theme, create_object and create_material also keep what they make in your library.",
         "Their checks are sanity rules (for a layout: minimum room areas and widths, door and corridor widths, a window in every habitable room, every room reachable), never a building-code check: no result claims compliance. A failed check returns its report, so your AI app can repair the request at most 3 times; then the tool stops.",
-        "remove deletes only what this connection created. Anything else, your own walls or another connection's work, is refused and nothing is removed.",
+        "The remove tool deletes only what this connection created. Anything else, your own walls or another connection's work, is refused and nothing is removed.",
         "Every call is listed in the Agent panel and in a daily audit file kept 30 days. Every edit to the project is one undo step, and undo takes back only the AI app's own steps.",
         "Text from the project, such as room names and notes, reaches your AI app as data, never as instructions.",
       ],
