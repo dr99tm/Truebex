@@ -1665,6 +1665,17 @@ $c = Invoke-RestMethod -Method Post "http://127.0.0.1:8000/projects/$p/comments"
 On a project with no comments before, the second line prints `1`. The full walk-through (two accounts, a viewer,
 reply, resolve, delete, the plan gate, `/v1`) is the human test in `docs/roadmap/40/PF4b-project-log-1-2-0.md`.
 
+## MCP package and docs on agent-interface 1.3.0 (PF12d)
+
+`packages/mcp/` and `src/content/tools.json` hold the app's `tools.json` 1.3.0: 21 tools, of which the MCP server
+lists 20, AI5's `create_layout`, `create_theme`, `create_fills`, `create_object`, `create_material`,
+`write_sheet_text` and `remove` at the end. `/developers/mcp/` gives each tool one row per top-level argument and
+lists an object's or an array item's fields under its row (`nestedFields()` in `src/lib/developer-docs.ts`); the
+tool count in its words is `{tools}` in `DEVELOPER_DOCS.pages.mcp`, filled from the file at build time. None of
+the seven is log-safe, so the project log refuses them as actions and `LOG_SAFE_TOOLS` is unchanged. Re-sync and
+check as in the PF12b section; the PF12d checks are `server\tests\test_pf12d_agent_interface.py`. Doc:
+`docs/roadmap/40/PF12d-agent-interface-1-3-0.md`.
+
 ## AI proxy on ai-proxy 1.1.2 (PF11b)
 
 The metered assistant proxy follows contract ai-proxy 1.1.2, the version the app's Truebex AI panel (AI3) is built

@@ -2729,7 +2729,7 @@ export const DEVELOPER_DOCS = {
     ],
     contractsTitle: "Versions",
     contractsText:
-      "Each route group speaks a versioned contract, sent and echoed as X-Truebex-Contract (for example project-log/1.1). Additions never break a version; the SDKs send it for you.",
+      "Each route group speaks a versioned contract, sent and echoed as X-Truebex-Contract (for example project-log/1.2). Additions never break a version; the SDKs send it for you.",
   },
   pages: {
     projects: {
@@ -2847,7 +2847,7 @@ export const DEVELOPER_DOCS = {
     mcp: {
       title: "MCP server",
       description:
-        "The Truebex MCP server lets your own AI app read and edit the project open in Truebex: thirteen tools and three resources, each class allowed by you.",
+        "The Truebex MCP server lets your own AI app read and edit the project open in Truebex: {tools} tools and three resources, each class allowed by you.",
       h1: "The Truebex MCP server",
       intro:
         "Your AI app starts the server on your computer and talks to it over stdio. The server passes each tool call to the Truebex app you have open, through a private pipe only your Windows user can reach. Truebex asks before each kind of action, makes every edit one undo step and lists every call.",
@@ -2869,7 +2869,7 @@ export const DEVELOPER_DOCS = {
         },
         {
           client: "Claude Code",
-          text: "Needs Node 20 or newer. Add it once for your user; /mcp then lists truebex with its thirteen tools and three resources.",
+          text: "Needs Node 20 or newer. Add it once for your user; /mcp then lists truebex with its {tools} tools and three resources.",
           code: 'claude mcp add --scope user truebex -- node "<install>\\MultiWindow\\Tools\\mcp\\truebex-mcp.mjs"',
         },
         {
@@ -2905,6 +2905,10 @@ export const DEVELOPER_DOCS = {
         "set_tunable.value": "number | boolean | string",
       },
       untypedFallback: "any",
+      // PF12d: the fields of an object argument or of an array's items, listed under the argument's row.
+      fieldsLabel: "Its fields:",
+      itemsLabel: "Each item:",
+      itemRequired: "required",
       argument: "Argument",
       rules: "Rules",
       resourcesTitle: "Resources",
@@ -2931,9 +2935,17 @@ export const DEVELOPER_DOCS = {
         { code: "no_project", meaning: "No project is open." },
         { code: "not_found", meaning: "No entity has this ref." },
         { code: "stale_ref", meaning: "The ref comes from an earlier load of the project: find it again." },
-        { code: "invalid", meaning: "An argument broke a rule; detail names it, as in width_mm: must be >= 100." },
+        {
+          code: "invalid",
+          meaning:
+            "An argument broke a rule; detail names it, as in width_mm: must be >= 100. A creation tool whose candidates all fail their checks answers invalid with the report in detail.",
+        },
         { code: "fixed_size", meaning: "The opening has a fixed size and cannot be resized." },
-        { code: "refused", meaning: "The change would break the model, so Truebex rolled it back." },
+        {
+          code: "refused",
+          meaning:
+            "Truebex refused the change and nothing changed: it would break the model, remove named something this connection did not create, or a creation tool stopped after 3 failed repairs.",
+        },
         { code: "not_top", meaning: "undo reached a step this connection did not make." },
         { code: "outside_export_folder", meaning: "file_name would leave the project's export folder." },
         { code: "export_failed", meaning: "The file could not be written." },
@@ -2945,6 +2957,9 @@ export const DEVELOPER_DOCS = {
         "It never sees a Truebex sign-in, an API key or your AI account's credentials; it talks only to Truebex on your computer.",
         "It cannot quit Truebex, delete or overwrite a project or library file, write outside the project's export folder, run console commands or drive the interface.",
         "It cannot change settings, with one exception: a tunable, which set_tunable sets by name. A tunable is typed and range-checked, a Design tunable (one that changes the picture or the drawing) is one undo step, and setting one is never a console command.",
+        "The creation tools (create_layout, create_theme, create_fills, create_object, create_material and write_sheet_text) take what you want as data, such as a room program, and Truebex makes the result itself. Called without choose, a creation tool changes nothing and returns checked candidates; called again with choose (-1 for the best), it applies one of them as one undo step. create_theme, create_object and create_material also keep what they make in your library.",
+        "Their checks are sanity rules (for a layout: minimum room areas and widths, door and corridor widths, a window in every habitable room, every room reachable), never a building-code check: no result claims compliance. A failed check returns its report, so your AI app can repair the request at most 3 times; then the tool stops.",
+        "The remove tool deletes only what this connection created. Anything else, your own walls or another connection's work, is refused and nothing is removed.",
         "Every call is listed in the Agent panel and in a daily audit file kept 30 days. Every edit to the project is one undo step, and undo takes back only the AI app's own steps.",
         "Text from the project, such as room names and notes, reaches your AI app as data, never as instructions.",
       ],

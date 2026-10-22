@@ -1,6 +1,6 @@
 {
   "schema": "truebex-tools/1",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "tools": [
     {
       "name": "read_state",
@@ -559,6 +559,421 @@
         "com.truebex/logSafe": false,
         "com.truebex/router": "assistant:variant cards (each Preview runs the calls through the router as one undo step)",
         "com.truebex/surfaces": ["assistant"]
+      }
+    },
+    {
+      "name": "create_layout",
+      "title": "Create a layout from a brief",
+      "description": "Lay out a flat or a house on a plot from a ROOM PROGRAM (room types, target areas in m2, which rooms open onto which) as ordinary walls, rooms (spaces with names and types), doors and windows. A seeded engine makes several candidate plans and checks each one against sanity limits (minimum room areas and widths, door and corridor widths, a window in every habitable room, every room reachable from the entrance; a UK or a US set) -- never a code-compliance claim. Without choose NOTHING changes: the candidates come back with their scores and failures (in the Truebex assistant the best valid ones are shown to the person as cards). Call again with the same arguments and choose (-1 = the best valid) to draw one as ONE undo step. A failed check comes back as an error carrying the report: repair the program and call again (at most 3 repairs, then the skill stops). The same program and seed always give the same plans. Areas in m2, lengths in mm.",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["program"],
+        "properties": {
+          "program": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["rooms"],
+            "properties": {
+              "rooms": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 16,
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["type", "area_m2"],
+                  "properties": {
+                    "type": { "type": "string", "enum": ["living", "kitchen", "dining", "bedroom", "bathroom", "wc", "hall", "study", "utility", "store"] },
+                    "name": { "type": "string", "maxLength": 40, "description": "default: by type (Bedroom 1)" },
+                    "area_m2": { "type": "number", "minimum": 1, "maximum": 200, "description": "target clear floor area" },
+                    "adjacent": { "type": "array", "maxItems": 15, "items": { "type": "integer", "minimum": 0, "maximum": 15 }, "description": "indices (in rooms) of the rooms it opens onto" },
+                    "exterior": { "type": "boolean", "description": "needs an outside wall (default true)" }
+                  }
+                }
+              },
+              "corridor_mm": { "type": "number", "minimum": 600, "maximum": 3000, "description": "clear corridor width (default: the limits' 1100 / 1067)" },
+              "wall_mm": { "type": "number", "minimum": 50, "maximum": 500 },
+              "ext_wall_mm": { "type": "number", "minimum": 100, "maximum": 800 }
+            }
+          },
+          "plot": { "type": "string", "maxLength": 64, "description": "site (the site's lot inside its setbacks), selection (a selected closed region) or a room# / region# ref; omitted = the site's lot, else the largest free closed region on the active storey" },
+          "storey": { "type": "string", "maxLength": 80, "description": "the storey to draw on (default: the active one)" },
+          "seed": { "type": "integer", "minimum": 0, "maximum": 1000000 },
+          "candidates": { "type": "integer", "minimum": 1, "maximum": 12 },
+          "choose": { "type": "integer", "minimum": -1, "maximum": 11, "description": "draw candidate k (-1 = the best valid); omitted = list the candidates, change nothing" },
+          "furnish": { "type": "boolean", "description": "also furnish every room a furniture recipe covers (bedrooms, kitchens, bathrooms, offices)" },
+          "limits": { "type": "string", "enum": ["auto", "UK", "US"] },
+          "dry_run": { "type": "boolean" },
+          "request_id": { "type": "string", "maxLength": 32 }
+        }
+      },
+      "outputSchema": {
+        "type": "object",
+        "required": ["ok"],
+        "properties": {
+          "ok": { "type": "boolean" },
+          "seed": { "type": "integer" },
+          "valid": { "type": "integer" },
+          "cards": { "type": "integer" },
+          "chosen": { "type": "integer" },
+          "candidates": { "type": "array", "items": { "type": "object" } },
+          "rooms": { "type": "array", "items": { "type": "object" } },
+          "undo_step": { "type": "string" },
+          "created": { "type": "array", "items": { "type": "string" } },
+          "text": { "type": "string" }
+        }
+      },
+      "annotations": { "readOnlyHint": false, "destructiveHint": false, "idempotentHint": true, "openWorldHint": false },
+      "_meta": {
+        "com.truebex/permission": "edit",
+        "com.truebex/logSafe": false,
+        "com.truebex/router": "kernel:CadPlanLayout::Candidates + Validate + Apply (AI5)",
+        "com.truebex/surfaces": ["mcp", "assistant"]
+      }
+    },
+    {
+      "name": "create_theme",
+      "title": "Create a room theme from a description",
+      "description": "Dress one room from a description: a finish per surface (floor, walls, a feature wall, ceiling: paint #RRGGBB or RAL, a library wallpaper, a pattern, a library material by name), furniture laid out by Truebex's room recipes (auto / none) and a light colour temperature for the room's openings. Geometry never moves. Without choose nothing changes: the candidates (the furniture alternatives) come back and the Truebex assistant shows them as cards; choose (-1 = the best) applies one as ONE undo step and saves the look as a room theme asset. A finish or range Truebex refuses comes back as an error to repair.",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["target"],
+        "properties": {
+          "target": { "type": "string", "maxLength": 80, "description": "room ref (room#12) or room name" },
+          "name": { "type": "string", "maxLength": 60, "description": "the theme's name (default: style + room type)" },
+          "style": { "type": "string", "maxLength": 40, "description": "scandinavian, industrial ..." },
+          "floor": { "type": "object", "additionalProperties": false, "required": ["kind"], "properties": { "kind": { "type": "string", "enum": ["paint", "wallpaper", "pattern3d", "none"] }, "colour": { "type": "string", "maxLength": 16, "description": "#RRGGBB or RAL nnnn" }, "roughness": { "type": "number", "minimum": 0, "maximum": 1 }, "sheen": { "type": "string", "enum": ["matt", "satin", "gloss"] }, "texture": { "type": "string", "maxLength": 120, "description": "a library texture's name or id (never a generated picture)" }, "pattern": { "type": "string", "enum": ["tile", "brick", "slat", "coffer"] }, "tile_mm": { "type": "array", "items": { "type": "number", "minimum": 10, "maximum": 10000 }, "minItems": 2, "maxItems": 2 }, "material": { "type": "string", "maxLength": 80, "description": "a library material by name (Oak, Ceramic / porcelain tile ...)" } } },
+          "walls": { "type": "object", "additionalProperties": false, "required": ["kind"], "properties": { "kind": { "type": "string", "enum": ["paint", "wallpaper", "pattern3d", "none"] }, "colour": { "type": "string", "maxLength": 16, "description": "#RRGGBB or RAL nnnn" }, "roughness": { "type": "number", "minimum": 0, "maximum": 1 }, "sheen": { "type": "string", "enum": ["matt", "satin", "gloss"] }, "texture": { "type": "string", "maxLength": 120, "description": "a library texture's name or id (never a generated picture)" }, "pattern": { "type": "string", "enum": ["tile", "brick", "slat", "coffer"] }, "tile_mm": { "type": "array", "items": { "type": "number", "minimum": 10, "maximum": 10000 }, "minItems": 2, "maxItems": 2 }, "material": { "type": "string", "maxLength": 80, "description": "a library material by name" } } },
+          "feature": { "type": "object", "additionalProperties": false, "required": ["kind"], "properties": { "kind": { "type": "string", "enum": ["paint", "wallpaper", "pattern3d", "none"] }, "colour": { "type": "string", "maxLength": 16, "description": "#RRGGBB or RAL nnnn" }, "roughness": { "type": "number", "minimum": 0, "maximum": 1 }, "sheen": { "type": "string", "enum": ["matt", "satin", "gloss"] }, "texture": { "type": "string", "maxLength": 120, "description": "a library texture's name or id (never a generated picture)" }, "pattern": { "type": "string", "enum": ["tile", "brick", "slat", "coffer"] }, "tile_mm": { "type": "array", "items": { "type": "number", "minimum": 10, "maximum": 10000 }, "minItems": 2, "maxItems": 2 }, "material": { "type": "string", "maxLength": 80, "description": "a library material by name" } }, "description": "the feature wall (the longest wall opposite the main door)" },
+          "ceiling": { "type": "object", "additionalProperties": false, "required": ["kind"], "properties": { "kind": { "type": "string", "enum": ["paint", "wallpaper", "pattern3d", "none"] }, "colour": { "type": "string", "maxLength": 16, "description": "#RRGGBB or RAL nnnn" }, "roughness": { "type": "number", "minimum": 0, "maximum": 1 }, "sheen": { "type": "string", "enum": ["matt", "satin", "gloss"] }, "texture": { "type": "string", "maxLength": 120, "description": "a library texture's name or id (never a generated picture)" }, "pattern": { "type": "string", "enum": ["tile", "brick", "slat", "coffer"] }, "tile_mm": { "type": "array", "items": { "type": "number", "minimum": 10, "maximum": 10000 }, "minItems": 2, "maxItems": 2 }, "material": { "type": "string", "maxLength": 80, "description": "a library material by name" } } },
+          "furniture": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "recipe": { "type": "string", "maxLength": 60, "description": "auto (by the room's type), none, or a layout recipe name" },
+              "bed_size": { "type": "string", "enum": ["auto", "single", "double"] },
+              "kitchen_shape": { "type": "string", "enum": ["auto", "one-wall", "galley", "L", "U"] }
+            }
+          },
+          "light_kelvin": { "type": "number", "minimum": 1000, "maximum": 12000, "description": "the colour temperature of the room's opening lights (warm 2700, neutral 4000)" },
+          "save": { "type": "boolean", "description": "save the look as a room theme asset (default true)" },
+          "seed": { "type": "integer", "minimum": 0, "maximum": 1000000 },
+          "candidates": { "type": "integer", "minimum": 1, "maximum": 8 },
+          "choose": { "type": "integer", "minimum": -1, "maximum": 7, "description": "apply candidate k (-1 = the best valid); omitted = list them, change nothing" },
+          "limits": { "type": "string", "enum": ["auto", "UK", "US"] },
+          "dry_run": { "type": "boolean" },
+          "request_id": { "type": "string", "maxLength": 32 }
+        }
+      },
+      "outputSchema": {
+        "type": "object",
+        "required": ["ok"],
+        "properties": {
+          "ok": { "type": "boolean" },
+          "valid": { "type": "integer" },
+          "chosen": { "type": "integer" },
+          "candidates": { "type": "array", "items": { "type": "object" } },
+          "cells": { "type": "integer" },
+          "items": { "type": "integer" },
+          "theme_asset": { "type": "string" },
+          "undo_step": { "type": "string" },
+          "text": { "type": "string" }
+        }
+      },
+      "annotations": { "readOnlyHint": false, "destructiveHint": true, "idempotentHint": false, "openWorldHint": false },
+      "_meta": {
+        "com.truebex/permission": "edit",
+        "com.truebex/logSafe": false,
+        "com.truebex/router": "kernel:CadThemes::Apply + CadLayout::Candidates / Apply (AI5)",
+        "com.truebex/surfaces": ["mcp", "assistant"]
+      }
+    },
+    {
+      "name": "create_fills",
+      "title": "Create fills and patterns",
+      "description": "Set the fills of one room's surfaces (floor, walls, a feature wall, ceiling): a paint (#RRGGBB or RAL), a library wallpaper, pattern parameters (tile, brick, slat, coffer with a unit size), a library material by name -- and a panel GRID on one surface (a 600 x 600 ceiling grid). Every finish is validated; nothing changes without choose (-1 = the best: the fills as asked; ask for candidates to get lighter / darker paint alternatives as cards). ONE undo step.",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["target"],
+        "properties": {
+          "target": { "type": "string", "maxLength": 80, "description": "room ref (room#12) or room name" },
+          "floor": { "type": "object", "additionalProperties": false, "required": ["kind"], "properties": { "kind": { "type": "string", "enum": ["paint", "wallpaper", "pattern3d", "none"] }, "colour": { "type": "string", "maxLength": 16, "description": "#RRGGBB or RAL nnnn" }, "roughness": { "type": "number", "minimum": 0, "maximum": 1 }, "sheen": { "type": "string", "enum": ["matt", "satin", "gloss"] }, "texture": { "type": "string", "maxLength": 120, "description": "a library texture's name or id (never a generated picture)" }, "pattern": { "type": "string", "enum": ["tile", "brick", "slat", "coffer"] }, "tile_mm": { "type": "array", "items": { "type": "number", "minimum": 10, "maximum": 10000 }, "minItems": 2, "maxItems": 2 }, "material": { "type": "string", "maxLength": 80, "description": "a library material by name" } } },
+          "walls": { "type": "object", "additionalProperties": false, "required": ["kind"], "properties": { "kind": { "type": "string", "enum": ["paint", "wallpaper", "pattern3d", "none"] }, "colour": { "type": "string", "maxLength": 16, "description": "#RRGGBB or RAL nnnn" }, "roughness": { "type": "number", "minimum": 0, "maximum": 1 }, "sheen": { "type": "string", "enum": ["matt", "satin", "gloss"] }, "texture": { "type": "string", "maxLength": 120, "description": "a library texture's name or id (never a generated picture)" }, "pattern": { "type": "string", "enum": ["tile", "brick", "slat", "coffer"] }, "tile_mm": { "type": "array", "items": { "type": "number", "minimum": 10, "maximum": 10000 }, "minItems": 2, "maxItems": 2 }, "material": { "type": "string", "maxLength": 80, "description": "a library material by name" } } },
+          "feature": { "type": "object", "additionalProperties": false, "required": ["kind"], "properties": { "kind": { "type": "string", "enum": ["paint", "wallpaper", "pattern3d", "none"] }, "colour": { "type": "string", "maxLength": 16, "description": "#RRGGBB or RAL nnnn" }, "roughness": { "type": "number", "minimum": 0, "maximum": 1 }, "sheen": { "type": "string", "enum": ["matt", "satin", "gloss"] }, "texture": { "type": "string", "maxLength": 120, "description": "a library texture's name or id (never a generated picture)" }, "pattern": { "type": "string", "enum": ["tile", "brick", "slat", "coffer"] }, "tile_mm": { "type": "array", "items": { "type": "number", "minimum": 10, "maximum": 10000 }, "minItems": 2, "maxItems": 2 }, "material": { "type": "string", "maxLength": 80, "description": "a library material by name" } } },
+          "ceiling": { "type": "object", "additionalProperties": false, "required": ["kind"], "properties": { "kind": { "type": "string", "enum": ["paint", "wallpaper", "pattern3d", "none"] }, "colour": { "type": "string", "maxLength": 16, "description": "#RRGGBB or RAL nnnn" }, "roughness": { "type": "number", "minimum": 0, "maximum": 1 }, "sheen": { "type": "string", "enum": ["matt", "satin", "gloss"] }, "texture": { "type": "string", "maxLength": 120, "description": "a library texture's name or id (never a generated picture)" }, "pattern": { "type": "string", "enum": ["tile", "brick", "slat", "coffer"] }, "tile_mm": { "type": "array", "items": { "type": "number", "minimum": 10, "maximum": 10000 }, "minItems": 2, "maxItems": 2 }, "material": { "type": "string", "maxLength": 80, "description": "a library material by name" } } },
+          "grid": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["size_mm"],
+            "properties": {
+              "surface": { "type": "string", "enum": ["floor", "walls", "feature", "ceiling"], "description": "default ceiling" },
+              "size_mm": { "type": "array", "items": { "type": "number", "minimum": 100, "maximum": 5000 }, "minItems": 2, "maxItems": 2, "description": "the module [w, h], laid from the surface's low edge" }
+            }
+          },
+          "seed": { "type": "integer", "minimum": 0, "maximum": 1000000 },
+          "candidates": { "type": "integer", "minimum": 1, "maximum": 8 },
+          "choose": { "type": "integer", "minimum": -1, "maximum": 7, "description": "apply candidate k (-1 = the best); omitted = list them, change nothing" },
+          "limits": { "type": "string", "enum": ["auto", "UK", "US"] },
+          "dry_run": { "type": "boolean" },
+          "request_id": { "type": "string", "maxLength": 32 }
+        }
+      },
+      "outputSchema": {
+        "type": "object",
+        "required": ["ok"],
+        "properties": {
+          "ok": { "type": "boolean" },
+          "valid": { "type": "integer" },
+          "chosen": { "type": "integer" },
+          "candidates": { "type": "array", "items": { "type": "object" } },
+          "cells": { "type": "integer" },
+          "grid": { "type": "string" },
+          "grid_cells": { "type": "integer" },
+          "undo_step": { "type": "string" },
+          "text": { "type": "string" }
+        }
+      },
+      "annotations": { "readOnlyHint": false, "destructiveHint": true, "idempotentHint": true, "openWorldHint": false },
+      "_meta": {
+        "com.truebex/permission": "edit",
+        "com.truebex/logSafe": false,
+        "com.truebex/router": "kernel:CadFinish::SetAreaFinish + panel grid rules (AI5)",
+        "com.truebex/surfaces": ["mcp", "assistant"]
+      }
+    },
+    {
+      "name": "create_object",
+      "title": "Create an object from a description",
+      "description": "Make a piece of furniture or any object from a PART LIST: boxes (size_mm [w, d, h] at at_mm [x, y, z], object mm: x along the width, y along the depth, z up from the floor) and extruded profiles (a polygon on the xy / xz / yz plane and a depth), each with an optional library material. Truebex builds the parts as models, captures them as a custom object recipe with Width / Depth / Height parameters (the library keeps it), and places it once in a room. size_mm is the object's W x D x H: the parts must fill exactly that box. Nothing changes without choose (-1); ONE undo step.",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "parts", "place"],
+        "properties": {
+          "name": { "type": "string", "maxLength": 60, "description": "the recipe's library name (desk-two-drawers)" },
+          "category": { "type": "string", "maxLength": 60, "description": "a taxonomy path (furniture/desks)" },
+          "size_mm": { "type": "array", "items": { "type": "number", "minimum": 5, "maximum": 10000 }, "minItems": 3, "maxItems": 3, "description": "W x D x H the parts must make" },
+          "parts": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 40,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["kind"],
+              "properties": {
+                "name": { "type": "string", "maxLength": 40 },
+                "kind": { "type": "string", "enum": ["box", "extrude"] },
+                "at_mm": { "type": "array", "items": { "type": "number" }, "minItems": 3, "maxItems": 3, "description": "the part's min corner (box) or profile origin (extrude)" },
+                "size_mm": { "type": "array", "items": { "type": "number", "minimum": 0, "maximum": 10000 }, "minItems": 3, "maxItems": 3 },
+                "plane": { "type": "string", "enum": ["xy", "xz", "yz"], "description": "extrude: the profile's plane (it extrudes along the third axis)" },
+                "profile_mm": { "type": "array", "minItems": 3, "maxItems": 64, "items": { "type": "array", "items": { "type": "number" }, "minItems": 2, "maxItems": 2 } },
+                "depth_mm": { "type": "number", "minimum": 0, "maximum": 10000 },
+                "material": { "type": "string", "maxLength": 80, "description": "a library material by name" }
+              }
+            }
+          },
+          "place": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "room": { "type": "string", "maxLength": 80, "description": "room ref or name: the object stands at its centre" },
+              "at_mm": { "type": "array", "items": { "type": "number" }, "minItems": 3, "maxItems": 3 },
+              "bearing_deg": { "type": "number", "minimum": 0, "maximum": 360 }
+            }
+          },
+          "seed": { "type": "integer", "minimum": 0, "maximum": 1000000 },
+          "candidates": { "type": "integer", "minimum": 1, "maximum": 1 },
+          "choose": { "type": "integer", "minimum": -1, "maximum": 0, "description": "make and place it (-1 or 0); omitted = check the parts, change nothing" },
+          "limits": { "type": "string", "enum": ["auto", "UK", "US"] },
+          "dry_run": { "type": "boolean" },
+          "request_id": { "type": "string", "maxLength": 32 }
+        }
+      },
+      "outputSchema": {
+        "type": "object",
+        "required": ["ok"],
+        "properties": {
+          "ok": { "type": "boolean" },
+          "valid": { "type": "integer" },
+          "chosen": { "type": "integer" },
+          "candidates": { "type": "array", "items": { "type": "object" } },
+          "recipe": { "type": "string" },
+          "parts": { "type": "integer" },
+          "box_mm": { "type": "array", "items": { "type": "number" } },
+          "undo_step": { "type": "string" },
+          "created": { "type": "array", "items": { "type": "string" } },
+          "text": { "type": "string" }
+        }
+      },
+      "annotations": { "readOnlyHint": false, "destructiveHint": false, "idempotentHint": false, "openWorldHint": false },
+      "_meta": {
+        "com.truebex/permission": "edit",
+        "com.truebex/logSafe": false,
+        "com.truebex/router": "kernel:CadModel parts on a bench + CadObjectRecipes::CaptureCustom + CadObjectOps::PlaceRecipe (AI5)",
+        "com.truebex/surfaces": ["mcp", "assistant"]
+      }
+    },
+    {
+      "name": "create_material",
+      "title": "Create a material",
+      "description": "Make a material for the library from appearance parameters: colour (#RRGGBB or RAL), roughness 0..1, metallic 0..1, a library texture by name or id (never a generated picture) and its tile size, a family -- and optionally apply it to a room surface's cells or an object part. Physical data stays unknown (never guessed). Without choose nothing changes: the candidates (as asked, rougher, smoother) come back as cards; choose (-1 = as asked) saves the material in the library and applies it as ONE undo step.",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name"],
+        "properties": {
+          "name": { "type": "string", "maxLength": 60 },
+          "family": { "type": "string", "enum": ["concrete", "masonry", "render", "gypsum", "timber", "wood-panel", "metal", "glass", "stone", "ceramic", "floor-covering", "insulation", "coating", "textile", "generic"] },
+          "colour": { "type": "string", "maxLength": 16, "description": "#RRGGBB or RAL nnnn" },
+          "roughness": { "type": "number", "minimum": 0, "maximum": 1 },
+          "metallic": { "type": "number", "minimum": 0, "maximum": 1 },
+          "texture": { "type": "string", "maxLength": 120, "description": "a library texture's name or id" },
+          "tile_mm": { "type": "array", "items": { "type": "number", "minimum": 1, "maximum": 100000 }, "minItems": 2, "maxItems": 2 },
+          "apply_to": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "target": { "type": "string", "maxLength": 80, "description": "a room (ref or name) or an object ref" },
+              "surface": { "type": "string", "enum": ["floor", "walls", "feature", "ceiling"], "description": "a room's surface (default walls)" },
+              "part": { "type": "string", "maxLength": 60, "description": "an object's part (default body.1)" }
+            }
+          },
+          "seed": { "type": "integer", "minimum": 0, "maximum": 1000000 },
+          "candidates": { "type": "integer", "minimum": 1, "maximum": 8 },
+          "choose": { "type": "integer", "minimum": -1, "maximum": 7, "description": "save candidate k (-1 = the best: as asked); omitted = list them, change nothing" },
+          "limits": { "type": "string", "enum": ["auto", "UK", "US"] },
+          "dry_run": { "type": "boolean" },
+          "request_id": { "type": "string", "maxLength": 32 }
+        }
+      },
+      "outputSchema": {
+        "type": "object",
+        "required": ["ok"],
+        "properties": {
+          "ok": { "type": "boolean" },
+          "valid": { "type": "integer" },
+          "chosen": { "type": "integer" },
+          "candidates": { "type": "array", "items": { "type": "object" } },
+          "kind": { "type": "string" },
+          "material": { "type": "string" },
+          "cells": { "type": "integer" },
+          "undo_step": { "type": "string" },
+          "text": { "type": "string" }
+        }
+      },
+      "annotations": { "readOnlyHint": false, "destructiveHint": false, "idempotentHint": false, "openWorldHint": false },
+      "_meta": {
+        "com.truebex/permission": "edit",
+        "com.truebex/logSafe": false,
+        "com.truebex/router": "kernel:CadMaterialLib::Create + ApplyToCells / ApplyToPart (AI5)",
+        "com.truebex/surfaces": ["mcp", "assistant"]
+      }
+    },
+    {
+      "name": "write_sheet_text",
+      "title": "Write text on a sheet",
+      "description": "Place text blocks (general notes, a specification list: a title and lines) on a named sheet. Every number must come from the model: write {area:<room>}, {count:<doors | windows | walls | rooms | bedrooms ...>} or {length:<wall ref>} in a line and Truebex fills in its own value, or cite the number in cites -- a cited value that differs from the model's is refused (repair it). Without choose nothing changes: the free corners of the sheet come back as candidates; choose (-1 = the best) places the text as ONE undo step.",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["sheet", "blocks"],
+        "properties": {
+          "sheet": { "type": "string", "maxLength": 60, "description": "the sheet's number (A-101) or name" },
+          "blocks": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 8,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["lines"],
+              "properties": {
+                "title": { "type": "string", "maxLength": 80 },
+                "lines": { "type": "array", "minItems": 1, "maxItems": 40, "items": { "type": "string", "maxLength": 200 } }
+              }
+            }
+          },
+          "cites": {
+            "type": "array",
+            "maxItems": 20,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["fact", "of", "value"],
+              "properties": {
+                "fact": { "type": "string", "enum": ["area", "count", "length"] },
+                "of": { "type": "string", "maxLength": 80, "description": "area: a room; count: doors, windows, walls, rooms or a room type; length: a wall ref" },
+                "value": { "type": "number", "description": "the number as the text gives it" },
+                "unit": { "type": "string", "enum": ["m2", "ft2", "mm"] }
+              }
+            }
+          },
+          "position": { "type": "string", "enum": ["auto", "top-left", "top-right", "bottom-left", "bottom-right"] },
+          "create_sheet": { "type": "boolean", "description": "make the sheet when there is none of that number" },
+          "seed": { "type": "integer", "minimum": 0, "maximum": 1000000 },
+          "candidates": { "type": "integer", "minimum": 1, "maximum": 4 },
+          "choose": { "type": "integer", "minimum": -1, "maximum": 3, "description": "place candidate k (-1 = the best); omitted = list them, change nothing" },
+          "dry_run": { "type": "boolean" },
+          "request_id": { "type": "string", "maxLength": 32 }
+        }
+      },
+      "outputSchema": {
+        "type": "object",
+        "required": ["ok"],
+        "properties": {
+          "ok": { "type": "boolean" },
+          "valid": { "type": "integer" },
+          "chosen": { "type": "integer" },
+          "candidates": { "type": "array", "items": { "type": "object" } },
+          "items": { "type": "integer" },
+          "mismatches": { "type": "integer" },
+          "undo_step": { "type": "string" },
+          "text": { "type": "string" }
+        }
+      },
+      "annotations": { "readOnlyHint": false, "destructiveHint": false, "idempotentHint": false, "openWorldHint": false },
+      "_meta": {
+        "com.truebex/permission": "edit",
+        "com.truebex/logSafe": false,
+        "com.truebex/router": "kernel:CadSheetEdit::AddItem with the facts from CadSpaceModel (AI5)",
+        "com.truebex/surfaces": ["mcp", "assistant"]
+      }
+    },
+    {
+      "name": "remove",
+      "title": "Remove what this session made",
+      "description": "Delete entities THIS session created (the refs earlier calls answered in created: walls, openings, rooms, objects, models, sheet notes) as ONE undo step. Anything else -- the person's walls, another session's work -- is refused and nothing is removed.",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["refs"],
+        "properties": {
+          "refs": { "type": "array", "minItems": 1, "maxItems": 200, "items": { "type": "string", "maxLength": 64 } },
+          "dry_run": { "type": "boolean" },
+          "request_id": { "type": "string", "maxLength": 32 }
+        }
+      },
+      "outputSchema": {
+        "type": "object",
+        "required": ["ok"],
+        "properties": {
+          "ok": { "type": "boolean" },
+          "removed": { "type": "integer" },
+          "undo_step": { "type": "string" },
+          "deleted": { "type": "array", "items": { "type": "string" } },
+          "text": { "type": "string" }
+        }
+      },
+      "annotations": { "readOnlyHint": false, "destructiveHint": true, "idempotentHint": true, "openWorldHint": false },
+      "_meta": {
+        "com.truebex/permission": "edit",
+        "com.truebex/logSafe": false,
+        "com.truebex/router": "kernel:delete rows this session created (FTruebexAgentSession::CreatedRefs) (AI5)",
+        "com.truebex/surfaces": ["mcp", "assistant"]
       }
     }
   ]

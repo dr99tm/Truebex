@@ -14,7 +14,7 @@ from app.projects import ops
 from .licence_helpers import error_of
 from .pf12_helpers import ROOT, node
 from .project_helpers import Person, action_op, create, hex32, pull, push, pushed
-from .test_pf12_mcp_package import ASSISTANT_ONLY, on_mcp, surfaces_of
+from .test_pf12_mcp_package import ASSISTANT_ONLY, MCP_ORDER, on_mcp, surfaces_of
 from .test_site_pf13 import OUT, Doc, built  # noqa: F401  (built is a fixture)
 
 PKG_TOOLS = ROOT / "packages" / "mcp" / "tools.json"
@@ -104,8 +104,8 @@ def test_log_safe_tools_follow_tools_json():
 
 def test_docs_generator_keeps_the_mcp_surface(tmp_path):
     """src/lib/developer-docs.ts (run by node, types stripped): mcpTools() keeps a tool whose surfaces include
-    mcp or that names none (absent = both), drops an assistant-only one; toolsDocument() gives the page the 13
-    tools on the mcp surface of src/content/tools.json, in the file's order."""
+    mcp or that names none (absent = both), drops an assistant-only one; toolsDocument() gives the page the
+    tools on the mcp surface of src/content/tools.json, in the file's order (§5's order less propose_variants)."""
     exe = node()
     if exe is None:
         pytest.skip("node is not installed")
@@ -126,7 +126,7 @@ def test_docs_generator_keeps_the_mcp_surface(tmp_path):
     # An empty list is not "absent": it names no surface, so the tool is on none (the app refuses such a file).
     assert got["sample"] == ["both", "mcp", "listed"]
     site = json.loads((ROOT / "src" / "content" / "tools.json").read_text(encoding="utf-8"))
-    assert got["page"] == [t["name"] for t in on_mcp(site)] and len(got["page"]) == 13
+    assert got["page"] == [t["name"] for t in on_mcp(site)] == MCP_ORDER
     assert all("mcp" in surfaces_of(t) for t in site["tools"] if t["name"] in got["page"])
 
 

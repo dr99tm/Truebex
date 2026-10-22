@@ -14,14 +14,17 @@ import { INTERNAL_META, loadToolsFile, publicTools, surfacesOf, toolsFileProblem
 import { SERVER_VERSION, SUPPORTED_VERSIONS } from '../lib/server.mjs';
 
 const TOOL_NAMES = ['read_state', 'find', 'explain', 'place', 'move', 'resize', 'fill', 'apply_theme', 'export_pdf', 'export_panorama', 'undo', 'get_tunables', 'set_tunable'];
+// AI5 (contract 1.3.0): the creation skills and the scoped remove, after propose_variants in the file.
+const AI5_TOOLS = ['create_layout', 'create_theme', 'create_fills', 'create_object', 'create_material', 'write_sheet_text', 'remove'];
+const MCP_TOOLS = [...TOOL_NAMES, ...AI5_TOOLS];
 
 test('mcp-tools-json-valid', () => {
   const { doc } = loadToolsFile(join(MCP_DIR, 'tools.json'));
   assert.deepEqual(toolsFileProblems(doc), []);
   // AI2: the file also carries the assistant-only propose_variants; MCP lists the other thirteen.
-  assert.deepEqual(doc.tools.map((t) => t.name), [...TOOL_NAMES, 'propose_variants']);
+  assert.deepEqual(doc.tools.map((t) => t.name), [...TOOL_NAMES, 'propose_variants', ...AI5_TOOLS]);
   assert.deepEqual(surfacesOf(doc.tools.find((t) => t.name === 'propose_variants')), ['assistant']);
-  assert.deepEqual(publicTools(doc).map((t) => t.name), TOOL_NAMES);
+  assert.deepEqual(publicTools(doc).map((t) => t.name), MCP_TOOLS);
   const perms = Object.fromEntries(doc.tools.map((t) => [t.name, t._meta['com.truebex/permission']]));
   assert.equal(perms.read_state, 'read');
   assert.equal(perms.place, 'edit');
@@ -40,6 +43,12 @@ test('mcp-tools-json-valid', () => {
   assert.equal(validate(setTunable, { name: 'cad.Elev.HlrVariant', value: 'Exact' }), null);
   assert.equal(validate(setTunable, { name: 'cad.Light.Sun', value: false }), null);
   assert.equal(validate(setTunable, { value: 7 }), 'name: required');
+  // AI5: the skills' intents check like any tool's arguments
+  for (const n of AI5_TOOLS) { assert.equal(perms[n], 'edit'); }
+  const layout = doc.tools.find((t) => t.name === 'create_layout').inputSchema;
+  assert.equal(validate(layout, { program: { rooms: [{ type: 'bedroom', area_m2: 12 }] }, choose: -1 }), null);
+  assert.equal(validate(layout, { program: { rooms: [{ type: 'garage', area_m2: 12 }] } }), 'program.rooms[0].type: must be one of living, kitchen, dining, bedroom, bathroom, wc, hall, study, utility, store');
+  assert.equal(validate(layout, {}), 'program: required');
 });
 
 test('mcp-discover', async (t) => {
@@ -88,7 +97,7 @@ test('mcp-legacy-initialize', async (t) => {
   assert.equal(init.result.resultType, undefined);
   s.send({ jsonrpc: '2.0', method: 'notifications/initialized' });
   const list = await s.request('tools/list', {});
-  assert.equal(list.result.tools.length, 13);
+  assert.equal(list.result.tools.length, 20);
   assert.equal(list.result.resultType, undefined);
   const call = await s.request('tools/call', { name: 'place', arguments: { kind: 'window', host: 'wall#42', width_mm: 1200 } });
   assert.equal(call.result.isError, false);
@@ -130,7 +139,7 @@ test('mcp-tools-deterministic', async (t) => {
   const b = await s.request('tools/list', { _meta: modernMeta() });
   assert.deepEqual(a.result.tools, b.result.tools);
   assert.equal(JSON.stringify(a.result.tools), JSON.stringify(b.result.tools));
-  assert.deepEqual(a.result.tools.map((x) => x.name), TOOL_NAMES);
+  assert.deepEqual(a.result.tools.map((x) => x.name), MCP_TOOLS);
   assert.equal(a.result.ttlMs, 60000);
   assert.equal(a.result.cacheScope, 'private');
   for (const tool of a.result.tools) {
@@ -157,7 +166,7 @@ test('mcp-no-app', async (t) => {
   const s = spawnServer({ TRUEBEX_AGENT_INSTANCES_DIR: emptyInstances() });
   t.after(() => s.close());
   const list = await s.request('tools/list', { _meta: modernMeta() });
-  assert.equal(list.result.tools.length, 13);
+  assert.equal(list.result.tools.length, 20);
   const call = await s.request('tools/call', { _meta: modernMeta(), name: 'read_state', arguments: {} });
   assert.equal(call.result.isError, true);
   assert.equal(call.result.structuredContent.code, 'app_not_running');

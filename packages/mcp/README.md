@@ -4,8 +4,9 @@ Lets your own AI app (Claude Desktop, Claude Code or any MCP client that
 launches a local stdio server) read and edit the project you have open in
 Truebex: find walls, rooms and openings, explain an entity, place, move and
 resize, set finishes, export the sheets as a PDF, read and set Truebex's
-tunables, and undo its own steps. Thirteen tools and three resources, listed
-even while Truebex is closed.
+tunables, lay out rooms from a room program, dress a room, make an object or a
+material, write notes on a sheet, remove what it made, and undo its own steps.
+20 tools and three resources, listed even while Truebex is closed.
 
 How it works: your client starts the server and speaks MCP with it over stdio
 (one JSON-RPC message per line; logs go to stderr). The server answers
@@ -58,7 +59,7 @@ or, from npm:
 claude mcp add --scope user truebex -- npx -y @truebex/mcp
 ```
 
-Then `/mcp` lists `truebex` with its thirteen tools. With Truebex open and
+Then `/mcp` lists `truebex` with its 20 tools. With Truebex open and
 connections on, ask "how many walls are on the ground floor?" and allow read
 when Truebex asks: it answers through `find`.
 
@@ -74,10 +75,19 @@ of 2025-11-25 and 2025-06-18; capabilities: tools and resources.
 
 * Tools (`tools.json` is the single source): `read_state`, `find`, `explain`,
   `get_tunables` (class read); `place`, `move`, `resize`, `fill`,
-  `apply_theme`, `undo`, `set_tunable` (edit); `export_pdf`, `export_panorama`
-  (export). `apply_theme` and `export_panorama` answer `feature_absent` until
-  room themes and the panorama export arrive in Truebex. Reference:
-  https://truebex.com/developers/mcp/.
+  `apply_theme`, `undo`, `set_tunable`, `create_layout`, `create_theme`,
+  `create_fills`, `create_object`, `create_material`, `write_sheet_text`,
+  `remove` (edit); `export_pdf`, `export_panorama` (export). `apply_theme` and
+  `export_panorama` answer `feature_absent` until room themes and the panorama
+  export arrive in Truebex. Reference: https://truebex.com/developers/mcp/.
+* Creation: the six creation tools (`create_layout` to `write_sheet_text`)
+  take what you want as data (a room program, finishes, a part list, sheet
+  text) and Truebex makes the result itself. Without `choose` nothing changes
+  and checked candidates come back; with `choose` (-1 = the best) one is
+  applied as one undo step. The checks are sanity rules, never a building-code
+  check, and no result claims compliance; a failed check returns its report,
+  at most 3 repairs, then the tool stops. `remove` deletes only what the same
+  connection created and refuses anything else.
 * Settings: the server changes none but a tunable (Truebex's runtime knobs, by
   console name from `get_tunables`), through `set_tunable`: typed and
   range-checked, a Design tunable as one undo step, never a console command.
