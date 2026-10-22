@@ -8,14 +8,14 @@ current tools (owner). **Contract:** `T:\unreal5_7_4_projects\truebex_compact\Do
 
 ## Status
 
-**Built 2026-10-22** on `ap/t95-pf12d-the-mcp-package-and-the-de` (base `master` at d222f29). The package and
+**Built 2026-10-22** on `ap/t95-pf12d-the-mcp-package-and-the-de` (base `master` at fdfa389: d222f29 and the brand folder, docs only). The package and
 `src/content/tools.json` are the app's `tools.json` 1.3.0 (21 tools, 20 on the mcp surface); `/developers/mcp/`
 documents those 20, AI5's six creation skills and the scoped `remove` among them, with one row per top-level argument
 and every nested field listed under its row, and says what a creation call does. The project log still takes only the
 six log-safe edits. Waiting on others: the app-side carry-overs and contract proposals in As-built; npm publishing
 (owner, unchanged from PF12).
 
-Before this task, verified on `master` d222f29 against the app's `main` 7fdde1e6f (contains 319fed6f8):
+Before this task, verified on `master` fdfa389 (d222f29 plus `docs/brand/`) against the app's `main` 7fdde1e6f (contains 319fed6f8):
 
 | Area | Where | Before |
 |---|---|---|
@@ -49,7 +49,7 @@ scoped to what the session made). The count on the page can no longer fall behin
    byte-equal (`tools.json` into `packages/mcp` and `src/content`, `instructions.md`, `test/mcp.test.mjs`; the rest
    unchanged); `manifest.json` and `truebex.mcpb` still not copied (PF12b deviation 3); `package.json`'s version stays
    the bridge's `SERVER_VERSION` (1.0.0); the copied bridge never edited.
-2. Tests first (each failing on d222f29); the hard-coded 13 and 14 replaced so the next MINOR breaks only §5's list.
+2. Tests first (each failing on the base); the hard-coded 13 and 14 replaced so the next MINOR breaks only §5's list.
 3. `/developers/mcp/`: the 20 sections from `tools.json`; nested fields shown readably; the tool count in
    `DEVELOPER_DOCS.pages.mcp` derived from the mcp tools and in `packages/mcp/README.md` checked against them; the
    creation copy where the page says what an agent may and may never do.
@@ -185,7 +185,7 @@ step 4 uses the pytest.
 
 ## As-built
 
-* **Date, branch, commits:** 2026-10-22, `ap/t95-pf12d-the-mcp-package-and-the-de` (base `master` at d222f29); commits
+* **Date, branch, commits:** 2026-10-22, `ap/t95-pf12d-the-mcp-package-and-the-de` (base `master` at fdfa389); commits
   listed by `git log master..` on the branch: the tests first (9e8f8a5), the copy (6d8d738), the page, copy and README
   (c09a6af), the remove line's wording (9f19c65), this doc with the tracker row and the README section.
 * **Copied** by `scripts\sync-mcp.ps1` from the app's `main` 7fdde1e6f (contains 319fed6f8; `Tools/mcp/` last changed
@@ -202,13 +202,13 @@ step 4 uses the pytest.
   3, `fill.finish` 7, and the seven new tools' 98), 3 resources, 16 error codes. The app's node tests: 10 passed,
   0 failed (unchanged: 1.3.0 added checks, no test; `mcp-bundle-manifest` still filtered out). pytest 915 → 918
   collected (3 new tests; 6 package tests, 1 site test and 1 PF12c test changed).
-* **Tests first:** on `master` d222f29 with `out/` built from it, the four files gave 10 failed, 15 passed:
+* **Tests first:** on `master` fdfa389 (d222f29 plus `docs/brand/`) with `out/` built from it, the four files gave 10 failed, 15 passed:
   `test_mcp_package_stdio_framing` (13 == 20), `test_mcp_package_discover_and_legacy_initialize` and
   `test_mcp_package_tools_list_and_replay` (13 names listed, not `MCP_ORDER`), `test_tools_json_follows_the_contract`
   (1.2.0 < 1.3.0), `test_mcp_package_install_notes` ("thirteen tools", no "20 tools"),
   `test_docs_generated_from_tools_json` (13 sections), `test_docs_generator_keeps_the_mcp_surface` (13 tools ≠
   `MCP_ORDER`), and the three new ones (`KeyError: 'create_layout'`: the 1.2.0 file has none; no `create_layout` for
-  the generator; no creation line on the never-list). The refusal itself already held on d222f29 (no AI5 tool was
+  the generator; no creation line on the never-list). The refusal itself already held on the base (no AI5 tool was
   log-safe there); the test fails there on its first check, that the file marks the seven edit and not log-safe.
   `test_mcp_package_app_node_tests` passed there and here (10 = the declared tests then and now; it now counts them
   from the copied file instead of a literal).
