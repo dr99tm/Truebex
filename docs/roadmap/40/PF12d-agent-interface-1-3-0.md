@@ -229,7 +229,8 @@ step 4 uses the pytest.
     `TEST_DATABASE_URL`): `test_pf12d_agent_interface.py`, `test_pf12c_agent_interface.py`, `test_projects.py`,
     `test_mobile.py`, `test_pf12_api.py` — 60 passed, 1 failed in 155 s; the failure was the creation-copy build check
     reading an `out/` built before the remove line's rewording (no database), green after the rebuild.
-  * The verify gate: see the last line of this As-built.
+  * **The verify gate** (`scripts\autopilot-verify.ps1`: lint, build, pytest on SQLite, the `out/` check): GREEN in
+    739 s, 918 collected, 899 passed and 19 skipped (the Postgres-only tests), pytest 659 s.
 * **Deviations from the brief and why:**
   1. *Nested fields:* PF12b's `a.b` rows for nested objects became lists too (Decision above), so `place.product` and
      `fill.finish` read as lists; the brief favoured lists for arrays of objects only. The row count is the brief's 158.
