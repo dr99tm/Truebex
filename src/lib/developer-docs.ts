@@ -239,6 +239,48 @@ export function toolsDocument(): { schema: string; version: string; tools: Tool[
   return { ...doc, tools: mcpTools(doc.tools) };
 }
 
+/** PF12d: page copy with `{tools}` as the number of tools the MCP server lists, so the words follow tools.json. */
+export function withToolCount(text: string, tools: readonly Tool[] = toolsDocument().tools): string {
+  return text.replace(/\{tools\}/g, String(tools.length));
+}
+
+export interface ArgumentRow {
+  name: string;
+  schema: Schema;
+  required: boolean;
+}
+
+/** A tool's arguments as the page's rows: one per top-level property (PF12d: a nested field is listed under its
+ *  argument's row, see nestedFields). */
+export function argumentRows(schema: Schema): ArgumentRow[] {
+  const required = new Set(schema.required ?? []);
+  return Object.entries(schema.properties ?? {}).map(([name, prop]) => ({ name, schema: prop, required: required.has(name) }));
+}
+
+function objectItems(schema: Schema): Schema | null {
+  const items = schema.type === "array" ? schema.items : undefined;
+  return items?.type === "object" && items.properties ? items : null;
+}
+
+function fieldsWithin(schema: Schema, prefix: string): ArgumentRow[] {
+  const required = new Set(schema.required ?? []);
+  return Object.entries(schema.properties ?? {}).flatMap(([name, prop]) => {
+    const row = { name: prefix + name, schema: prop, required: required.has(name) };
+    const nested = prop.type === "object" && prop.properties ? fieldsWithin(prop, `${prefix}${name}.`) : [];
+    const items = objectItems(prop);
+    return [row, ...nested, ...(items ? fieldsWithin(items, `${prefix}${name}[].`) : [])];
+  });
+}
+
+/** PF12d: the fields listed under an argument's row, in one flat list: an object's own (create_theme's floor,
+ *  create_layout's program), or the fields of each item of an array of objects (create_object's parts); deeper, an
+ *  object's fields as `a.b` and an array of objects' as `a[].b`. None for any other schema. */
+export function nestedFields(schema: Schema): ArgumentRow[] {
+  if (schema.type === "object" && schema.properties) return fieldsWithin(schema, "");
+  const items = objectItems(schema);
+  return items ? fieldsWithin(items, "") : [];
+}
+
 /** A tool argument's rules in words: items, range, length, pattern, default. */
 export function rulesOf(schema: Schema): string {
   const parts: string[] = [];

@@ -8,9 +8,9 @@ import { DevPage, Notes, OperationReference, devPath } from "./DevDocs";
 
 export type GroupKey = "projects" | "jobs" | "shares" | "market";
 
-export function groupMetadata(key: keyof typeof D.pages): Metadata {
+export function groupMetadata(key: keyof typeof D.pages, description?: string): Metadata {
   const page = D.pages[key];
-  return pageMetadata({ title: page.title, description: page.description, path: devPath(key) });
+  return pageMetadata({ title: page.title, description: description ?? page.description, path: devPath(key) });
 }
 
 export function GroupDocPage({ pageKey }: { pageKey: GroupKey }) {

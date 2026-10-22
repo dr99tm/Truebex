@@ -28,19 +28,23 @@ FIXTURES = PKG / "test" / "fixtures"
 HERE = Path(__file__).resolve().parent
 SUPPORTED = ["2026-07-28", "2025-11-25", "2025-06-18"]
 WIRE_SCRIPTS = {"window-north-study", "permissions", "fence"}
-# §5's fixed order (agent-interface 1.2.0): TU1's two tunable tools (5.17, 5.18), then AI2's
-# assistant-only propose_variants (5.19), which the MCP server never lists.
-CONTRACT_ORDER = [
-    "read_state", "find", "explain", "place", "move", "resize", "fill", "apply_theme", "export_pdf", "export_panorama", "undo",
-    "get_tunables", "set_tunable", "propose_variants",
+# AI5 (agent-interface 1.3.0, §5.20-5.26): the six creation skills and the scoped remove.
+CREATION_SKILLS = ["create_layout", "create_theme", "create_fills", "create_object", "create_material", "write_sheet_text"]
+AI5_TOOLS = [*CREATION_SKILLS, "remove"]
+# §5's fixed order with each tool's class (agent-interface 1.3.0): TU1's two tunable tools (5.17, 5.18), AI2's
+# assistant-only propose_variants (5.19), which the MCP server never lists, then AI5's seven (5.20-5.26). The next
+# MINOR appends here; every count below comes from this list or from the file.
+CONTRACT = [
+    ("read_state", "read"), ("find", "read"), ("explain", "read"), ("place", "edit"), ("move", "edit"), ("resize", "edit"),
+    ("fill", "edit"), ("apply_theme", "edit"), ("export_pdf", "export"), ("export_panorama", "export"), ("undo", "edit"),
+    ("get_tunables", "read"), ("set_tunable", "edit"), ("propose_variants", "edit"),
+    *((name, "edit") for name in AI5_TOOLS),
 ]
-CLASSES = {
-    "read": {"read_state", "find", "explain", "get_tunables"},
-    "edit": {"place", "move", "resize", "fill", "apply_theme", "undo", "set_tunable", "propose_variants"},
-    "export": {"export_pdf", "export_panorama"},
-}
+CONTRACT_ORDER = [name for name, _ in CONTRACT]
+CLASSES = {klass: {name for name, c in CONTRACT if c == klass} for klass in ("read", "edit", "export")}
 SURFACES = {"mcp", "assistant"}
 ASSISTANT_ONLY = {"propose_variants"}
+MCP_ORDER = [name for name in CONTRACT_ORDER if name not in ASSISTANT_ONLY]  # what tools/list serves, in order
 # Known differences of the app's tools.json from the contract, recorded in PF12c's As-built (carry-over for the app):
 # get_tunables is marked logSafe although §5 makes it read only (a read never travels in the log), and its result
 # (§5.17) carries no `ok`, so its output schema requires nothing.
@@ -52,6 +56,9 @@ ALLOWED_KEYWORDS = {
     "type", "properties", "required", "additionalProperties", "enum", "const", "minimum", "maximum", "minLength",
     "maxLength", "items", "minItems", "maxItems", "description", "default",
 }
+# §5.20's room program: the ten room types, and a brief create_layout takes (list only: no choose).
+ROOM_TYPES = ["living", "kitchen", "dining", "bedroom", "bathroom", "wc", "hall", "study", "utility", "store"]
+LAYOUT_BRIEF = {"program": {"rooms": [{"type": "living", "area_m2": 20}, {"type": "bedroom", "area_m2": 12, "adjacent": [0]}]}, "seed": 7}
 RESOURCES = {"truebex://state/digest", "truebex://project/summary"}
 TEMPLATES = {"truebex://entity/{kind}/{id}"}
 NOT_RUNNING = "Truebex is not running, or Agent connections are off"
@@ -334,7 +341,7 @@ def test_mcp_package_stdio_framing(tmp_path):
         found = bridge.request("tools/call", {"_meta": meta(), "name": "find", "arguments": {"kind": "room", "name": "غرفة المعيشة — Küche"}})
         assert found["result"]["isError"] is False and found["result"]["content"][0]["text"] == "find ok"
         listed = bridge.request("tools/list", {"_meta": meta()})
-        assert len(listed["result"]["tools"]) == len(on_mcp(_tools()))  # a long answer is still one line
+        assert len(listed["result"]["tools"]) == len(on_mcp(_tools())) == len(MCP_ORDER)  # a long answer is still one line
         code, seconds = bridge.close()  # the pipe to the app is open: EOF still ends the bridge at once
     finally:
         log = app.stop()
@@ -382,8 +389,7 @@ def test_mcp_package_discover_and_legacy_initialize(tmp_path):
         assert "resultType" not in result
         legacy.send({"jsonrpc": "2.0", "method": "notifications/initialized"})
         listed = legacy.request("tools/list")["result"]
-        mcp_order = [n for n in CONTRACT_ORDER if n not in ASSISTANT_ONLY]
-        assert [t["name"] for t in listed["tools"]] == mcp_order and "resultType" not in listed and "ttlMs" not in listed
+        assert [t["name"] for t in listed["tools"]] == MCP_ORDER and "resultType" not in listed and "ttlMs" not in listed
         assert {r["uri"] for r in legacy.request("resources/list")["result"]["resources"]} == RESOURCES
         assert legacy.close()[0] == 0
         assert len(bytes(legacy.raw).splitlines()) == 3  # the notification got no answer
@@ -395,7 +401,9 @@ def test_mcp_package_tools_list_and_replay(tmp_path):
     bridge = Bridge(tmp_path)  # no instance file, no pipe: no app
     listed = bridge.request("tools/list", {"_meta": meta()})["result"]
     assert listed["tools"] == _public(doc)
-    # agent-interface 1.2.0: the list is the mcp surface (13 tools), never the assistant-only propose_variants.
+    # agent-interface 1.2.0: the list is the mcp surface, never the assistant-only propose_variants; since 1.3.0 that
+    # is §5's order less propose_variants, AI5's seven at its end.
+    assert [t["name"] for t in listed["tools"]] == MCP_ORDER
     assert len(listed["tools"]) == len(on_mcp(doc)) == len(doc["tools"]) - len(ASSISTANT_ONLY)
     assert not {t["name"] for t in listed["tools"]} & ASSISTANT_ONLY
     assert listed["ttlMs"] == 60000 and listed["cacheScope"] == "private" and listed["resultType"] == "complete"
@@ -411,6 +419,13 @@ def test_mcp_package_tools_list_and_replay(tmp_path):
     call = bridge.request("tools/call", {"_meta": meta(), "name": "find", "arguments": {"kind": "wall"}})["result"]
     assert call["isError"] is True and call["structuredContent"]["code"] == "app_not_running"
     assert NOT_RUNNING in call["content"][0]["text"]
+    # AI5 (1.3.0): a creation call and a remove are tools like any other: the bridge relays them, so with no app they
+    # answer app_not_running (never -32602, which an unknown tool gets).
+    for name, args in (("create_layout", LAYOUT_BRIEF), ("remove", {"refs": ["wall#12"], "dry_run": True})):
+        created = bridge.request("tools/call", {"_meta": meta(), "name": name, "arguments": args})
+        assert "error" not in created, (name, created)
+        assert created["result"]["isError"] is True and created["result"]["structuredContent"]["code"] == "app_not_running", name
+        assert NOT_RUNNING in created["result"]["content"][0]["text"], name
     read = bridge.request("resources/read", {"_meta": meta(), "uri": "truebex://state/digest"})["error"]
     assert read["data"]["code"] == "app_not_running"
     # An unknown tool never reaches an app; nor does an assistant-only one (1.2.0: -32602, as the app's router).
@@ -436,6 +451,9 @@ def test_mcp_package_tools_list_and_replay(tmp_path):
         # With an app linked, propose_variants is still -32602 from the bridge itself: the app never sees it.
         hidden = linked.request("tools/call", {"_meta": meta(), "name": "propose_variants", "arguments": variants})
         assert hidden["error"]["code"] == -32602
+        # ... while create_layout reaches the app as written (the app runs the skill; the bridge never checks a brief).
+        layout = linked.request("tools/call", {"_meta": meta(), "name": "create_layout", "arguments": LAYOUT_BRIEF})["result"]
+        assert layout["isError"] is False and layout["structuredContent"] == {"ok": True, "text": "create_layout ok"}
         digest = linked.request("resources/read", {"_meta": meta(), "uri": "truebex://state/digest"})["result"]
         assert digest["contents"][0]["text"].startswith("TRUEBEX fake-app")
         missing = linked.request("resources/read", {"_meta": meta(), "uri": "truebex://entity/wall/999"})
@@ -445,7 +463,7 @@ def test_mcp_package_tools_list_and_replay(tmp_path):
         assert linked.close()[0] == 0
     finally:
         app_log = app.stop()
-    assert "calls=1" in app_log, app_log  # the find only: propose_variants never reached the app
+    assert "calls=2" in app_log, app_log  # the find and create_layout: propose_variants never reached the app
     # Connections off: the app refuses the hello, and the client hears the same app_not_running.
     off = FakeApp("--connections-off")
     try:
@@ -468,8 +486,13 @@ def test_mcp_package_tools_list_and_replay(tmp_path):
 
 def test_mcp_package_app_node_tests():
     """The app's own `node --test Tools/mcp/test` on the copied folder, minus mcp-bundle-manifest
-    (truebex.mcpb ships with the app, not in the npm package). Since agent-interface 1.2.0 that is
-    10, mcp-assistant-only-hidden among them (propose_variants unlisted, a call of it -32602)."""
+    (truebex.mcpb ships with the app, not in the npm package): every other test the copied file declares
+    runs and passes (10 since agent-interface 1.2.0; 1.3.0 added checks, no test). mcp-assistant-only-hidden
+    covers propose_variants unlisted and -32602; mcp-tools-json-valid AI5's seven (class edit) and
+    create_layout's argument checks; mcp-no-app the 20-tool list with no app."""
+    declared = re.findall(r"^test\('(mcp-[a-z0-9-]+)'", (PKG / "test" / "mcp.test.mjs").read_text(encoding="utf-8"), re.M)
+    expected = [name for name in declared if name != "mcp-bundle-manifest"]
+    assert "mcp-bundle-manifest" in declared and len(set(expected)) == len(expected) and expected, declared
     proc = subprocess.run(
         [node(), "--test", "--test-reporter=tap", "--test-name-pattern=^mcp-(?!bundle-manifest)", str(PKG / "test" / "mcp.test.mjs")],
         capture_output=True, text=True, encoding="utf-8", errors="replace", cwd=PKG, timeout=300,
@@ -477,8 +500,9 @@ def test_mcp_package_app_node_tests():
     )
     assert proc.returncode == 0, proc.stdout[-4000:] + proc.stderr[-2000:]
     passed = int(re.search(r"^# pass (\d+)", proc.stdout, re.M).group(1))
-    assert passed == 10 and re.search(r"^# fail 0", proc.stdout, re.M), proc.stdout[-2000:]
-    assert re.search(r"^ok \d+ - mcp-assistant-only-hidden$", proc.stdout, re.M), proc.stdout[-2000:]
+    assert passed == len(expected) and re.search(r"^# fail 0", proc.stdout, re.M), proc.stdout[-2000:]
+    for name in expected + ["mcp-assistant-only-hidden", "mcp-tools-json-valid", "mcp-no-app"]:
+        assert re.search(rf"^ok \d+ - {name}$", proc.stdout, re.M), (name, proc.stdout[-2000:])
 
 
 # --- the copies -----------------------------------------------------------------------------------
@@ -600,13 +624,13 @@ def _conforms(schema: dict, value) -> bool:
 
 
 def test_tools_json_follows_the_contract():
-    """agent-interface §6.5 as amended by AI1, TU1 (1.1.0) and AI2 (1.2.0), on the copy the package serves
-    and the site reads."""
+    """agent-interface §6.5 as amended by AI1, TU1 (1.1.0), AI2 (1.2.0) and AI5 (1.3.0), on the copy the
+    package serves and the site reads."""
     doc = _tools()
     assert doc["schema"] == "truebex-tools/1"
     assert re.fullmatch(r"\d+\.\d+\.\d+", doc["version"]) and doc["version"].startswith("1.")
-    assert tuple(map(int, doc["version"].split("."))) >= (1, 2, 0), doc["version"]  # surfaces are read since 1.2.0
-    assert [t["name"] for t in doc["tools"]] == CONTRACT_ORDER  # §5's order: 14 tools
+    assert tuple(map(int, doc["version"].split("."))) >= (1, 3, 0), doc["version"]  # AI5's seven tools since 1.3.0
+    assert [t["name"] for t in doc["tools"]] == CONTRACT_ORDER  # §5's order, AI5's seven after propose_variants
     by_name = {t["name"]: t for t in doc["tools"]}
     problems: list[str] = []
     seen: list[str] = []
@@ -682,6 +706,128 @@ def test_tools_json_follows_the_contract():
         assert f"propose_variants.inputSchema.variants[].calls[].{tool}" in seen, tool
     assert "propose_variants.inputSchema.variants[].calls[].fill.finish.tile_mm[]" in seen
 
+    _check_ai5(by_name, seen)
+
+
+FINISH_KINDS = ["paint", "wallpaper", "pattern3d", "none"]
+SURFACE_KEYS = ["floor", "walls", "feature", "ceiling"]
+LIMIT_SETS = ["auto", "UK", "US"]
+
+
+def _range(schema: dict) -> tuple:
+    return schema.get("minimum"), schema.get("maximum")
+
+
+def _items(schema: dict) -> tuple:
+    return schema.get("minItems"), schema.get("maxItems")
+
+
+def _check_ai5(by_name: dict, seen: list[str]) -> None:
+    """AI5 (1.3.0, §5.20-5.26) as the app's file holds it. Differences from the contract's text are PF12d's
+    As-built carry-overs, never edits of the copy."""
+    for name in AI5_TOOLS:
+        t = by_name[name]
+        m = t["_meta"]
+        assert m["com.truebex/permission"] == "edit" and m["com.truebex/logSafe"] is False, name  # never in the log
+        assert m["com.truebex/surfaces"] == ["mcp", "assistant"] and "com.truebex/requires" not in m, name
+        props = t["inputSchema"]["properties"]
+        assert props["dry_run"] == {"type": "boolean"}, name
+        assert props["request_id"] == {"type": "string", "maxLength": 32}, name
+        assert t["outputSchema"]["required"] == ["ok"], name
+        # No planning id (AI5, a roadmap) in what reaches an MCP client or the page: only the private router names it.
+        public = json.dumps([t["title"], t["description"], t["inputSchema"]])
+        assert "AI5" not in public and "roadmap" not in public.lower(), name
+    destructive = {n for n in AI5_TOOLS if by_name[n]["annotations"]["destructiveHint"]}
+    assert destructive == {"create_theme", "create_fills", "remove"}, destructive
+
+    # The six creation skills share seed, candidates and choose (-1 = the best; k = candidate k, so choose never
+    # passes the last candidate); all but write_sheet_text take a limits set.
+    for name in CREATION_SKILLS:
+        props = by_name[name]["inputSchema"]["properties"]
+        assert props["seed"] == {"type": "integer", "minimum": 0, "maximum": 1_000_000}, name
+        candidates, choose = props["candidates"], props["choose"]
+        assert candidates["type"] == choose["type"] == "integer" and candidates["minimum"] == 1, name
+        assert choose["minimum"] == -1 and choose["maximum"] == candidates["maximum"] - 1, name
+        assert "choose" not in by_name[name]["inputSchema"].get("required", []), name  # absent = list only
+        if name == "write_sheet_text":
+            assert "limits" not in props, name
+        else:
+            assert props["limits"] == {"type": "string", "enum": LIMIT_SETS}, name
+
+    # 5.20 create_layout: a room program of 1-16 rooms of the ten types; the program's widths in mm.
+    layout = by_name["create_layout"]["inputSchema"]
+    assert layout["required"] == ["program"]
+    program = layout["properties"]["program"]
+    assert program["required"] == ["rooms"] and program["additionalProperties"] is False
+    rooms = program["properties"]["rooms"]
+    assert rooms["type"] == "array" and _items(rooms) == (1, 16)
+    room = rooms["items"]
+    assert room["type"] == "object" and room["additionalProperties"] is False and set(room["required"]) == {"type", "area_m2"}
+    assert room["properties"]["type"]["enum"] == ROOM_TYPES
+    assert _range(room["properties"]["area_m2"]) == (1, 200)
+    assert room["properties"]["adjacent"]["items"]["type"] == "integer"
+    assert room["properties"]["exterior"]["type"] == "boolean"
+    widths = {k: _range(program["properties"][k]) for k in ("corridor_mm", "wall_mm", "ext_wall_mm")}
+    assert widths == {"corridor_mm": (600, 3000), "wall_mm": (50, 500), "ext_wall_mm": (100, 800)}
+    assert {"plot", "storey", "furnish"} <= set(layout["properties"])
+    assert "create_layout.inputSchema.program.rooms[].type" in seen  # the portable walk reaches the room items
+
+    # 5.21 / 5.22 create_theme and create_fills: a finish per surface, as fill's; a theme's furniture and light.
+    for name in ("create_theme", "create_fills"):
+        props = by_name[name]["inputSchema"]["properties"]
+        assert by_name[name]["inputSchema"]["required"] == ["target"], name
+        for surface in SURFACE_KEYS:
+            finish = props[surface]
+            assert finish["type"] == "object" and finish["required"] == ["kind"], (name, surface)
+            assert finish["properties"]["kind"]["enum"] == FINISH_KINDS, (name, surface)
+            assert finish["properties"]["sheen"]["enum"] == ["matt", "satin", "gloss"], (name, surface)
+            assert finish["properties"]["pattern"]["enum"] == ["tile", "brick", "slat", "coffer"], (name, surface)
+            assert _range(finish["properties"]["roughness"]) == (0, 1) and _items(finish["properties"]["tile_mm"]) == (2, 2), (name, surface)
+            assert {"colour", "texture", "material"} <= set(finish["properties"]), (name, surface)
+    theme = by_name["create_theme"]["inputSchema"]["properties"]
+    assert _range(theme["light_kelvin"]) == (1000, 12000) and theme["save"]["type"] == "boolean"
+    furniture = theme["furniture"]["properties"]
+    assert furniture["bed_size"]["enum"] == ["auto", "single", "double"]
+    assert furniture["kitchen_shape"]["enum"] == ["auto", "one-wall", "galley", "L", "U"]
+    grid = by_name["create_fills"]["inputSchema"]["properties"]["grid"]
+    assert grid["required"] == ["size_mm"] and _items(grid["properties"]["size_mm"]) == (2, 2)
+    assert grid["properties"]["surface"]["enum"] == SURFACE_KEYS
+
+    # 5.23 create_object: 1-40 parts, boxes or extruded profiles of 3-64 points, placed once.
+    obj = by_name["create_object"]["inputSchema"]
+    assert set(obj["required"]) == {"name", "parts", "place"}
+    parts = obj["properties"]["parts"]
+    assert _items(parts) == (1, 40) and parts["items"]["type"] == "object" and parts["items"]["required"] == ["kind"]
+    part = parts["items"]["properties"]
+    assert part["kind"]["enum"] == ["box", "extrude"] and part["plane"]["enum"] == ["xy", "xz", "yz"]
+    assert _items(part["profile_mm"]) == (3, 64) and _items(part["profile_mm"]["items"]) == (2, 2)
+    assert _items(obj["properties"]["size_mm"]) == (3, 3)
+    assert set(obj["properties"]["place"]["properties"]) == {"room", "at_mm", "bearing_deg"}
+    # The file's create_object makes one candidate (choose -1 or 0); §5.20-5.25 give "the others" 3 (carry-over).
+    assert _range(obj["properties"]["candidates"]) == (1, 1)
+
+    # 5.24 create_material: appearance only, optionally applied.
+    material = by_name["create_material"]["inputSchema"]["properties"]
+    assert {"colour", "roughness", "metallic", "texture", "tile_mm", "family"} <= set(material)
+    assert _range(material["roughness"]) == _range(material["metallic"]) == (0, 1)
+    assert set(material["apply_to"]["properties"]) == {"target", "surface", "part"}
+
+    # 5.25 write_sheet_text: 1-8 blocks of 1-40 lines; cites of an area, a count or a length.
+    sheet = by_name["write_sheet_text"]["inputSchema"]
+    assert set(sheet["required"]) == {"sheet", "blocks"}
+    blocks = sheet["properties"]["blocks"]
+    assert _items(blocks) == (1, 8) and _items(blocks["items"]["properties"]["lines"]) == (1, 40)
+    cite = sheet["properties"]["cites"]["items"]
+    assert cite["properties"]["fact"]["enum"] == ["area", "count", "length"]
+    assert cite["properties"]["unit"]["enum"] == ["m2", "ft2", "mm"] and set(cite["required"]) == {"fact", "of", "value"}
+    assert sheet["properties"]["position"]["enum"] == ["auto", "top-left", "top-right", "bottom-left", "bottom-right"]
+
+    # 5.26 remove: 1-200 refs (a Ref is at most 64 characters), nothing else but dry_run and request_id.
+    remove = by_name["remove"]["inputSchema"]
+    assert remove["required"] == ["refs"] and set(remove["properties"]) == {"refs", "dry_run", "request_id"}
+    refs = remove["properties"]["refs"]
+    assert _items(refs) == (1, 200) and refs["items"] == {"type": "string", "maxLength": 64}
+
 
 def _tools_hash(data: bytes) -> str:
     return hashlib.sha1(data.replace(b"\r", b"")).hexdigest()
@@ -720,6 +866,16 @@ def test_mcp_package_install_notes():
     ):
         assert line in readme, line
     assert "truebex-agent-<USERNAME>" not in readme
+    # The README is the one copy the build cannot generate: its tool count and tool list follow tools.json's mcp
+    # surface (PF12d), and no count in words is left behind.
+    listed = [t["name"] for t in on_mcp(_tools())]
+    assert set(re.findall(r"\b(\d+) tools\b", readme)) == {str(len(listed))}, re.findall(r"\b\w+ tools\b", readme)
+    words = r"\b(?:eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|twenty-one)\b tools"
+    assert not re.search(words, readme, re.I), re.search(words, readme, re.I)
+    for name in listed:
+        assert f"`{name}`" in readme, name
+    for name in ASSISTANT_ONLY:
+        assert name not in readme, name
     sync = (ROOT / "scripts" / "sync-mcp.ps1").read_text(encoding="utf-8")
     assert "truebex-mcp.mjs" in sync and "src\\content\\tools.json" in sync and "truebex-tools/1" in sync
     # No trace of the executable PF12 expected: the app ships node + truebex-mcp.mjs and truebex.mcpb.
