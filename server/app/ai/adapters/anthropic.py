@@ -59,7 +59,7 @@ def params(turn, alias, *, stream: bool, counting: bool = False) -> dict:
         p["output_config"] = {"effort": alias.effort}
     if turn.tools:
         p["tools"] = _with_breakpoint(turn.tools)
-    if turn.tool_choice is not None:
+    if turn.tools and turn.tool_choice is not None:
         p["tool_choice"] = turn.tool_choice
     if turn.system is not None:
         system = [{"type": "text", "text": turn.system}] if isinstance(turn.system, str) else turn.system

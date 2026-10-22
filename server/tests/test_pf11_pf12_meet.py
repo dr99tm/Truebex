@@ -109,7 +109,7 @@ def test_scopes_hold_on_analysis_routes(client):
 def test_ai_proxy_still_refuses_api_keys(client):
     a = Person(client, "a@example.com")
     key = make_key(client, a.session, ["projects:read", "jobs:write"])
-    headers = kh(key, **{"X-Truebex-Contract": "ai-proxy/1.0"})
+    headers = kh(key, **{"X-Truebex-Contract": "ai-proxy/1.1"})
     error_of(client.get("/ai/models", headers=headers), 403, "forbidden")
     error_of(client.get("/ai/balance", headers=headers), 403, "forbidden")
 

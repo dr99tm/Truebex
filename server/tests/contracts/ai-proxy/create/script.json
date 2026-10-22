@@ -1,0 +1,16 @@
+{
+  "schema": "truebex-ai-proxy-script/1",
+  "name": "create",
+  "match": [
+    "two-bedroom flat"
+  ],
+  "note": "Create a two-bedroom flat on this plot: create_layout lists the candidates (cards), say so.",
+  "turns": [
+    {
+      "sse": "01-layout.sse"
+    },
+    {
+      "sse": "02-end.sse"
+    }
+  ]
+}

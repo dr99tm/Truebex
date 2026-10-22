@@ -24,6 +24,8 @@ import { cn } from "@/lib/utils";
 
 /** The section's anchor: the API's `top_up_url` is /dashboard/cloud/#ai-credits. */
 const ANCHOR = "ai-credits";
+/** The Recent turns panel's: ai-proxy 5.2's `usage_url` is /dashboard/cloud/#ai-usage. */
+const USAGE_ANCHOR = "ai-usage";
 const RECENT_TOP_UPS = 5;
 
 function Balance({ balance }: { balance: AiBalance }) {
@@ -212,37 +214,39 @@ function BuyCredits({
 function Turns({ turns }: { turns: AiTurn[] }) {
   const cols = CLOUD_AI.turns.columns;
   return (
-    <Panel>
-      <h2 className="font-semibold">{CLOUD_AI.turns.title}</h2>
-      {turns.length === 0 ? (
-        <p className="mt-4 text-sm text-text-muted">{CLOUD_AI.turns.empty}</p>
-      ) : (
-        <div className="mt-4 overflow-x-auto">
-          <table className="w-full min-w-[28rem] text-sm">
-            <thead className="text-left text-xs text-text-muted">
-              <tr>
-                <th className="pb-2 pr-4 font-medium">{cols.at}</th>
-                <th className="pb-2 pr-4 font-medium">{cols.alias}</th>
-                <th className="pb-2 pr-4 text-right font-medium">{cols.credits}</th>
-                <th className="pb-2 font-medium">{cols.tools}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {turns.map((t, i) => (
-                <tr key={`${t.at}-${i}`} className="border-t border-border align-top">
-                  <td className="whitespace-nowrap py-2 pr-4 text-text-secondary">{timeAgo(t.at)}</td>
-                  <td className="py-2 pr-4 font-mono text-xs leading-5 text-text-primary">{t.alias}</td>
-                  <td className="py-2 pr-4 text-right tabular-nums text-text-primary">{formatCredits(t.credits)}</td>
-                  <td className="py-2 text-text-secondary">
-                    {t.tool_names.length ? t.tool_names.join(", ") : CLOUD_AI.turns.noTools}
-                  </td>
+    <div id={USAGE_ANCHOR} className="scroll-mt-24">
+      <Panel>
+        <h2 className="font-semibold">{CLOUD_AI.turns.title}</h2>
+        {turns.length === 0 ? (
+          <p className="mt-4 text-sm text-text-muted">{CLOUD_AI.turns.empty}</p>
+        ) : (
+          <div className="mt-4 overflow-x-auto">
+            <table className="w-full min-w-[28rem] text-sm">
+              <thead className="text-left text-xs text-text-muted">
+                <tr>
+                  <th className="pb-2 pr-4 font-medium">{cols.at}</th>
+                  <th className="pb-2 pr-4 font-medium">{cols.alias}</th>
+                  <th className="pb-2 pr-4 text-right font-medium">{cols.credits}</th>
+                  <th className="pb-2 font-medium">{cols.tools}</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </Panel>
+              </thead>
+              <tbody>
+                {turns.map((t, i) => (
+                  <tr key={`${t.at}-${i}`} className="border-t border-border align-top">
+                    <td className="whitespace-nowrap py-2 pr-4 text-text-secondary">{timeAgo(t.at)}</td>
+                    <td className="py-2 pr-4 font-mono text-xs leading-5 text-text-primary">{t.alias}</td>
+                    <td className="py-2 pr-4 text-right tabular-nums text-text-primary">{formatCredits(t.credits)}</td>
+                    <td className="py-2 text-text-secondary">
+                      {t.tool_names.length ? t.tool_names.join(", ") : CLOUD_AI.turns.noTools}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Panel>
+    </div>
   );
 }
 
@@ -324,12 +328,15 @@ export function AiCredits() {
   }, [topup, ref, load]);
 
   // The section appears after the page's data, so the browser's own jump to
-  // #ai-credits (or the return from checkout) has nothing to land on: scroll once.
+  // #ai-credits or #ai-usage (or the return from checkout) has nothing to land
+  // on: scroll once. Without the panel (no AI on the plan) the section's top.
   useEffect(() => {
     if (!loaded || scrolled.current) return;
-    if (!topup && window.location.hash !== `#${ANCHOR}`) return;
+    const hash = window.location.hash;
+    if (!topup && hash !== `#${ANCHOR}` && hash !== `#${USAGE_ANCHOR}`) return;
     scrolled.current = true;
-    document.getElementById(ANCHOR)?.scrollIntoView({ block: "start" });
+    const target = hash === `#${USAGE_ANCHOR}` ? document.getElementById(USAGE_ANCHOR) : null;
+    (target ?? document.getElementById(ANCHOR))?.scrollIntoView({ block: "start" });
   }, [loaded, topup]);
 
   const changeCurrency = (c: string) => {

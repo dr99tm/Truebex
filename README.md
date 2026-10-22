@@ -900,8 +900,8 @@ the owner writes them into the contract.
 
 ## Analysis and AI services
 
-Two contracts (Unreal project, `Docs/roadmap/40/contracts/`; the app side is authoritative): `render-jobs` v1.0.0
-for the analysis kinds and `ai-proxy` v1.0.0 for the metered assistant proxy. The code is `server/app/analysis/`
+Two contracts (Unreal project, `Docs/roadmap/40/contracts/`; the app side is authoritative): `render-jobs` 1.1.0
+for the analysis kinds and `ai-proxy` 1.1.2 for the metered assistant proxy. The code is `server/app/analysis/`
 and `server/app/ai/`, the routes `server/app/routers/analysis_ai.py` (one router for the feature).
 
 - **Analysis jobs** use PF6's queue (`POST /jobs`, `/workers/*`): `wind` (CFD), `energy` (building energy
@@ -1675,3 +1675,30 @@ tool count in its words is `{tools}` in `DEVELOPER_DOCS.pages.mcp`, filled from 
 the seven is log-safe, so the project log refuses them as actions and `LOG_SAFE_TOOLS` is unchanged. Re-sync and
 check as in the PF12b section; the PF12d checks are `server\tests\test_pf12d_agent_interface.py`. Doc:
 `docs/roadmap/40/PF12d-agent-interface-1-3-0.md`.
+
+## AI proxy on ai-proxy 1.1.2 (PF11b)
+
+The metered assistant proxy follows contract ai-proxy 1.1.2, the version the app's Truebex AI panel (AI3) is built
+against: every `/ai` route answers `X-Truebex-Contract: ai-proxy/1.1` (a 1.0 client is still served). `GET /ai/balance`
+adds `usage_url`, the page that lists a person's AI turns: the Cloud page's Recent turns
+(`https://truebex.com/dashboard/cloud/#ai-usage`, built from `SITE_URL`); `top_up_url` stays where credit packs are
+bought (`#ai-credits`). A tool-less turn (no `tools`, no `tool_choice`), as the app's unattended-run summaries send, is
+served; a `tool_choice` without tools is 422 `validation_failed`. Doc: `docs/roadmap/40/PF11b-ai-proxy-1-1-2.md`.
+
+`server/tests/contracts/ai-proxy/` is now the app's own set (app commit a3fd173a0: the balances, the error envelopes, a
+streamed refusal and four scripted conversations, `window`, `paint`, `echo` and `create`), re-copied with
+`scripts\sync-contract-fixtures.ps1 -Contract ai-proxy`; PF11's own window turns moved to `server/tests/fixtures/ai/`
+(`server\scripts\make_ai_proxy_fixtures.py [--check]`). `server/scripts/fake_ai_upstream.py` now answers as the app's
+stub does (the person's words pick the conversation, the tool results fill its placeholders), so trying the proxy needs
+no provider key. With the API started with `ANTHROPIC_API_KEY=sk-ant-local-fake` and
+`ANTHROPIC_BASE_URL=http://127.0.0.1:8790`:
+
+```powershell
+cd server
+.venv\Scripts\python.exe scripts\fake_ai_upstream.py --port 8790
+.venv\Scripts\python.exe scripts\demo_ai.py --token tbx_dev_... window
+```
+
+Run the last line in a second window: it streams `find`, `place` and the closing text, each turn followed by its charge
+(`[credits] 22 charged, …`, then 23 and 24: §6.2 for that turn's tokens); `demo_ai.py ... summary` sends one tool-less
+turn. The human test in the doc then opens `/dashboard/cloud/#ai-usage` on the served build.

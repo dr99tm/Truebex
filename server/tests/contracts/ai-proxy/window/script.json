@@ -1,0 +1,22 @@
+{
+  "schema": "truebex-ai-proxy-script/1",
+  "name": "window",
+  "match": [
+    "window"
+  ],
+  "note": "Put a window on the north wall of the study, 1.2 m wide: find the wall, place the window, say so.",
+  "turns": [
+    {
+      "sse": "01-find.sse",
+      "capture": {
+        "wall": "matches.0.ref"
+      }
+    },
+    {
+      "sse": "02-place.sse"
+    },
+    {
+      "sse": "03-end.sse"
+    }
+  ]
+}

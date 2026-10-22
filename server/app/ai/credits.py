@@ -59,6 +59,13 @@ def top_up_url() -> str:
     return f"{get_settings().site_url.rstrip('/')}/dashboard/cloud/#ai-credits"
 
 
+def usage_url() -> str:
+    """5.2's `usage_url` (ai-proxy 1.1.0): the Cloud page's Recent turns panel,
+    the page that shows a person's AI turns (/dashboard/usage/ shows API
+    requests)."""
+    return f"{get_settings().site_url.rstrip('/')}/dashboard/cloud/#ai-usage"
+
+
 # --- plans -----------------------------------------------------------------------------
 
 
@@ -321,6 +328,7 @@ def balance_json(db: Session, user: User, now: datetime | None = None) -> dict:
         "resets_at": clock.rfc3339(clock.aware(row.resets_at)),
         "plan": plan.id,
         "top_up_url": top_up_url(),
+        "usage_url": usage_url(),
         # Additive.
         "allowance_remaining": int(row.allowance_remaining),
     }

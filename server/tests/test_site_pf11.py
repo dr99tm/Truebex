@@ -59,6 +59,19 @@ def test_site_pf11_ai_section_and_admin_panel_are_built():
         assert any(label in c for c in chunks), label
 
 
+def test_site_pf11_recent_turns_carry_the_usage_anchor():
+    """PF11b: ai-proxy 5.2's usage_url is /dashboard/cloud/#ai-usage, so the
+    Cloud page's own chunks give the Recent turns panel that id, beside the
+    section's #ai-credits (top_up_url)."""
+    html = _page("dashboard/cloud")
+    names = sorted(set(re.findall(r'"(/_next/static/chunks/[^"]+\.js)"', html)))
+    assert names, "no chunks named in dashboard/cloud/index.html"
+    chunks = [(OUT / n.lstrip("/")).read_text("utf-8", errors="replace") for n in names]
+    hits = [c for c in chunks if '"ai-usage"' in c]
+    assert hits, "no chunk of /dashboard/cloud/ carries the ai-usage anchor"
+    assert any('"ai-credits"' in c for c in hits)
+
+
 def test_site_pf11_ai_credits_and_analysis_stay_off_features():
     # The assistant, AI credits and the analysis reports aren't shipped app
     # features yet (brand voice: only shipped features in FEATURES).

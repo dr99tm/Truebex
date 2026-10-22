@@ -1,0 +1,8 @@
+{
+  "detail": "The request is larger than 8 MB.",
+  "code": "too_large",
+  "status": 413,
+  "request_id": "a13a13a13a13a13a13a13a13a13a13a1",
+  "retry_after_s": null,
+  "data": {}
+}

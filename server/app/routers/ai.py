@@ -1,4 +1,4 @@
-"""The metered assistant proxy (contract ai-proxy v1.0, 5.1-5.4).
+"""The metered assistant proxy (contract ai-proxy 1.1, 5.1-5.4; a 1.0 client is served).
 
 Auth: the desktop app's device token whose entitlement holds `ai.metered`;
 session tokens, API keys and worker tokens are refused (403 `forbidden`), no
@@ -23,7 +23,7 @@ from ..models import User
 from ..security import API_KEY_PREFIX, decode_access_token
 from ..uploads.credentials import WORKER_TOKEN_PREFIX
 
-router = APIRouter(prefix="/ai", tags=["ai"], dependencies=[contract("ai-proxy", 1, 0)])
+router = APIRouter(prefix="/ai", tags=["ai"], dependencies=[contract("ai-proxy", 1, 1)])
 _bearer = HTTPBearer(auto_error=False)
 
 

@@ -1,8 +1,8 @@
 {
-  "detail": "The AI service is busy. Try again in a moment.",
+  "detail": "The model is busy; try again shortly.",
   "code": "upstream_busy",
   "status": 503,
-  "request_id": "5ee1d00000000000000000000000c0de",
-  "retry_after_s": 20,
+  "request_id": "a13a13a13a13a13a13a13a13a13a13a1",
+  "retry_after_s": 1,
   "data": {}
 }

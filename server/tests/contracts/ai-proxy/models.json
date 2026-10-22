@@ -12,6 +12,18 @@
         "cache_read": 400,
         "cache_write": 5000
       }
+    },
+    {
+      "alias": "truebex-fast",
+      "context_tokens": 200000,
+      "max_output_tokens": 32000,
+      "vision": true,
+      "credits_per_mtok": {
+        "input": 800,
+        "output": 4000,
+        "cache_read": 80,
+        "cache_write": 1000
+      }
     }
   ]
 }

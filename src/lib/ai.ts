@@ -16,6 +16,8 @@ export interface AiBalance {
   resets_at: string;
   plan: string;
   top_up_url: string;
+  /** ai-proxy 5.2 (1.1.0): the Recent turns panel, /dashboard/cloud/#ai-usage. */
+  usage_url: string;
   allowance_remaining: number;
 }
 

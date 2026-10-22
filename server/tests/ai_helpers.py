@@ -14,7 +14,7 @@ from .fakes.fake_provider import FakeProvider, event_name, events_of
 from .project_helpers import Person
 from .render_helpers import studio
 
-AI = {"X-Truebex-Contract": "ai-proxy/1.0"}
+AI = {"X-Truebex-Contract": "ai-proxy/1.1"}
 USER_TEXT = "Put a window on the north wall of the study, 1.2 m wide"
 SESSION_ID = "5e55100000000000000000000000a001"
 WALL = "0199c6a2e00070018000000000000001"
