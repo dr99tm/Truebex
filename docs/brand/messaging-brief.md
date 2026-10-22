@@ -4,7 +4,7 @@
 > direction. What the website actually says is in `src/lib/constants.ts` (home: `SITE`, `HERO`, `ABOUT`,
 > `FEATURES`, `STEPS`, `AUDIENCES`, `WHY`, `PRINCIPLES`, `CONTACT_CTA`, `FOOTER`; Arabic: `AR_HOME`), where
 > every claim is cut to what the shipping app does (§8 below). The brand rules that apply this brief are in
-> `.claude/skills/truebex-brand-voice/SKILL.md`; the social profiles in `docs/brand/social-profiles.md`.
+> `.claude/skills/truebex-brand-voice/SKILL.md`; the social media profiles in `docs/brand/social-media.md`.
 
 ## 1. Purpose of this document
 

@@ -1,8 +1,13 @@
-# Truebex — social profiles and company mailboxes
+# Truebex — social media v1
+
+**Version:** v1, 2026-10-22. The profile text, categories, images and mailboxes for every Truebex account.
+Everything it points to lives in this folder (`docs/brand/`): see `README.md` for the folder and how to change the
+brand.
 
 The one place that holds what every Truebex profile says. Fill each platform by hand from here.
 
-**To change anything later:** edit this file first, then copy the change to the platform, then tick it in
+**To change anything later:** edit this file (and, for colours, logo or slogan, `brand.json` / `logo/`, then run
+`py -3.12 docs/brand/make_brand_assets.py`) first, then copy the change to the platform, then tick it in
 the tracker (§13). When a profile goes live, put its URL in `SOCIAL` in `src/lib/constants.ts` (the footer's
 Follow column and the Organization `sameAs` show only the set ones) and deploy.
 
@@ -29,13 +34,14 @@ its limit (counts in brackets).
 | Voice | Clear, confident, professional, creative and human. Better decisions and better spaces — not a list of software features. |
 | Handle | **truebex** everywhere; if one is taken, **truebexapp** everywhere |
 | Website | https://truebex.com/ |
-| Category | Software (or the platform's nearest: "Software Company", "Software Development") |
+| Category | **Software Company** everywhere; where the list has no such entry, the nearest: "Software" (Instagram), "Software Development" (LinkedIn industry) |
 | Location | United Kingdom — *confirm: it must match the company documents you gave Wayl and Companies House* |
 | Legal name | *(once the company exists — e.g. "Truebex Ltd", company number, registered office)* |
 | Contact / Support / Sales | contact@truebex.com · support@truebex.com · sales@truebex.com (§12) |
 | WhatsApp | *(the business number — see §10)* |
-| Avatar | the T/J mark, grey `#CBCBCB` on the dark ground `#232323` — `public/brand/truebex-mark-grey.svg` (§14) |
-| Banner | the daylight-through-a-doorway capture with the slogan (§14) |
+| Avatar | the T/J mark, grey `#CBCBCB` on the dark ground `#232323` — `export/avatar.png` (§14) |
+| Banner | the lockup and slogan beside the daylight-through-a-doorway capture — one file per platform in `export/` (§14) |
+| Fonts | Segoe UI (the app's font, in images only) → Open Sans (the website's web font, `fonts/`) |
 | Colours | ground `#232323`, logo `#CBCBCB`, accent `#A0CEFF` |
 
 ### Consistency checklist
@@ -85,10 +91,10 @@ Imagine More. Build Better.
 |---|---|---|
 | Username | 30 | truebex |
 | Name | 64 | Truebex |
-| Category | — | Software; show category on profile: on |
+| Category | — | Software Company *(if the list only offers "Software", pick that)*; show category on profile: on |
 | Links | 5 | 1. Website — the Instagram link (§1); 2. `https://truebex.com/download/`, title "Download for Windows"; 3. `https://truebex.com/ar/`, title "بالعربية" |
 | Contact options | — | Email: contact@truebex.com; WhatsApp: the business number (§10) |
-| Profile picture | 320 × 320 (upload 1080 × 1080) | the avatar (§14) |
+| Profile picture | 320 × 320 (upload 1080 × 1080) | `export/avatar.png` |
 | Highlights (later) | — | Explore · Compare · Experience · Releases |
 
 Hashtags for posts (3–5 per post): `#architecture #interiordesign #buildingdesign #designsoftware #realestate`
@@ -123,15 +129,15 @@ Website: https://truebex.com/
 | Field | Limit | Value |
 |---|---|---|
 | Page name | 75 | Truebex |
-| Category (up to 3) | — | Software Company · Computer Company · Architectural Designer *(pick what the list offers)* |
+| Category (up to 3) | — | **Software Company** (first) · Architectural Designer · Interior Design Studio *(if "Software Company" isn't offered, type "Software" and take the closest; last resort: Science, Technology & Engineering)* |
 | Username | 50 | truebex → facebook.com/truebex |
 | Website | — | the Facebook link (§1) |
 | Email | — | contact@truebex.com |
 | Phone / WhatsApp | — | the WhatsApp business number (§10), if you want it public |
 | Location / address | — | leave off unless it is the company's registered office (never a home address) |
 | Action button | — | **Send WhatsApp message** (once §10 exists), else **Send email** → contact@truebex.com |
-| Profile picture | 720 × 720 (shows as a circle) | the avatar (§14) |
-| Cover | 1640 × 624 (keep text in the middle 1640 × 360) | the banner (§14) |
+| Profile picture | 720 × 720 (shows as a circle) | `export/avatar.png` |
+| Cover | 1640 × 624 (keep text in the middle 1640 × 360) | `export/facebook-cover.png` |
 | Link to Instagram | — | Settings → Linked accounts, once Instagram exists |
 
 ---
@@ -172,8 +178,8 @@ Website: https://truebex.com/
 | Specialties (up to 20) | — | Building design software · Architectural design · Interior design · Design visualisation · Real estate design |
 | Founded | — | the year the company was formed |
 | Button | — | **Visit website** → the LinkedIn link (§1) |
-| Logo | 400 × 400 | the avatar (§14) |
-| Cover | 1128 × 191 | the banner (§14), the doorway on the right, the slogan on the left |
+| Logo | 400 × 400 | `export/avatar.png` |
+| Cover | 1128 × 191 | `export/linkedin-cover.png` |
 | Your own profile | — | Experience → "Founder, Truebex" linked to the Page, so the Page shows a real person behind it |
 
 ---
@@ -192,8 +198,8 @@ Explore ideas. Refine designs. Make better decisions before construction. Imagin
 | Handle | 4–15 | @truebex |
 | Location | 30 | United Kingdom *(as §1)* |
 | Website | — | the X link (§1) |
-| Profile picture | 400 × 400 | the avatar (§14) |
-| Header | 1500 × 500 | the banner (§14) |
+| Profile picture | 400 × 400 | `export/avatar.png` |
+| Header | 1500 × 500 | `export/x-header.png` |
 | Account type | — | Professional → category "Software Company" *(or nearest)* |
 
 ---
@@ -214,7 +220,7 @@ Explore more. Design better. Imagine More. Build Better.
 | Username | 24 | @truebex |
 | Website | — | the TikTok link (§1) *(a link may need a verified business account or more followers)* |
 | Email | — | contact@truebex.com |
-| Profile photo | 200 × 200 (upload 1080 × 1080) | the avatar (§14) |
+| Profile photo | 200 × 200 (upload 1080 × 1080) | `export/avatar.png` |
 
 Every post that shows Truebex turns on the content disclosure setting "Your brand".
 
@@ -244,9 +250,9 @@ Website: https://truebex.com/
 | Handle | 3–30 | @Truebex |
 | Links | 14 | title **truebex.com** → the YouTube link (§1); **Download for Windows** → `https://truebex.com/download/`; then each other profile as it goes live |
 | Contact email | — | contact@truebex.com — **only once that mailbox receives mail** (§12) |
-| Profile picture | 800 × 800 | the avatar (§14) |
-| Banner | 2560 × 1440, safe area 1546 × 423 in the centre | the banner (§14) |
-| Video watermark | 150 × 150 | the mark, grey on transparent |
+| Profile picture | 800 × 800 | `export/avatar.png` |
+| Banner | 2560 × 1440, safe area 1546 × 423 in the centre | `export/youtube-banner.png` |
+| Video watermark | 150 × 150 | `export/youtube-watermark.png` |
 
 ---
 
@@ -284,7 +290,7 @@ Ideas for better spaces start here. Explore architectural design, interior conce
 | Name | 65 | Truebex |
 | Username | 30 | truebex |
 | Website | — | the Pinterest link (§1) |
-| Profile picture | 165 × 165 (upload 1080 × 1080) | the avatar (§14) |
+| Profile picture | 165 × 165 (upload 1080 × 1080) | `export/avatar.png` |
 | First boards (later) | — | Interior concepts · Materials and finishes · Spaces designed in Truebex |
 
 ---
@@ -305,12 +311,12 @@ Imagine More. Build Better.
 | Field | Limit | Value |
 |---|---|---|
 | Business name | — | Truebex *(cannot be changed often — get it right first time)* |
-| Category | — | Software / IT services *(or "Professional services" — pick from the list)* |
+| Category | — | Software Company *(or the list's nearest: "Software" / "IT services")* |
 | About | 139 | Imagine More. Build Better. [27] |
 | Address | — | leave empty (no home address) |
 | Email | — | contact@truebex.com |
 | Websites (2) | — | the WhatsApp link (§1); `https://truebex.com/download/` |
-| Profile photo | 640 × 640 | the avatar (§14) |
+| Profile photo | 640 × 640 | `export/avatar.png` |
 | Catalogue | — | leave empty until prices are final |
 
 **Greeting message** (sent to a new chat; English, then Arabic — check the Arabic before use)
@@ -356,7 +362,7 @@ We’re building Truebex, a design platform for architects, interior designers a
 |---|---|---|
 | Display name | 30 | Truebex |
 | Social links | 5 | Website → the Reddit link (§1) *(the website goes here, not in the description)* |
-| Avatar / banner | — | the avatar and banner (§14) |
+| Avatar / banner | — | `export/avatar.png`, `export/reddit-banner.png` |
 
 ---
 
@@ -440,18 +446,24 @@ WhatsApp need an entry (and an icon in the footer) before their links can show o
 
 ---
 
-## 14. Images to make
+## 14. Images (ready in `export/`)
 
-None of these exists at platform size yet; the sources are in the repo.
+Made by `make_brand_assets.py` from `brand.json`, `logo/`, `fonts/` and `images/`. Never edit an export by hand:
+change the source and run the script again.
 
-| Image | Size | From |
+| File | Size | Use |
 |---|---|---|
-| Avatar | 1080 × 1080 (serves every platform; they downscale) | `public/brand/truebex-mark-grey.svg` centred on `#232323`, about 60 % of the width, so a circle crop keeps the whole mark |
-| YouTube banner | 2560 × 1440 | the doorway capture, the slogan inside the centre 1546 × 423 |
-| Facebook cover | 1640 × 624 | the doorway capture with the slogan |
-| LinkedIn cover | 1128 × 191 | the doorway capture on the right, the slogan on the left |
-| X header | 1500 × 500 | the doorway capture with the slogan |
-| Reddit banner | 1920 × 384 | the doorway capture |
-| YouTube watermark | 150 × 150 | the mark, grey on transparent |
+| `export/avatar.png` | 1080 × 1080 | every profile picture and logo (platforms downscale; the mark is 56 % of the width, so a circle crop keeps it whole) |
+| `export/facebook-cover.png` | 1640 × 624 | Facebook cover |
+| `export/linkedin-cover.png` | 1128 × 191 | LinkedIn cover |
+| `export/x-header.png` | 1500 × 500 | X header |
+| `export/youtube-banner.png` | 2560 × 1440 | YouTube banner (text inside the 1546 × 423 safe area) |
+| `export/reddit-banner.png` | 1920 × 384 | Reddit banner |
+| `export/youtube-watermark.png` | 150 × 150, transparent | YouTube video watermark |
+| `export/lockup-dark.png` | 2000 × 1066 | the lockup on the ground: press, partner pages, listings |
+| `export/lockup-grey.png`, `lockup-white.png` | 2000 px wide, transparent | the lockup over video or photos |
+| `export/mark-dark.png` | 800 × 800 | the mark on the ground |
+| `export/svg/` | vector | mark, wordmark and lockup in grey, white and dark |
 
-Only clean captures: no panels, labels, cursor or debug text.
+TikTok, Threads, Pinterest and WhatsApp take only the avatar. Banners use only the one clean capture: no panels,
+labels, cursor or debug text.

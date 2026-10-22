@@ -1,0 +1,42 @@
+{
+  "version": "v1",
+  "updated": "2026-10-22",
+  "name": "Truebex",
+  "meaning": "True Building Experience",
+  "slogan": ["Imagine More.", "Build Better."],
+  "slogan_ar": "تخيّل أكثر. ابنِ أفضل.",
+  "website": "https://truebex.com/",
+  "handle": "truebex",
+  "handle_fallback": "truebexapp",
+  "category": "Software Company",
+  "colors": {
+    "ground": "#232323",
+    "logo": "#CBCBCB",
+    "accent": "#A0CEFF",
+    "accent_strong": "#1762C9",
+    "warn": "#E2A75C",
+    "page": "#161616",
+    "text_primary": "#EDEDED",
+    "text_secondary": "#A8A8A8"
+  },
+  "fonts": {
+    "primary": {
+      "family": "Segoe UI",
+      "regular": "C:/Windows/Fonts/segoeui.ttf",
+      "bold": "C:/Windows/Fonts/segoeuib.ttf",
+      "note": "Licensed with Windows: render it into images only, never commit or self-host it"
+    },
+    "fallback": {
+      "family": "Open Sans",
+      "file": "fonts/OpenSans[wdth,wght].ttf",
+      "note": "SIL Open Font License (fonts/OFL.txt); the website's web font"
+    }
+  },
+  "logo": {
+    "mark": "logo/truebex-mark.svg",
+    "wordmark": "logo/truebex-wordmark.svg",
+    "lockup_gap": 7.4,
+    "avatar_mark_width": 0.56
+  },
+  "capture": "images/daylight-doorway.png"
+}
