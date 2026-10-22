@@ -38,15 +38,11 @@ def _tools() -> dict:
     return json.loads((ROOT / "src" / "content" / "tools.json").read_text(encoding="utf-8"))
 
 
-def _arguments(schema: dict, prefix: str = "") -> dict[str, tuple[dict, bool]]:
-    """Every argument the page lists: name -> (schema, required), nested objects as `a.b`."""
-    out = {}
+def _arguments(schema: dict) -> dict[str, tuple[dict, bool]]:
+    """Every argument the page lists as a row: name -> (schema, required). PF12d: one row per top-level argument; a
+    nested object's fields (PF12b and PF12c showed them as `a.b` rows) are listed under its row (_nested_fields)."""
     required = set(schema.get("required", []))
-    for name, prop in (schema.get("properties") or {}).items():
-        out[prefix + name] = (prop, name in required)
-        if prop.get("type") == "object" and prop.get("properties"):
-            out.update(_arguments(prop, f"{prefix}{name}."))
-    return out
+    return {name: (prop, name in required) for name, prop in (schema.get("properties") or {}).items()}
 
 
 def _fields(schema: dict, prefix: str = "") -> dict[str, tuple[dict, bool]]:
@@ -63,9 +59,12 @@ def _fields(schema: dict, prefix: str = "") -> dict[str, tuple[dict, bool]]:
     return out
 
 
-def _item_fields(prop: dict) -> dict[str, tuple[dict, bool]]:
-    """PF12d: an argument that is an array of objects (create_layout's program.rooms) lists its items' fields under
-    its row, in one compact list; none for any other argument."""
+def _nested_fields(prop: dict) -> dict[str, tuple[dict, bool]]:
+    """PF12d: an object argument (create_layout's program, create_theme's floor) or an array of objects
+    (create_object's parts) lists its fields, or each item's, in one compact list under its row; none for any
+    other argument."""
+    if prop.get("type") == "object" and prop.get("properties"):
+        return _fields(prop)
     items = prop.get("items") if prop.get("type") == "array" else None
     if isinstance(items, dict) and items.get("type") == "object" and items.get("properties"):
         return _fields(items)
@@ -173,6 +172,7 @@ def test_docs_generated_from_tools_json(built):
                 assert name.encode() not in path.read_bytes(), (name, path)
     untyped = _untyped_types()
     assert "undefined" not in page.visible_text() and "[object Object]" not in page.visible_text()
+    nested_count = 0
     for tool in listed:
         sections = page.all("section", data_tool=tool["name"])
         assert len(sections) == 1, tool["name"]
@@ -200,24 +200,41 @@ def test_docs_generated_from_tools_json(built):
             assert "undefined" not in row and "[object Object]" not in row, f"{tool['name']}.{name}: {row!r}"
             for cell in _expected_cells(prop, untyped.get(f"{tool['name']}.{name}", UNTYPED_FALLBACK)):
                 assert cell in row, f"{tool['name']}.{name}: {cell!r} not in {row!r}"
-            # PF12d: an array of objects lists its items' fields in a row of its own right under it.
-            fields = _item_fields(prop)
+            # PF12d: an object or an array of objects lists its fields in a row of its own right under it.
+            fields = _nested_fields(prop)
             nxt = page.elements[page.elements.index(rows[name]) + 1 :]
             follow = next((el for el in nxt if el["tag"] == "tr"), None)
-            listing = follow if follow is not None and follow["attrs"].get("data-items-of") == name else None
-            assert (listing is not None) == bool(fields), f"{tool['name']}.{name}: item list {listing!r}"
+            listing = follow if follow is not None and follow["attrs"].get("data-fields-of") == name else None
+            assert (listing is not None) == bool(fields), f"{tool['name']}.{name}: field list {listing!r}"
             if not fields:
                 continue
-            got = {el["attrs"]["data-item-field"]: el for el in _row_elements(page, listing) if el["tag"] == "li" and "data-item-field" in el["attrs"]}
+            label = "Each item:" if prop.get("type") == "array" else "Its fields:"
+            assert page.text(listing).startswith(label), (tool["name"], name, page.text(listing)[:40])
+            got = {el["attrs"]["data-field"]: el for el in _row_elements(page, listing) if el["tag"] == "li" and "data-field" in el["attrs"]}
             assert list(got) == list(fields), f"{tool['name']}.{name}: {list(got)}"
+            nested_count += len(fields)
             for field, (sub, req) in fields.items():
                 li = got[field]
                 line = page.text(li)
-                where = f"{tool['name']}.{name}[].{field}"
+                where = f"{tool['name']}.{name} {field}"
                 assert line.startswith(f"{field} {_type_text(sub)}"), (where, line)
                 assert ("data-required" in li["attrs"]) is req and ("· required" in line) is req, (where, line)
                 assert _rules_text(sub) in line and (sub.get("description") or "") in line, (where, line)
                 assert "undefined" not in line and "[object Object]" not in line, (where, line)
+    # One row per top-level argument, every nested field once in a list under its row.
+    assert len(page.all("tr", data_argument=True)) == sum(len(t["inputSchema"]["properties"]) for t in listed)
+    assert len(page.all("li", data_field=True)) == nested_count
+    # AI5's create_layout: the program row lists the program's fields, each room's among them, in one place.
+    layout = _rows_within(page, page.all("section", data_tool="create_layout")[0])
+    program = next(el for el in layout if el["tag"] == "tr" and el["attrs"].get("data-fields-of") == "program")
+    lines = {el["attrs"]["data-field"]: page.text(el) for el in _row_elements(page, program) if el["tag"] == "li"}
+    assert list(lines) == [
+        "rooms", "rooms[].type", "rooms[].name", "rooms[].area_m2", "rooms[].adjacent", "rooms[].exterior",
+        "corridor_mm", "wall_mm", "ext_wall_mm",
+    ]
+    assert lines["rooms"] == "rooms object[] · required · 1–16 items", lines["rooms"]
+    assert lines["rooms[].area_m2"] == "rooms[].area_m2 number · required · 1 to 200 — target clear floor area"
+    assert '"living" | "kitchen"' in lines["rooms[].type"] and '"store"' in lines["rooms[].type"]
     # TU1's two tools: the untyped value reads as what set_tunable takes, next to its description; get_tunables'
     # limits as the file gives them.
     tunable = {el["attrs"]["data-argument"]: _cells(page, el) for el in _rows_within(page, page.all("section", data_tool="set_tunable")[0]) if el["tag"] == "tr" and "data-argument" in el["attrs"]}

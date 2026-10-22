@@ -1,8 +1,9 @@
 """PF12d: the platform follows agent-interface 1.3.0 (AI5's six creation skills, §5.20-5.25, and the scoped
 remove, §5.26). None of the seven is log-safe, so the project log refuses them as actions (project-log.md §6.2)
-and ops.LOG_SAFE_TOOLS does not change; /developers/mcp/ documents them, lists the item fields of an array of
-objects (create_layout's program.rooms) and says what a creation call does. The package and tools.json checks are
-in test_pf12_mcp_package.py, the page's tables in test_site_pf12.py."""
+and ops.LOG_SAFE_TOOLS does not change; /developers/mcp/ documents them with one row per top-level argument, a
+nested object's or an array item's fields listed under its row (create_layout's program), and says what a creation
+call does. The package and tools.json checks are in test_pf12_mcp_package.py, the page's tables in
+test_site_pf12.py."""
 
 import json
 import subprocess
@@ -85,26 +86,27 @@ def test_project_log_refuses_creation_tools(client):
 # --- /developers/mcp/ -----------------------------------------------------------------------------
 
 
-def test_docs_generator_lists_item_fields(tmp_path):
-    """src/lib/developer-docs.ts (run by node, types stripped): argumentRows() keeps today's rows (a nested object's
-    properties as `a.b`); itemFields() gives the fields of an array's object items (`a.b` for an object inside an
-    item, `a[].b` for an array of objects inside one), and nothing for any other schema."""
+def test_docs_generator_lists_nested_fields(tmp_path):
+    """src/lib/developer-docs.ts (run by node, types stripped): argumentRows() gives one row per top-level argument;
+    nestedFields() gives an object's fields or an array's object items' fields in one flat list (deeper: `a.b` for an
+    object, `a[].b` for an array of objects), and nothing for any other schema."""
     exe = node()
     if exe is None:
         pytest.skip("node is not installed")
-    script = tmp_path / "items.mjs"
+    script = tmp_path / "nested.mjs"
     script.write_text(
         "const m = await import(process.argv[2]);\n"
         "const doc = m.toolsDocument();\n"
-        "const layout = doc.tools.find((t) => t.name === 'create_layout').inputSchema;\n"
-        "const rows = m.argumentRows(layout);\n"
-        "const rooms = rows.find((r) => r.name === 'program.rooms');\n"
+        "const schema = (name) => doc.tools.find((t) => t.name === name).inputSchema;\n"
+        "const flat = (fields) => fields.map((f) => [f.name, f.required, m.typeOf(f.schema)]);\n"
         "const sample = { type: 'array', items: { type: 'object', required: ['a'], properties: { a: { type: 'string' },"
         " b: { type: 'object', properties: { c: { type: 'number' } } }, d: { type: 'array', items: { type: 'object', properties: { e: { type: 'boolean' } } } } } } };\n"
-        "const flat = (fields) => fields.map((f) => [f.name, f.required, m.typeOf(f.schema)]);\n"
         "console.log(JSON.stringify({\n"
-        "  rows: rows.map((r) => r.name), rooms: flat(m.itemFields(rooms.schema)), sample: flat(m.itemFields(sample)),\n"
-        "  none: [m.itemFields({ type: 'array', items: { type: 'number' } }), m.itemFields({ type: 'object', properties: {} }), m.itemFields({ type: 'array' })],\n"
+        "  rows: m.argumentRows(schema('create_layout')).map((r) => r.name),\n"
+        "  program: flat(m.nestedFields(schema('create_layout').properties.program)),\n"
+        "  parts: flat(m.nestedFields(schema('create_object').properties.parts)).map((f) => f[0]),\n"
+        "  sample: flat(m.nestedFields(sample)),\n"
+        "  none: [m.nestedFields({ type: 'array', items: { type: 'number' } }), m.nestedFields({ type: 'object' }), m.nestedFields({ type: 'string' })],\n"
         "  counted: m.withToolCount('{tools} tools, {tools} again'), total: doc.tools.length,\n"
         "}));\n",
         encoding="utf-8",
@@ -113,15 +115,21 @@ def test_docs_generator_lists_item_fields(tmp_path):
     ran = subprocess.run([exe, "--no-warnings", str(script), entry], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", timeout=120)
     assert ran.returncode == 0, ran.stderr
     got = json.loads(ran.stdout.strip().splitlines()[-1])
-    assert got["rows"][:5] == ["program", "program.rooms", "program.corridor_mm", "program.wall_mm", "program.ext_wall_mm"]
-    assert "program.rooms.type" not in got["rows"]  # item fields are not rows
-    assert got["rooms"] == [
-        ["type", True, '"living" | "kitchen" | "dining" | "bedroom" | "bathroom" | "wc" | "hall" | "study" | "utility" | "store"'],
-        ["name", False, "string"],
-        ["area_m2", True, "number"],
-        ["adjacent", False, "int[]"],
-        ["exterior", False, "boolean"],
+    layout = json.loads(PKG_TOOLS.read_text(encoding="utf-8"))
+    layout = next(t for t in layout["tools"] if t["name"] == "create_layout")["inputSchema"]
+    assert got["rows"] == list(layout["properties"])  # top-level only: no `program.rooms` row
+    assert got["program"] == [
+        ["rooms", True, "object[]"],
+        ["rooms[].type", True, '"living" | "kitchen" | "dining" | "bedroom" | "bathroom" | "wc" | "hall" | "study" | "utility" | "store"'],
+        ["rooms[].name", False, "string"],
+        ["rooms[].area_m2", True, "number"],
+        ["rooms[].adjacent", False, "int[]"],
+        ["rooms[].exterior", False, "boolean"],
+        ["corridor_mm", False, "number"],
+        ["wall_mm", False, "number"],
+        ["ext_wall_mm", False, "number"],
     ]
+    assert got["parts"] == ["name", "kind", "at_mm", "size_mm", "plane", "profile_mm", "depth_mm", "material"]
     assert got["sample"] == [["a", True, "string"], ["b", False, "object"], ["b.c", False, "number"], ["d", False, "object[]"], ["d[].e", False, "boolean"]]
     assert got["none"] == [[], [], []]
     total = got["total"]
