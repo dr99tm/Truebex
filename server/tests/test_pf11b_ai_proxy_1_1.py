@@ -534,7 +534,7 @@ def test_pf11b_error_envelopes_match_the_apps(client, fake, monkeypatch):
     """Each of the app's error envelopes against the platform's answer to that
     case. How each is provoked: credits_exhausted = a Studio account with 0
     credits; plan_required = a Free account's device; unauthenticated = no
-    token, then a device token that does not exist; rate_limited = two turns in
+    token, then a token that is no token at all; rate_limited = two turns in
     flight, then the 60-a-minute bucket (at 1); upstream_busy = the provider's
     529 with retry-after 1; internal_error = the adapter raising an unexpected
     error; too_large = a body over 8 MB."""
@@ -550,7 +550,12 @@ def test_pf11b_error_envelopes_match_the_apps(client, fake, monkeypatch):
     free = Person(client, "free@example.com", trial=False)
     assert _matches("plan-required.json", turn(free), {"plan"})["data"]["plan_needed"] == "pro"
     _matches("unauthenticated.json", turn(h={"X-Truebex-Contract": WIRE}))
-    _matches("unauthenticated.json", turn(h={"Authorization": "Bearer tbx_dev_" + "x" * 43, "X-Truebex-Contract": WIRE}))
+    _matches("unauthenticated.json", turn(h={"Authorization": "Bearer nonsense", "X-Truebex-Contract": WIRE}))
+    # A device token the platform does not know (or revoked) is licence-api's
+    # 401 `device_revoked`: the same envelope; the app's panel reads every 401
+    # alike (AssistantProxy.cpp: sign-in prompt, the token kept).
+    gone = turn(h={"Authorization": "Bearer tbx_dev_" + "x" * 43, "X-Truebex-Contract": WIRE})
+    assert (gone.status_code, gone.json()["code"], gone.json()["data"]) == (401, "device_revoked", None)
     with SessionLocal() as db:
         for t in ("a" * 32, "b" * 32):
             db.add(AiTurn(turn_id=t, account_id=a.user_id, started_at=clock.now()))

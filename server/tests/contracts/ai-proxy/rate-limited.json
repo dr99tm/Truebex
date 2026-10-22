@@ -1,0 +1,8 @@
+{
+  "detail": "Too many turns at once for this account.",
+  "code": "rate_limited",
+  "status": 429,
+  "request_id": "a13a13a13a13a13a13a13a13a13a13a1",
+  "retry_after_s": 30,
+  "data": {}
+}

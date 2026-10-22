@@ -1,0 +1,8 @@
+{
+  "detail": "This device's sign-in was not accepted. Sign in again.",
+  "code": "unauthenticated",
+  "status": 401,
+  "request_id": "a13a13a13a13a13a13a13a13a13a13a1",
+  "retry_after_s": null,
+  "data": {}
+}

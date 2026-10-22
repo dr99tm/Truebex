@@ -1,7 +1,9 @@
-"""The metered assistant proxy (PF11, contract ai-proxy v1.0): the contract's
+"""The metered assistant proxy (PF11, contract ai-proxy 1.1): the contract's
 §10 platform tests first, then 5.1 / 5.2 / 5.4, duplicates and limits. The
 upstream is tests/fakes/fake_provider.py, a real HTTP server the official SDK
-talks to, serving the contract's `.sse` fixtures."""
+talks to, serving PF11's own window turns (tests/fixtures/ai/: cache tokens,
+the proxy's whole stream). The app's own set (tests/contracts/ai-proxy/) is
+played by test_pf11b_ai_proxy_1_1.py."""
 
 import json
 import os
@@ -21,7 +23,7 @@ from .ai_helpers import (
     AI, SESSION_ID, SYSTEM, TOOLS, USER_TEXT, WALL, assemble, body, data_of, dev, fake, first_turn, key, names,  # noqa: F401
     remaining, send, set_remaining, studio_person,
 )
-from .fakes.fake_provider import event_name, events_of, fixture_bytes
+from .fakes.fake_provider import contract_bytes, event_name, events_of, fixture_bytes
 from .licence_helpers import error_of
 from .project_helpers import Person
 
@@ -293,12 +295,12 @@ def test_contract_header_and_error_envelope(client, fake):
     a = studio_person(client)
     fake.sse("window/03-end.sse")
     ok = send(client, dev(a), first_turn())
-    assert ok.headers["X-Truebex-Contract"] == "ai-proxy/1.0"
+    assert ok.headers["X-Truebex-Contract"] == "ai-proxy/1.1"
     whole = client.get("/ai/models", headers=dev(a))
-    assert whole.headers["X-Truebex-Contract"] == "ai-proxy/1.0"
+    assert whole.headers["X-Truebex-Contract"] == "ai-proxy/1.1"
     bad = send(client, {**dev(a), "X-Truebex-Contract": "ai-proxy/2.0"}, first_turn())
     err = error_of(bad, 400, "contract_version")
-    assert err["data"]["supported"] == ["ai-proxy/1.0"] and bad.headers["X-Truebex-Contract"] == "ai-proxy/1.0"
+    assert err["data"]["supported"] == ["ai-proxy/1.1"] and bad.headers["X-Truebex-Contract"] == "ai-proxy/1.1"
     # Unknown alias, a body that is not JSON, a body over 8 MB.
     error_of(send(client, dev(a), first_turn(model="claude-opus-5-5")), 422, "validation_failed")
     error_of(send(client, dev(a), b"{not json"), 422, "validation_failed")
@@ -320,13 +322,15 @@ def test_contract_header_and_error_envelope(client, fake):
 def test_ai_models_balance_and_count(client, fake):
     a = studio_person(client)
     models = client.get("/ai/models", headers=dev(a)).json()
-    assert models == json.loads(fixture_bytes("models.json"))
+    # The app's models.json (AI3) without the stub's truebex-fast (not served before GD7).
+    stub = json.loads(contract_bytes("models.json"))
+    assert models == {"default": stub["default"], "models": [m for m in stub["models"] if m["alias"] == "truebex-assist"]}
     free = Person(client, "free@example.com", trial=False)
     assert client.get("/ai/models", headers=dev(free)).json() == {"default": None, "models": []}
     bal = client.get("/ai/balance", headers=dev(a)).json()
     assert bal["allowance_monthly"] == 5000 and bal["credits_remaining"] == 5000 and bal["top_up_remaining"] == 0
     assert bal["plan"] == "studio" and bal["top_up_url"].endswith("/dashboard/cloud/#ai-credits")
-    assert set(json.loads(fixture_bytes("balance-studio.json"))) <= set(bal)
+    assert set(json.loads(contract_bytes("balance-studio.json"))) <= set(bal)
     start, nxt = credits.quotas.month_bounds()
     assert bal["resets_at"] == f"{nxt.isoformat()}T00:00:00Z"
     assert client.get("/ai/balance", headers=dev(free)).json()["allowance_monthly"] == 0

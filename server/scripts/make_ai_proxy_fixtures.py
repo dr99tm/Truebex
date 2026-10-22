@@ -1,31 +1,34 @@
-"""Write the ai-proxy contract fixtures (contracts/ai-proxy.md §9) into
-server/tests/contracts/ai-proxy/.
+"""Write PF11's own ai-proxy stand-ins into server/tests/fixtures/ai/.
 
-    py -3.12 scripts\\make_ai_proxy_fixtures.py
+    py -3.12 scripts\\make_ai_proxy_fixtures.py            # write
+    py -3.12 scripts\\make_ai_proxy_fixtures.py --check    # compare, write nothing
 
-Deterministic. AI3 owns the master copy (`Docs/roadmap/fixtures/contracts/
-ai-proxy/` in the app repo) once it lands; until then PF11 stages this set,
-written to the letter of §5, §6.2, §7 and §9: the "window on the north wall
-of the study, 1.2 m wide" example as three streamed turns (find, place,
-end_turn) whose `truebex_credits` events follow from the usage at the 5.1
-rates and the studio balance (4388 credits left), plus the 5.1 / 5.2
-answers, a refusal, the 403 and the 503.
+Deterministic, standard library only. The contract's set is the app's own
+(AI3, `Docs/roadmap/fixtures/contracts/ai-proxy/` in the app repo), copied
+byte for byte into server/tests/contracts/ai-proxy/ by
+scripts/sync-contract-fixtures.ps1; this script never writes there (PF11b).
 
-The `.sse` files hold the exact bytes the proxy sends (and the app's stub
-replays); the platform's fake provider serves them without their
-`truebex_credits` events, which the proxy adds itself.
+What stays the platform's own: the "window on the north wall of the study,
+1.2 m wide" example as three streamed turns (find, place, end_turn) whose
+usage carries cache read and write tokens, with the proxy's whole stream in
+each file: every `truebex_credits` event follows from the turn's usage at the
+5.1 rates and the studio balance (4388 credits left), served_by included, so
+a test can compare the proxy's stream with the file byte for byte. The
+platform's fake provider serves them without their `truebex_credits` events,
+which the proxy adds itself.
 """
 
+import argparse
 import json
+import sys
 from pathlib import Path
 
-OUT = Path(__file__).resolve().parents[1] / "tests" / "contracts" / "ai-proxy"
+OUT = Path(__file__).resolve().parents[1] / "tests" / "fixtures" / "ai"
 
 MODEL = "claude-opus-5-5"
 RATES = {"input": 4000, "output": 20000, "cache_read": 400, "cache_write": 5000}
 START_BALANCE = 4388
 WALL = "0199c6a2e00070018000000000000001"  # the project-log fixtures' first wall
-REQUEST_ID = "5ee1d00000000000000000000000c0de"
 
 
 def compact(obj) -> str:
@@ -93,28 +96,9 @@ def tool(tool_id: str, name: str, json_parts: list[str]) -> tuple[str, dict, lis
     )
 
 
-def write(name: str, data: str | dict) -> None:
-    path = OUT / name
-    path.parent.mkdir(parents=True, exist_ok=True)
-    if isinstance(data, dict):
-        data = json.dumps(data, indent=2, ensure_ascii=False) + "\n"
-    path.write_bytes(data.encode("utf-8"))
-
-
-def main() -> None:
-    write(
-        "models.json",
-        {
-            "default": "truebex-assist",
-            "models": [
-                {"alias": "truebex-assist", "context_tokens": 1000000, "max_output_tokens": 64000, "vision": True, "credits_per_mtok": RATES}
-            ],
-        },
-    )
-    common = {"allowance_monthly": 5000, "top_up_remaining": 0, "resets_at": "2026-11-01T00:00:00Z", "plan": "studio", "top_up_url": "https://truebex.com/dashboard/cloud/#ai-credits"}
-    write("balance-studio.json", {"credits_remaining": START_BALANCE, **common, "allowance_remaining": START_BALANCE})
-    write("balance-empty.json", {"credits_remaining": 0, **common, "allowance_remaining": 0})
-
+def files() -> dict[str, bytes]:
+    """Every stand-in: path under OUT -> bytes."""
+    out: dict[str, bytes] = {}
     balance = START_BALANCE
     find, balance = turn(
         "msg_01Tbx0Window0000000000001",
@@ -125,7 +109,7 @@ def main() -> None:
         ],
         "tool_use", 180, balance,
     )
-    write("window/01-find.sse", find)
+    out["window/01-find.sse"] = find.encode("utf-8")
     place, balance = turn(
         "msg_01Tbx0Window0000000000002",
         {"input_tokens": 300, "cache_creation_input_tokens": 220, "cache_read_input_tokens": 5120},
@@ -139,7 +123,7 @@ def main() -> None:
         ],
         "tool_use", 210, balance,
     )
-    write("window/02-place.sse", place)
+    out["window/02-place.sse"] = place.encode("utf-8")
     end, balance = turn(
         "msg_01Tbx0Window0000000000003",
         {"input_tokens": 260, "cache_creation_input_tokens": 0, "cache_read_input_tokens": 5560},
@@ -149,37 +133,29 @@ def main() -> None:
         ],
         "end_turn", 60, balance,
     )
-    write("window/03-end.sse", end)
+    out["window/03-end.sse"] = end.encode("utf-8")
+    return out
 
-    refusal_usage = {"input_tokens": 900, "output_tokens": 0, "cache_read_input_tokens": 0, "cache_creation_input_tokens": 0}
-    write(
-        "refusal.json",
-        {
-            "id": "msg_01Tbx0Refusal000000000001", "type": "message", "model": "truebex-assist", "role": "assistant",
-            "stop_reason": "refusal",
-            "stop_details": {"type": "refusal", "category": "cyber", "explanation": "The model declined this request."},
-            "content": [], "usage": refusal_usage,
-            "credits": {"charged": charge(refusal_usage), "remaining": START_BALANCE - charge(refusal_usage)},
-            "served_by": {"provider": "anthropic", "model": MODEL},
-        },
-    )
-    write(
-        "credits-exhausted.json",
-        {
-            "detail": "Your AI credits are used up for this month.", "code": "credits_exhausted", "status": 403,
-            "request_id": REQUEST_ID, "retry_after_s": None,
-            "data": {"remaining": 0, "resets_at": "2026-11-01T00:00:00Z", "plan_needed": "studio", "top_up_url": "https://truebex.com/dashboard/cloud/#ai-credits"},
-        },
-    )
-    write(
-        "upstream-busy.json",
-        {
-            "detail": "The AI service is busy. Try again in a moment.", "code": "upstream_busy", "status": 503,
-            "request_id": REQUEST_ID, "retry_after_s": 20, "data": {},
-        },
-    )
-    print(f"wrote {OUT} (balance {START_BALANCE} -> {balance})")
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
+    parser.add_argument("--check", action="store_true", help="compare the files with what this script writes")
+    args = parser.parse_args(argv)
+    wanted = files()
+    if args.check:
+        stale = [name for name, data in wanted.items() if not (OUT / name).is_file() or (OUT / name).read_bytes() != data]
+        if stale:
+            print("stale: " + ", ".join(stale))
+            return 1
+        print(f"{OUT}: {len(wanted)} files as written")
+        return 0
+    for name, data in wanted.items():
+        path = OUT / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(data)
+    print(f"wrote {len(wanted)} files into {OUT} (balance {START_BALANCE} -> 4345)")
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

@@ -1,0 +1,11 @@
+{
+  "detail": "Truebex AI is not part of your plan.",
+  "code": "plan_required",
+  "status": 403,
+  "request_id": "a13a13a13a13a13a13a13a13a13a13a1",
+  "retry_after_s": null,
+  "data": {
+    "feature": "ai.metered",
+    "plan_needed": "pro"
+  }
+}

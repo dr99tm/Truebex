@@ -1,0 +1,23 @@
+{
+  "schema": "truebex-ai-proxy-script/1",
+  "name": "paint",
+  "match": [
+    "paint",
+    "white"
+  ],
+  "note": "Paint the study walls white: find the room, fill its walls #FFFFFF, say so.",
+  "turns": [
+    {
+      "sse": "01-find.sse",
+      "capture": {
+        "room": "matches.0.ref"
+      }
+    },
+    {
+      "sse": "02-fill.sse"
+    },
+    {
+      "sse": "03-end.sse"
+    }
+  ]
+}

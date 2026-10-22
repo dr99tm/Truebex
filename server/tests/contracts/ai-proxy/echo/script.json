@@ -1,0 +1,11 @@
+{
+  "schema": "truebex-ai-proxy-script/1",
+  "name": "echo",
+  "match": [],
+  "note": "Any request no other script matches: one short end_turn answer.",
+  "turns": [
+    {
+      "sse": "01-end.sse"
+    }
+  ]
+}

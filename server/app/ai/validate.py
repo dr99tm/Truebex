@@ -1,9 +1,10 @@
 """The rules of contract ai-proxy §5 for 5.3 and 5.4 bodies (422 `validation_failed`).
 
 The proxy reads a turn only as far as these rules need: the alias, the
-roles and block types, images (count, type, size, pixels), `tool_choice`,
-`max_tokens`, `metadata`. Tool definitions, tool inputs and tool results are
-passed on untouched; nothing here is stored.
+roles and block types, images (count, type, size, pixels), `tool_choice`
+(auto or none, and only with tools: 1.1.2), `max_tokens`, `metadata`. Tool
+definitions, tool inputs and tool results are passed on untouched; nothing
+here is stored.
 """
 
 import base64
@@ -188,6 +189,9 @@ def parse_turn(body: object, table: Table, plan_id: str, *, counting: bool = Fal
             or not isinstance(tool.get("input_schema"), dict)
         ):
             raise invalid(f"tools[{i}]", "a name (letters, digits, _ and -) and an input_schema object")
+    if choice is not None and not tools:
+        # 1.1.2: a tool-less conversation (AI7's run summaries) sends neither.
+        raise invalid("tool_choice", "only with tools: a request without tools carries no tool_choice")
     system = body.get("system")
     walker = _Walker()
     if system is not None:

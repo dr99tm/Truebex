@@ -1,0 +1,8 @@
+{
+  "detail": "The AI service had an error.",
+  "code": "internal_error",
+  "status": 500,
+  "request_id": "a13a13a13a13a13a13a13a13a13a13a1",
+  "retry_after_s": null,
+  "data": {}
+}

@@ -1,5 +1,5 @@
 """Submit and follow analysis jobs as the desktop app will (PF11, contract
-render-jobs v1.0), for testing before the app's Analyse commands (AN2-AN4) land.
+render-jobs 1.1), for testing before the app's Analyse commands (AN2-AN4) land.
 
     cd server
     .venv\\Scripts\\python.exe scripts\\demo_analysis.py --token tbx_dev_… catalogue
@@ -25,7 +25,7 @@ from pathlib import Path
 
 import requests
 
-JOBS = {"X-Truebex-Contract": "render-jobs/1.0"}
+JOBS = {"X-Truebex-Contract": "render-jobs/1.1"}
 UPLOADS = {"X-Truebex-Contract": "share-bundle/1.0"}
 
 

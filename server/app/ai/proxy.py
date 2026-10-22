@@ -43,7 +43,7 @@ IN_FLIGHT_MAX = 2
 PER_MINUTE = 60
 KEY_WINDOW = timedelta(minutes=10)
 TURN_STALE = timedelta(minutes=15)
-CONTRACT = "ai-proxy/1.0"
+CONTRACT = "ai-proxy/1.1"
 _END = object()
 
 

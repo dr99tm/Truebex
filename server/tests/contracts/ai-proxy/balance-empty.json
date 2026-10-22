@@ -4,6 +4,6 @@
   "top_up_remaining": 0,
   "resets_at": "2026-11-01T00:00:00Z",
   "plan": "studio",
-  "top_up_url": "https://truebex.com/dashboard/cloud/#ai-credits",
-  "allowance_remaining": 0
+  "top_up_url": "https://truebex.com/dashboard/billing/",
+  "usage_url": "https://truebex.com/dashboard/usage/"
 }

@@ -1,5 +1,5 @@
-"""Talk to the metered assistant proxy as the desktop app will (PF11, contract
-ai-proxy v1.0), for testing before the app's AI panel (AI3) lands.
+"""Talk to the metered assistant proxy as the desktop app does (PF11, contract
+ai-proxy 1.1), for testing without the app's AI panel (AI3).
 
     cd server
     .venv\\Scripts\\python.exe scripts\\demo_ai.py --token tbx_dev_… models
@@ -22,7 +22,7 @@ import sys
 
 import requests
 
-AI = {"X-Truebex-Contract": "ai-proxy/1.0"}
+AI = {"X-Truebex-Contract": "ai-proxy/1.1"}
 WALL = "0199c6a2e00070018000000000000001"
 QUESTION = "Put a window on the north wall of the study, 1.2 m wide"
 SYSTEM = (
