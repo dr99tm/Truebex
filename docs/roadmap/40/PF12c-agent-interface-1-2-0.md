@@ -230,6 +230,7 @@ Launch: in the worktree, `powershell -NoProfile -ExecutionPolicy Bypass -File sc
      `package.json` follows the bridge (the test holds them equal).
   5. PF12b's carry-overs 1–3 (`server.mjs:40` hex entity ids, `-32603` on `resources/read`, `manifest.json`'s licence)
      are unchanged in 1.2.0's bridge.
+  6. Agent-interface 1.3.0 (AI5's seven tools, 20 on MCP) is followed by PF12d (`PF12d-agent-interface-1-3-0.md`), which carries 1–5 on.
 * **Contract proposals (for the owner to write; nothing changed from here):**
   * `project-log.md` §6.2: `set_tunable` has no ref, so its `touched` is empty and two replicas setting one knob never
     conflict (the later `server_seq` wins on every replica). If they should conflict, give a tunable a `touched` id:
