@@ -10,7 +10,7 @@ import xml.etree.ElementTree as ET
 import pytest
 
 from .pf12_helpers import ROOT, node
-from .test_pf12_mcp_package import ASSISTANT_ONLY, Bridge, on_mcp
+from .test_pf12_mcp_package import AI5_TOOLS, ASSISTANT_ONLY, MCP_ORDER, Bridge, on_mcp
 from .test_pf12_mcp_package import meta as mcp_meta
 from .test_site_pf13 import OUT, SITE, Doc, built  # noqa: F401  (built is a fixture)
 
@@ -47,6 +47,61 @@ def _arguments(schema: dict, prefix: str = "") -> dict[str, tuple[dict, bool]]:
         if prop.get("type") == "object" and prop.get("properties"):
             out.update(_arguments(prop, f"{prefix}{name}."))
     return out
+
+
+def _fields(schema: dict, prefix: str = "") -> dict[str, tuple[dict, bool]]:
+    """Every field of an object, nested objects as `a.b` and arrays of objects as `a[].b`."""
+    out = {}
+    required = set(schema.get("required", []))
+    for name, prop in (schema.get("properties") or {}).items():
+        out[prefix + name] = (prop, name in required)
+        if prop.get("type") == "object" and prop.get("properties"):
+            out.update(_fields(prop, f"{prefix}{name}."))
+        items = prop.get("items") if prop.get("type") == "array" else None
+        if isinstance(items, dict) and items.get("type") == "object" and items.get("properties"):
+            out.update(_fields(items, f"{prefix}{name}[]."))
+    return out
+
+
+def _item_fields(prop: dict) -> dict[str, tuple[dict, bool]]:
+    """PF12d: an argument that is an array of objects (create_layout's program.rooms) lists its items' fields under
+    its row, in one compact list; none for any other argument."""
+    items = prop.get("items") if prop.get("type") == "array" else None
+    if isinstance(items, dict) and items.get("type") == "object" and items.get("properties"):
+        return _fields(items)
+    return {}
+
+
+def _type_text(s: dict) -> str:
+    """typeOf() of src/lib/developer-docs.ts on the portable subset (§6.5)."""
+    if s.get("enum"):
+        return " | ".join(json.dumps(v) for v in s["enum"])
+    if "const" in s:
+        return json.dumps(s["const"])
+    t = s.get("type")
+    if t == "array":
+        return (_type_text(s["items"]) if isinstance(s.get("items"), dict) else "any") + "[]"
+    return {"integer": "int"}.get(t, t) if t else UNTYPED_FALLBACK
+
+
+def _rules_text(schema: dict) -> str:
+    """rulesOf() of src/lib/developer-docs.ts: items, range, length, default."""
+    parts = []
+    s = schema["items"] if schema.get("type") == "array" and isinstance(schema.get("items"), dict) else schema
+    if schema.get("type") == "array" and ("minItems" in schema or "maxItems" in schema):
+        if schema.get("minItems") == schema.get("maxItems"):
+            parts.append(f"{schema['minItems']} items")
+        else:
+            parts.append(f"{schema.get('minItems', 0)}–{schema.get('maxItems', '∞')} items")
+    if "minimum" in s or "maximum" in s:
+        parts.append(f"{_num(s['minimum']) if 'minimum' in s else '−∞'} to {_num(s['maximum']) if 'maximum' in s else '∞'}")
+    if "minLength" in s:
+        parts.append(f"≥ {s['minLength']} chars")
+    if "maxLength" in s:
+        parts.append(f"≤ {s['maxLength']} chars")
+    if "default" in schema:
+        parts.append(f"default {json.dumps(schema['default'])}")
+    return "; ".join(parts)
 
 
 def _cells(page: Doc, row: dict) -> list[str]:
@@ -106,17 +161,18 @@ def test_docs_generated_from_tools_json(built):
     doc = _tools()
     page = _page("developers/mcp")
     html = page.html
-    # agent-interface 1.2.0: the page documents the tools on the mcp surface (absent = both), 13 of the file's 14;
-    # the in-app assistant's propose_variants is never on MCP, so its name is nowhere in the page's files.
+    # agent-interface 1.2.0: the page documents the tools on the mcp surface (absent = both); the in-app assistant's
+    # propose_variants is never on MCP, so its name is nowhere in the page's files. 1.3.0: AI5's seven at the end.
     listed = on_mcp(doc)
-    assert len(listed) == len(doc["tools"]) - len(ASSISTANT_ONLY) == 13
+    assert [t["name"] for t in listed] == MCP_ORDER and len(listed) == len(doc["tools"]) - len(ASSISTANT_ONLY)
+    assert set(AI5_TOOLS) <= {t["name"] for t in listed}
     assert [el["attrs"]["data-tool"] for el in page.all("section", data_tool=True)] == [t["name"] for t in listed]
     for path in (OUT / "developers" / "mcp").rglob("*"):
         if path.is_file():
             for name in ASSISTANT_ONLY:
                 assert name.encode() not in path.read_bytes(), (name, path)
     untyped = _untyped_types()
-    assert "undefined" not in page.visible_text()
+    assert "undefined" not in page.visible_text() and "[object Object]" not in page.visible_text()
     for tool in listed:
         sections = page.all("section", data_tool=tool["name"])
         assert len(sections) == 1, tool["name"]
@@ -141,8 +197,27 @@ def test_docs_generated_from_tools_json(built):
             assert cells[0] == name and cells[2] == ("yes" if required else ""), f"{tool['name']}.{name}: {cells}"
             assert cells[1].strip() and cells[1] != "undefined", f"{tool['name']}.{name}: no type shown"
             row = " | ".join(cells)
+            assert "undefined" not in row and "[object Object]" not in row, f"{tool['name']}.{name}: {row!r}"
             for cell in _expected_cells(prop, untyped.get(f"{tool['name']}.{name}", UNTYPED_FALLBACK)):
                 assert cell in row, f"{tool['name']}.{name}: {cell!r} not in {row!r}"
+            # PF12d: an array of objects lists its items' fields in a row of its own right under it.
+            fields = _item_fields(prop)
+            nxt = page.elements[page.elements.index(rows[name]) + 1 :]
+            follow = next((el for el in nxt if el["tag"] == "tr"), None)
+            listing = follow if follow is not None and follow["attrs"].get("data-items-of") == name else None
+            assert (listing is not None) == bool(fields), f"{tool['name']}.{name}: item list {listing!r}"
+            if not fields:
+                continue
+            got = {el["attrs"]["data-item-field"]: el for el in _row_elements(page, listing) if el["tag"] == "li" and "data-item-field" in el["attrs"]}
+            assert list(got) == list(fields), f"{tool['name']}.{name}: {list(got)}"
+            for field, (sub, req) in fields.items():
+                li = got[field]
+                line = page.text(li)
+                where = f"{tool['name']}.{name}[].{field}"
+                assert line.startswith(f"{field} {_type_text(sub)}"), (where, line)
+                assert ("data-required" in li["attrs"]) is req and ("· required" in line) is req, (where, line)
+                assert _rules_text(sub) in line and (sub.get("description") or "") in line, (where, line)
+                assert "undefined" not in line and "[object Object]" not in line, (where, line)
     # TU1's two tools: the untyped value reads as what set_tunable takes, next to its description; get_tunables'
     # limits as the file gives them.
     tunable = {el["attrs"]["data-argument"]: _cells(page, el) for el in _rows_within(page, page.all("section", data_tool="set_tunable")[0]) if el["tag"] == "tr" and "data-argument" in el["attrs"]}
@@ -180,6 +255,14 @@ def test_docs_generated_from_tools_json(built):
         assert phrase in text, phrase
     assert {el["attrs"]["data-resource"] for el in page.all("tr", data_resource=True)} == MCP_RESOURCES
     constants = (ROOT / "src" / "lib" / "constants.ts").read_text(encoding="utf-8")
+    # PF12d: the tool count in the page's words is generated from the file's mcp surface: the copy holds a
+    # placeholder, never a number that falls behind the next MINOR.
+    count = len(listed)
+    assert f"Truebex: {count} tools and three resources" in (page.meta("description") or "")
+    assert f"its {count} tools and three resources" in page.text(page.all("div", data_install="Claude Code")[0])
+    mcp_copy = constants.split("export const DEVELOPER_DOCS", 1)[1].split("\n    mcp: {", 1)[1].split("\n    },", 1)[0]
+    assert mcp_copy.count("{tools} tools") == 2, "the description and the Claude Code note"
+    assert not re.search(r"\b\d+ tools\b|\b(?:thirteen|fourteen|twenty)\b", mcp_copy, re.I)
     published = re.search(r"mcpPublished: (true|false)", constants.split("export const DEVELOPER_DOCS", 1)[1]).group(1)
     if published == "true":
         assert "claude mcp add --scope user truebex -- npx -y @truebex/mcp" in text
@@ -203,6 +286,16 @@ def test_docs_resources_match_the_bridge(built, tmp_path):
     assert listed == MCP_RESOURCES
     page = _page("developers/mcp")
     assert {el["attrs"]["data-resource"] for el in page.all("tr", data_resource=True)} == listed
+
+
+def _row_elements(page: Doc, row: dict) -> list[dict]:
+    """The elements inside one table row (up to the next row)."""
+    out = []
+    for el in page.elements[page.elements.index(row) + 1 :]:
+        if el["tag"] in ("tr", "section"):
+            break
+        out.append(el)
+    return out
 
 
 def _rows_within(page: Doc, section: dict) -> list[dict]:
