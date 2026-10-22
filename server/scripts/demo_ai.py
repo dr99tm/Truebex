@@ -5,13 +5,16 @@ ai-proxy 1.1), for testing without the app's AI panel (AI3).
     .venv\\Scripts\\python.exe scripts\\demo_ai.py --token tbx_dev_… models
     .venv\\Scripts\\python.exe scripts\\demo_ai.py --token tbx_dev_… balance
     .venv\\Scripts\\python.exe scripts\\demo_ai.py --token tbx_dev_… window
+    .venv\\Scripts\\python.exe scripts\\demo_ai.py --token tbx_dev_… summary
 
 `window` asks "Put a window on the north wall of the study, 1.2 m wide" with
 two agent tools (`find`, `place`), streams each turn (text, tool calls, the
 `truebex_credits` event), answers the tool calls the way the app would (a
 stand-in model: one wall found, the window placed) and sends the next turn
-with the history unchanged, until the model ends its turn. `count` prints
-5.4's estimate for the first turn. Get a device token with
+with the history unchanged and the same `metadata.session_id`, until the
+model ends its turn. `summary` sends one tool-less turn (no tools, no
+tool_choice), as the app's unattended-run summaries do (contract 1.1.2).
+`count` prints 5.4's estimate for the first turn. Get a device token with
 `demo_replica.py login … --trial`. API: --api (default http://127.0.0.1:8000).
 """
 
@@ -77,7 +80,8 @@ def get(args, path: str) -> dict:
     return res.json()
 
 
-def turn_body(messages: list, *, stream: bool = True) -> dict:
+def turn_body(messages: list, *, stream: bool = True, session: str | None = None) -> dict:
+    """A 5.3 body; one conversation sends one `session` with every turn."""
     return {
         "model": "truebex-assist",
         "max_tokens": 8192,
@@ -85,16 +89,28 @@ def turn_body(messages: list, *, stream: bool = True) -> dict:
         "system": SYSTEM,
         "tools": TOOLS,
         "tool_choice": {"type": "auto"},
-        "metadata": {"session_id": secrets.token_hex(16), "app_version": "demo"},
+        "metadata": {"session_id": session or secrets.token_hex(16), "app_version": "demo"},
         "messages": messages,
     }
 
 
-def stream_turn(args, messages: list) -> tuple[list, str | None]:
+def summary_body(text: str) -> dict:
+    """A tool-less turn (1.1.2): no tools and no tool_choice."""
+    return {
+        "model": "truebex-assist",
+        "max_tokens": 1024,
+        "stream": True,
+        "system": "Summarise this unattended run for the person who started it, in two sentences.",
+        "metadata": {"session_id": secrets.token_hex(16), "app_version": "demo"},
+        "messages": [{"role": "user", "content": [{"type": "text", "text": text}]}],
+    }
+
+
+def stream_turn(args, body: dict) -> tuple[list, str | None]:
     """One streamed turn: prints it, returns (the assistant's content, stop_reason)."""
     res = requests.post(
         _url(args, "/ai/messages"), headers={**_headers(args), "Idempotency-Key": secrets.token_hex(16)},
-        json=turn_body(messages), stream=True, timeout=(10, 600),
+        json=body, stream=True, timeout=(10, 600),
     )
     if res.status_code != 200:
         _fail(res)
@@ -151,9 +167,10 @@ def tool_result(block: dict) -> dict:
 
 def cmd_window(args) -> None:
     messages = [{"role": "user", "content": [{"type": "text", "text": QUESTION}]}]
+    session = secrets.token_hex(16)  # one conversation, one session id (contract 5.3)
     print(f"you: {QUESTION}")
     for _ in range(args.turns):
-        content, stop = stream_turn(args, messages)
+        content, stop = stream_turn(args, turn_body(messages, session=session))
         messages.append({"role": "assistant", "content": content})
         calls = [b for b in content if b.get("type") == "tool_use"]
         if stop != "tool_use" or not calls:
@@ -176,6 +193,8 @@ def main(argv: list[str] | None = None) -> int:
     sub.add_parser("count")
     w = sub.add_parser("window")
     w.add_argument("--turns", type=int, default=6)
+    s = sub.add_parser("summary")
+    s.add_argument("--text", default="Run 12 checked the stairs and the fire exits: 3 checks passed, 1 warning (stair 2's headroom).")
     args = parser.parse_args(argv)
     if args.cmd in ("models", "balance"):
         print(json.dumps(get(args, f"/ai/{args.cmd}"), indent=2))
@@ -185,6 +204,10 @@ def main(argv: list[str] | None = None) -> int:
         if res.status_code != 200:
             _fail(res)
         print(json.dumps(res.json(), indent=2))
+    elif args.cmd == "summary":
+        print(f"run: {args.text}")
+        _, stop = stream_turn(args, summary_body(args.text))
+        print(f"\n[stop] {stop}")
     else:
         cmd_window(args)
     return 0
