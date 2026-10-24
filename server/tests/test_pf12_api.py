@@ -232,7 +232,7 @@ def test_v1_jobs_pack_export(client):
     assert res.status_code == 201, res.text
     job = res.json()
     assert job["kind"] == "pack" and job["state"] == "queued" and job["cost_units_estimate"] > 0
-    assert res.headers["X-Truebex-Contract"] == "render-jobs/1.1"
+    assert res.headers["X-Truebex-Contract"] == "render-jobs/1.2"
     assert client.get(f"/v1/jobs/{job['job_id']}", headers=kh(key, **RJ)).json()["job_id"] == job["job_id"]
     assert [j["job_id"] for j in client.get("/v1/jobs", headers=kh(key, **RJ)).json()["jobs"]] == [job["job_id"]]
     assert client.get("/v1/jobs/usage", headers=kh(key, **RJ)).json()["limit_cu"] is not None

@@ -22,7 +22,7 @@ import sys
 
 import requests
 
-JOBS = {"X-Truebex-Contract": "render-jobs/1.1"}
+JOBS = {"X-Truebex-Contract": "render-jobs/1.2"}
 LOG = {"X-Truebex-Contract": "project-log/1.0"}
 # The saved views of the app's fixtures (CL3: PR3-pano-rooms.tbxp): bedroom, entry, living.
 VIEWS = ["ecaf16d70fa5862cbba8f2288b9fd593", "8388104cbff98d2dba07fd23c19c83b5", "aee49319c0d48a7a953f247b52c948be"]

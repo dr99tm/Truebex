@@ -1,10 +1,12 @@
 """Estimates before an analysis runs (contract 5.1 `cost_units_estimate`; PF11 Scope 7).
 
     wind       cells × iterations       cells from the geometry: the domain (5 H upstream,
-                                        15 H downstream, 5 H to the sides and above) at H/10
-                                        cells, refined around the building
+                                        15 H downstream, 5 H to the sides and above) at H/n
+                                        cells, n = 6, 10 or 20 by the job's quality (PF11c),
+                                        refined around the building; GD3's 1000 iterations
     energy     zones × timesteps        from the epJSON model: zones, timesteps per hour, a year
     acoustics  rays × sources           from the params
+    airflow    one network solve        a fixed estimate (PF11c)
     texture    pixels × maps            from the params
 
 seconds = fixed_s + seconds_per_unit × units (estimates.json, GD3's worked
@@ -40,8 +42,8 @@ class Estimate:
     detail: dict
 
 
-def wind_cells(mesh: Mesh) -> int:
-    p = kinds.PROFILES["wind"]
+def wind_cells(mesh: Mesh, quality: str = "standard") -> int:
+    p = kinds.profile("wind", quality)
     d = p["domain_h"]
     h = max(mesh.height_m, 3.0)
     footprint = max(mesh.footprint_m, 1.0)
@@ -54,12 +56,16 @@ def wind_cells(mesh: Mesh) -> int:
     return int(min(bounds["max"], max(bounds["min"], cells)))
 
 
-def units_for(kind: str, *, mesh: Mesh | None = None, zones: int = 0, tph: int = 0, params: dict | None = None) -> tuple[int, dict]:
+def units_for(kind: str, *, mesh: Mesh | None = None, zones: int = 0, tph: int = 0, params: dict | None = None,
+              quality: str = "standard", rooms: int = 0, openings: int = 0) -> tuple[int, dict]:
     params = params or {}
     if kind == "wind":
-        cells = wind_cells(mesh)
-        iterations = kinds.PROFILES["wind"]["iterations_max"]
-        return max(1, math.ceil(cells * iterations / 1e6)), {"cells": cells, "iterations": iterations, "triangles": mesh.triangles}
+        cells = wind_cells(mesh, quality)
+        iterations = int(DATA["wind_iterations"])
+        detail = {"cells": cells, "iterations": iterations, "triangles": mesh.triangles, "quality": quality}
+        return max(1, math.ceil(cells * iterations / 1e6)), detail
+    if kind == "airflow":
+        return 1, {"rooms": rooms, "openings": openings}
     if kind == "energy":
         steps = zones * tph * kinds.PROFILES["energy"]["hours"]
         return max(1, math.ceil(steps / 1000)), {"zones": zones, "timesteps": tph * kinds.PROFILES["energy"]["hours"]}

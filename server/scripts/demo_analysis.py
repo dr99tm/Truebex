@@ -1,18 +1,28 @@
-"""Submit and follow analysis jobs as the desktop app will (PF11, contract
-render-jobs 1.1), for testing before the app's Analyse commands (AN2-AN4) land.
+"""Submit and follow analysis jobs as the desktop app does (PF11, PF11c; contract
+render-jobs 1.2), for testing beside the app's wind study (AN3).
 
     cd server
     .venv\\Scripts\\python.exe scripts\\demo_analysis.py --token tbx_dev_… catalogue
-    .venv\\Scripts\\python.exe scripts\\demo_analysis.py --token tbx_dev_… wind [--stl house.stl] [--speed 5 --direction 225]
+    .venv\\Scripts\\python.exe scripts\\demo_analysis.py --token tbx_dev_… wind [--stl house.stl --entities house.bin] [--speed 5 --direction 225] [--quality draft]
+    .venv\\Scripts\\python.exe scripts\\demo_analysis.py --token tbx_dev_… airflow --wind-job <id> [--rooms rooms.json] [--speed 5 --direction 225]
     .venv\\Scripts\\python.exe scripts\\demo_analysis.py --token tbx_dev_… energy --model house.epJSON --weather <id>
     .venv\\Scripts\\python.exe scripts\\demo_analysis.py --token tbx_dev_… watch --job <id>
-    .venv\\Scripts\\python.exe scripts\\demo_analysis.py --token tbx_dev_… output --job <id>
+    .venv\\Scripts\\python.exe scripts\\demo_analysis.py --token tbx_dev_… output --job <id> [--json]
 
-`wind` uploads the geometry as a `job-input` (share-bundle §5; without --stl a
-10 m wide, 7 m high test shape of 8 triangles) and submits one direction;
-the answer prints the estimate in cost units. `watch` long-polls the job,
-`output` prints the `truebex-analysis/1` result's summary, fields and grids.
-Get a device token with `demo_replica.py login … --trial`.
+`wind` uploads the geometry and its entity ids as `job-input` files
+(share-bundle §5; without --stl a 10 m wide, 7 m high closed test shape of
+8 triangles and 8 ids) and submits one direction with render-jobs 1.2's
+params; the answer prints the estimate in cost units. The app's own export
+is in tests/contracts/render-jobs/ (`--stl …/wind-geometry.bin --entities
+…/wind-entities.bin`, the app's CL0 project id with `--project-id
+f08ffe0283418dea8627d42c7908ab88`). `airflow` uploads a rooms file
+(`truebex-airflow-rooms/1`; without --rooms two rooms on the app export's
+facades, no cp, so the wind job's Cp applies) and submits the indoor run
+on the wind job of the same direction: give it the same --speed,
+--direction, --reference-height and --terrain. It waits for that wind job.
+`watch` long-polls a job, `output` prints the `truebex-analysis/1` result's
+summary, fields, grids and its `files` map (5.5). Get a device token with
+`demo_replica.py login … --trial`.
 """
 
 import argparse
@@ -25,8 +35,28 @@ from pathlib import Path
 
 import requests
 
-JOBS = {"X-Truebex-Contract": "render-jobs/1.1"}
+JOBS = {"X-Truebex-Contract": "render-jobs/1.2"}
 UPLOADS = {"X-Truebex-Contract": "share-bundle/1.0"}
+# Two rooms of the app's export of Z0-baseline.tbxp (tests/contracts/render-jobs/wind-geometry.bin:
+# x -0.15..26.15 m, y -0.15..9.15 m): a south window, a door between them, a north window.
+LIVING = "0199c6a2e00070028000000000000011"
+HALL = "0199c6a2e00070028000000000000012"
+DEMO_ROOMS = {
+    "schema": "truebex-airflow-rooms/1",
+    "rooms": [
+        {"id": LIVING, "name": "Living", "volume_m3": 48.6, "floor_z_m": 0.0},
+        {"id": HALL, "name": "Hall", "volume_m3": 20.0, "floor_z_m": 0.0},
+    ],
+    "openings": [
+        {"id": "0199c6a2e000700a8000000000000021", "from": LIVING, "to": "outside", "area_m2": 1.6, "cd": 0.6, "z_m": 1.05,
+         "centre_m": [5.0, -0.15, 1.05], "normal": [0.0, -1.0, 0.0]},
+        {"id": "0199c6a2e000700a8000000000000022", "from": LIVING, "to": HALL, "area_m2": 1.8, "cd": 0.6, "z_m": 1.05,
+         "centre_m": [8.0, 4.5, 1.05], "normal": [1.0, 0.0, 0.0]},
+        {"id": "0199c6a2e000700a8000000000000023", "from": "outside", "to": HALL, "area_m2": 1.2, "cd": 0.6, "z_m": 1.05,
+         "centre_m": [12.0, 9.15, 1.05], "normal": [0.0, -1.0, 0.0]},
+    ],
+    "rho_kg_m3": 1.2,
+}
 
 
 def call(args, method: str, path: str, *, headers: dict, ok=(200, 201, 204), **kw):
@@ -56,6 +86,13 @@ def test_shape() -> bytes:
     return bytes(out)
 
 
+def entity_ids(stl: bytes) -> bytes:
+    """16 bytes per triangle (Hi then Lo, big-endian): one demo id each, derived from the file."""
+    (n,) = struct.unpack_from("<I", stl, 80)
+    seed = hashlib.sha256(stl).digest()[:8]
+    return b"".join(seed + struct.pack(">Q", i + 1) for i in range(n))
+
+
 def upload_input(args, data: bytes, content_type: str = "application/octet-stream") -> str:
     digest = hashlib.sha256(data).hexdigest()
     opened = call(args, "POST", "/uploads", headers=UPLOADS, json={
@@ -72,19 +109,37 @@ def upload_input(args, data: bytes, content_type: str = "application/octet-strea
 
 
 def submit(args, body: dict) -> None:
+    if args.project_id:
+        body.update(project_id=args.project_id, at_seq=args.at_seq)
+    body["quality"] = args.quality
     job = call(args, "POST", "/jobs", headers={**JOBS, "Idempotency-Key": secrets.token_hex(16)}, json=body)
-    print(f"{job['kind']} job {job['state']} on {job['class']}: estimate {job['cost_units_estimate']} cu")
+    print(f"{job['kind']} job {job['state']} on {job['class']}, {job['quality']}: estimate {job['cost_units_estimate']} cu")
+    if job.get("message"):
+        print(job["message"])
     print(f"job id: {job['job_id']}")
+
+
+def site(args) -> dict:
+    return {"speed_ms": args.speed, "direction_deg": args.direction, "reference_height_m": args.reference_height, "terrain": args.terrain}
 
 
 def cmd_wind(args) -> None:
     data = Path(args.stl).read_bytes() if args.stl else test_shape()
-    files = {"geometry": upload_input(args, data)}
-    if args.entities:
-        files["entities"] = upload_input(args, Path(args.entities).read_bytes())
+    ids = Path(args.entities).read_bytes() if args.entities else entity_ids(data)
+    files = {"geometry": upload_input(args, data, "model/stl"), "entities": upload_input(args, ids)}
     submit(args, {
         "kind": "wind", "inputs": {"upload_id": None, "files": files},
-        "params": {"speed_ms": args.speed, "direction_deg": args.direction, "reference_height_m": 10, "terrain": args.terrain, "comfort": "lawson"},
+        "params": {**site(args), "comfort": "lawson", "pedestrian_height_m": args.pedestrian_height,
+                   "grid_cell_mm": args.grid_cell, "turbulence_model": args.turbulence},
+    })
+
+
+def cmd_airflow(args) -> None:
+    rooms = Path(args.rooms).read_bytes() if args.rooms else json.dumps(DEMO_ROOMS, indent=2).encode("utf-8")
+    files = {"rooms": upload_input(args, rooms, "application/json")}
+    submit(args, {
+        "kind": "airflow", "inputs": {"upload_id": None, "files": files},
+        "params": {"wind_job_id": args.wind_job, **site(args), "velocity_height_m": args.velocity_height},
     })
 
 
@@ -101,6 +156,8 @@ def cmd_watch(args) -> None:
             rev = job["rev"]
             cost = job["cost_units"] if job["cost_units"] is not None else f"~{job['cost_units_estimate']}"
             extra = f" {job['message']}" if job["message"] else ""
+            if job.get("error"):
+                extra += f" {job['error']['code']}: {job['error']['message']}"
             print(f"rev {rev}: {job['state']} {round(job['progress'] * 100)}%, {cost} cu{extra}")
             if job["state"] in ("succeeded", "failed", "cancelled", "expired"):
                 return
@@ -108,13 +165,20 @@ def cmd_watch(args) -> None:
 
 def cmd_output(args) -> None:
     out = call(args, "GET", f"/jobs/{args.job}/output", headers=JOBS)
-    print(f"{out['schema']} {out['kind']} by {out['engine']['name']} {out['engine']['version']}")
+    if args.json:
+        print(json.dumps(out, indent=2))
+        return
+    print(f"{out['schema']} {out['kind']} by {out['engine']['name']} {out['engine']['version']} ({out['engine'].get('image')})")
+    print(f"project {out.get('project_id')} at sequence {out.get('at_seq')}")
     print("summary:", json.dumps(out.get("summary")))
     for f in out.get("fields") or []:
         print(f"field {f['name']} [{f['unit']}] on {f['on']}: {f['count']} values")
     for g in out.get("grids") or []:
-        print(f"grid {g['name']} [{g['unit']}]: {g['nx']} x {g['ny']} cells of {g['cell_mm']} mm from {g['origin_mm']}")
-    print(f"{len(out.get('urls') or {})} files, signed until {out.get('urls_expire_at')}")
+        print(f"grid {g['name']} [{g['unit']}] x{g.get('components', 1)}: {g['nx']} x {g['ny']} cells of {g['cell_mm']} mm, cell (0, 0) centred at {g['origin_mm']}")
+    files = out.get("files") or {}
+    print(f"files: {len(files)}, signed until {out.get('urls_expire_at')}")
+    for sha, f in files.items():
+        print(f"  {sha[:16]}…  {f['bytes']} bytes  {f['url'].split('?', 1)[0]}")
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -123,22 +187,45 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--token", required=True, help="a device token (tbx_dev_…) or a session token")
     sub = parser.add_subparsers(dest="cmd", required=True)
     sub.add_parser("catalogue")
+
+    def job_args(p):
+        p.add_argument("--quality", default="standard", choices=("draft", "standard", "high"))
+        p.add_argument("--project-id", help="the cloud project's id, or the document's own (32 hex)")
+        p.add_argument("--at-seq", type=int, default=0)
+
+    def site_args(p):
+        p.add_argument("--speed", type=float, default=5)
+        p.add_argument("--direction", type=float, default=225)
+        p.add_argument("--reference-height", type=float, default=10)
+        p.add_argument("--terrain", default="suburban", choices=("sea", "lake", "open", "suburban", "urban"))
+
     w = sub.add_parser("wind")
     w.add_argument("--stl")
-    w.add_argument("--entities")
-    w.add_argument("--speed", type=float, default=5)
-    w.add_argument("--direction", type=float, default=225)
-    w.add_argument("--terrain", default="suburban")
+    w.add_argument("--entities", help="16 bytes per triangle (default: demo ids)")
+    site_args(w)
+    w.add_argument("--pedestrian-height", type=float, default=1.5)
+    w.add_argument("--grid-cell", type=float, default=1000, help="mm")
+    w.add_argument("--turbulence", default="realizable_ke", choices=("realizable_ke", "komega_sst"))
+    job_args(w)
+    a = sub.add_parser("airflow")
+    a.add_argument("--wind-job", required=True, help="the wind job of the same direction")
+    a.add_argument("--rooms", help="a truebex-airflow-rooms/1 file (default: two demo rooms)")
+    site_args(a)
+    a.add_argument("--velocity-height", type=float, default=1.1)
+    job_args(a)
     e = sub.add_parser("energy")
     e.add_argument("--model", required=True)
     e.add_argument("--weather", required=True)
-    for name in ("watch", "output"):
-        sub.add_parser(name).add_argument("--job", required=True)
+    job_args(e)
+    sub.add_parser("watch").add_argument("--job", required=True)
+    o = sub.add_parser("output")
+    o.add_argument("--job", required=True)
+    o.add_argument("--json", action="store_true", help="print the whole 5.5 answer")
     args = parser.parse_args(argv)
     if args.cmd == "catalogue":
         print(json.dumps(call(args, "GET", "/analysis/catalogue", headers=JOBS), indent=2))
     else:
-        {"wind": cmd_wind, "energy": cmd_energy, "watch": cmd_watch, "output": cmd_output}[args.cmd](args)
+        {"wind": cmd_wind, "airflow": cmd_airflow, "energy": cmd_energy, "watch": cmd_watch, "output": cmd_output}[args.cmd](args)
     return 0
 
 

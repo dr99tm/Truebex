@@ -8,10 +8,12 @@ script while the app had none. CL3 then published its own
 (`Docs/roadmap/fixtures/contracts/render-jobs/` in the app repo), copied byte
 for byte into server/tests/contracts/render-jobs/ by
 scripts/sync-contract-fixtures.ps1 (PF6a, 2026-10-15). What the app does not
-publish stays here, the platform's own, until AN3 (analysis) and the app
-publish theirs: a 5.7 answer (`claim.json`), the two operation files PF6's
-job files named, and PF11's wind result (§6.3) with its arrays. Deterministic,
-standard library only.
+publish stays here, the platform's own: a 5.7 answer (`claim.json`), the two
+operation files PF6's job files named, and PF11's wind result (§6.3) with its
+arrays for PF11's 8-triangle test shape (AN3 published the app's own wind
+result for its 156-triangle export with render-jobs 1.2.0, re-copied by PF11c
+into the contract folder; this one stays for the octahedron's tests, in
+1.2.0's shape since PF11c). Deterministic, standard library only.
 """
 
 import argparse
@@ -64,14 +66,15 @@ Not the contract's set: that is the app's own (CL3, render-jobs 1.1.0 §9), copi
 `../../contracts/render-jobs/`. These are the files the app publishes no copy of, written by
 `server/scripts/make_render_job_fixtures.py` (`--check` compares every file; standard library only). PF6
 staged them with the whole set on 2026-10-10; PF6a (2026-10-15) moved them here when CL3's set replaced the
-rest. They stay the platform's own until AN3 (analysis, the wind result) and the app publish theirs, after
-which those files are re-copied into the contract folder and dropped here. Fixture data, never public copy.
+rest. AN3 published the app's own wind result with render-jobs 1.2.0 (156 triangles of its export, in
+`../../contracts/render-jobs/` since PF11c, 2026-10-24); PF11's stays here for its 8-triangle octahedron test shape,
+in 1.2.0's shape (the three pedestrian grids, the four summary keys). Fixture data, never public copy.
 
 | File | Holds | Read by |
 |---|---|---|
 | `claim.json` | a 5.7 answer (the job record with `changed` and `params`, the lease, the signed inputs, the output upload; URLs are placeholders) | `test_render.py` (the claim's keys) |
 | `ops-empty.json`, `ops-move-wall.json` | the project-log 5.7 bodies PF6's own job files named: none, and one "Move wall" of the project-log fixtures' first wall | nothing since PF6a (the app's `ops-tiles.json` replaced them); kept with their history |
-| `wind-result.json`, `wind-*.bin` | an analysis result (§6.3, `truebex-analysis/1`) whose fields name the project-log fixtures' wall ids, and its three little-endian arrays named by SHA-256 | `test_analysis.py`, `tests/fakes/stub_solver/run.py` |
+| `wind-result.json`, `wind-*.bin` | an analysis result (§6.3, `truebex-analysis/1`, render-jobs 1.2.0's wind shape) whose fields name the project-log fixtures' wall ids, and its five little-endian arrays named by SHA-256 (Cp and ids for 8 triangles, 4 x 4 grids `comfort_lawson`, `speed_ratio`, `velocity`) | `test_analysis.py`, `tests/fakes/stub_solver/run.py` |
 
 The project id and the wall ids are PF4's project-log fixtures' (PF4a re-copied CL1's set over them on 2026-10-15);
 `claim.json`'s snapshot SHA-256 and size are those of `../../contracts/project-log/snapshot-0000.tbxp` as it is now.
@@ -103,8 +106,12 @@ def files() -> dict[str, bytes]:
     cp = struct.pack("<8f", -0.8, -0.6, -0.35, 0.1, 0.45, 0.7, 0.9, -0.2)
     ids = b"".join(bytes.fromhex(f"0199c6a2e00070018{n:015x}") for n in range(1, 9))
     comfort = bytes([0, 0, 1, 1, 0, 1, 2, 1, 1, 2, 3, 2, 0, 1, 1, 0])
+    # 1.2.0's other two grids (PF11c): |U| / 5 m/s, and U itself (x, y, z) blowing from 225 degrees.
+    ratios = [0.3, 0.4, 0.6, 0.7, 0.5, 0.8, 1.2, 0.9, 0.9, 1.3, 1.44, 1.1, 0.4, 0.7, 0.8, 0.5]
+    ratio = struct.pack("<16f", *ratios)
+    velocity = struct.pack("<48f", *[c for r in ratios for c in (r * 5 * 0.70710678, r * 5 * 0.70710678, 0.0)])
     arrays = {}
-    for data in (cp, ids, comfort):
+    for data in (cp, ids, comfort, ratio, velocity):
         sha = hashlib.sha256(data).hexdigest()
         arrays[data] = sha
         out[f"wind-{sha[:12]}.bin"] = data
@@ -113,9 +120,10 @@ def files() -> dict[str, bytes]:
         "kind": "wind",
         "project_id": PROJECT_ID,
         "at_seq": 12,
-        "params": {"speed_ms": 5, "direction_deg": 225, "reference_height_m": 10, "terrain": "suburban", "comfort": "lawson"},
+        "params": {"speed_ms": 5, "direction_deg": 225, "reference_height_m": 10, "terrain": "suburban", "comfort": "lawson",
+                   "pedestrian_height_m": 1.5, "grid_cell_mm": 1000, "turbulence_model": "realizable_ke"},
         "engine": {"name": "cfd-solver", "version": "1", "image": "sha256:" + hashlib.sha256(b"solver image").hexdigest()},
-        "summary": {"max_speed_ms": 7.2},
+        "summary": {"max_speed_ms": 7.2, "max_speed_ratio": 1.44, "iterations": 812, "residual": 9.6e-05},
         "fields": [
             {
                 "name": "pressure_coefficient", "unit": "1", "on": "faces", "count": 8,
@@ -124,9 +132,17 @@ def files() -> dict[str, bytes]:
         ],
         "grids": [
             {
-                "name": "comfort_lawson", "unit": "class", "origin_mm": [-20000, -20000, 1500], "cell_mm": 500,
+                "name": "comfort_lawson", "unit": "class", "origin_mm": [-20000, -20000, 1500], "cell_mm": 1000,
                 "nx": 4, "ny": 4, "values": arrays[comfort],
-            }
+            },
+            {
+                "name": "speed_ratio", "unit": "1", "origin_mm": [-20000, -20000, 1500], "cell_mm": 1000,
+                "nx": 4, "ny": 4, "values": arrays[ratio],
+            },
+            {
+                "name": "velocity", "unit": "m/s", "origin_mm": [-20000, -20000, 1500], "cell_mm": 1000,
+                "nx": 4, "ny": 4, "components": 3, "values": arrays[velocity],
+            },
         ],
         "report": None,
     }

@@ -1,17 +1,23 @@
-"""Analysis kinds on PF6's queue (contract render-jobs §5.1; PF11).
+"""Analysis kinds on PF6's queue (contract render-jobs §5.1, §6.5; PF11, PF11c).
 
 | Kind      | Class  | Feature          | Required                                 | `params` |
 |-----------|--------|------------------|------------------------------------------|----------|
-| wind      | cpu-8  | analysis.reports | inputs.files.geometry (binary STL, m)    | speed_ms, direction_deg, reference_height_m, terrain, comfort |
+| wind      | cpu-8  | analysis.reports | inputs.files.geometry (binary STL, m), inputs.files.entities | speed_ms, direction_deg, reference_height_m, terrain, comfort, pedestrian_height_m, grid_cell_mm, turbulence_model |
 | energy    | cpu-8  | analysis.reports | inputs.files.model (epJSON), params.weather | weather, period |
 | acoustics | cpu-8  | analysis.reports | inputs.files.rooms (JSON)                | sources, bands, rays, receiver_grid_m, receiver_height_m |
+| airflow   | cpu-8  | analysis.reports | inputs.files.rooms (truebex-airflow-rooms/1), params.wind_job_id | wind_job_id, speed_ms, direction_deg, reference_height_m, terrain, velocity_height_m |
 | texture   | gpu-ai | ai.metered       | params.prompt (AI_TEXTURE_ENABLED only)  | prompt, size, seamless, maps |
 
 `acoustics` and `texture` are the MINOR additions PF11 proposes for
 render-jobs.md; `texture` stays an unknown kind until AI_TEXTURE_ENABLED.
-Optional wind files (AN3's proposal): `entities` (16 bytes per triangle),
-`surroundings` and `terrain` (binary STL). The solver profile each job runs
-with (profiles.json, GD2 placeholders) travels in the claim as `job.profile`.
+`wind` and `airflow` are render-jobs 1.2.0's (AN3): optional wind files
+`surroundings` and `terrain` (binary STL); an airflow job's optional
+`geometry` (the interior CFD run) is refused until it exists. The app writes
+the kind, the quality and these names from FNames, which a packaged build
+may give back in another case ("Wind", "Suburban"): they are read without
+case and stored lower-case. The solver profile each job runs with
+(profiles.json, GD2 placeholders; the wind mesh by the job's quality)
+travels in the claim as `job.profile`.
 """
 
 import json
@@ -26,18 +32,23 @@ from .validation import invalid
 
 PROFILES = json.loads(Path(__file__).with_name("profiles.json").read_text(encoding="utf-8"))
 FEATURE = "analysis.reports"
-ANALYSIS = ("wind", "energy", "acoustics")
+ANALYSIS = ("wind", "energy", "acoustics", "airflow")
 TEXTURE = "texture"
 KINDS: dict[str, Kind] = {
     "wind": Kind("wind", FEATURE, "cpu-8", "run"),
     "energy": Kind("energy", FEATURE, "cpu-8", "run"),
     "acoustics": Kind("acoustics", FEATURE, "cpu-8", "run"),
+    "airflow": Kind("airflow", FEATURE, "cpu-8", "run"),
     TEXTURE: Kind(TEXTURE, "ai.metered", "gpu-ai", "run"),
 }
-REQUIRED_FILES = {"wind": "geometry", "energy": "model", "acoustics": "rooms"}
-OPTIONAL_FILES = {"wind": ("entities", "surroundings", "terrain")}
+REQUIRED_FILES = {"wind": ("geometry", "entities"), "energy": ("model",), "acoustics": ("rooms",), "airflow": ("rooms",)}
+OPTIONAL_FILES = {"wind": ("surroundings", "terrain")}
 TERRAIN = PROFILES["wind"]["terrain"]
+TURBULENCE = PROFILES["wind"]["turbulence_models"]
+QUALITIES = tuple(PROFILES["wind"]["qualities"])
+SITE_KEYS = ("speed_ms", "direction_deg", "reference_height_m", "terrain")
 _WEATHER_ID = re.compile(r"^[a-z0-9][a-z0-9-]{2,63}$")
+_HEX32 = re.compile(r"^[0-9a-f]{32}$")
 
 
 def texture_enabled() -> bool:
@@ -57,7 +68,13 @@ def sync() -> None:
         quotas.KIND_CLASSES[name] = kind.worker_class
 
 
+def name_of(kind: object) -> object:
+    """The kind as stored: an analysis kind lower-case (a packaged app may send "Wind")."""
+    return kind.lower() if isinstance(kind, str) and kind.lower() in KINDS else kind
+
+
 def handles(kind: object) -> bool:
+    kind = name_of(kind)
     return isinstance(kind, str) and (kind in ANALYSIS or (kind == TEXTURE and texture_enabled()))
 
 
@@ -66,8 +83,26 @@ def is_analysis(kind: str) -> bool:
     return kind in KINDS
 
 
-def profile(kind: str) -> dict:
-    return dict(PROFILES.get(kind) or {})
+def profile(kind: str, quality: str = "standard") -> dict:
+    """The solver profile a claim carries. A wind job's background mesh follows
+    its quality: `cells_per_side` (the case's `cells_per_h`) 6, 10 or 20 cells
+    per building side for draft, standard and high (§6.5.4)."""
+    out = dict(PROFILES.get(kind) or {})
+    if kind == "wind":
+        table = out.pop("qualities")
+        quality = quality if quality in table else "standard"
+        n = table[quality]["cells_per_side"]
+        out.update(quality=quality, cells_per_side=n, cells_per_h=n)
+    return out
+
+
+def quality_of(value: object) -> str:
+    """An analysis job's quality (§5.1): draft, standard or high; standard when absent."""
+    if value is None:
+        return "standard"
+    if not isinstance(value, str) or value.lower() not in QUALITIES:
+        raise invalid("quality", f"one of {', '.join(QUALITIES)}")
+    return value.lower()
 
 
 # --- params ---------------------------------------------------------------------------------
@@ -84,19 +119,42 @@ def _number(params: dict, key: str, low: float, high: float, default: float | No
     return float(value) if isinstance(value, float) else value
 
 
-def _wind(params: dict) -> dict:
-    terrain = params.get("terrain", "suburban")
-    if terrain not in TERRAIN:
-        raise invalid("params.terrain", f"one of {', '.join(TERRAIN)}", terrain=list(TERRAIN))
-    comfort = params.get("comfort", "lawson")
-    if comfort != "lawson":
-        raise invalid("params.comfort", "lawson")
+def _choice(params: dict, key: str, allowed, default: str) -> str:
+    value = params.get(key, default)
+    name = value.lower() if isinstance(value, str) else value
+    if name not in allowed:
+        raise invalid(f"params.{key}", f"one of {', '.join(allowed)}", **{key: list(allowed)})
+    return name
+
+
+def _site(params: dict) -> dict:
+    """The wind of one direction, as a wind job and the airflow jobs on it name it (§6.5.2)."""
     return {
         "speed_ms": _number(params, "speed_ms", 0.5, 60, 5),
         "direction_deg": _number(params, "direction_deg", 0, 360, 0, below=True),
         "reference_height_m": _number(params, "reference_height_m", 1, 300, 10),
-        "terrain": terrain,
-        "comfort": comfort,
+        "terrain": _choice(params, "terrain", TERRAIN, "suburban"),
+    }
+
+
+def _wind(params: dict) -> dict:
+    return {
+        **_site(params),
+        "comfort": _choice(params, "comfort", ("lawson",), "lawson"),
+        "pedestrian_height_m": _number(params, "pedestrian_height_m", 0.5, 10, 1.5),
+        "grid_cell_mm": _number(params, "grid_cell_mm", 100, 10_000, 1000),
+        "turbulence_model": _choice(params, "turbulence_model", TURBULENCE, "realizable_ke"),
+    }
+
+
+def _airflow(params: dict) -> dict:
+    wind_job_id = params.get("wind_job_id")
+    if not isinstance(wind_job_id, str) or not _HEX32.match(wind_job_id.lower()):
+        raise invalid("params.wind_job_id", "the 32-hex id of the study's wind job of the same direction")
+    return {
+        "wind_job_id": wind_job_id.lower(),
+        **_site(params),
+        "velocity_height_m": _number(params, "velocity_height_m", 0.3, 3, 1.1),
     }
 
 
@@ -176,6 +234,8 @@ def validate_params(kind: str, params: object, *, known_weather=lambda _id: Fals
         return _energy(params, known_weather)
     if kind == "acoustics":
         return _acoustics(params)
+    if kind == "airflow":
+        return _airflow(params)
     return _texture(params)
 
 

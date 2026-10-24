@@ -51,7 +51,7 @@ import urllib.request
 from dataclasses import dataclass, field
 from pathlib import Path
 
-CONTRACT = "render-jobs/1.1"
+CONTRACT = "render-jobs/1.2"
 UPLOADS = "share-bundle/1.0"
 RETRY_STATUSES = {408, 429, 500, 502, 503, 504, 530}
 NOT_RETRYABLE = {"bad_input", "doc_too_new"}

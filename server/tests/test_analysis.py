@@ -185,7 +185,7 @@ def test_analysis_stub_solver_round_trip(client, rig, tmp_path):
     # Measured time is charged at the cpu-8 weight: 600 s -> 600 / 60 × 0.25 = 2.5 cu.
     rec2 = submit(client, a.dev, body).json()
     c = claimed(client, token, worker_id="cpu-eu-01", kinds=ANALYSIS_KINDS)
-    assert c["job"]["job_id"] == rec2["job_id"] and c["job"]["profile"]["iterations_max"] == 1000
+    assert c["job"]["job_id"] == rec2["job_id"] and c["job"]["profile"]["iterations_max"] == 2000  # render-jobs 1.2.0 §6.5.4
     assert set(c["inputs"]["files"]) == {"geometry", "entities"}
     _send_outputs(client, token, c, _bins())
     res = _complete(client, token, c, _fixture_result(c), wall_s=600)
@@ -263,7 +263,7 @@ def test_analysis_weather_library_and_energy(client, rig):
     catalogue = client.get("/analysis/catalogue", headers=rj(a)).json()
     assert [w["weather_id"] for w in catalogue["weather"]] == ["gbr-london-test"]
     assert catalogue["weather"][0]["licence"] == "CC0-1.0" and catalogue["weather"][0]["source"]
-    assert [k["kind"] for k in catalogue["kinds"]] == ["wind", "energy", "acoustics"]
+    assert [k["kind"] for k in catalogue["kinds"]] == ["wind", "energy", "acoustics", "airflow"]  # airflow: 1.2.0
     assert {t["id"]: t["z0_m"] for t in catalogue["terrain"]}["urban"] == 1.0
     error_of(client.get("/analysis/catalogue", headers=RJ), 401, "unauthenticated")
     model = epjson(zones=10, timesteps=4)

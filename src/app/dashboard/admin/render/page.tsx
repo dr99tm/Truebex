@@ -18,7 +18,7 @@ import {
 } from "@/lib/jobs";
 import { timeAgo } from "@/lib/time";
 
-const KINDS: JobKind[] = ["panorama", "tiles", "pack", "wind", "energy", "acoustics", "texture"];
+const KINDS: JobKind[] = ["panorama", "tiles", "pack", "wind", "energy", "acoustics", "texture", "airflow"];
 const CLASSES = ["gpu-std", "cpu-8", "gpu-ai"];
 const REFRESH_MS = 15_000;
 const inputClass =

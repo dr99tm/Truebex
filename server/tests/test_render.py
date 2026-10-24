@@ -319,11 +319,11 @@ def test_cost_units_and_quota(client, setup):
 def test_contract_header_and_error_envelope(client, setup):
     a = setup["a"]
     ok = client.get("/jobs/usage", headers=rj(a))
-    assert ok.status_code == 200 and ok.headers["X-Truebex-Contract"] == "render-jobs/1.1"
+    assert ok.status_code == 200 and ok.headers["X-Truebex-Contract"] == "render-jobs/1.2"
     body = error_of(
         client.get("/jobs/usage", headers={**rj(a), "X-Truebex-Contract": "render-jobs/2.0"}), 400, "contract_version"
     )
-    assert body["data"]["supported"] == ["render-jobs/1.1"]
+    assert body["data"]["supported"] == ["render-jobs/1.2"]
     error_of(
         client.post("/workers/claim", json={}, headers={**wk(setup["token"]), "X-Truebex-Contract": "render-jobs/2.0"}),
         400, "contract_version",

@@ -1,7 +1,8 @@
 """Analysis catalogue and the weather library (PF11).
 
 GET    /analysis/catalogue                 the kinds, the weather files `params.weather` names,
-                                           the wind terrain classes (device, session or API key)
+                                           the wind terrain classes and Lawson criteria
+                                           (device, session or API key)
 GET    /admin/analysis/weather             admins: the library
 PUT    /admin/analysis/weather/{id}        admins: add or replace an EPW (body = the file;
                                            ?name=&source=&licence=[&location=])
@@ -19,7 +20,7 @@ from ..models import User
 from ..projects.caller import ProjectCaller
 from .jobs import get_job_caller
 
-router = APIRouter(prefix="/analysis", tags=["analysis"], dependencies=[contract("render-jobs", 1, 1)])
+router = APIRouter(prefix="/analysis", tags=["analysis"], dependencies=[contract("render-jobs", 1, 2)])
 admin_router = APIRouter(prefix="/admin/analysis", tags=["admin"], dependencies=[enveloped()])
 
 
@@ -32,7 +33,7 @@ def catalogue(caller: ProjectCaller = Depends(get_job_caller), db: Session = Dep
                 "kind": name,
                 "class": k.worker_class,
                 "feature": k.feature,
-                "required_files": [kinds.REQUIRED_FILES[name]] if name in kinds.REQUIRED_FILES else [],
+                "required_files": list(kinds.REQUIRED_FILES.get(name, ())),
                 "optional_files": list(kinds.OPTIONAL_FILES.get(name, ())),
                 "estimate_unit": estimates.DATA["kinds"][name]["unit"],
             }

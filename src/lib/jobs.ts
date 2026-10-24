@@ -1,14 +1,14 @@
 "use client";
 
-// Cloud render jobs (contract render-jobs v1.1, PF6 and PF6a) as the website uses them:
+// Cloud render jobs (contract render-jobs v1.2, PF6, PF6a and PF11c) as the website uses them:
 // the Cloud page (usage, recent jobs, cancel, the live preview, the overage
 // cap) and the render admin (queue, workers, tokens).
 import { ApiError, api } from "@/lib/api";
 import { CLOUD } from "@/lib/constants";
 
-const CONTRACT = { "X-Truebex-Contract": "render-jobs/1.1" };
+const CONTRACT = { "X-Truebex-Contract": "render-jobs/1.2" };
 
-export type JobKind = "panorama" | "tiles" | "pack" | "wind" | "energy" | "acoustics" | "texture";
+export type JobKind = "panorama" | "tiles" | "pack" | "wind" | "energy" | "acoustics" | "texture" | "airflow";
 export type JobState = "queued" | "claimed" | "running" | "succeeded" | "failed" | "cancelled" | "expired";
 export type Face = "n" | "e" | "s" | "w" | "u" | "d";
 export const FACES: readonly Face[] = ["n", "e", "s", "w", "u", "d"];

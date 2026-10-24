@@ -16,9 +16,10 @@ wrapper's heartbeat every 30 s.
 
 | Module      | Engine                                   | Licence of the engine            |
 |-------------|------------------------------------------|----------------------------------|
-| `wind`      | OpenFOAM v2406, simpleFoam (k-epsilon)    | GPL-3.0, run as a service        |
+| `wind`      | OpenFOAM v2406, simpleFoam (realizable k-epsilon or k-omega SST) | GPL-3.0, run as a service |
 | `energy`    | EnergyPlus                               | BSD-3-Clause                     |
 | `acoustics` | our stochastic energy ray tracer         | ours                             |
+| `airflow`   | our orifice network on the wind job's Cp (PF11c) | ours                     |
 | `texture`   | an open image model (diffusers)           | must allow commercial hosting    |
 
 `common` holds what they share. The package is standard library only (the

@@ -8,7 +8,10 @@
     "direction_deg": 225,
     "reference_height_m": 10,
     "terrain": "suburban",
-    "comfort": "lawson"
+    "comfort": "lawson",
+    "pedestrian_height_m": 1.5,
+    "grid_cell_mm": 1000,
+    "turbulence_model": "realizable_ke"
   },
   "engine": {
     "name": "cfd-solver",
@@ -16,7 +19,10 @@
     "image": "sha256:196aaf67ab68601e4222ae8c5301453c1a6555f75b9d48f43c09cbeff6a66ddd"
   },
   "summary": {
-    "max_speed_ms": 7.2
+    "max_speed_ms": 7.2,
+    "max_speed_ratio": 1.44,
+    "iterations": 812,
+    "residual": 9.6e-05
   },
   "fields": [
     {
@@ -37,10 +43,37 @@
         -20000,
         1500
       ],
-      "cell_mm": 500,
+      "cell_mm": 1000,
       "nx": 4,
       "ny": 4,
       "values": "eafe2a993e63ae46d5550a9c21a1aad0de669f7edef6109b26e31922da030e3e"
+    },
+    {
+      "name": "speed_ratio",
+      "unit": "1",
+      "origin_mm": [
+        -20000,
+        -20000,
+        1500
+      ],
+      "cell_mm": 1000,
+      "nx": 4,
+      "ny": 4,
+      "values": "de7db596decf5af179eaab5d4bca34e9ddf2a0915d9f93b09ebf77dab6372dbb"
+    },
+    {
+      "name": "velocity",
+      "unit": "m/s",
+      "origin_mm": [
+        -20000,
+        -20000,
+        1500
+      ],
+      "cell_mm": 1000,
+      "nx": 4,
+      "ny": 4,
+      "components": 3,
+      "values": "5db088a3486c5e0a783bb6a0f2fe31b347edb1d89a2f8533587094db26e94cfa"
     }
   ],
   "report": null

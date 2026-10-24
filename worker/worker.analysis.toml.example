@@ -3,10 +3,10 @@
 
 # The Truebex API (local: http://127.0.0.1:8000).
 api = "https://api.truebex.com"
-# Admin -> Render -> Issue worker token, class cpu-8, kinds wind / energy / acoustics (shown once).
+# Admin -> Render -> Issue worker token, class cpu-8, kinds wind / energy / acoustics / airflow (shown once).
 token = "tbx_wrk_..."
 worker_id = "cpu-eu-01"
-kinds = ["wind", "energy", "acoustics"]
+kinds = ["wind", "energy", "acoustics", "airflow"]
 class = "cpu-8"
 
 # Run each job as a solver container (Docker on Linux, or Docker Desktop).

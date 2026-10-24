@@ -5,7 +5,7 @@
 // checkout) and the render admin's AI panel (spend by alias, the self-hosted
 // inference servers). Server: server/app/routers/ai_account.py.
 import { ApiError, api } from "@/lib/api";
-import { ADMIN_AI, BILLING, CLOUD, CLOUD_AI } from "@/lib/constants";
+import { ADMIN_AI, BILLING, CLOUD, CLOUD_AI, CLOUD_AIRFLOW } from "@/lib/constants";
 
 export interface AiBalance {
   /** Allowance left plus bought credits left; null when the plan has no monthly limit. */
@@ -145,7 +145,10 @@ export function formatUsd(value: number): string {
 /** A job kind's label: PF6's kinds, then PF11's analysis kinds, else the id. */
 export function kindLabel(kind: string): string {
   return (
-    (CLOUD.kinds as Record<string, string>)[kind] ?? (CLOUD_AI.kinds as Record<string, string>)[kind] ?? kind
+    (CLOUD.kinds as Record<string, string>)[kind] ??
+    (CLOUD_AI.kinds as Record<string, string>)[kind] ??
+    (CLOUD_AIRFLOW.kinds as Record<string, string>)[kind] ??
+    kind
   );
 }
 

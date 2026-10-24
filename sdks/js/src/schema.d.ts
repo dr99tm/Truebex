@@ -1379,7 +1379,7 @@ export interface components {
         };
         /**
          * JobRequest
-         * @description 5.1: a job. `pack` (exports) takes `params.items` from renders, panoramas, sheets, boq.
+         * @description 5.1: a job. `pack` (exports) takes `params.items` from renders, panoramas, sheets, boq; `airflow` names its wind job.
          */
         JobRequest: {
             /**
@@ -1409,7 +1409,7 @@ export interface components {
              * Kind
              * @enum {string}
              */
-            kind: "panorama" | "tiles" | "pack" | "wind" | "energy";
+            kind: "panorama" | "tiles" | "pack" | "wind" | "energy" | "airflow";
             /**
              * Params
              * @default {}

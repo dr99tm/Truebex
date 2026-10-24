@@ -1,12 +1,14 @@
 {
   "schema": "truebex-analysis-estimates/1",
-  "source": "guides/GD3 section 5.5 (worked examples on cpu-8, 4 physical cores): wind wall = t_mesh 300 s + cells x iterations x 2.8 us / 4 cores + t_post 120 s, about 2 million cells and 1000 iterations on a two-storey house (1820 s, 7.6 cu); energy about 150 s for a 10-zone house at 15-minute timesteps (350 400 zone-timesteps). Acoustics and texture are PF11 placeholders. The median of the last 50 succeeded jobs of a kind replaces seconds_per_unit once 50 have run.",
+  "source": "guides/GD3 section 5.5 (worked examples on cpu-8, 4 physical cores): wind wall = t_mesh 300 s + cells x iterations x 2.8 us / 4 cores + t_post 120 s, about 2 million cells and 1000 iterations on a two-storey house (1820 s, 7.6 cu); energy about 150 s for a 10-zone house at 15-minute timesteps (350 400 zone-timesteps). Acoustics and texture are PF11 placeholders. PF11c: the wind cells follow the job's quality (6, 10 or 20 cells per building side: the background mesh), the estimate counts GD3's 1000 iterations (a run that converges stops before the profile's 2000-iteration cap), and airflow (the orifice network: a container start and a fraction of a second of solving) is a small fixed estimate. The median of the last 50 succeeded jobs of a kind replaces seconds_per_unit once 50 have run.",
   "window": 50,
   "kinds": {
     "wind": {"unit": "million cell-iterations", "fixed_s": 420, "seconds_per_unit": 0.7},
     "energy": {"unit": "thousand zone-timesteps", "fixed_s": 0, "seconds_per_unit": 0.428},
     "acoustics": {"unit": "thousand ray-sources", "fixed_s": 30, "seconds_per_unit": 7.5},
-    "texture": {"unit": "megapixel maps", "fixed_s": 20, "seconds_per_unit": 8.0}
+    "texture": {"unit": "megapixel maps", "fixed_s": 20, "seconds_per_unit": 8.0},
+    "airflow": {"unit": "network solve", "fixed_s": 60, "seconds_per_unit": 0.0}
   },
-  "wind_cells": {"min": 200000, "max": 8000000, "refinement_factor": 1.4}
+  "wind_cells": {"min": 200000, "max": 8000000, "refinement_factor": 1.4},
+  "wind_iterations": 1000
 }

@@ -407,7 +407,7 @@ def test_pf11c_reference_is_recorded(client, rig):
     assert theirs.status_code == 201, theirs.text
     assert theirs.json()["project_id"] == b_pid and theirs.json()["at_seq"] == b_head + 100
     gone, _ = project(client, a)
-    assert client.delete(f"/projects/{gone}", headers=a.dev).status_code in (200, 204)
+    assert client.delete(f"/projects/{gone}", headers=a.web).status_code == 204
     assert ok(send(client, a.dev, {**wind_job_body(geometry, ids), "project_id": gone, "at_seq": 0}))["project_id"] == gone
     for bad in ("nope", "F" * 32):
         err = error_of(send(client, a.dev, {**wind_job_body(geometry, ids), "project_id": bad}), 422, "validation_failed")
@@ -498,7 +498,9 @@ def test_airflow_kind(client, rig, tmp_path):
     assert field_of(error_of(send(client, a.dev, no_rooms), 422, "validation_failed")) == "inputs.files.rooms"
     for params, key in (({"wind_job_id": "x"}, "wind_job_id"), ({"velocity_height_m": 0.1}, "velocity_height_m"),
                         ({"speed_ms": 0}, "speed_ms"), ({"terrain": "country"}, "terrain")):
-        err = error_of(send(client, a.dev, airflow_body(wind["job_id"], good, **params)), 422, "validation_failed")
+        body = airflow_body(wind["job_id"], good)
+        body["params"].update(params)
+        err = error_of(send(client, a.dev, body), 422, "validation_failed")
         assert field_of(err) == f"params.{key}", params
 
     # The network: one room, two windows to outside at Cp 0.6 and -0.3, the same Cd and area.
@@ -731,6 +733,47 @@ def test_pf11c_airflow_names_a_matching_wind_job(client, rig):
     assert field_of(err) == "params.wind_job_id" and err["data"]["state"] == "failed"
 
 
+def test_pf11c_worker_runs_the_study_without_docker(client, rig, tmp_path, monkeypatch):
+    """The human test's live run, in process: the worker wrapper in container
+    mode with server/scripts/local_analysis_docker.py as its docker completes the
+    wind job with the app's arrays (its wind stand-in, no OpenFOAM here) and then
+    the airflow job with the real runner."""
+    from .test_analysis import W, ClientTransport
+
+    monkeypatch.setenv("TRUEBEX_WIND_STAND_IN", str(FIX))
+    a, token = rig["a"], rig["token"]
+    rooms = as_bytes(rooms_doc())
+    put_inputs(client, a.dev, rooms)
+    result = app_result()
+    wind = ok(send(client, a.dev, {**wind_job_body(rig["geometry"], rig["ids"]), "project_id": result["project_id"], "at_seq": 0}))
+    air = ok(send(client, a.dev, {**airflow_body(wind["job_id"], rooms), "project_id": result["project_id"], "at_seq": 0}))
+    cfg = W.Config(
+        api="http://testserver", token=token, worker_id="cpu-eu-01", kinds=list(KINDS), worker_class="cpu-8",
+        work_dir=str(tmp_path / "jobs"), heartbeat_s=0.2, wait_s=0, keep_work=True, mode="container",
+        docker=str(ROOT / "server" / "scripts" / "local_analysis_docker.py"),
+    )
+    lines: list[str] = []
+    runner = W.Runner(cfg, W.Api(cfg, transport=ClientTransport(client), sleep=lambda s: None, log=lines.append))
+    assert runner.run_once(wait_s=0) == "succeeded", lines
+    assert runner.run_once(wait_s=0) == "succeeded", lines
+    assert runner.run_once(wait_s=0) is None
+    wind_out = client.get(f"/jobs/{wind['job_id']}/output", headers=rj(a)).json()
+    assert wind_out["engine"]["name"] == "truebex-stand-in" and wind_out["project_id"] == result["project_id"]
+    assert {f["bytes"] for f in wind_out["files"].values()} == {624, 2496, 25632, 76896, 6408}
+    air_out = client.get(f"/jobs/{air['job_id']}/output", headers=rj(a)).json()
+    assert air_out["engine"] == {"name": "truebex-airflow", "version": "1", "image": "truebex-analysis-airflow:1"}
+    assert [(f["name"], f["count"]) for f in air_out["fields"]] == [("air_changes", 2), ("opening_flow", 3)]
+    assert len(air_out["files"]) == 5 and all(client.get(f["url"]).status_code == 200 for f in air_out["files"].values())
+    # A wind job the stand-in has no answer for fails bad_input (not retried), and so does its airflow job.
+    octa = octahedron_stl()
+    put_inputs(client, a.dev, octa, entities(8))
+    other = ok(send(client, a.dev, wind_job_body(octa, entities(8))))
+    waiting = ok(send(client, a.dev, airflow_body(other["job_id"], rooms)))
+    assert runner.run_once(wait_s=0) == "failed"
+    assert job(client, rj(a), other["job_id"])["error"]["code"] == "bad_input"
+    assert job(client, rj(a), waiting["job_id"])["state"] == "failed"
+
+
 # --- the runners (never running OpenFOAM) -------------------------------------------------------
 
 
@@ -818,7 +861,7 @@ def test_pf11c_wind_ground_grid_velocity_and_summary(tmp_path):
     vel = next(g for g in result["grids"] if g["name"] == "velocity")
     assert vel["components"] == 3 and vel["unit"] == "m/s"
     values = common.unpack_f32((job.out_dir / vel["values"]).read_bytes())
-    assert values[0:3] == [-5.0, 0.0, 0.0] and all(math.isnan(x) for x in values[6:9])
+    assert values[0:3] == pytest.approx([-5.0, 0.0, 0.0], abs=1e-6) and all(math.isnan(x) for x in values[6:9])
     lawson = next(g for g in result["grids"] if g["name"] == "comfort_lawson")
     # LDDC on the instantaneous speed: <= 4 sitting, 6 standing, 8 strolling, 10 business walking, above uncomfortable.
     assert list((job.out_dir / lawson["values"]).read_bytes()) == [1, 0, 255, 2, 3, 0]

@@ -14,7 +14,7 @@
 #>
 [CmdletBinding()]
 param(
-    [Parameter(Mandatory = $true)][ValidateSet('wind', 'energy', 'acoustics', 'texture')][string]$Kind,
+    [Parameter(Mandatory = $true)][ValidateSet('wind', 'energy', 'acoustics', 'texture', 'airflow')][string]$Kind,
     [string]$Tag = '1',
     [string[]]$BuildArg = @()
 )

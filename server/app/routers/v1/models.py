@@ -407,9 +407,9 @@ class JobInputs(_Doc):
 
 
 class JobRequest(_Doc):
-    """5.1: a job. `pack` (exports) takes `params.items` from renders, panoramas, sheets, boq."""
+    """5.1: a job. `pack` (exports) takes `params.items` from renders, panoramas, sheets, boq; `airflow` names its wind job."""
 
-    kind: Literal["panorama", "tiles", "pack", "wind", "energy"]
+    kind: Literal["panorama", "tiles", "pack", "wind", "energy", "airflow"]
     project_id: str | None = Field(default=None, description="32 hex; panorama, tiles and pack need it, an analysis may name none")
     at_seq: int = Field(default=0, description="With project_id, the snapshot reference; panorama, tiles and pack need it")
     views: list[str] = []
