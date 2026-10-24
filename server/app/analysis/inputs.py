@@ -35,7 +35,7 @@ MAX_JSON_BYTES = 64 * 1024 * 1024
 _TRI = struct.Struct("<12fH")
 _HEX32 = re.compile(r"^[0-9a-f]{32}$")
 ROOMS_SCHEMA = "truebex-airflow-rooms/1"
-MAX_ROOMS = 1000
+MAX_ROOMS = 300  # the runner's dense Newton step is O(n^3) in pure Python
 MAX_OPENINGS = 5000
 MAX_VOLUME_M3 = 1_000_000.0
 MAX_AREA_M2 = 1000.0
@@ -194,7 +194,7 @@ def _vector(value: object) -> bool:
 
 def check_rooms(data: object) -> tuple[int, int]:
     """(rooms, openings) of a `truebex-airflow-rooms/1` file, or the first broken
-    rule as `ValueError(path, message)`. Rooms: 1 to 1000, unique 32-hex ids,
+    rule as `ValueError(path, message)`. Rooms: 1 to 300, unique 32-hex ids,
     volume_m3 above 0 (at most 10^6), floor_z_m a number when given. Openings:
     up to 5000, 32-hex ids; `from` and `to` each a room id or "outside" (the
     app writes side 0 -> side 1, so either may be outside, never both, never the
