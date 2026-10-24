@@ -186,7 +186,7 @@ class JobOutput(TypedDict):
 
 class JobRequest(TypedDict):
     """
-    5.1: a job. `pack` (exports) takes `params.items` from renders, panoramas, sheets, boq.
+    5.1: a job. `pack` (exports) takes `params.items` from renders, panoramas, sheets, boq; `airflow` names its wind job.
     """
 
     at_seq: NotRequired[int]
@@ -197,7 +197,7 @@ class JobRequest(TypedDict):
     changed: NotRequired[list[str]]
     follow: NotRequired[bool]
     inputs: NotRequired[JobInputs | None]
-    kind: Literal['panorama', 'tiles', 'pack', 'wind', 'energy']
+    kind: Literal['panorama', 'tiles', 'pack', 'wind', 'energy', 'airflow']
     params: NotRequired[dict[str, Any]]
     project_id: NotRequired[str | None]
     """

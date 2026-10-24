@@ -377,13 +377,16 @@ def space_ids(names: list[str]) -> bytes | None:
 
 
 def grid(out_dir: Path, name: str, unit: str, origin_mm: list[float], cell_mm: float, nx: int, ny: int,
-         values: list, dtype: str = "float32") -> dict:
-    """A §6.3 grid, row by row from the origin (x fastest)."""
-    if len(values) != nx * ny:
-        raise EngineError(f"{name}: {len(values)} values for {nx} x {ny} cells")
+         values: list, dtype: str = "float32", components: int = 1) -> dict:
+    """A §6.3 grid: `origin_mm` the centre of cell (0, 0), values row by row from
+    j = 0 (the south row), i fastest, `components` interleaved per cell."""
+    if len(values) != nx * ny * components:
+        raise EngineError(f"{name}: {len(values)} values for {nx} x {ny} cells of {components}")
     data = pack_u8(values) if dtype == "uint8" else pack_f32(values)
     out = {"name": name, "unit": unit, "origin_mm": [round(float(v), 1) for v in origin_mm], "cell_mm": float(cell_mm),
            "nx": nx, "ny": ny, "values": write_array(out_dir, data)}
+    if components != 1:
+        out["components"] = components
     if dtype != ("uint8" if unit == "class" else "float32"):
         out["dtype"] = dtype
     return out

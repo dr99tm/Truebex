@@ -677,7 +677,8 @@ def test_pf4b_api_documents_name_1_2_and_comments():
     5.17 / 5.18's answers document comments_rev in both documents."""
     v1 = json.loads((ROOT / "openapi" / "v1.json").read_text(encoding="utf-8"))
     clients = json.loads((ROOT / "openapi" / "clients.json").read_text(encoding="utf-8"))
-    assert v1["info"]["version"] == "1.1.0"  # the document grew: MINOR
+    # The document grew: MINOR (1.1.0 with PF4b; 1.2.0 with PF11c's airflow kind).
+    assert tuple(int(x) for x in v1["info"]["version"].split(".")) >= (1, 1, 0)
     want = [
         ("/v1/projects/{project_id}/comments", "get", "projects_list_comments", "projects:read"),
         ("/v1/projects/{project_id}/comments", "post", "projects_create_comment", "projects:write"),
@@ -708,7 +709,7 @@ def test_pf4b_api_documents_name_1_2_and_comments():
     ts = (ROOT / "sdks" / "js" / "src" / "schema.d.ts").read_text(encoding="utf-8")
     assert "projects_create_comment: {" in ts and "comments_rev: number" in ts
     for rel in ("sdks/js/package.json", "sdks/python/pyproject.toml", "sdks/python/truebex/_version.py"):
-        assert "1.1.0" in (ROOT / rel).read_text(encoding="utf-8"), rel
+        assert v1["info"]["version"] in (ROOT / rel).read_text(encoding="utf-8"), rel  # the SDKs follow the document
     assert "comments_rev" in (ROOT / "src" / "lib" / "api-clients.d.ts").read_text(encoding="utf-8")
     assert "commentsRev" in (ROOT / "mobile" / "android" / "lib" / "api" / "gen" / "model" / "presence_answer.dart").read_text(
         encoding="utf-8"

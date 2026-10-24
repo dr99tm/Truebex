@@ -1,4 +1,4 @@
-"""Analysis results (contract render-jobs §6.3, `truebex-analysis/1`; PF11).
+"""Analysis results (contract render-jobs §6.3, `truebex-analysis/1`; PF11, PF11c).
 
 A worker completes an analysis with the result JSON; its arrays (and the
 report PDF) are separate files named by SHA-256 in the claim's `job-output`
@@ -8,6 +8,16 @@ with the size its declaration implies (a field's `count` × components ×
 item size; 16 bytes an entity), `publish` copies the files under
 `jobs/{job_id}/files/<sha256>` (private) and 5.5 serves the result with a
 signed URL for each (`sign`).
+
+1.2.0 (AN3) adds the kinds' own rules: a wind result's summary
+(max_speed_ms, max_speed_ratio, iterations, residual), its field
+pressure_coefficient on faces and its three pedestrian grids (speed_ratio,
+velocity with 3 components, comfort_lawson) at the job's pedestrian height
+with a cell of grid_cell_mm or coarser; an airflow result's air_changes on
+spaces (one per room), opening_flow on openings (one per opening) and its
+velocity grid. 5.5 answers the top-level `files` map the app reads
+({sha256: {"url", "bytes"}}, §6.3; a worker's own `files` key is dropped at
+completion) with PF11's `urls` and `urls_expire_at` kept beside it.
 
 The texture kind's output (`truebex-texture/1`, PF11's proposal) is checked
 here too: one PNG per requested map at the requested size.
@@ -28,13 +38,16 @@ from . import kinds, weather
 
 SCHEMA = "truebex-analysis/1"
 TEXTURE_SCHEMA = "truebex-texture/1"
-ON = ("faces", "spaces", "points")
-UNITS = ("1", "Pa", "m/s", "kWh", "kWh/m2", "kWh/m2/y", "W", "W/m2", "degC", "K", "s", "dB", "dB(A)", "class", "%", "m", "m2", "m3/h", "1/h", "lux")
+ON = ("faces", "spaces", "points", "openings")
+UNITS = ("1", "Pa", "m/s", "kWh", "kWh/m2", "kWh/m2/y", "W", "W/m2", "degC", "K", "s", "dB", "dB(A)", "class", "%", "m", "m2", "m3/h", "1/h", "lux", "m3/s")
 DTYPES = {"float32": 4, "uint8": 1, "uint16": 2, "int32": 4}
 MAX_ARRAYS = 64
 MAX_COUNT = 5_000_000
 MAX_GRID = 4_000
 ENERGY_SUMMARY = ("eui_kwh_m2_y", "heating_kwh_y", "cooling_kwh_y")
+WIND_SUMMARY = ("max_speed_ms", "max_speed_ratio", "iterations", "residual")
+# §6.5.2's pedestrian grids: unit, components, item type.
+WIND_GRIDS = {"speed_ratio": ("1", 1, "float32"), "velocity": ("m/s", 3, "float32"), "comfort_lawson": ("class", 1, "uint8")}
 _SHA = re.compile(r"^[0-9a-f]{64}$")
 _NAME = re.compile(r"^[a-z][a-z0-9_]{0,63}$")
 
@@ -181,6 +194,10 @@ def check(m: object, job: RenderJob) -> list[dict]:
         for key in ENERGY_SUMMARY:
             if not _num(summary.get(key)):
                 e.add(f"summary.{key}", "energy", f"an energy result's summary has {', '.join(ENERGY_SUMMARY)}.")
+    elif job.kind == "wind":
+        for key in WIND_SUMMARY:
+            if not _num(summary.get(key)):
+                e.add(f"summary.{key}", "wind", f"a wind result's summary has {', '.join(WIND_SUMMARY)} (§6.5.2).")
     fields = m.get("fields", [])
     grids = m.get("grids", [])
     if not isinstance(fields, list) or not isinstance(grids, list) or len(fields) > MAX_ARRAYS or len(grids) > MAX_ARRAYS:
@@ -237,7 +254,74 @@ def check(m: object, job: RenderJob) -> list[dict]:
     report = m.get("report")
     if report is not None and not _sha(report):
         e.add("report", "sha256", "report names a PDF by SHA-256, or is null.")
+    if job.kind == "wind":
+        _check_wind(e, fields, grids, job.params or {})
+    elif job.kind == "airflow":
+        _check_airflow(e, fields, grids, job.inputs or {})
     return e.items
+
+
+def _named(items: list) -> dict:
+    return {x.get("name"): (i, x) for i, x in enumerate(items) if isinstance(x, dict)}
+
+
+def _check_grid(e: _Errors, i: int, g: dict, name: str, unit: str, components: int, dtype: str) -> None:
+    if g.get("unit") != unit:
+        e.add(f"grids[{i}].unit", "layout", f"{name}'s unit is {unit}.")
+    if g.get("components", 1) != components:
+        e.add(f"grids[{i}].components", "layout", f"{name} holds {components} value(s) a cell.")
+    if g.get("dtype", "uint8" if g.get("unit") == "class" else "float32") != dtype:
+        e.add(f"grids[{i}].dtype", "layout", f"{name} is {dtype}.")
+
+
+def _check_wind(e: _Errors, fields: list, grids: list, params: dict) -> None:
+    """§6.5.2: pressure_coefficient on faces; speed_ratio, velocity and
+    comfort_lawson at the pedestrian height (origin_mm's z), each cell
+    grid_cell_mm or coarser (a runner may coarsen a grid too large to sample)."""
+    found = _named(fields).get("pressure_coefficient")
+    if found is None:
+        e.add("fields", "wind", "a wind result has the field pressure_coefficient (unit 1, on faces).")
+    elif found[1].get("on") != "faces" or found[1].get("unit") != "1":
+        e.add(f"fields[{found[0]}]", "wind", "pressure_coefficient is on faces, unit 1.")
+    by_name = _named(grids)
+    height_mm = float(params.get("pedestrian_height_m", 1.5)) * 1000
+    cell_mm = float(params.get("grid_cell_mm", 1000))
+    for name, (unit, components, dtype) in WIND_GRIDS.items():
+        if name not in by_name:
+            e.add("grids", "wind", f"a wind result has the grid {name} (§6.5.2).")
+            continue
+        i, g = by_name[name]
+        _check_grid(e, i, g, name, unit, components, dtype)
+        origin = g.get("origin_mm")
+        if isinstance(origin, list) and len(origin) == 3 and _num(origin[2]) and abs(origin[2] - height_mm) > 1.0:
+            e.add(f"grids[{i}].origin_mm", "layout", f"origin_mm's z is the sampling height, the job's pedestrian_height_m ({height_mm:g} mm).")
+        if _num(g.get("cell_mm")) and g["cell_mm"] < cell_mm - 1e-6:
+            e.add(f"grids[{i}].cell_mm", "layout", f"cell_mm is the job's grid_cell_mm ({cell_mm:g}) or coarser.")
+
+
+def _check_airflow(e: _Errors, fields: list, grids: list, meta: dict) -> None:
+    """§6.5.3: air_changes on spaces (one per room, in the rooms' order),
+    opening_flow on openings (one per opening) and the velocity grid."""
+    by_name = _named(fields)
+    for name, unit, on, key in (("air_changes", "1/h", "spaces", "rooms"), ("opening_flow", "m3/s", "openings", "openings")):
+        n = meta.get(key)
+        if name not in by_name:
+            if n != 0:
+                e.add("fields", "airflow", f"an airflow result has the field {name} ({unit}, on {on}).")
+            continue
+        i, f = by_name[name]
+        if f.get("on") != on or f.get("unit") != unit:
+            e.add(f"fields[{i}]", "airflow", f"{name} is on {on}, unit {unit}.")
+        if isinstance(n, int) and f.get("count") != n:
+            e.add(f"fields[{i}].count", "count", f"{name} has one value per {key[:-1]} of the rooms file ({n}).", expected=n)
+        if not _sha(f.get("entities")):
+            e.add(f"fields[{i}].entities", "entities", f"{name} names each {key[:-1]} (16 bytes each).")
+    grid = _named(grids).get("velocity")
+    if grid is None:
+        if meta.get("openings") != 0:
+            e.add("grids", "airflow", "an airflow result has the grid velocity (m/s, 3 components).")
+    else:
+        _check_grid(e, grid[0], grid[1], "velocity", "m/s", 3, "float32")
 
 
 def verify(db: Session, job: RenderJob, m: dict) -> tuple[list[dict], dict]:
@@ -269,19 +353,58 @@ def publish(db: Session, job: RenderJob, m: dict, blobs: dict) -> None:
 
 
 def sign(job: RenderJob, data: dict, ttl: int) -> None:
-    """5.5: a signed URL per file the result names (`urls`), valid `ttl` seconds."""
+    """5.5: the `files` map {sha256: {"url", "bytes"}} for every file the result
+    names (§6.3, what the app reads), and PF11's `urls` {sha256: url} beside it
+    (PF11's own readers: demo_analysis.py and the tests), valid `ttl` seconds."""
     store = get_store()
     source = job.output_key.rsplit("/", 1)[0] if job.output_key else f"jobs/{job.job_id}"
-    urls = {}
-    for sha in named_files(data):
-        name = "report.pdf" if sha == data.get("report") else None
-        urls[sha] = store.signed_get_url(f"{source}/files/{sha}", expires_in=ttl, filename=name)
+    files, urls = {}, {}
+    for sha, size in named_files(data).items():
+        key = f"{source}/files/{sha}"
+        urls[sha] = store.signed_get_url(key, expires_in=ttl, filename="report.pdf" if sha == data.get("report") else None)
+        if size is None or size < 0:
+            info = store.stat(key)
+            size = info.bytes if info is not None else None
+        files[sha] = {"url": urls[sha], "bytes": size}
+    data["files"] = files
     data["urls"] = urls
     data["urls_expire_at"] = clock.rfc3339(clock.now() + timedelta(seconds=ttl))
 
 
+def stored(output: dict) -> dict:
+    """The result as the platform keeps it: a worker's own `files` key goes (the
+    platform fills the map in 5.5; §6.3 says the worker omits it)."""
+    out = dict(output)
+    out.pop("files", None)
+    return out
+
+
 def platform_inputs(db: Session, job: RenderJob, ttl: int) -> dict:
-    """Files the platform adds to a claim's inputs: the energy job's weather."""
+    """Files the platform adds to a claim's inputs: the energy job's weather; an
+    airflow job's wind geometry and the wind job's pressure_coefficient values
+    (None when gone: the claim then fails `bad_input`)."""
     if job.kind == "energy":
         return {"weather": weather.claim_file(db, (job.params or {}).get("weather", ""), ttl)}
+    if job.kind == "airflow":
+        return _wind_files(db, job, ttl)
     return {}
+
+
+def _wind_files(db: Session, job: RenderJob, ttl: int) -> dict:
+    store = get_store()
+    out: dict = {"wind_geometry": None, "wind_pressure_coefficient": None}
+    wind = db.get(RenderJob, job.base_job_id) if job.base_job_id else None
+    if wind is None or wind.state != "succeeded" or wind.output_key is None or wind.account_id != job.account_id:
+        return out
+    geometry = ((wind.inputs or {}).get("files") or {}).get("geometry")
+    blob = uploads.blobs_by_sha(db, wind.account_id, [geometry]).get(geometry) if geometry else None
+    if blob is not None:
+        out["wind_geometry"] = {"sha256": geometry, "bytes": int(blob.bytes), "url": store.signed_get_url(blob.storage_key, expires_in=ttl)}
+    result = tiles.read_json(wind.output_key) or {}
+    cp = next((f for f in result.get("fields") or [] if isinstance(f, dict) and f.get("name") == "pressure_coefficient"), None)
+    if cp is not None and _sha(cp.get("values")):
+        key = f"{wind.output_key.rsplit('/', 1)[0]}/files/{cp['values']}"
+        info = store.stat(key)
+        if info is not None:
+            out["wind_pressure_coefficient"] = {"sha256": cp["values"], "bytes": info.bytes, "url": store.signed_get_url(key, expires_in=ttl)}
+    return out

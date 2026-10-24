@@ -58,12 +58,13 @@ from .share_helpers import CONTRACT as SHARE, house, published
 ROOT = Path(__file__).resolve().parents[2]
 # The app commit the folder was copied from, the commit that last changed the
 # folder there, and the app's blob of each file (`git ls-tree`); README.md is
-# the platform's own. The 155 tiles are pinned by their folder's git tree id
+# the platform's own. PF11c re-copied it at AN3's merge (render-jobs 1.2.0: the
+# seven wind files joined, nothing else moved). The 155 tiles are pinned by their folder's git tree id
 # (built from each tile's blob id, so it equals `git rev-parse
 # <commit>:<folder>/tiles` exactly when every tile's bytes and name do).
 APP_REPO = Path(r"T:\unreal5_7_4_projects\truebex_compact")
-APP_COMMIT = "ad3aa5c45e63924d77d1210f375fdf2135b12aed"
-APP_FOLDER_COMMIT = "4ed19a00d9e1846612dfdbd33bae49414c0f6e94"
+APP_COMMIT = "bcdd021f111cac84a2b0bb38ffa7a274059cb83c"
+APP_FOLDER_COMMIT = "51b5adf01a4a7a3634bc417b873337d13ebb5e54"
 APP_DIR = "Docs/roadmap/fixtures/contracts/render-jobs"
 APP_BLOBS = {
     ".gitignore": "91101218e231f80c83d4348b1fdee91b1573c795",
@@ -73,6 +74,13 @@ APP_BLOBS = {
     "manifest-tiles.json": "d1c8c6bb3a9bc1148f91c7e2deeea56eedfd2959",
     "ops-tiles.json": "fe15ca313306c39d1e19806ec6e7d73f8809eb68",
     "usage.json": "5dc29ddb5730d44bced9c84edffe627e36b4b38f",
+    "wind-comfort_lawson.bin": "4a10e0b509b7e7d75263fc4710656b8d6aa85bf1",
+    "wind-entities.bin": "1de986d45025d7592cf701a984f596e88ed259ab",
+    "wind-geometry.bin": "4fbcad11b769ae4f14296f2ab7d1f5319d9a1d9a",
+    "wind-pressure_coefficient.bin": "ef01b71c468dadcfda58ddccd6978755ed6242e9",
+    "wind-result.json": "d38d1bdf597aaec4f95bba93ee722b70d2a07bce",
+    "wind-speed_ratio.bin": "7b7ba43425dc179a08ceda8b33960bc13a2917bc",
+    "wind-velocity.bin": "0a8f4835a563d7d8a2af5537a61912bf45e2cd79",
 }
 APP_TILES_TREE = "3d5a9f35f7e47390668218e5934893c7aa3e3d1b"
 APP_TILES = 155
@@ -80,6 +88,8 @@ APP_TILES = 155
 STAND_INS = {
     ".gitattributes", "README.md", "claim.json", "ops-empty.json", "ops-move-wall.json", "wind-result.json",
     "wind-07e4728b5d56.bin", "wind-c7eb3214dcb7.bin", "wind-eafe2a993e63.bin",
+    # PF11c: render-jobs 1.2.0's speed_ratio and velocity grids of the octahedron's stand-in.
+    "wind-de7db596decf.bin", "wind-5db088a3486c.bin",
 }
 FACES = ("n", "e", "s", "w", "u", "d")
 
@@ -123,15 +133,17 @@ def faces(m: dict, view: str) -> dict:
 
 
 def test_pf6a_contract_folder_is_the_apps_copy():
-    """tests/contracts/render-jobs/ holds the app's 7 files, its 155 tiles and
-    this folder's README, each the app's blob byte for byte."""
+    """tests/contracts/render-jobs/ holds the app's 14 files (7 since PF11c's
+    re-copy: AN3's wind set), its 155 tiles and this folder's README, each the
+    app's blob byte for byte."""
     top = {p.name for p in FIX.iterdir() if p.is_file()}
     assert top == set(APP_BLOBS) | {"README.md"}
     assert {p.name for p in FIX.iterdir() if p.is_dir()} == {"tiles"}
     for name, blob in APP_BLOBS.items():
         data = (FIX / name).read_bytes()
         assert git_blob_id(data) == blob, name
-        assert b"\r" not in data, name  # the blob's LF, not the app checkout's CRLF
+        if not name.endswith(".bin"):  # 1.2.0's arrays are binary
+            assert b"\r" not in data, name  # the blob's LF, not the app checkout's CRLF
     names = sorted((FIX / "tiles").iterdir())
     assert len(names) == APP_TILES and all(p.is_file() and p.suffix == ".jpg" for p in names)
     assert git_tree_id(FIX / "tiles") == APP_TILES_TREE
@@ -168,7 +180,8 @@ def test_pf6a_stand_ins_live_in_fixtures_render():
     own until AN3 and the app publish theirs; make_render_job_fixtures.py
     writes them there and nowhere else."""
     assert {p.name for p in RENDER_FIXTURES.iterdir()} == STAND_INS
-    assert not [n for n in STAND_INS - {"README.md"} if (FIX / n).exists()]
+    # Since 1.2.0 the app publishes a wind-result.json of its own there (AN3's, not PF11's stand-in).
+    assert not [n for n in STAND_INS - {"README.md"} if (FIX / n).exists() and git_blob_id((FIX / n).read_bytes()) != APP_BLOBS.get(n)]
     readme = (RENDER_FIXTURES / "README.md").read_text(encoding="utf-8")
     assert "AN3" in readme and "../../contracts/render-jobs/" in readme
     for name in sorted(STAND_INS - {"README.md", ".gitattributes"}):
@@ -282,11 +295,12 @@ def test_pf6a_followed_panorama_and_update_with_the_apps_manifests(client):
 # --- render-jobs/1.1 on every route ------------------------------------------------------------
 
 
-ECHO = "render-jobs/1.1"
+# PF11c: every route answers render-jobs/1.2 since 1.2.0 (AN3); 1.0 and 1.1 are still served.
+ECHO = "render-jobs/1.2"
 
 
 def _versions(send, label: str) -> None:
-    """`send(headers)` answers with the 1.1 echo for a 1.0, a 1.1 and no
+    """`send(headers)` answers with the echo for a 1.0, a 1.1 and no
     contract header, and 400 `contract_version` for 2.0."""
     for sent in ("render-jobs/1.0", "render-jobs/1.1", None):
         extra = {} if sent is None else {"X-Truebex-Contract": sent}
@@ -361,24 +375,24 @@ def test_pf6a_routes_echo_render_jobs_1_1(client):
 
 def test_pf6a_no_router_or_client_left_on_1_0():
     """The routers, the worker wrapper, the website's client, the developer
-    document and the SDKs all speak render-jobs/1.1."""
+    document and the SDKs all speak render-jobs/1.1 (1.2 since PF11c)."""
     app_dir = ROOT / "server" / "app"
     for path in app_dir.rglob("*.py"):
         text = path.read_text(encoding="utf-8")
         assert 'contract("render-jobs", 1, 0)' not in text and "render-jobs/1.0" not in text, path
     for name in ("jobs.py", "workers.py", "analysis.py", "v1/jobs.py"):
-        assert 'contract("render-jobs", 1, 1)' in (app_dir / "routers" / name).read_text(encoding="utf-8"), name
-    assert 'CONTRACT = "render-jobs/1.1"' in (ROOT / "worker" / "truebex_worker.py").read_text(encoding="utf-8")
-    assert '"X-Truebex-Contract": "render-jobs/1.1"' in (ROOT / "src" / "lib" / "jobs.ts").read_text(encoding="utf-8")
-    assert '"render-jobs/1.1"' in (ROOT / "server" / "scripts" / "demo_render.py").read_text(encoding="utf-8")
+        assert 'contract("render-jobs", 1, 2)' in (app_dir / "routers" / name).read_text(encoding="utf-8"), name
+    assert 'CONTRACT = "render-jobs/1.2"' in (ROOT / "worker" / "truebex_worker.py").read_text(encoding="utf-8")
+    assert '"X-Truebex-Contract": "render-jobs/1.2"' in (ROOT / "src" / "lib" / "jobs.ts").read_text(encoding="utf-8")
+    assert '"render-jobs/1.2"' in (ROOT / "server" / "scripts" / "demo_render.py").read_text(encoding="utf-8")
     doc = json.loads((ROOT / "openapi" / "v1.json").read_text(encoding="utf-8"))
     jobs_ops = [op for p, item in doc["paths"].items() if p.startswith("/v1/jobs") for op in item.values()]
     assert jobs_ops and {op["x-truebex-contract"] for op in jobs_ops} == {ECHO}
     for sdk in (ROOT / "sdks" / "python" / "truebex" / "_operations.py", ROOT / "sdks" / "js" / "src" / "operations.mjs"):
         text = sdk.read_text(encoding="utf-8")
-        assert "render-jobs/1.0" not in text and text.count("render-jobs/1.1") == len(jobs_ops), sdk
+        assert "render-jobs/1.0" not in text and text.count("render-jobs/1.2") == len(jobs_ops), sdk
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
-    assert "render-jobs/1.0" not in readme and "`X-Truebex-Contract: render-jobs/1.1`" in readme
+    assert "render-jobs/1.0" not in readme and "`X-Truebex-Contract: render-jobs/1.2`" in readme
     # RJ, the tests' own header, is what CL3's client sends.
     assert RJ == {"X-Truebex-Contract": ECHO}
 

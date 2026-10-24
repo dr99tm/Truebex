@@ -4,8 +4,8 @@
 
 Reads `<job>/job.json` (`truebex-analysis-job/1`), checks its inputs arrived,
 reports progress, and writes the platform's stand-in wind result
-(tests/fixtures/render/wind-result.json, `truebex-analysis/1`; AN3 publishes
-the app's later) for this job into `<job>/out/`
+(tests/fixtures/render/wind-result.json, `truebex-analysis/1` in render-jobs
+1.2.0's wind shape, for the 8-triangle test shape) for this job into `<job>/out/`
 with its arrays named by SHA-256. `params.speed_ms` 13 makes it fail the way
 a solver does (exit 3 with `out/error.json`).
 """

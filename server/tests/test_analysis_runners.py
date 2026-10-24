@@ -167,14 +167,15 @@ def test_wind_case_files(tmp_path):
     assert "Uref            5;" in files["0/U"] and "Zref            10;" in files["0/U"] and "z0              uniform 0.3;" in files["0/U"]
     assert "atmBoundaryLayerInletVelocity" in files["0/U"] and "atmBoundaryLayerInletK" in files["0/k"]
     assert "nutkAtmRoughWallFunction; z0 uniform 0.3" in files["0/nut"]
-    assert "endTime         1000;" in files["system/controlDict"] and "p 0.0001;" in files["system/fvSolution"]
+    assert "endTime         2000;" in files["system/controlDict"] and "p 0.0001;" in files["system/fvSolution"]  # 1.2.0 §6.5.4
     assert "level (2 3)" in files["system/snappyHexMeshDict"] and "building.stl" in files["system/snappyHexMeshDict"]
-    assert "kEpsilon" in files["constant/turbulenceProperties"]
+    assert "RASModel realizableKE;" in files["constant/turbulenceProperties"]  # 1.2.0: realizable k-epsilon by default
     # The inlet's log law: the reference speed at the reference height, rising with height.
     assert math.isclose(wind.log_law_speed(10, 5, 10, 0.3), 5.0)
     assert wind.log_law_speed(2, 5, 10, 0.3) < wind.log_law_speed(20, 5, 10, 0.3)
     classes = job.profile["lawson"]["classes"]
-    assert [wind.lawson_class(s, classes) for s in (0, 2.5, 2.51, 4.0, 6.0, 8.0, 8.01, 30)] == [0, 0, 1, 1, 2, 3, 4, 4]
+    # 1.2.0's LDDC thresholds 4 / 6 / 8 / 10 m/s (sitting, standing, strolling, business walking, uncomfortable).
+    assert [wind.lawson_class(s, classes) for s in (0, 4.0, 4.01, 6.0, 8.0, 10.0, 10.01, 30)] == [0, 0, 1, 1, 2, 3, 4, 4]
 
 
 def test_wind_sampling_and_result(tmp_path):
@@ -187,23 +188,27 @@ def test_wind_sampling_and_result(tmp_path):
     assert wind.grid_speeds(points, u_rows, 0.5) == [5.0, 10.0, None]
     job = _job(tmp_path, "wind", WIND, inputs={"geometry": _box_stl(-5, -4, 5, 4, 6)})
     mesh = wind.read_stl(job.input("geometry"))
-    grid = wind.Grid((-23.0, -22.0), 2.0, 3, 2, 1.5)
+    # PF11c: the origin is the centre of cell (0, 0), and build_result takes the velocities (model frame).
+    grid = wind.Grid((-22.0, -21.0), 2.0, 3, 2, 1.5)
     speeds = [2.0, 5.0, None, 7.5, 9.0, 3.0]
+    vectors = [None if s is None else (s, 0.0, 0.0) for s in speeds]
     cp = [0.8, -0.5, -1.2, 0.1, 0.0, -0.3] * 2
-    result = wind.build_result(job, mesh, cp, grid, speeds, None, job.out_dir, {"cells": 120000, "iterations": 640, "converged": True})
+    info = {"cells": 120000, "iterations": 640, "converged": True, "residual": 9.5e-05}
+    result = wind.build_result(job, mesh, cp, grid, vectors, None, job.out_dir, info)
     lawson = next(g for g in result["grids"] if g["name"] == "comfort_lawson")
-    assert list((job.out_dir / lawson["values"]).read_bytes()) == [0, 2, 255, 3, 4, 1]
+    assert list((job.out_dir / lawson["values"]).read_bytes()) == [0, 1, 255, 2, 3, 0]  # 1.2.0's LDDC classes
     ratio = common.unpack_f32((job.out_dir / next(g for g in result["grids"] if g["name"] == "speed_ratio")["values"]).read_bytes())
     assert ratio[0] == 0.4 or math.isclose(ratio[0], 0.4, rel_tol=1e-6)
     assert math.isnan(ratio[2])
-    assert lawson["origin_mm"] == [-23000.0, -22000.0, 1500.0] and lawson["cell_mm"] == 2000.0
+    assert lawson["origin_mm"] == [-22000.0, -21000.0, 1500.0] and lawson["cell_mm"] == 2000.0
     field = result["fields"][0]
     assert (job.out_dir / field["entities"]).read_bytes() == bytes(16 * 12)
-    assert result["summary"] == {"max_speed_ms": 9.0, "max_speed_ratio": 1.8, "min_cp": -1.2, "max_cp": 0.8, "cells": 120000, "iterations": 640, "converged": 1}
+    assert result["summary"] == {"max_speed_ms": 9.0, "max_speed_ratio": 1.8, "min_cp": -1.2, "max_cp": 0.8, "cells": 120000,
+                                 "iterations": 640, "converged": 1, "residual": 9.5e-05}
     _passes(result, job, job.out_dir, geometry_triangles=12)
     # With the uploaded ids, those are what the field names.
     ids = b"".join(bytes([i]) * 16 for i in range(12))
-    with_ids = wind.build_result(job, mesh, cp, grid, speeds, ids, job.out_dir, {})
+    with_ids = wind.build_result(job, mesh, cp, grid, vectors, ids, job.out_dir, info)
     assert (job.out_dir / with_ids["fields"][0]["entities"]).read_bytes() == ids
 
 
@@ -283,7 +288,7 @@ def test_analysis_images_are_non_root_and_run_their_runner():
     import shutil
     import subprocess
 
-    for kind in ("wind", "energy", "acoustics", "texture"):
+    for kind in ("wind", "energy", "acoustics", "texture", "airflow"):
         text = (IMAGES / kind / "Dockerfile").read_text("utf-8")
         assert "COPY runners /opt/truebex/runners" in text and "COPY run.sh /opt/truebex/run.sh" in text, kind
         assert "USER 1000" in text and f'ENTRYPOINT ["/opt/truebex/run.sh", "{kind}"]' in text, kind
@@ -295,7 +300,7 @@ def test_analysis_images_are_non_root_and_run_their_runner():
     run_sh = (IMAGES / "run.sh").read_bytes()
     assert b"python3 -m \"runners.$KIND\"" in run_sh
     if shutil.which("powershell"):
-        for script in [IMAGES / "build.ps1", *[IMAGES / k / "build.ps1" for k in ("wind", "energy", "acoustics", "texture")]]:
+        for script in [IMAGES / "build.ps1", *[IMAGES / k / "build.ps1" for k in ("wind", "energy", "acoustics", "texture", "airflow")]]:
             cmd = (
                 "$e=$null; [void][System.Management.Automation.Language.Parser]::ParseFile("
                 f"'{script}', [ref]$null, [ref]$e); if ($e.Count) {{ $e | % {{ $_.Message }}; exit 1 }}"

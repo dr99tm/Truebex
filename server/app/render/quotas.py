@@ -34,8 +34,9 @@ from .models import OverageCap, RenderJob
 
 ACCOUNT_KIND = "user"
 METRIC = "cu"
-# PF11 adds acoustics and texture (MINOR proposals) beside the contract's five.
-CONTRACT_KINDS = ("panorama", "tiles", "pack", "wind", "energy", "acoustics", "texture")
+# PF11 adds acoustics and texture (MINOR proposals) beside the contract's five;
+# render-jobs 1.2.0 adds airflow (PF11c).
+CONTRACT_KINDS = ("panorama", "tiles", "pack", "wind", "energy", "acoustics", "texture", "airflow")
 LIVE_STATES = ("queued", "claimed", "running")
 TENTH = Decimal("0.1")
 

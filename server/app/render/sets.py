@@ -156,7 +156,11 @@ def stop(db: Session, row: RenderSet, now: datetime, *, reason: str = "") -> Non
 
 def on_ended(db: Session, job: RenderJob, now: datetime) -> None:
     """A job of a set failed, was cancelled or expired. The follow job: the set
-    stops. A `tiles` job: its edits went unrendered, the set is stale."""
+    stops. A `tiles` job: its edits went unrendered, the set is stale. (Every
+    such end runs this, so PF11c's airflow jobs end with their wind job here.)"""
+    from ..analysis import dependents
+
+    dependents.on_ended(db, job, now)
     if not job.set_id:
         return
     row = db.get(RenderSet, job.set_id)

@@ -288,6 +288,7 @@ The first ten names are the `ai-proxy.md` §10 platform tests.
   text, quoting the pack's consent and the credits) and their own consent version. **Stripe packs**: the one-off
   checkout sets no `customer_update` (PF2's subscription checkout does), so with `STRIPE_TAX_ENABLED` and an existing
   Stripe customer without an address Stripe may refuse the session; Paddle, the default provider, is unaffected.
+  **PF11c (2026-10-24):** AN3's exports and submissions are met on the platform's side (render-jobs 1.2.0); the first real runs and measured seconds stay open: `PF11c-render-jobs-1-2-0.md`.
 * **Merged with master: PF2a, PF2b, PF3, PF3a, PF5, PF7, PF8, PF14a, and master's T29 / T30 merges of PF4 and PF6
   (2026-10-11, Autopilot T31, `ap/t31-merge-t14-pf11-analysis-and-ai-s`):** verify green (lint, build, pytest
   468 collected, 463 passed and the 5 Postgres-only skips: master's 429, this feature's 35 and the merge's 4). A

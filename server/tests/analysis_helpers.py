@@ -79,8 +79,9 @@ def submit(client, headers: dict, body: dict):
 
 
 def wind_body(geometry: bytes, **params) -> dict:
+    """A wind job on `geometry` with the 8 ids of `entities()` (render-jobs 1.2.0 requires them)."""
     return {
         "kind": "wind",
-        "inputs": {"upload_id": None, "files": {"geometry": sha(geometry)}},
+        "inputs": {"upload_id": None, "files": {"geometry": sha(geometry), "entities": sha(entities())}},
         "params": {"speed_ms": 5, "direction_deg": 225, "reference_height_m": 10, "terrain": "suburban", "comfort": "lawson", **params},
     }

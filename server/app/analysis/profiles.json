@@ -1,33 +1,35 @@
 {
   "schema": "truebex-analysis-profiles/1",
-  "source": "Solver profiles sent with every analysis job (the claim's job.profile). Placeholders until guides/GD2 sets the residual targets, iteration caps and validation cases; terrain roughness lengths are the EN 1991-1-4 Table 4.1 values for terrain categories 0 to IV (confirm at writing time).",
+  "source": "Solver profiles sent with every analysis job (the claim's job.profile). Placeholders until guides/GD2 sets the residual targets, iteration caps and validation cases. The wind profile is render-jobs 1.2.0 section 6.5.4 (PF11c): realizable k-epsilon by default or k-omega SST, the Richards and Hoxey inlet with z0 by terrain (EN 1991-1-4 Table 4.1, terrain categories 0 to IV; confirm at writing time), rough-wall functions on the ground, converged at every residual below 1e-4 or at 2000 iterations, the background mesh by the job's quality.",
   "wind": {
     "image": "truebex-analysis-wind:1",
-    "solver": "steady-rans-kepsilon",
-    "iterations_max": 1000,
+    "solver": "simpleFoam, steady RANS",
+    "turbulence_models": {"realizable_ke": "realizableKE", "komega_sst": "kOmegaSST"},
+    "iterations_max": 2000,
     "residual_target": 0.0001,
     "domain_h": {"upstream": 5, "downstream": 15, "sides": 5, "top": 5},
+    "qualities": {"draft": {"cells_per_side": 6}, "standard": {"cells_per_side": 10}, "high": {"cells_per_side": 20}},
     "cells_per_h": 10,
     "refinement_levels": [2, 3],
-    "sample_height_m": 1.5,
-    "grid_cell_mm": 500,
     "grid_extent_h": 3,
+    "grid_points_max": 250000,
     "air_density_kg_m3": 1.225,
+    "ground_wall_function": "nutkAtmRoughWallFunction",
     "terrain": {
       "sea": {"z0_m": 0.003, "category": "0"},
-      "open": {"z0_m": 0.01, "category": "I"},
-      "country": {"z0_m": 0.05, "category": "II"},
+      "lake": {"z0_m": 0.01, "category": "I"},
+      "open": {"z0_m": 0.05, "category": "II"},
       "suburban": {"z0_m": 0.3, "category": "III"},
       "urban": {"z0_m": 1.0, "category": "IV"}
     },
     "lawson": {
       "unit": "class",
-      "source": "Lawson comfort classes as the City of London's wind microclimate guidelines use them; the instantaneous class per direction, the annual combination with the weather file is the app's (AN3)",
+      "source": "The LDDC variant of the Lawson criteria (render-jobs 1.2.0 section 6.5.2) applied to the instantaneous speed of one direction, each class up to its speed; the annual combination with the weather file is the app's (AN3). GD2 placeholders until its validation cases pass.",
       "classes": [
-        {"class": 0, "name": "frequent_sitting", "max_ms": 2.5},
-        {"class": 1, "name": "occasional_sitting", "max_ms": 4.0},
-        {"class": 2, "name": "standing", "max_ms": 6.0},
-        {"class": 3, "name": "walking", "max_ms": 8.0},
+        {"class": 0, "name": "sitting", "max_ms": 4.0},
+        {"class": 1, "name": "standing", "max_ms": 6.0},
+        {"class": 2, "name": "strolling", "max_ms": 8.0},
+        {"class": 3, "name": "business_walking", "max_ms": 10.0},
         {"class": 4, "name": "uncomfortable", "max_ms": null}
       ]
     }
@@ -51,5 +53,17 @@
     "image": "truebex-analysis-texture:1",
     "sizes": [512, 1024, 2048],
     "maps": ["albedo", "normal", "roughness"]
+  },
+  "airflow": {
+    "image": "truebex-analysis-airflow:1",
+    "engine": "truebex-airflow",
+    "method": "the orifice network of render-jobs 1.2.0 section 6.5.4: Q = Cd A sqrt(2 |dp| / rho), Newton on each room's mass balance, the outdoor pressure Cp x 0.5 rho U_ref^2 with Cp from the wind job",
+    "rho_kg_m3_default": 1.2,
+    "newton_max_iter": 60,
+    "tolerance_m3s": 1e-9,
+    "linear_below_pa": 0.0001,
+    "facing_dot_min": 0.5,
+    "velocity_cell_mm": 500,
+    "velocity_margin_m": 2.0
   }
 }

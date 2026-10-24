@@ -14,9 +14,10 @@ user, only the job's own folder: a job never sees another account's files.
 
 | Image | Engine | Licence | Notes |
 |---|---|---|---|
-| `truebex-analysis-wind` | OpenFOAM v2406 (`opencfd/openfoam-default:2406`), simpleFoam, k-epsilon | GPL-3.0 | run as a service on the workers, never shipped with the app (the app keeps its own coarse estimate, AN3) |
+| `truebex-analysis-wind` | OpenFOAM v2406 (`opencfd/openfoam-default:2406`), simpleFoam, realizable k-epsilon or k-omega SST (render-jobs 1.2.0 §6.5.4) | GPL-3.0 | run as a service on the workers, never shipped with the app (the app keeps its own coarse estimate, AN3) |
 | `truebex-analysis-energy` | EnergyPlus 24.2 from the official release archive | BSD-3-Clause | the build needs the archive's SHA-256 (`-BuildArg "ENERGYPLUS_SHA256=…"`; confirm the asset at writing time) |
 | `truebex-analysis-acoustics` | our own stochastic energy ray tracer (`runners/acoustics.py`) | ours | standard library Python |
+| `truebex-analysis-airflow` | our own orifice network between rooms on the wind job's Cp (`runners/airflow.py`, PF11c, render-jobs 1.2.0) | ours | standard library Python; the claim brings the wind job's geometry and Cp as `inputs.files.wind_geometry` / `wind_pressure_coefficient` |
 | `truebex-analysis-texture` | an open image model (diffusers), seamless by circular padding | the model's licence must allow commercial hosting | `gpu-ai`, `--gpus all`; the platform keeps the kind off until `AI_TEXTURE_ENABLED` |
 
 Build (Docker Desktop with Linux containers on Windows, or Docker on Linux):
@@ -24,6 +25,7 @@ Build (Docker Desktop with Linux containers on Windows, or Docker on Linux):
     powershell -NoProfile -ExecutionPolicy Bypass -File infra\worker\analysis\wind\build.ps1
     powershell -NoProfile -ExecutionPolicy Bypass -File infra\worker\analysis\build.ps1 -Kind energy -BuildArg "ENERGYPLUS_SHA256=<sha>"
     infra/worker/analysis/build.sh acoustics
+    infra/worker/analysis/build.sh airflow
 
 Images are rebuilt per release and pushed to the private registry GD3 names; the tag the job's profile names
 (`server/app/analysis/profiles.json`, `image`) is the one the wrapper runs unless `images` in its settings says

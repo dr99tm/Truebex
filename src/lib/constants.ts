@@ -3461,3 +3461,11 @@ export const MARKET_ORDER_LINK = {
   linked: "The order you opened",
   notFound: "This order is not in this account. Sign in with the account that sent it from Truebex.",
 } as const;
+
+// PF11c: the airflow kind of render-jobs 1.2.0 (a wind study's indoor run) on
+// the Cloud page's jobs and the render admin (account pages, noindex; read
+// after CLOUD.kinds and CLOUD_AI.kinds by kindLabel). Wind and airflow reports
+// stay "On the roadmap" in the public copy.
+export const CLOUD_AIRFLOW = {
+  kinds: { airflow: "Airflow study" },
+} as const;

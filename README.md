@@ -1702,3 +1702,37 @@ cd server
 Run the last line in a second window: it streams `find`, `place` and the closing text, each turn followed by its charge
 (`[credits] 22 charged, …`, then 23 and 24: §6.2 for that turn's tokens); `demo_ai.py ... summary` sends one tool-less
 turn. The human test in the doc then opens `/dashboard/cloud/#ai-usage` on the served build.
+
+## Wind and airflow jobs on render-jobs 1.2 (PF11c)
+
+The analysis service follows contract render-jobs 1.2.0, the version the app's wind study (AN3) is built against:
+every render-jobs route answers `X-Truebex-Contract: render-jobs/1.2` (1.0 and 1.1 are still served). A `wind` job
+uploads its geometry (one closed binary STL, at most 200 000 triangles) with `inputs.files.entities` (16 bytes per
+triangle) and optional `surroundings` and `terrain`, and takes 1.2's `pedestrian_height_m`, `grid_cell_mm` and
+`turbulence_model`; `terrain` is `sea`, `lake`, `open`, `suburban` or `urban`, and the job's `quality` (draft, standard,
+high) picks the mesh. The new `airflow` kind runs the orifice network between the rooms of a `truebex-airflow-rooms/1`
+file on the Cp of the wind job its `params.wind_job_id` names: it waits for that job and fails with it.
+`GET /jobs/{job_id}/output` answers the `files` map the app reads (`{"<sha256>": {"url", "bytes"}}`) beside `urls`. An
+analysis records the `project_id` and `at_seq` it names without opening a snapshot. Doc:
+`docs/roadmap/40/PF11c-render-jobs-1-2-0.md`.
+
+`server/tests/contracts/render-jobs/` now holds the app's wind set too (app commit 51b5adf01: `wind-result.json` and
+six `wind-*.bin`), re-copied with `scripts\sync-contract-fixtures.ps1 -Contract render-jobs`. With no Docker and no
+solver on a PC, `server/scripts/local_analysis_docker.py` stands in for `docker`: the worker wrapper's container mode
+runs the airflow runner as a local process, and `TRUEBEX_WIND_STAND_IN` answers a wind job on the app's export with
+the app's arrays. With a local API, a device token (`demo_replica.py login … --trial`) and a cpu-8 worker token for
+`wind` and `airflow` in a `worker.toml` with `mode = "container"` and `docker = "<repo>/server/scripts/local_analysis_docker.py"`:
+
+```powershell
+cd server
+$F = "tests\contracts\render-jobs"
+.venv\Scripts\python.exe scripts\demo_analysis.py --token tbx_dev_... wind --stl $F\wind-geometry.bin --entities $F\wind-entities.bin --direction 225
+.venv\Scripts\python.exe scripts\demo_analysis.py --token tbx_dev_... airflow --wind-job <wind job id> --direction 225
+$env:TRUEBEX_WIND_STAND_IN = (Resolve-Path $F).Path
+py -3.12 ..\worker\truebex_worker.py --config worker.toml --once
+py -3.12 ..\worker\truebex_worker.py --config worker.toml --once
+.venv\Scripts\python.exe scripts\demo_analysis.py --token tbx_dev_... output --job <airflow job id>
+```
+
+The first worker run completes the wind job (the airflow job cannot be claimed before), the second runs the airflow
+job; `output` prints each result's fields, grids and files map.

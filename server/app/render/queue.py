@@ -16,7 +16,9 @@ from the newest picture. An ended attempt (a lapse, or a retryable failure)
 requeues the job three times; the fourth ends it `failed`. A worker holds one
 lease at a time: claiming again ends the one it still holds. A claim made for
 a worker that went away before reading it is given back (`unclaim`, PF6b): no
-attempt ended, since the worker never had the job.
+attempt ended, since the worker never had the job. An `airflow` job (PF11c)
+is a candidate only once the wind job it runs on has succeeded
+(`analysis.dependents`), and an analysis job never opens a snapshot (§6.5.1).
 """
 
 import json
@@ -181,6 +183,8 @@ def expire(db: Session, now: datetime) -> int:
 
 
 def _candidate(kinds: list[str], doc_version_max: int):
+    from ..analysis import dependents  # PF11c: an airflow job waits for its wind job
+
     j = RenderJob
     other = aliased(RenderJob)
     in_flight = exists().where(
@@ -194,6 +198,7 @@ def _candidate(kinds: list[str], doc_version_max: int):
             j.kind.in_(kinds),
             j.doc_version_needed <= doc_version_max,
             or_(j.kind != "tiles", j.set_id.is_(None), and_(ready, ~in_flight)),
+            dependents.ready(j),
         )
         .order_by(j.priority.desc(), j.queued_at.asc(), j.job_id.asc())
         .limit(1)
@@ -308,11 +313,14 @@ class BadInput(Exception):
 def claim_inputs(db: Session, job: RenderJob, now: datetime) -> dict:
     """5.7's `inputs`: the snapshot, the operations after it up to `at_seq` and
     the base manifest, each signed for the lease plus 10 minutes."""
+    from ..analysis import kinds as analysis_kinds  # PF11c: an analysis reads its upload alone (§6.5.1)
+
     ttl = LEASE_S + URL_EXTRA_S
-    project = db.get(Project, job.project_id) if job.project_id else None
-    if job.project_id and (project is None or project.deleted_at is not None):
+    opens = bool(job.project_id) and not analysis_kinds.is_analysis(job.kind)
+    project = db.get(Project, job.project_id) if opens else None
+    if opens and (project is None or project.deleted_at is not None):
         raise BadInput("The project was deleted.", stop_set=True)
-    if job.project_id and membership(db, job.project_id, job.account_id) is None:
+    if opens and membership(db, job.project_id, job.account_id) is None:
         raise BadInput("The account is no longer on this project.", stop_set=True)
     snapshot, after = None, 0
     if project is not None:
@@ -407,7 +415,7 @@ def prepare_claim(db: Session, job_id: str, worker: Worker, now: datetime) -> di
 
     record = {**service.record_json(job), "changed": list(job.changed or []), "params": dict(job.params or {})}
     if analysis_kinds.is_analysis(job.kind):
-        record["profile"] = analysis_kinds.profile(job.kind)
+        record["profile"] = analysis_kinds.profile(job.kind, job.quality)
     return {
         # The worker writes the job file (§6.1) from these: the record plus
         # the changed ids and the kind's params.
@@ -539,6 +547,8 @@ def complete(
         )
     manifest = dict(output)
     manifest.pop("tiles_base", None)
+    if analysis:
+        manifest = analysis_results.stored(manifest)  # PF11c: 5.5 fills `files` itself
     if job.kind == "pack":
         tiles.publish_pack(db, job, manifest, blobs)
     elif analysis:
@@ -568,6 +578,10 @@ def complete(
     metering.record(db, job.account_kind, job.account_id, f"{quotas.METRIC}.{job.kind}", cost, metering.utc_day(now))
     overage.accrue(db, job.account_id, cost, terms, now)
     follow_id = sets.on_success(db, job, now)
+    if analysis:
+        from ..analysis import dependents  # PF11c: the airflow jobs waiting on this wind job
+
+        dependents.on_succeeded(db, job, now)
     _worker_idle(db, worker.worker_id, now)
     db.commit()
     notify_job(job_id, follow_id)

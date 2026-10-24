@@ -60,6 +60,7 @@ def test_api_key_runs_an_analysis_job_with_a_webhook(client, receiver):
     # The key uploads the geometry (purpose job-input needs jobs:write) and submits through /v1.
     stl = octahedron_stl()
     _v1_upload(client, key, stl)
+    _v1_upload(client, key, entities())  # render-jobs 1.2.0: a wind job's entity ids are required
     res = client.post("/v1/jobs", json=wind_body(stl), headers=kh(key, **RJ, **{"Idempotency-Key": hex32()}))
     assert res.status_code == 201, res.text
     rec = res.json()
@@ -123,7 +124,7 @@ def test_python_sdk_submits_an_analysis_without_a_project(client, live_api):  # 
 
         c = truebex.Client(api_key=key["key"], base_url=live_api, max_retries=0)
         stl = octahedron_stl()
-        assert c.upload("job-input", [stl])["files"][0]["state"] == "complete"
+        assert {f["state"] for f in c.upload("job-input", [stl, entities()])["files"]} == {"complete"}
         body = wind_body(stl)
         job = c.jobs.create(kind="wind", inputs=body["inputs"], params=body["params"])
         assert job["kind"] == "wind" and job["project_id"] is None and job["state"] == "queued"

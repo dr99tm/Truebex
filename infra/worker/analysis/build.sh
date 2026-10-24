@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Build an analysis runner image (PF11):
-#   build.sh <wind|energy|acoustics|texture> [tag] [--build-arg K=V ...]
+#   build.sh <wind|energy|acoustics|texture|airflow> [tag] [--build-arg K=V ...]
 set -euo pipefail
-KIND="${1:?usage: build.sh <wind|energy|acoustics|texture> [tag] [--build-arg K=V ...]}"
+KIND="${1:?usage: build.sh <wind|energy|acoustics|texture|airflow> [tag] [--build-arg K=V ...]}"
 shift
 TAG="1"
 if [ "$#" -gt 0 ] && [ "${1#--}" = "$1" ]; then TAG="$1"; shift; fi

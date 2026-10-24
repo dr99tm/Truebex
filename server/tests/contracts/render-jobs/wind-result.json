@@ -1,0 +1,108 @@
+{
+	"schema": "truebex-analysis/1",
+	"kind": "wind",
+	"project_id": "f08ffe0283418dea8627d42c7908ab88",
+	"at_seq": 0,
+	"params":
+	{
+		"speed_ms": 5,
+		"direction_deg": 225,
+		"reference_height_m": 10,
+		"terrain": "suburban",
+		"comfort": "lawson",
+		"pedestrian_height_m": 1.5,
+		"grid_cell_mm": 1000,
+		"turbulence_model": "realizable_ke"
+	},
+	"engine":
+	{
+		"name": "truebex-stub",
+		"version": "1",
+		"image": null
+	},
+	"summary":
+	{
+		"max_speed_ms": 3.6510000000000002
+	},
+	"fields": [
+		{
+			"name": "pressure_coefficient",
+			"unit": "1",
+			"on": "faces",
+			"count": 156,
+			"values": "5f46ba881bd75079f4b0f3bac1da7158611ca9e617aed3dd3ba5f6a0ba79639d",
+			"entities": "f13ab02c907855b7c5682d27e0b11940c7d10302118583d60697ff7be1643902"
+		}
+	],
+	"grids": [
+		{
+			"name": "speed_ratio",
+			"unit": "1",
+			"origin_mm": [
+				-30849.998861551285,
+				-30849.998861551285,
+				1500
+			],
+			"cell_mm": 1000,
+			"nx": 89,
+			"ny": 72,
+			"values": "351ea655cdf1339b3b8178d935953fc4da29b7279ccc1e3283a6a007e10c3522"
+		},
+		{
+			"name": "velocity",
+			"unit": "m/s",
+			"origin_mm": [
+				-30849.998861551285,
+				-30849.998861551285,
+				1500
+			],
+			"cell_mm": 1000,
+			"nx": 89,
+			"ny": 72,
+			"components": 3,
+			"values": "e59f416ca856877f34aed554b1e456fce8d89ffd799bf2a32ba060f32add9288"
+		},
+		{
+			"name": "comfort_lawson",
+			"unit": "class",
+			"origin_mm": [
+				-30849.998861551285,
+				-30849.998861551285,
+				1500
+			],
+			"cell_mm": 1000,
+			"nx": 89,
+			"ny": 72,
+			"values": "26cb0c4f8afb9758de3d7354c4cd850f871a4f6a55e9bb3516cd3d167a3bd1ae"
+		}
+	],
+	"report": null,
+	"files":
+	{
+		"5f46ba881bd75079f4b0f3bac1da7158611ca9e617aed3dd3ba5f6a0ba79639d":
+		{
+			"url": "wind-pressure_coefficient.bin",
+			"bytes": 624
+		},
+		"f13ab02c907855b7c5682d27e0b11940c7d10302118583d60697ff7be1643902":
+		{
+			"url": "wind-entities.bin",
+			"bytes": 2496
+		},
+		"351ea655cdf1339b3b8178d935953fc4da29b7279ccc1e3283a6a007e10c3522":
+		{
+			"url": "wind-speed_ratio.bin",
+			"bytes": 25632
+		},
+		"e59f416ca856877f34aed554b1e456fce8d89ffd799bf2a32ba060f32add9288":
+		{
+			"url": "wind-velocity.bin",
+			"bytes": 76896
+		},
+		"26cb0c4f8afb9758de3d7354c4cd850f871a4f6a55e9bb3516cd3d167a3bd1ae":
+		{
+			"url": "wind-comfort_lawson.bin",
+			"bytes": 6408
+		}
+	}
+}
