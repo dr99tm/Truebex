@@ -50,6 +50,9 @@ APP_COMMIT = "93bc4cac24d365eee0d2649bb4f81390af329ca0"
 APP_COPIED_FROM = "ad3aa5c45e63924d77d1210f375fdf2135b12aed"
 APP_DIR = "Docs/roadmap/fixtures/contracts/project-log"
 APP_BLOBS = {
+    # PF6c: CL4 added action-finish.json (project-log 1.2.1, app 5bf7ba130, on
+    # app main bc06615c6; test_pf6c_render_jobs_1_3.py).
+    "action-finish.json": "c136e2dd7b71e6f40e7647e56d80665cbd391dca",
     "action-move.json": "c1bafb73e39fb6891f821b739214673557a25083",
     # PF4b: CL2 added comments.json (project-log 1.2.0, app 83fdeedad); the
     # other seven are CL1's, unchanged (test_pf4b_project_log_1_2.py).
@@ -62,8 +65,8 @@ APP_BLOBS = {
     "versions.json": "5024595cbd3b79f62894c66c08207fdf90209ef6",
 }
 V1 = {"X-Truebex-Contract": "project-log/1.1"}
-# CL1's commits hold the seven files before comments.json.
-CL1_BLOBS = {k: v for k, v in APP_BLOBS.items() if k != "comments.json"}
+# CL1's commits hold the seven files before comments.json (and CL4's action-finish.json).
+CL1_BLOBS = {k: v for k, v in APP_BLOBS.items() if k not in ("comments.json", "action-finish.json")}
 OLD = {"X-Truebex-Contract": "project-log/1.0"}
 
 
@@ -117,9 +120,9 @@ def _replayed(client):
 
 
 def test_pf4a_fixture_folder_is_the_apps_copy():
-    """tests/contracts/project-log/ holds the app's files (CL1's seven, and
-    CL2's comments.json since PF4b) and this folder's README, each the app's
-    blob byte for byte."""
+    """tests/contracts/project-log/ holds the app's files (CL1's seven, CL2's
+    comments.json since PF4b, CL4's action-finish.json since PF6c) and this
+    folder's README, each the app's blob byte for byte."""
     files = {p.name for p in FIXTURES.iterdir() if p.is_file()}
     assert files == set(APP_BLOBS) | {"README.md"}
     for name, blob in APP_BLOBS.items():

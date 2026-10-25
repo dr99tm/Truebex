@@ -1,0 +1,29 @@
+{
+	"op_id": "c40000000000f1110000000000000001",
+	"author": "019a2b3c4d5e7000a000000000000007",
+	"at": "2026-10-22T10:40:00.000Z",
+	"touched": [
+		"16c7a345861d871eb38698b9b4016f8c"
+	],
+	"server_seq": 0,
+	"author_kind": "person",
+	"replica_id": "65d9df734a54806baae00ac40e73bfc9",
+	"base_seq": 0,
+	"kind": "action",
+	"name": "Paint wall",
+	"action":
+	{
+		"tool": "fill",
+		"args":
+		{
+			"target": "wall#16c7a345861d871eb38698b9b4016f8c",
+			"face": "left",
+			"finish":
+			{
+				"kind": "paint",
+				"colour": "#C0392B"
+			}
+		},
+		"permission": "edit"
+	}
+}
