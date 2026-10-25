@@ -19,7 +19,7 @@
 
 ## Goal
 
-A packaged (Shipping or Game) build of the app can sync, render a cloud panorama, resolve a comment, invite someone and check for updates against the platform. In such a build Unreal 5.7 does not keep an FName's case (`Engine/Source/Runtime/Core/Public/UObject/NameTypes.h:33`: `WITH_CASE_PRESERVING_NAME` is `WITH_EDITORONLY_DATA`), so `FName(TEXT("high")).ToString()` answers whichever spelling the global name table registered first: `High`, `Editor`, `Team`, `Warning`, `Object` are the engine's own (`UnrealNames.inl:48`, `:110`, `:190`, `:192`, `:255`), `Resolved`, `Delta`, `Action` are reflected engine members. The app's suites run with editor binaries and never see it. The platform reads each such value without case, stores and answers the contract's spelling, and still refuses anything else.
+A packaged (Shipping or Game) build of the app can sync, render a cloud panorama, resolve a comment, invite someone and check for updates against the platform. In such a build Unreal 5.7 does not keep an FName's case (`Engine/Source/Runtime/Core/Public/UObject/NameTypes.h:33`: `WITH_CASE_PRESERVING_NAME` is `WITH_EDITORONLY_DATA`), so `FName(TEXT("high")).ToString()` answers whichever spelling the global name table registered first: `Editor`, `Object`, `Team`, `High`, `Warning` are the engine's own (`UnrealNames.inl:48`, `:110`, `:190`, `:192`, `:255`), `Resolved`, `Delta`, `Action` are reflected engine members. The app's suites run with editor binaries and never see it. The platform reads each such value without case, stores and answers the contract's spelling, and still refuses anything else.
 
 ## Read first
 
