@@ -11,7 +11,8 @@ the copy, the wind job's inputs and params, its result in §6.3's layout and
 5.5's files map, the airflow kind (its rooms file, its wait for the wind
 job, the orifice network), the reference rules of §6.5.1, quality picking
 the mesh, the runners' case files and outputs (never running OpenFOAM), and
-the render-jobs/1.2 echo. Contract §10's two names are among them.
+the render-jobs/1.2 echo (1.3 since PF6c, its tests in test_pf6c_render_jobs_1_3.py).
+Contract §10's two names are among them.
 """
 
 import copy
@@ -55,8 +56,8 @@ WIND_BLOBS = {
     "wind-speed_ratio.bin": "7b7ba43425dc179a08ceda8b33960bc13a2917bc",
     "wind-velocity.bin": "0a8f4835a563d7d8a2af5537a61912bf45e2cd79",
 }
-ECHO = "render-jobs/1.2"
-RJ12 = {"X-Truebex-Contract": ECHO}
+ECHO = "render-jobs/1.3"  # PF6c: every route answers 1.3 since 1.3.0 (CL4)
+RJ12 = {"X-Truebex-Contract": "render-jobs/1.2"}  # what AN3's client sends, still served
 KINDS = ("wind", "airflow")
 # The app's study (CadAnalysisJobs.cpp) sends every 1.2 key; wind-result.json echoes them.
 APP_PARAMS = {
@@ -936,73 +937,10 @@ def test_pf11c_wind_surroundings_and_terrain(tmp_path):
     assert wind.Grid((100.0, 0.0), 1.0, 1, 1, 1.5).points(ground.triangles)[0] == (100.0, 0.0, 1.5)
 
 
-# --- render-jobs/1.2 on every route ----------------------------------------------------------------
-
-
-def _versions(send_, label: str) -> None:
-    for sent in ("render-jobs/1.0", "render-jobs/1.1", "render-jobs/1.2", None):
-        extra = {} if sent is None else {"X-Truebex-Contract": sent}
-        res = send_(extra)
-        assert res.status_code < 400, (label, sent, res.status_code, res.text)
-        assert res.headers["X-Truebex-Contract"] == ECHO, (label, sent)
-    body = error_of(send_({"X-Truebex-Contract": "render-jobs/2.0"}), 400, "contract_version")
-    assert body["data"]["supported"] == [ECHO], label
-
-
-def test_pf11c_routes_echo_render_jobs_1_2(client, rig):
-    a, token = rig["a"], rig["token"]
-    dev = {"Authorization": f"Bearer {a.token}"}
-    wrk = {"Authorization": f"Bearer {token}"}
-    body = wind_job_body(rig["geometry"], rig["ids"])
-    _versions(lambda h: client.post("/jobs", json=body, headers={**dev, **h, "Idempotency-Key": hex32()}), "5.1")
-    _versions(lambda h: client.get("/jobs", headers={**dev, **h}), "5.3")
-    _versions(lambda h: client.get("/jobs/usage", headers={**dev, **h}), "5.6")
-    _versions(lambda h: client.get("/analysis/catalogue", headers={**dev, **h}), "analysis")
-    claim_body = {"worker_id": "cpu-eu-01", "kinds": list(KINDS), "app_version": "1.0.0", "doc_version_max": 0, "wait_s": 0}
-    for sent in ("render-jobs/1.0", "render-jobs/1.1", "render-jobs/1.2", None):
-        extra = {} if sent is None else {"X-Truebex-Contract": sent}
-        res = client.post("/workers/claim", json=claim_body, headers={**wrk, **extra})
-        assert res.status_code == 200 and res.headers["X-Truebex-Contract"] == ECHO, (sent, res.text)
-        c = res.json()
-        _versions(lambda h: client.post(f"/workers/jobs/{c['job']['job_id']}/heartbeat", json={"lease_id": c["lease_id"], "progress": 0.5, "message": "m"}, headers={**wrk, **h}), "5.8")
-        fail = {"lease_id": c["lease_id"], "code": "bad_input", "message": "t", "retryable": False}
-        _versions(lambda h: client.post(f"/workers/jobs/{c['job']['job_id']}/fail", json=fail, headers={**wrk, **h}), "5.10")
-    nothing = client.post("/workers/claim", json=claim_body, headers=wk(token))
-    assert nothing.status_code == 204 and nothing.headers["X-Truebex-Contract"] == ECHO
-    key = make_key(client, a.session, ALL_SCOPES)
-    _versions(lambda h: client.get("/v1/jobs", headers=kh(key, **h)), "v1 5.3")
-    _versions(lambda h: client.get("/v1/jobs/usage", headers=kh(key, **h)), "v1 5.6")
-    _versions(lambda h: client.post("/v1/jobs", json=body, headers=kh(key, **h, **{"Idempotency-Key": hex32()})), "v1 5.1")
-
-
-def test_pf11c_clients_and_documents_speak_1_2():
-    """The routers, the worker wrapper, the website's client, the demo scripts, the
-    developer document and the SDKs speak render-jobs/1.2; the web names the
-    airflow kind."""
-    app_dir = ROOT / "server" / "app"
-    for name in ("jobs.py", "workers.py", "analysis.py", "v1/jobs.py"):
-        text = (app_dir / "routers" / name).read_text(encoding="utf-8")
-        assert 'contract("render-jobs", 1, 2)' in text and 'contract("render-jobs", 1, 1)' not in text, name
-    assert 'ECHO = {"X-Truebex-Contract": "render-jobs/1.2"}' in (app_dir / "routers" / "workers.py").read_text(encoding="utf-8")
-    assert 'CONTRACT = "render-jobs/1.2"' in (ROOT / "worker" / "truebex_worker.py").read_text(encoding="utf-8")
-    jobs_ts = (ROOT / "src" / "lib" / "jobs.ts").read_text(encoding="utf-8")
-    assert '"X-Truebex-Contract": "render-jobs/1.2"' in jobs_ts and '"airflow"' in jobs_ts.split("export type JobKind", 1)[1].split(";", 1)[0]
-    assert '"airflow"' in (ROOT / "src" / "app" / "dashboard" / "admin" / "render" / "page.tsx").read_text(encoding="utf-8")
-    for script in ("demo_analysis.py", "demo_render.py", "demo_mobile.py"):
-        text = (ROOT / "server" / "scripts" / script).read_text(encoding="utf-8")
-        assert '"render-jobs/1.2"' in text and "render-jobs/1.1" not in text and "render-jobs/1.0" not in text, script
-    assert '"jobs": "render-jobs/1.2"' in (ROOT / "server" / "scripts" / "export_openapi.py").read_text(encoding="utf-8")
-    doc = json.loads((ROOT / "openapi" / "v1.json").read_text(encoding="utf-8"))
-    jobs_ops = [op for p, item in doc["paths"].items() if p.startswith("/v1/jobs") for op in item.values()]
-    assert jobs_ops and {op["x-truebex-contract"] for op in jobs_ops} == {ECHO}
-    assert "airflow" in doc["components"]["schemas"]["JobRequest"]["properties"]["kind"]["enum"]
-    for sdk in (ROOT / "sdks" / "python" / "truebex" / "_operations.py", ROOT / "sdks" / "js" / "src" / "operations.mjs"):
-        text = sdk.read_text(encoding="utf-8")
-        assert "render-jobs/1.1" not in text and text.count("render-jobs/1.2") == len(jobs_ops), sdk
-    constants = (ROOT / "src" / "lib" / "constants.ts").read_text(encoding="utf-8")
-    assert 'airflow: "Airflow study"' in constants
-    demo = (ROOT / "server" / "scripts" / "demo_analysis.py").read_text(encoding="utf-8")
-    assert "--wind-job" in demo and '"entities"' in demo
+# --- render-jobs on every route ---------------------------------------------------------------------
+# PF6c moved test_pf11c_routes_echo_render_jobs_1_2 and test_pf11c_clients_and_documents_speak_1_2 to
+# test_pf6c_render_jobs_1_3.py as test_pf6c_echo_1_3 and test_pf6c_clients_and_documents_speak_1_3: every
+# route answers render-jobs/1.3 since 1.3.0 (CL4) and still takes AN3's 1.2 (RJ12).
 
 
 def test_pf11c_profiles_estimates_and_catalogue(client, rig):

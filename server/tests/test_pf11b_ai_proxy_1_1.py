@@ -612,7 +612,7 @@ def test_pf11b_routes_speak_ai_proxy_1_1(client, fake):
 
 def test_pf11b_no_route_or_script_left_on_1_0():
     """The /ai routes, the tests' helpers and the demo scripts are on 1.1;
-    demo_analysis.py sends render-jobs/1.2 (PF6a's deviation 6; 1.2 since PF11c)."""
+    demo_analysis.py sends render-jobs/1.3 (PF6a's deviation 6; 1.2 since PF11c, 1.3 since PF6c)."""
     from . import ai_helpers
 
     assert ai_helpers.AI == {"X-Truebex-Contract": WIRE}
@@ -623,7 +623,7 @@ def test_pf11b_no_route_or_script_left_on_1_0():
     demo_ai = (scripts / "demo_ai.py").read_text(encoding="utf-8")
     assert f'"X-Truebex-Contract": "{WIRE}"' in demo_ai and "ai-proxy/1.0" not in demo_ai
     demo_analysis = (scripts / "demo_analysis.py").read_text(encoding="utf-8")
-    assert '"X-Truebex-Contract": "render-jobs/1.2"' in demo_analysis and "render-jobs/1.0" not in demo_analysis
+    assert '"X-Truebex-Contract": "render-jobs/1.3"' in demo_analysis and "render-jobs/1.0" not in demo_analysis
     upstream = (scripts / "fake_ai_upstream.py").read_text(encoding="utf-8")
     assert "stub_like" in upstream and "TURNS" not in upstream
 

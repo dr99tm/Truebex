@@ -20,7 +20,7 @@ from ..models import User
 from ..projects.caller import ProjectCaller
 from .jobs import get_job_caller
 
-router = APIRouter(prefix="/analysis", tags=["analysis"], dependencies=[contract("render-jobs", 1, 2)])
+router = APIRouter(prefix="/analysis", tags=["analysis"], dependencies=[contract("render-jobs", 1, 3)])
 admin_router = APIRouter(prefix="/admin/analysis", tags=["admin"], dependencies=[enveloped()])
 
 

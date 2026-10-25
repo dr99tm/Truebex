@@ -426,6 +426,17 @@ class JobError(_Doc):
     message: str
 
 
+class JobTrigger(_Doc):
+    """The log operations a followed set's update was queued for, with their authors and times."""
+
+    op_ids: list[str] = Field(description="32 hex each, in log order")
+    first_seq: int = Field(description="The lowest log sequence number among them")
+    last_seq: int = Field(description="The highest log sequence number among them")
+    first_op_at: str = Field(description="The earliest time a writer gave an operation (the writer's clock), UTC")
+    first_accepted_at: str = Field(description="When the first of them was accepted into the log, UTC")
+    authors: list[str] = Field(description="The author ids that wrote them, in log order")
+
+
 class Job(_Doc):
     """The job record."""
 
@@ -445,6 +456,17 @@ class Job(_Doc):
     cost_units: float | None
     output_ready: bool
     error: JobError | None
+    follow: bool = Field(default=False, description="A panorama set that keeps itself current from the log (until cancelled)")
+    base_job_id: str | None = Field(
+        default=None, description="A `tiles` job's set (the following panorama job's id), or the job it updates; an `airflow` job's wind job"
+    )
+    output_job_id: str | None = Field(
+        default=None,
+        description="On a following panorama job: the job whose output `GET /v1/jobs/{job_id}/output` serves now (changes with every update); null on every other job",
+    )
+    trigger: JobTrigger | None = Field(
+        default=None, description="On a `tiles` job of a followed set: the operations it was queued for; null otherwise"
+    )
 
 
 class JobList(_Doc):

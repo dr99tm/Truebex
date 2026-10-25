@@ -207,6 +207,37 @@ class JobRequest(TypedDict):
     views: NotRequired[list[str]]
 
 
+class JobTrigger(TypedDict):
+    """
+    The log operations a followed set's update was queued for, with their authors and times.
+    """
+
+    authors: list[str]
+    """
+    The author ids that wrote them, in log order
+    """
+    first_accepted_at: str
+    """
+    When the first of them was accepted into the log, UTC
+    """
+    first_op_at: str
+    """
+    The earliest time a writer gave an operation (the writer's clock), UTC
+    """
+    first_seq: int
+    """
+    The lowest log sequence number among them
+    """
+    last_seq: int
+    """
+    The highest log sequence number among them
+    """
+    op_ids: list[str]
+    """
+    32 hex each, in log order
+    """
+
+
 class JobUsage(TypedDict):
     by_kind: dict[str, float]
     classes: dict[str, float]
@@ -771,14 +802,26 @@ class Job(TypedDict):
 
     at_seq: int
     attempts: int
+    base_job_id: NotRequired[str | None]
+    """
+    A `tiles` job's set (the following panorama job's id), or the job it updates; an `airflow` job's wind job
+    """
     cost_units: float | None
     cost_units_estimate: float | None
     created_at: str
     error: JobError | None
     finished_at: str | None
+    follow: NotRequired[bool]
+    """
+    A panorama set that keeps itself current from the log (until cancelled)
+    """
     job_id: str
     kind: str
     message: str
+    output_job_id: NotRequired[str | None]
+    """
+    On a following panorama job: the job whose output `GET /v1/jobs/{job_id}/output` serves now (changes with every update); null on every other job
+    """
     output_ready: bool
     progress: float
     project_id: str | None
@@ -790,6 +833,10 @@ class Job(TypedDict):
     state: Literal[
         'queued', 'claimed', 'running', 'succeeded', 'failed', 'cancelled', 'expired'
     ]
+    trigger: NotRequired[JobTrigger | None]
+    """
+    On a `tiles` job of a followed set: the operations it was queued for; null otherwise
+    """
 
 
 class JobList(TypedDict):

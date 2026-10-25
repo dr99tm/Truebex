@@ -793,6 +793,18 @@
             "title": "Attempts",
             "type": "integer"
           },
+          "base_job_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "A `tiles` job's set (the following panorama job's id), or the job it updates; an `airflow` job's wind job",
+            "title": "Base Job Id"
+          },
           "cost_units": {
             "anyOf": [
               {
@@ -840,6 +852,12 @@
             ],
             "title": "Finished At"
           },
+          "follow": {
+            "default": false,
+            "description": "A panorama set that keeps itself current from the log (until cancelled)",
+            "title": "Follow",
+            "type": "boolean"
+          },
           "job_id": {
             "title": "Job Id",
             "type": "string"
@@ -851,6 +869,18 @@
           "message": {
             "title": "Message",
             "type": "string"
+          },
+          "output_job_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "On a following panorama job: the job whose output `GET /v1/jobs/{job_id}/output` serves now (changes with every update); null on every other job",
+            "title": "Output Job Id"
           },
           "output_ready": {
             "title": "Output Ready",
@@ -899,6 +929,17 @@
             ],
             "title": "State",
             "type": "string"
+          },
+          "trigger": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/JobTrigger"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "On a `tiles` job of a followed set: the operations it was queued for; null otherwise"
           }
         },
         "required": [
@@ -1103,6 +1144,58 @@
           "kind"
         ],
         "title": "JobRequest",
+        "type": "object"
+      },
+      "JobTrigger": {
+        "additionalProperties": true,
+        "description": "The log operations a followed set's update was queued for, with their authors and times.",
+        "properties": {
+          "authors": {
+            "description": "The author ids that wrote them, in log order",
+            "items": {
+              "type": "string"
+            },
+            "title": "Authors",
+            "type": "array"
+          },
+          "first_accepted_at": {
+            "description": "When the first of them was accepted into the log, UTC",
+            "title": "First Accepted At",
+            "type": "string"
+          },
+          "first_op_at": {
+            "description": "The earliest time a writer gave an operation (the writer's clock), UTC",
+            "title": "First Op At",
+            "type": "string"
+          },
+          "first_seq": {
+            "description": "The lowest log sequence number among them",
+            "title": "First Seq",
+            "type": "integer"
+          },
+          "last_seq": {
+            "description": "The highest log sequence number among them",
+            "title": "Last Seq",
+            "type": "integer"
+          },
+          "op_ids": {
+            "description": "32 hex each, in log order",
+            "items": {
+              "type": "string"
+            },
+            "title": "Op Ids",
+            "type": "array"
+          }
+        },
+        "required": [
+          "op_ids",
+          "first_seq",
+          "last_seq",
+          "first_op_at",
+          "first_accepted_at",
+          "authors"
+        ],
+        "title": "JobTrigger",
         "type": "object"
       },
       "JobUsage": {
@@ -4133,7 +4226,7 @@
   "info": {
     "description": "Projects, exports, shares, the marketplace, supplier feeds and webhooks, with an API key from https://truebex.com/dashboard/keys/ sent as `Authorization: Bearer tbx_live_…` or `X-API-Key`. Each operation names the scope it needs in `x-truebex-scope`. Errors use one envelope: `{detail, code, status, request_id, retry_after_s, data}`.",
     "title": "Truebex developer API",
-    "version": "1.2.0"
+    "version": "1.3.0"
   },
   "openapi": "3.1.0",
   "paths": {
@@ -5272,7 +5365,7 @@
         "tags": [
           "jobs"
         ],
-        "x-truebex-contract": "render-jobs/1.2",
+        "x-truebex-contract": "render-jobs/1.3",
         "x-truebex-scope": "projects:read"
       },
       "post": {
@@ -5400,7 +5493,7 @@
         "tags": [
           "jobs"
         ],
-        "x-truebex-contract": "render-jobs/1.2",
+        "x-truebex-contract": "render-jobs/1.3",
         "x-truebex-scope": "jobs:write"
       }
     },
@@ -5484,7 +5577,7 @@
         "tags": [
           "jobs"
         ],
-        "x-truebex-contract": "render-jobs/1.2",
+        "x-truebex-contract": "render-jobs/1.3",
         "x-truebex-scope": "projects:read"
       }
     },
@@ -5605,7 +5698,7 @@
         "tags": [
           "jobs"
         ],
-        "x-truebex-contract": "render-jobs/1.2",
+        "x-truebex-contract": "render-jobs/1.3",
         "x-truebex-scope": "projects:read"
       }
     },
@@ -5710,7 +5803,7 @@
         "tags": [
           "jobs"
         ],
-        "x-truebex-contract": "render-jobs/1.2",
+        "x-truebex-contract": "render-jobs/1.3",
         "x-truebex-scope": "jobs:write"
       }
     },
@@ -5815,7 +5908,7 @@
         "tags": [
           "jobs"
         ],
-        "x-truebex-contract": "render-jobs/1.2",
+        "x-truebex-contract": "render-jobs/1.3",
         "x-truebex-scope": "projects:read"
       }
     },
