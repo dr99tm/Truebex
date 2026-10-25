@@ -382,6 +382,41 @@ def test_pf6c_stopped_set_still_serves(client, rig):
     assert claim(client, token).status_code == 204
 
 
+def test_pf6c_stop_ends_the_running_update(client, rig):
+    """5.4 on a follow set while its update renders: the update is asked to
+    stop (the app's stub cancels it too), ends cancelled at no charge, and the
+    stopped set keeps answering the output it had."""
+    a, token, pid = rig["a"], rig["token"], rig["pid"]
+    set_id = followed(client, rig)
+    used = client.get("/jobs/usage", headers=rj(a)).json()["used_cu"]
+    push_touch(client, a, pid, MOVED)
+    c = claimed(client, token)
+    assert heartbeat(client, token, c).json()["cancel"] is False
+    stopped = client.post(f"/jobs/{set_id}/cancel", headers=rj(a)).json()
+    assert stopped["follow"] is False and stopped["output_job_id"] == set_id
+    assert job(client, rj(a), c["job"]["job_id"])["message"] == "Stopping…"
+    # The worker learns it at its next heartbeat; a completion instead is refused.
+    assert heartbeat(client, token, c).json()["cancel"] is True
+    ended = job(client, rj(a), c["job"]["job_id"])
+    assert ended["state"] == "cancelled" and ended["cost_units"] is None
+    error_of(finish_raw(client, token, c), 409, "lease_lost")
+    assert job(client, rj(a), set_id)["output_job_id"] == set_id
+    assert client.get(f"/jobs/{set_id}/output", headers=rj(a)).json()["job_id"] == set_id
+    assert client.get("/jobs/usage", headers=rj(a)).json()["used_cu"] == used
+
+
+def finish_raw(client, token: str, c: dict):
+    """Upload the update's tiles and send 5.9 (the answer as it is)."""
+    from .render_helpers import complete, fixture_manifest, rendered_tiles, upload_outputs
+
+    m = fixture_manifest("manifest-tiles.json", c)
+    try:
+        upload_outputs(client, token, c, rendered_tiles(m))
+    except AssertionError:
+        pass  # the lease already ended: the upload is refused too
+    return complete(client, token, c, m, wall_s=30)
+
+
 def test_pf6c_tiles_need_no_header_or_token(client, rig):
     a = rig["a"]
     set_id = followed(client, rig)

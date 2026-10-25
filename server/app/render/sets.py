@@ -169,17 +169,30 @@ def on_success(db: Session, job: RenderJob, now: datetime) -> str | None:
 
 
 def stop(db: Session, row: RenderSet, now: datetime, *, reason: str = "") -> None:
-    """The set stops following: its queued jobs are cancelled."""
+    """The set stops following: its queued jobs are cancelled, and (PF6c, as
+    the app's stub does) a claimed or running one is asked to stop like 5.4
+    asks any running job, so it ends cancelled at no charge and the stopped
+    set keeps the output it had."""
     from .queue import bump
 
     row.active = False
     row.updated_at = now
     for job in db.scalars(
-        select(RenderJob).where(RenderJob.set_id == row.follow_job_id, RenderJob.state == "queued", RenderJob.kind == "tiles")
+        select(RenderJob).where(
+            RenderJob.set_id == row.follow_job_id,
+            RenderJob.state.in_(("queued", "claimed", "running")),
+            RenderJob.kind == "tiles",
+        )
     ).all():
-        job.state = "cancelled"
-        job.finished_at = now
-        job.message = reason
+        if job.state == "queued":
+            job.state = "cancelled"
+            job.finished_at = now
+            job.message = reason
+        elif not job.cancel_requested:
+            job.cancel_requested = True
+            job.message = "Stopping…"
+        else:
+            continue
         bump(job, now)
     follow = db.get(RenderJob, row.follow_job_id)
     if follow is not None and follow.follow:
