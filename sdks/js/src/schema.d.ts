@@ -1347,7 +1347,7 @@ export interface components {
              * @enum {string}
              */
             state: "queued" | "claimed" | "running" | "succeeded" | "failed" | "cancelled" | "expired";
-            /** @description On a `tiles` job of a followed set: the operations it was queued for; null otherwise */
+            /** @description On a `tiles` job of a followed set: the operations it was queued for (`op_ids`, `first_seq`, `last_seq`, `first_op_at`, `first_accepted_at`, `authors`); null otherwise */
             trigger?: components["schemas"]["JobTrigger"] | null;
         } & {
             [key: string]: unknown;

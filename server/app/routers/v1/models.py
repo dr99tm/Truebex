@@ -465,7 +465,11 @@ class Job(_Doc):
         description="On a following panorama job: the job whose output `GET /v1/jobs/{job_id}/output` serves now (changes with every update); null on every other job",
     )
     trigger: JobTrigger | None = Field(
-        default=None, description="On a `tiles` job of a followed set: the operations it was queued for; null otherwise"
+        default=None,
+        description=(
+            "On a `tiles` job of a followed set: the operations it was queued for (`op_ids`, `first_seq`, `last_seq`,"
+            " `first_op_at`, `first_accepted_at`, `authors`); null otherwise"
+        ),
     )
 
 
