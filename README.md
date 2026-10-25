@@ -1754,3 +1754,35 @@ cd server
 
 It sends each value as such a build may, and the words that are none, and checks every answer (the last line reads
 "13 of 13 answers as expected"). Doc: `docs/roadmap/40/PF14f-fname-case.md`.
+
+## Followed panorama sets on render-jobs 1.3 (PF6c)
+
+The render routes (`/jobs`, `/workers`, `/analysis`, `/v1/jobs`) answer `X-Truebex-Contract: render-jobs/1.3` and still
+take 1.0, 1.1 and 1.2. A job record carries what the app's Cloud panoramas tab reads since CL4: `output_job_id` on a
+followed panorama set's own job (the job whose output `GET /jobs/{job_id}/output` serves now: the panorama itself, then
+each newer update; it stays after Cancel stops the set, and the output is still served), `base_job_id` = the set's id
+on each of the set's `tiles` updates, and on those updates a `trigger` with the operations they were queued for
+(`op_ids`, `first_seq`, `last_seq`, `first_op_at`, `first_accepted_at`, `authors`), so a viewer can time another
+person's edit. Pushes that arrive before a worker claims the update join it and extend its trigger. The worker still
+starts each update from the set's newest picture (the claim's `job.base_manifest_job_id` and `base_manifest_url`).
+`server/tests/contracts/project-log/` gained the app's `action-finish.json` (project-log 1.2.1: the phone's paint of
+one wall), and the mobile web client's self-test checks its own fill against it. Doc:
+`docs/roadmap/40/PF6c-render-jobs-1-3-0.md`.
+
+With a local API, a device token (`demo_replica.py login … --trial`), a project (`demo_replica.py push`) and a
+gpu worker token in a `worker.toml` that runs `app = "worker/tests/fake_truebex.py"` with `doc_version_max = 55`:
+
+```powershell
+cd server
+.venv\Scripts\python.exe scripts\demo_render.py --token tbx_dev_... submit --project <project id> --follow
+py -3.12 ..\worker\truebex_worker.py --config worker.toml --once
+.venv\Scripts\python.exe scripts\demo_replica.py --token tbx_dev_... move --project <project id>
+.venv\Scripts\python.exe scripts\demo_render.py --token tbx_dev_... jobs --kind tiles
+.venv\Scripts\python.exe scripts\demo_render.py --token tbx_dev_... show --job <tiles job id>
+py -3.12 ..\worker\truebex_worker.py --config worker.toml --once
+.venv\Scripts\python.exe scripts\demo_render.py --token tbx_dev_... show --job <panorama job id>
+.venv\Scripts\python.exe scripts\demo_render.py --token tbx_dev_... output --job <panorama job id>
+```
+
+`show` prints `follow`, `base_job_id`, `output_job_id` and a `tiles` job's trigger; `output` names the job whose
+manifest the set serves.
