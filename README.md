@@ -1736,3 +1736,21 @@ py -3.12 ..\worker\truebex_worker.py --config worker.toml --once
 
 The first worker run completes the wind job (the airflow job cannot be claimed before), the second runs the airflow
 job; `output` prints each result's fields, grids and files map.
+
+## Enum values in any case (PF14f)
+
+A packaged (Shipping) build of the app writes some contract values from FNames, which keep the case the engine
+registered first, so it may send `Panorama`, `High`, `Delta`, `Person`, `Resolved`, `Editor` or `Beta`. The platform
+reads these without case and stores and answers the contract's lower-case spelling: render-jobs 5.1 `kind` and
+`quality` and 5.3's `kind` and `state` filters, an operation's `kind` and `author_kind` (project-log 5.6), a comment's
+`state` (5.21), a member's `role` (5.14, 5.15) and the release feed's `channel` (licence-api 5.13). Anything else still
+answers 422 naming the contract's spellings (`server/app/enums.py`). With a local API and a device token
+(`demo_replica.py login … --trial`):
+
+```powershell
+cd server
+.venv\Scripts\python.exe scripts\demo_fname_case.py --token tbx_dev_...
+```
+
+It sends each value as such a build may, and the words that are none, and checks every answer (the last line reads
+"13 of 13 answers as expected"). Doc: `docs/roadmap/40/PF14f-fname-case.md`.
