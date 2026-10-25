@@ -244,8 +244,8 @@ def unclaim(db: Session, job_id: str, lease_id: str, now: datetime | None = None
     attempt, no "Trying again". It is queued again as before the claim, in its
     old place (`attempts` and `queued_at` unchanged), and the job-output
     session the claim opened goes (nobody was told its id, so it holds no part).
-    `base_job_id` is left for the next claim to set (prepare_claim sets a set's
-    newest picture on every claim). Only a job still `claimed` under that
+    The internal `base_job_id` is left for the next claim to set (prepare_claim
+    sets a set's newest picture on every claim). Only a job still `claimed` under that
     lease: a heartbeat (`running`), a lapse or a release in between wins. A
     cancel asked meanwhile also wins: the job ends `cancelled`, at no charge."""
     now = now or clock.now()
@@ -384,7 +384,8 @@ def prepare_claim(db: Session, job_id: str, worker: Worker, now: datetime) -> di
     if job.kind == "tiles" and job.set_id:
         follow_set = db.get(RenderSet, job.set_id)
         if follow_set is not None and follow_set.latest_job_id:
-            job.base_job_id = follow_set.latest_job_id  # start from the newest picture
+            # Start from the newest picture (internal: the record names the set, PF6c).
+            job.base_job_id = follow_set.latest_job_id
     try:
         inputs = claim_inputs(db, job, now)
     except BadInput as exc:
@@ -414,6 +415,10 @@ def prepare_claim(db: Session, job_id: str, worker: Worker, now: datetime) -> di
     from ..analysis import kinds as analysis_kinds  # PF11: the solver profile an analysis runs with
 
     record = {**service.record_json(job), "changed": list(job.changed or []), "params": dict(job.params or {})}
+    if job.kind == "tiles":
+        # PF6c: the record's base_job_id names a set's tiles job's set; what the
+        # worker starts from (base_manifest_url's job) keeps its own name.
+        record["base_manifest_job_id"] = job.base_job_id
     if analysis_kinds.is_analysis(job.kind):
         record["profile"] = analysis_kinds.profile(job.kind, job.quality)
     return {

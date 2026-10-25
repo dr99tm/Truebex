@@ -44,6 +44,7 @@ GC_GRACE = timedelta(days=1)
 REFRESH_AFTER = timedelta(days=30)
 _SHA = re.compile(r"^[0-9a-f]{64}$")
 _TILE_KEY = re.compile(r"^tiles/([0-9a-f]{64})\.jpg$")
+_MANIFEST_KEY = re.compile(r"^jobs/([0-9a-f]{32})/manifest\.json$")
 
 
 def tile_key(sha256: str) -> str:
@@ -52,6 +53,12 @@ def tile_key(sha256: str) -> str:
 
 def manifest_key(job_id: str) -> str:
     return f"jobs/{job_id}/manifest.json"
+
+
+def manifest_job_id(key: str) -> str | None:
+    """The job that wrote the manifest at `key` (manifest_key's inverse)."""
+    m = _MANIFEST_KEY.match(key or "")
+    return m.group(1) if m else None
 
 
 def job_file_key(job_id: str, name: str) -> str:

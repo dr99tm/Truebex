@@ -43,9 +43,16 @@ class RenderJob(Base):
     views: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
     # Entity ids (≤ 10 000); [] = every face.
     changed: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    # What the job starts from: a tiles job's base manifest (a set's tiles job:
+    # the set's newest picture, set again at every claim), an airflow job's
+    # wind job. The record answers a set's tiles job with the set's id instead
+    # (PF6c, render-jobs 1.3.0: sets.record_base).
     base_job_id: Mapped[str | None] = mapped_column(String(32), nullable=True)
     # The followed set this job belongs to (the follow panorama's own id).
     set_id: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    # PF6c (render-jobs 1.3.0): a set's tiles job, the operations its pushes
+    # queued it for (render/trigger.py; NULL on every other job).
+    trigger: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     quality: Mapped[str] = mapped_column(String(8), nullable=False, default="standard")
     follow: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     inputs: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)

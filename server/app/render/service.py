@@ -7,6 +7,13 @@
 * 5.2 status (long-polled by the router on `rev`), 5.3 list, 5.4 cancel, 5.5
   output with file URLs, 5.6 this month's cost units.
 
+PF6c (render-jobs 1.3.0, CL4's follow sets): every record carries
+`output_job_id` (a follow job: the job whose output 5.5 serves now; null on
+every other job), a set's tiles job answers `base_job_id` = its set and
+carries its `trigger` (`sets.record_base`, `sets.output_job_id`,
+`render/trigger.py`). 5.4 on a follow job stops the set and keeps its output:
+it stays `succeeded` with `follow` false, and 5.5 still serves it.
+
 A job belongs to the account that submitted it (`account_kind` "user";
 organisations with PF3): only that account sees it (others get 404).
 """
@@ -29,7 +36,7 @@ from ..projects.caller import ProjectCaller
 from ..projects.models import Project, ProjectOp, ProjectSnapshot
 from ..storage import get_store
 from ..uploads import service as uploads
-from . import estimates, quotas, sets, tiles
+from . import estimates, quotas, sets, tiles, trigger
 from .models import RenderJob, RenderSet
 from .queue import ENDED, bump, notify_claim, notify_job
 
@@ -59,7 +66,7 @@ def _num(value: Decimal | None) -> float | None:
 
 def record_json(job: RenderJob) -> dict:
     """The job record every 5.x answer carries (plus additive keys)."""
-    return {
+    record = {
         "job_id": job.job_id,
         "kind": job.kind,
         "state": job.state,
@@ -79,12 +86,18 @@ def record_json(job: RenderJob) -> dict:
         # Additive (readers ignore keys they do not know).
         "views": list(job.views or []),
         "changed_count": len(job.changed or []),
-        "base_job_id": job.base_job_id,
+        # 1.3.0 (CL4): a set's tiles job names its set; a follow job its current output.
+        "base_job_id": sets.record_base(job),
+        "output_job_id": sets.output_job_id(job),
         "quality": job.quality,
         "follow": bool(job.follow),
         "class": job.worker_class,
         "updated_at": clock.rfc3339(job.updated_at),
     }
+    if job.kind == "tiles":
+        # 1.3.0: the operations a set's pushes queued it for (null on one POST /jobs made).
+        record["trigger"] = trigger.public(job.trigger)
+    return record
 
 
 # --- 5.1 ---------------------------------------------------------------------------------
