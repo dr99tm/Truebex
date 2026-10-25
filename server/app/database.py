@@ -156,6 +156,11 @@ _ADDED_COLUMNS.setdefault("payments", []).append(("provider_customer_id", "VARCH
 # project_comments table itself comes from create_all.
 _ADDED_COLUMNS.setdefault("projects", []).append(("comments_rev", "BIGINT"))
 
+# PF6c (render-jobs 1.3.0, CL4's follow sets): a tiles job's trigger, the
+# operations PF4's push hook queued it for. NULL = none (every job from before
+# PF6c, every job that is not a set's tiles job).
+_ADDED_COLUMNS.setdefault("render_jobs", []).append(("trigger", "JSON"))
+
 
 def _migrate(bind: Engine) -> None:
     insp = inspect(bind)

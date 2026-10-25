@@ -12,6 +12,13 @@ and so does its account leaving the project. A set's queue changes under its
 row lock, so concurrent pushes leave at most one queued `tiles` job. When an
 edit goes unrendered (its job failed, expired or was cancelled, or the
 allowance ran out) the set is `stale` and its next update renders every face.
+
+PF6c (render-jobs 1.3.0, CL4): the records the app reads name the set, not the
+newest picture. A set's tiles job answers `base_job_id` = the set's id (the
+app's Unfollow cancels by it) while `render_jobs.base_job_id` keeps what the
+worker starts from (the claim's `base_manifest_job_id`, 5.9's carried faces);
+the follow job answers `output_job_id`, the job whose manifest 5.5 serves now;
+a tiles job carries the `trigger` of the operations it was queued for.
 """
 
 import logging
@@ -26,10 +33,11 @@ from ..database import SessionLocal
 from ..licence import clock
 from ..models import User
 from ..projects.hooks import on_ops_accepted
-from ..projects.models import Project
+from ..projects.models import Project, ProjectOp
 from ..projects.service import membership
 from . import estimates, quotas, tiles
 from .models import RenderJob, RenderSet
+from .trigger import from_ops as trigger_of, merge as merge_trigger
 
 log = logging.getLogger("truebex.render.sets")
 MAX_CHANGED = 10_000
@@ -41,6 +49,25 @@ def unite(a: list[str], b: list[str]) -> list[str]:
         return []
     merged = sorted(set(a) | set(b))
     return [] if len(merged) > MAX_CHANGED else merged
+
+
+def record_base(job: RenderJob) -> str | None:
+    """The record's `base_job_id`: a set's tiles job names its set (the follow
+    job's id); any other job its own base (a tiles job's panorama, an airflow
+    job's wind job)."""
+    if job.kind == "tiles" and job.set_id:
+        return job.set_id
+    return job.base_job_id
+
+
+def output_job_id(job: RenderJob) -> str | None:
+    """The record's `output_job_id`: on a follow job (following, or stopped by
+    5.4) the job whose manifest 5.5 serves now (its own until a tiles job of
+    its set succeeds, then the set's newest, `RenderSet.latest_job_id`); None
+    before its first picture and on every other job."""
+    if job.set_id != job.job_id or job.output_key is None:
+        return None
+    return tiles.manifest_job_id(job.output_key)
 
 
 def create(db: Session, job: RenderJob, now: datetime) -> RenderSet:
@@ -85,11 +112,17 @@ def queued_job(db: Session, set_id: str) -> RenderJob | None:
     )
 
 
-def coalesce(db: Session, job: RenderJob, changed: list[str], at_seq: int, now: datetime) -> RenderJob:
+def coalesce(
+    db: Session, job: RenderJob, changed: list[str], at_seq: int, now: datetime, trigger: dict | None = None
+) -> RenderJob:
+    """Join a queued tiles job: `changed` united, `at_seq` the highest, the
+    joining push's operations added to its trigger."""
     from .queue import bump
     from .service import doc_version_needed
 
     job.changed = unite(list(job.changed or []), changed)
+    if trigger:
+        job.trigger = merge_trigger(job.trigger, trigger)
     if at_seq > job.at_seq:
         job.at_seq = at_seq
     # The joined operations may need a newer reader (5.7's doc_version_max).
@@ -136,17 +169,30 @@ def on_success(db: Session, job: RenderJob, now: datetime) -> str | None:
 
 
 def stop(db: Session, row: RenderSet, now: datetime, *, reason: str = "") -> None:
-    """The set stops following: its queued jobs are cancelled."""
+    """The set stops following: its queued jobs are cancelled, and (PF6c, as
+    the app's stub does) a claimed or running one is asked to stop like 5.4
+    asks any running job, so it ends cancelled at no charge and the stopped
+    set keeps the output it had."""
     from .queue import bump
 
     row.active = False
     row.updated_at = now
     for job in db.scalars(
-        select(RenderJob).where(RenderJob.set_id == row.follow_job_id, RenderJob.state == "queued", RenderJob.kind == "tiles")
+        select(RenderJob).where(
+            RenderJob.set_id == row.follow_job_id,
+            RenderJob.state.in_(("queued", "claimed", "running")),
+            RenderJob.kind == "tiles",
+        )
     ).all():
-        job.state = "cancelled"
-        job.finished_at = now
-        job.message = reason
+        if job.state == "queued":
+            job.state = "cancelled"
+            job.finished_at = now
+            job.message = reason
+        elif not job.cancel_requested:
+            job.cancel_requested = True
+            job.message = "Stopping…"
+        else:
+            continue
         bump(job, now)
     follow = db.get(RenderJob, row.follow_job_id)
     if follow is not None and follow.follow:
@@ -173,9 +219,12 @@ def on_ended(db: Session, job: RenderJob, now: datetime) -> None:
         row.updated_at = now
 
 
-def enqueue(db: Session, row: RenderSet, changed: list[str], at_seq: int, now: datetime) -> RenderJob | None:
-    """One `tiles` job for the set (or the queued one joined). None when the
-    account can no longer pay for it (the follow job then says so)."""
+def enqueue(
+    db: Session, row: RenderSet, changed: list[str], at_seq: int, now: datetime, trigger: dict | None = None
+) -> RenderJob | None:
+    """One `tiles` job for the set (or the queued one joined), `trigger` the
+    push's operations. None when the account can no longer pay for it (the
+    follow job then says so)."""
     from .queue import bump
 
     follow = db.get(RenderJob, row.follow_job_id)
@@ -191,7 +240,7 @@ def enqueue(db: Session, row: RenderSet, changed: list[str], at_seq: int, now: d
     joined = queued_job(db, row.follow_job_id)
     if joined is not None:
         row.stale = False
-        return coalesce(db, joined, changed, at_seq, now)
+        return coalesce(db, joined, changed, at_seq, now, trigger)
     kind = quotas.KINDS["tiles"]
     try:
         plan = quotas.require_feature(db, user, kind)
@@ -218,8 +267,10 @@ def enqueue(db: Session, row: RenderSet, changed: list[str], at_seq: int, now: d
         at_seq=at_seq,
         views=list(row.views),
         changed=changed if len(changed) <= MAX_CHANGED else [],
+        # Internal: the newest picture (the claim sets it again); the record names the set.
         base_job_id=row.latest_job_id or row.follow_job_id,
         set_id=row.follow_job_id,
+        trigger=trigger,
         quality=row.quality,
         follow=False,
         inputs={},
@@ -266,13 +317,29 @@ def enqueue_from_push(project_id: str, ops: list[dict]) -> None:
         changed = [] if everything or len(touched) > MAX_CHANGED else sorted(touched)
         at_seq = max(int(op.get("server_seq") or 0) for op in ops)
         now = clock.now()
+        # The trigger: the operations that changed the model (a restore changes
+        # everything), each with when it was accepted (the hook's wire form has
+        # no accepted time: ProjectOp.received_at).
+        causes = [op for op in ops if op.get("touched") or op.get("kind") == "restore"]
+        seqs = [int(op["server_seq"]) for op in causes if op.get("server_seq") is not None]
+        accepted = {}
+        if seqs:
+            accepted = dict(
+                db.execute(
+                    select(ProjectOp.server_seq, ProjectOp.received_at).where(
+                        ProjectOp.project_id == project_id, ProjectOp.server_seq.in_(seqs)
+                    )
+                ).all()
+            )
+            db.rollback()
+        trigger = trigger_of(causes, accepted, now)
         affected = []
         for set_id in ids:
             row = lock_set(db, set_id)
             if row is None or not row.active:
                 db.rollback()
                 continue
-            job = enqueue(db, row, changed, at_seq, now)
+            job = enqueue(db, row, changed, at_seq, now, trigger)
             affected += [set_id] + ([job.job_id] if job is not None else [])
             db.commit()
     notify_job(*affected)

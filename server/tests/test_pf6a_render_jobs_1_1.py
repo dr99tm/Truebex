@@ -295,8 +295,8 @@ def test_pf6a_followed_panorama_and_update_with_the_apps_manifests(client):
 # --- render-jobs/1.1 on every route ------------------------------------------------------------
 
 
-# PF11c: every route answers render-jobs/1.2 since 1.2.0 (AN3); 1.0 and 1.1 are still served.
-ECHO = "render-jobs/1.2"
+# PF11c: every route answers render-jobs/1.2 since 1.2.0 (AN3), PF6c 1.3 since 1.3.0 (CL4); 1.0 and 1.1 are still served.
+ECHO = "render-jobs/1.3"
 
 
 def _versions(send, label: str) -> None:
@@ -375,24 +375,24 @@ def test_pf6a_routes_echo_render_jobs_1_1(client):
 
 def test_pf6a_no_router_or_client_left_on_1_0():
     """The routers, the worker wrapper, the website's client, the developer
-    document and the SDKs all speak render-jobs/1.1 (1.2 since PF11c)."""
+    document and the SDKs all speak render-jobs/1.1 (1.2 since PF11c, 1.3 since PF6c)."""
     app_dir = ROOT / "server" / "app"
     for path in app_dir.rglob("*.py"):
         text = path.read_text(encoding="utf-8")
         assert 'contract("render-jobs", 1, 0)' not in text and "render-jobs/1.0" not in text, path
     for name in ("jobs.py", "workers.py", "analysis.py", "v1/jobs.py"):
-        assert 'contract("render-jobs", 1, 2)' in (app_dir / "routers" / name).read_text(encoding="utf-8"), name
-    assert 'CONTRACT = "render-jobs/1.2"' in (ROOT / "worker" / "truebex_worker.py").read_text(encoding="utf-8")
-    assert '"X-Truebex-Contract": "render-jobs/1.2"' in (ROOT / "src" / "lib" / "jobs.ts").read_text(encoding="utf-8")
-    assert '"render-jobs/1.2"' in (ROOT / "server" / "scripts" / "demo_render.py").read_text(encoding="utf-8")
+        assert 'contract("render-jobs", 1, 3)' in (app_dir / "routers" / name).read_text(encoding="utf-8"), name
+    assert 'CONTRACT = "render-jobs/1.3"' in (ROOT / "worker" / "truebex_worker.py").read_text(encoding="utf-8")
+    assert '"X-Truebex-Contract": "render-jobs/1.3"' in (ROOT / "src" / "lib" / "jobs.ts").read_text(encoding="utf-8")
+    assert '"render-jobs/1.3"' in (ROOT / "server" / "scripts" / "demo_render.py").read_text(encoding="utf-8")
     doc = json.loads((ROOT / "openapi" / "v1.json").read_text(encoding="utf-8"))
     jobs_ops = [op for p, item in doc["paths"].items() if p.startswith("/v1/jobs") for op in item.values()]
     assert jobs_ops and {op["x-truebex-contract"] for op in jobs_ops} == {ECHO}
     for sdk in (ROOT / "sdks" / "python" / "truebex" / "_operations.py", ROOT / "sdks" / "js" / "src" / "operations.mjs"):
         text = sdk.read_text(encoding="utf-8")
-        assert "render-jobs/1.0" not in text and text.count("render-jobs/1.2") == len(jobs_ops), sdk
+        assert "render-jobs/1.0" not in text and text.count("render-jobs/1.3") == len(jobs_ops), sdk
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
-    assert "render-jobs/1.0" not in readme and "`X-Truebex-Contract: render-jobs/1.2`" in readme
+    assert "render-jobs/1.0" not in readme and "`X-Truebex-Contract: render-jobs/1.3`" in readme
     # RJ, the tests' own header, is what CL3's client sends.
     assert RJ == {"X-Truebex-Contract": ECHO}
 

@@ -1,12 +1,12 @@
 "use client";
 
-// Cloud render jobs (contract render-jobs v1.2, PF6, PF6a and PF11c) as the website uses them:
+// Cloud render jobs (contract render-jobs v1.3, PF6, PF6a, PF11c and PF6c) as the website uses them:
 // the Cloud page (usage, recent jobs, cancel, the live preview, the overage
 // cap) and the render admin (queue, workers, tokens).
 import { ApiError, api } from "@/lib/api";
 import { CLOUD } from "@/lib/constants";
 
-const CONTRACT = { "X-Truebex-Contract": "render-jobs/1.2" };
+const CONTRACT = { "X-Truebex-Contract": "render-jobs/1.3" };
 
 export type JobKind = "panorama" | "tiles" | "pack" | "wind" | "energy" | "acoustics" | "texture" | "airflow";
 export type JobState = "queued" | "claimed" | "running" | "succeeded" | "failed" | "cancelled" | "expired";
@@ -33,6 +33,20 @@ export interface JobRecord {
   views: string[];
   follow: boolean;
   quality: string;
+  // render-jobs 1.3.0 (PF6c): a set's tiles job names its set; a follow job the job 5.5 serves now.
+  base_job_id: string | null;
+  output_job_id: string | null;
+  trigger?: JobTrigger | null;
+}
+
+/** A tiles job's trigger (render-jobs 1.3.0): the operations its set's pushes queued it for. */
+export interface JobTrigger {
+  op_ids: string[];
+  first_seq: number;
+  last_seq: number;
+  first_op_at: string;
+  first_accepted_at: string;
+  authors: string[];
 }
 
 export interface TileFace {

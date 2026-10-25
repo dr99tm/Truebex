@@ -159,8 +159,10 @@ def stored_revs(pid: str) -> list[int]:
 
 
 def test_pf4b_fixture_folder_is_the_apps_eight_files():
-    """CL2 added comments.json; the other seven are CL1's, unchanged."""
-    assert APP_BLOBS["comments.json"] == COMMENTS_BLOB and len(APP_BLOBS) == 8
+    """CL2 added comments.json; the other seven are CL1's, unchanged. (PF6c:
+    CL4's action-finish.json is the ninth, after CL2's commits.)"""
+    assert APP_BLOBS["comments.json"] == COMMENTS_BLOB and len(APP_BLOBS) == 9
+    cl2_blobs = {k: v for k, v in APP_BLOBS.items() if k != "action-finish.json"}
     files = {p.name for p in FIXTURES.iterdir() if p.is_file()}
     assert files == set(APP_BLOBS) | {"README.md"}
     data = (FIXTURES / "comments.json").read_bytes()
@@ -185,7 +187,7 @@ def test_pf4b_fixture_folder_is_the_apps_eight_files():
         if tree.returncode != 0:  # the commit is not in this clone
             continue
         listed = {line.split("\t", 1)[1].rsplit("/", 1)[1]: line.split()[2] for line in tree.stdout.splitlines()}
-        assert listed == APP_BLOBS, commit
+        assert listed == cl2_blobs, commit
 
 
 # --- contract §10: test_comments_roles, test_presence_comments_rev ----------------------------------------

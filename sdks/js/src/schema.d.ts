@@ -1298,6 +1298,11 @@ export interface components {
             at_seq: number;
             /** Attempts */
             attempts: number;
+            /**
+             * Base Job Id
+             * @description A `tiles` job's set (the following panorama job's id), or the job it updates; an `airflow` job's wind job
+             */
+            base_job_id?: string | null;
             /** Cost Units */
             cost_units: number | null;
             /** Cost Units Estimate */
@@ -1307,12 +1312,23 @@ export interface components {
             error: components["schemas"]["JobError"] | null;
             /** Finished At */
             finished_at: string | null;
+            /**
+             * Follow
+             * @description A panorama set that keeps itself current from the log (until cancelled)
+             * @default false
+             */
+            follow: boolean;
             /** Job Id */
             job_id: string;
             /** Kind */
             kind: string;
             /** Message */
             message: string;
+            /**
+             * Output Job Id
+             * @description On a following panorama job: the job whose output `GET /v1/jobs/{job_id}/output` serves now (changes with every update); null on every other job
+             */
+            output_job_id?: string | null;
             /** Output Ready */
             output_ready: boolean;
             /** Progress */
@@ -1331,6 +1347,8 @@ export interface components {
              * @enum {string}
              */
             state: "queued" | "claimed" | "running" | "succeeded" | "failed" | "cancelled" | "expired";
+            /** @description On a `tiles` job of a followed set: the operations it was queued for (`op_ids`, `first_seq`, `last_seq`, `first_op_at`, `first_accepted_at`, `authors`); null otherwise */
+            trigger?: components["schemas"]["JobTrigger"] | null;
         } & {
             [key: string]: unknown;
         };
@@ -1432,6 +1450,44 @@ export interface components {
              * @default []
              */
             views: string[];
+        } & {
+            [key: string]: unknown;
+        };
+        /**
+         * JobTrigger
+         * @description The log operations a followed set's update was queued for, with their authors and times.
+         */
+        JobTrigger: {
+            /**
+             * Authors
+             * @description The author ids that wrote them, in log order
+             */
+            authors: string[];
+            /**
+             * First Accepted At
+             * @description When the first of them was accepted into the log, UTC
+             */
+            first_accepted_at: string;
+            /**
+             * First Op At
+             * @description The earliest time a writer gave an operation (the writer's clock), UTC
+             */
+            first_op_at: string;
+            /**
+             * First Seq
+             * @description The lowest log sequence number among them
+             */
+            first_seq: number;
+            /**
+             * Last Seq
+             * @description The highest log sequence number among them
+             */
+            last_seq: number;
+            /**
+             * Op Ids
+             * @description 32 hex each, in log order
+             */
+            op_ids: string[];
         } & {
             [key: string]: unknown;
         };

@@ -1,12 +1,14 @@
 // The mobile web client's JavaScript self-tests (PF9), bundled by
 // scripts/build-app.mjs into out/viewer/selftest.mjs and run by the verify
 // gate (`node out/viewer/selftest.mjs`, test_site_pf9_js_selftests): the
-// action builder against the app's contract fixture (project-log 1.1.0 §9
-// action-move.json, refs `<kind>#<id>`), the tile diff against the app's
+// action builder against the app's contract fixtures (project-log 1.1.0 §9
+// action-move.json, refs `<kind>#<id>`; 1.2.1's action-finish.json, the
+// phone's fill, PF6c), the tile diff against the app's
 // render-jobs fixtures, the cache policy, the outbox's §6.3 handling, who a
 // rejection names (PF9a) and the orientation maths. Exits non-zero on the
 // first failed check.
 
+import finishFixture from "../../server/tests/contracts/project-log/action-finish.json";
 import fixture from "../../server/tests/contracts/project-log/action-move.json";
 import panorama from "../../server/tests/contracts/render-jobs/manifest-panorama.json";
 import partial from "../../server/tests/contracts/render-jobs/manifest-tiles.json";
@@ -109,6 +111,43 @@ function builder(): void {
   check("nudge south-forward", same(nudgeVector(180, "forward", 50), [0, -50, 0]));
   check("nudge west-back", same(nudgeVector(270, "back", 50), [50, 0, 0]));
   check("nudge no -0", !Object.is(nudgeVector(0, "forward", 50)[0], -0));
+}
+
+// --- the app's fill against action-finish.json (project-log 1.2.1) --------------------------------
+
+function finishBuilder(): void {
+  // CL4's action-finish.json: the phone's paint of the left face of a wall of PR3-pano-rooms.tbxp's
+  // living room, as PF9 writes it. This client's fill of that wall writes its tool, args,
+  // permission and touched exactly; author, op_id, replica_id and at are per client (the
+  // fixture's are passed in), session and request_id our own.
+  const op = finishFixture;
+  const wall = op.touched[0];
+  const session = "5e55000000000000000000000000000b";
+  const built = buildActionOp({
+    author: op.author,
+    replicaId: op.replica_id,
+    baseSeq: op.base_seq,
+    session,
+    opId: op.op_id,
+    at: op.at,
+    name: op.name,
+    call: fillFace(ref(DIGEST_KINDS.wall, wall), "left", { kind: "paint", colour: "#C0392B" }),
+  });
+  check("fill.tool", built.action.tool === op.action.tool, built.action.tool);
+  check("fill.args bytes", JSON.stringify(built.action.args) === JSON.stringify(op.action.args), JSON.stringify(built.action.args));
+  check("fill.permission", built.action.permission === op.action.permission);
+  check("fill.touched", same(built.touched, [wall]) && same(built.touched, op.touched), JSON.stringify(built.touched));
+  const wire = built as unknown as Record<string, unknown>;
+  const want = op as unknown as Record<string, unknown>;
+  for (const key of Object.keys(wire).filter((k) => k !== "action")) {
+    check(`fill.${key}`, same(wire[key], want[key]), `${JSON.stringify(wire[key])} != ${JSON.stringify(want[key])}`);
+  }
+  for (const key of Object.keys(want).filter((k) => !(k in wire))) {
+    check(`fill omits ${key}`, key === "server_seq" && want[key] === 0, `the fixture has ${JSON.stringify(want[key])}`);
+  }
+  const { session: s1, request_id: r1, ...core } = built.action;
+  check("fill.action core", same(core, op.action), JSON.stringify(core));
+  check("fill session", s1 === session && /^[0-9a-f]{32}$/.test(r1) && !("session" in op.action));
 }
 
 // --- the tile diff against the render-jobs fixtures ---------------------------------------------
@@ -272,6 +311,7 @@ function orientation(): void {
 
 async function main(): Promise<void> {
   builder();
+  finishBuilder();
   tileDiff();
   cachePolicy();
   await outbox();
@@ -282,7 +322,7 @@ async function main(): Promise<void> {
     for (const f of failures) console.error(`  FAIL ${f}`);
     process.exitCode = 1;
   } else {
-    console.log(`selftest: ${checks} checks passed (action builder, tile diff, cache policy, outbox, authors, orientation)`);
+    console.log(`selftest: ${checks} checks passed (action builder, the app's fill, tile diff, cache policy, outbox, authors, orientation)`);
   }
 }
 
