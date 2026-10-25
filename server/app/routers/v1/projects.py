@@ -19,6 +19,7 @@ from fastapi import APIRouter, Depends, Query, Request, Response
 from fastapi.concurrency import run_in_threadpool
 from sqlalchemy.orm import Session
 
+from ... import enums
 from ...contract_http import ContractError, contract
 from ...database import get_db
 from ...deps import ApiCaller
@@ -95,7 +96,7 @@ def _as_agent(raw: bytes, author: str) -> bytes:
     for i, op in enumerate(data["ops"]):
         if not isinstance(op, dict):
             continue
-        kind = op.setdefault("author_kind", "agent")
+        kind = enums.canonical(op.setdefault("author_kind", "agent"), ops.AUTHOR_KINDS)  # PF14f: in any case
         who = op.setdefault("author", author)
         if kind != "agent" or not isinstance(who, str) or who.lower() != author:
             field = f"ops[{i}].author_kind" if kind != "agent" else f"ops[{i}].author"

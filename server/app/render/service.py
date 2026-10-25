@@ -20,6 +20,7 @@ from decimal import Decimal
 from sqlalchemy import and_, func, or_, select
 from sqlalchemy.orm import Session
 
+from .. import enums
 from ..contract_http import ContractError
 from ..licence import clock
 from ..models import User
@@ -157,7 +158,8 @@ def submit(db: Session, caller: ProjectCaller, body: dict) -> tuple[RenderJob, b
 
     if analysis_submit.handles(kind_name):
         return analysis_submit.submit(db, caller, body)
-    kind = quotas.KINDS.get(kind_name) if isinstance(kind_name, str) else None
+    # PF14f: in any case (a Shipping build's FName may send "Panorama"); stored lower-case.
+    kind = quotas.KINDS.get(enums.canonical(kind_name, quotas.KINDS) or "")
     if kind is None:
         raise _invalid("kind", f"one of {', '.join(quotas.KINDS)}")
     project_id = body.get("project_id")
@@ -168,8 +170,9 @@ def submit(db: Session, caller: ProjectCaller, body: dict) -> tuple[RenderJob, b
         raise _invalid("at_seq", "a sequence number, 0 or more")
     views = _ids(body.get("views") or [], "views", MAX_VIEWS)
     changed = _ids(body.get("changed") or [], "changed", MAX_CHANGED)
-    quality = body.get("quality") or "standard"
-    if quality not in QUALITIES:
+    # Null is "not sent" (standard), as for the analysis kinds; a word in any case.
+    quality = "standard" if body.get("quality") is None else enums.canonical(body["quality"], QUALITIES)
+    if quality is None:
         raise _invalid("quality", f"one of {', '.join(QUALITIES)}")
     follow = body.get("follow") is True
     if follow and kind.name != "panorama":
@@ -301,11 +304,16 @@ def list_jobs(
             "validation_failed", 422, f"limit: 1 to {PAGE_MAX}.",
             {"fields": [{"field": "limit", "in": "query", "message": f"1 to {PAGE_MAX}"}]},
         )
-    if state is not None and state not in STATES:
-        raise ContractError(
-            "validation_failed", 422, f"state: one of {', '.join(STATES)}.",
-            {"fields": [{"field": "state", "in": "query", "message": "a job state"}]},
-        )
+    # PF14f: the app writes both filters from FNames ("Tiles", "Queued"): in any case.
+    if state is not None:
+        state = enums.canonical(state, STATES)
+        if state is None:
+            raise ContractError(
+                "validation_failed", 422, f"state: one of {', '.join(STATES)}.",
+                {"fields": [{"field": "state", "in": "query", "message": "a job state"}]},
+            )
+    if kind:
+        kind = enums.canonical(kind, quotas.CONTRACT_KINDS) or kind  # a kind nobody runs lists nothing
     q = select(RenderJob).where(RenderJob.account_kind == quotas.ACCOUNT_KIND, RenderJob.account_id == user.id)
     if project_id:
         q = q.where(RenderJob.project_id == project_id)

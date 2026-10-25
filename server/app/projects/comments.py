@@ -38,6 +38,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import func, or_, select, update
 from sqlalchemy.orm import Session
 
+from .. import enums
 from ..contract_http import ContractError
 from ..licence import clock
 from ..licence.ids import uuid7_hex
@@ -305,16 +306,18 @@ def update_comment(db: Session, project: Project, member: ProjectMember, comment
         if not has_text and not has_state:
             raise _invalid("text", "send text, state or both")
         text = clean_text(body.text) if has_text else None
-        if has_state and body.state not in STATES:
+        # PF14f: in any case (the app writes it from an FName: "Resolved"); stored lower-case.
+        state = enums.canonical(body.state, STATES) if has_state else None
+        if has_state and state is None:
             raise _invalid("state", "open or resolved")
         now = clock.now()
         if has_text:
             row.text = text
             row.edited_at = now
         if has_state:
-            row.state = body.state
-            row.resolved_by = member.user_id if body.state == "resolved" else None
-            row.resolved_at = now if body.state == "resolved" else None
+            row.state = state
+            row.resolved_by = member.user_id if state == "resolved" else None
+            row.resolved_at = now if state == "resolved" else None
         row.rev = rev
         db.commit()
     except BaseException:

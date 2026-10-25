@@ -26,6 +26,7 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError
 from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
+from .. import enums
 from ..contract_http import ContractError, validation_fields
 from ..licence import clock
 from ..storage import get_store
@@ -46,6 +47,7 @@ WAIT_MAX_S = 25
 # A pull stops adding operations past this many delta bytes (`more` = true).
 PULL_MAX_BYTES = 16 * 1024 * 1024
 KINDS = ("delta", "action")
+AUTHOR_KINDS = ("person", "agent")
 # agent-interface.md §5: the tools that may travel as log `action` operations;
 # `place` only for objects and products. `set_tunable` since agent-interface 1.1.0
 # (§5.18, TU1): it names a tunable, no entity, so its `touched` is empty (§6.2).
@@ -172,9 +174,12 @@ def parse_push(raw: bytes, author_id: str) -> tuple[str, list[ParsedOp]]:
         author = op.author.lower()
         if not is_hex32(author):
             raise _invalid(f"{where}.author", "32 hex characters")
-        if op.author_kind not in ("person", "agent"):
+        # PF14f: kind and author_kind in any case (the app writes them from
+        # FNames, which a Shipping build may spell "Delta", "Person"); stored lower-case.
+        author_kind = enums.canonical(op.author_kind, AUTHOR_KINDS)
+        if author_kind is None:
             raise _invalid(f"{where}.author_kind", "person or agent")
-        if op.author_kind == "person" and author != author_id:
+        if author_kind == "person" and author != author_id:
             raise _invalid(f"{where}.author", "a person's operations carry their own author_id (licence 5.7)")
         if op.replica_id is not None and op.replica_id.lower() != replica_id:
             raise _invalid(f"{where}.replica_id", "the push's replica_id")
@@ -189,10 +194,11 @@ def parse_push(raw: bytes, author_id: str) -> tuple[str, list[ParsedOp]]:
             raise _invalid(f"{where}.touched", "32 hex characters each")
         if any(a >= b for a, b in zip(touched, touched[1:])):
             raise _invalid(f"{where}.touched", "sorted and unique")
-        if op.kind not in KINDS:
+        kind = enums.canonical(op.kind, KINDS)
+        if kind is None:
             raise _invalid(f"{where}.kind", "delta or action (restore is appended by the server)")
         delta = None
-        if op.kind == "delta":
+        if kind == "delta":
             if op.delta is None or op.action is not None:
                 raise _invalid(f"{where}.delta", "a delta operation carries delta and no action")
             if not op.delta_format or not op.delta_format.startswith("o5/") or not op.delta_format[3:].isdigit():
@@ -213,13 +219,13 @@ def parse_push(raw: bytes, author_id: str) -> tuple[str, list[ParsedOp]]:
             ParsedOp(
                 op_id=op_id,
                 author=author,
-                author_kind=op.author_kind,
+                author_kind=author_kind,
                 at=op.at,
                 touched=touched,
-                kind=op.kind,
+                kind=kind,
                 name=op.name,
                 base_seq=op.base_seq,
-                delta_format=op.delta_format if op.kind == "delta" else None,
+                delta_format=op.delta_format if kind == "delta" else None,
                 delta=delta,
                 action=op.action,
             )
