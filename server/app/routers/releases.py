@@ -7,21 +7,29 @@ from fastapi import APIRouter, Depends, Request
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 
-from ..contract_http import CONTRACT_HEADER, contract
+from .. import enums
+from ..contract_http import CONTRACT_HEADER, ContractError, contract
 from ..database import get_db
 from ..releases import service
 from ..storage import get_store
 
 router = APIRouter(prefix="/releases", tags=["releases"], dependencies=[contract("licence-api", 1, 0)])
 
-Channel = Literal["stable", "beta"]
+CHANNELS = ("stable", "beta")
 Platform = Literal["win64"]
 
 
 @router.get("/feed")
-def feed(channel: Channel = "stable", platform: Platform = "win64", db: Session = Depends(get_db)) -> dict:
-    """5.13: signed manifests, newest first, at most 10. `beta` lists stable too."""
-    return service.feed(db, channel, platform)
+def feed(channel: str = "stable", platform: Platform = "win64", db: Session = Depends(get_db)) -> dict:
+    """5.13: signed manifests, newest first, at most 10. `beta` lists stable too.
+    The channel in any case (PF14f: the app's updater writes it from an FName)."""
+    name = enums.canonical(channel, CHANNELS)
+    if name is None:
+        raise ContractError(
+            "validation_failed", 422, "channel: stable or beta.",
+            {"fields": [{"field": "channel", "in": "query", "message": "stable or beta"}]},
+        )
+    return service.feed(db, name, platform)
 
 
 @router.get("/{version}/download")

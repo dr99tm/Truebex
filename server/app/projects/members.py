@@ -24,6 +24,7 @@ from collections.abc import Iterable
 from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
+from .. import enums
 from ..config import get_settings
 from ..contract_http import ContractError
 from ..licence import clock
@@ -95,12 +96,15 @@ def list_json(db: Session, project_id: str) -> list[dict]:
 
 
 def _role(value: str, field: str = "role") -> str:
-    if value not in INVITE_ROLES:
+    """editor or viewer in any case (the app writes it from an FName: "Editor"),
+    answered lower-case; "owner" in any case is refused."""
+    role = enums.canonical(value, INVITE_ROLES)
+    if role is None:
         raise ContractError(
             "validation_failed", 422, f"{field}: editor or viewer.",
             {"fields": [{"field": field, "in": "body", "message": "editor or viewer"}]},
         )
-    return value
+    return role
 
 
 def invite(db: Session, project: Project, inviter: User, email: str, role: str) -> dict:
