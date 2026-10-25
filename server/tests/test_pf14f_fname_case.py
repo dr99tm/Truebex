@@ -411,3 +411,39 @@ def test_pf14f_wrong_types_answer_422(client, setup):
         assert res.status_code == 422 and _field(res) == "role", (value, res.text)
         res = client.patch(f"/projects/{project_id}/members/{b.user_id}", json={"role": value}, headers=a.dev)
         assert res.status_code == 422 and _field(res) == "role", (value, res.text)
+
+
+# --- the human test's script ----------------------------------------------------------------------------
+
+
+def test_pf14f_demo_script_human_test_path(client, monkeypatch, capsys):
+    """scripts/demo_fname_case.py as the human test runs it (requests routed into the in-process API)."""
+    import requests
+
+    from scripts import demo_fname_case, demo_replica
+
+    from .conftest import signup
+
+    def route(method, url, headers=None, timeout=None, **kw):
+        return client.request(method, url.replace("http://127.0.0.1:8000", ""), headers=headers, **kw)
+
+    monkeypatch.setattr(requests, "request", route)
+    monkeypatch.setattr(requests, "post", lambda url, **kw: route("POST", url, **kw))
+    signup(client, "ana@example.com")
+    demo_replica.main(["login", "--email", "ana@example.com", "--password", "password123", "--trial"])
+    token = capsys.readouterr().out.split("device token: ")[1].split()[0]
+    assert demo_fname_case.main(["--token", token]) == 0
+    out = capsys.readouterr().out
+    assert out.strip().endswith("13 of 13 answers as expected"), out
+    assert "NOT AS EXPECTED" not in out
+    for line in (
+        'push kind "Delta", author_kind "Person": 200 accepted as 1 -- ok',
+        "pull: 200 kind delta, author_kind person -- ok",
+        'comment PATCH state "Resolved": 200 state resolved, resolved_by ',
+        'invite role "Editor": 201 sam@example.com editor invited -- ok',
+        "GET /releases/feed?channel=Beta: 200 channel beta, latest None -- ok",
+    ):
+        assert line in out, line
+    with SessionLocal() as db:
+        kinds = db.execute(select(RenderJob.kind, RenderJob.quality)).all()
+    assert [tuple(k) for k in kinds] == [("panorama", "high")]
