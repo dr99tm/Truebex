@@ -1786,3 +1786,13 @@ py -3.12 ..\worker\truebex_worker.py --config worker.toml --once
 
 `show` prints `follow`, `base_job_id`, `output_job_id` and a `tiles` job's trigger; `output` names the job whose
 manifest the set serves.
+
+## Billing links in any case (PF2f)
+
+The billing page (`/dashboard/billing/`) reads a link's `?tier=` and `?plan=` without case. The app's "See plans" in a
+packaged build opens `?plan=Team` (the engine's spelling of the plan's name), and the page now preselects Team as for
+`?plan=team`: the annual price, the minimum of 2 seats and the total. `?tier=` wins over `?plan=`. A value that is not
+an ASCII spelling of a buyable tier (a misspelling, `free`, `enterprise`, a non-ASCII letter) still shows the first
+buyable tier, and the other parameters (`?interval=`, `?currency=`, `?seats=`, `?code=`, `?org=`) are read as before
+(`src/lib/billing-link.ts`). Signed out, the login page keeps the link and returns to it. Doc:
+`docs/roadmap/40/PF2f-billing-link-plan-case.md`.

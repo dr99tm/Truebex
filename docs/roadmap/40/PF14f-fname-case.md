@@ -174,6 +174,6 @@ About 5 minutes, local API only (no page changed in this feature, so `scripts\au
 * **Carry-over:**
   * **PF11c's "PF6's owner: the render kinds still compare `kind` and `quality` exactly":** met here (PF11c's doc points at this one).
   * **The app half:** PATCH lines A-D.
-  * **The site (whoever next touches the billing page):** `src/app/dashboard/billing/page.tsx:381` takes `?plan=` exactly, so the app's upgrade link from a Shipping build (`?plan=Team`, `UnrealNames.inl:190`) preselects the first buyable tier instead of Team; lower-casing it there (or the app writing a literal) fixes it.
+  * **The site (whoever next touches the billing page):** met by PF2f (`PF2f-billing-link-plan-case.md`): the billing page reads `?plan=` and `?tier=` without (ASCII) case, so the app's upgrade link from a Shipping build (`?plan=Team`, `UnrealNames.inl:190`) preselects Team; the app writing a literal stays PATCH line D.
   * **The owner:** Human test step 6 on a Shipping build against the live API once this is deployed.
 * **Verify gate:** `scripts/autopilot-verify.ps1` (absolute `-File` path) green on `2506506`: lint, build (compiled in 63 s), pytest 943 passed + 19 skipped (962 collected) in 736 s, `out/index.html` checked; 1,120 s in all.

@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/Button";
 import { formatCredits } from "@/lib/ai";
 import { API_URL, formatDate } from "@/lib/api";
 import { STATIC_CATALOG } from "@/lib/billing-catalog";
+import { linkedTierId } from "@/lib/billing-link";
 import { fill, foundingCovers, foundingPrice, intervalFor, perMonthOfYear } from "@/lib/catalogue";
 import { BILLING, ORG_BILLING } from "@/lib/constants";
 import {
@@ -376,10 +377,9 @@ function BillingManager({ org }: { org: OrgDetail | null }) {
   const [currency, setCurrency] = useState<string>(
     () => params.get("currency")?.toUpperCase() ?? localeCurrency()
   );
-  // Organisations most often buy the per-seat tier.
-  const [tierId, setTierId] = useState<string>(
-    params.get("tier") ?? params.get("plan") ?? (org ? "team" : "pro")
-  );
+  // Organisations most often buy the per-seat tier. ?tier= and ?plan= are
+  // read without case (PF2f: the app's link from a packaged build).
+  const [tierId, setTierId] = useState<string>(linkedTierId(params, org !== null));
   const [seatChoice, setSeatChoice] = useState<number>(
     Math.min(1000, Math.max(0, Math.floor(Number(params.get("seats")) || 0)))
   );
