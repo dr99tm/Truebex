@@ -141,13 +141,14 @@ def test_v1_panorama_set_long_poll(client, wakeups):
     reader = LongPoll(lambda: client.get(url, params={"rev": 1, "wait_s": wait_s}, headers=kh(key, **PL)))
     wakeups.until_waiting(waiting_on)
     push_touch(client, owner, pid, MOVED)
-    finish(client, token, claimed(client, token), "manifest-tiles.json", wall_s=20)
+    at: dict[str, float] = {}  # finish() stamps at["complete"] just before the call that wakes the read
+    finish(client, token, claimed(client, token), "manifest-tiles.json", wall_s=20, at=at)
     moved = reader.answer()
     assert moved.status_code == 200, moved.text
     assert moved.headers["cache-control"] == "private, no-store"
     assert moved.json()["rev"] == 2 and moved.json()["manifest"]["faces_rendered"] == 13
     wakeups.assert_woken(waiting_on, "the tiles job")
-    assert reader.took < wait_s / 2
+    assert reader.since(at["complete"]) < wait_s / 2
     assert moved.json() == client.get(f"/projects/{pid}/panoramas/{set_id}", headers=owner.web).json()
 
     # Nothing newer than rev 2: the read returns the same state at wait_s, holding no connection meanwhile.

@@ -3,6 +3,7 @@
 import copy
 import hashlib
 import json
+import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from unittest import mock
@@ -178,10 +179,14 @@ def complete(client, token: str, c: dict, manifest: dict, wall_s: float = 84.2, 
     )
 
 
-def finish(client, token: str, c: dict, name: str = "manifest-panorama.json", wall_s: float = 84.2) -> dict:
-    """Upload the fixture manifest's rendered tiles and complete the claim."""
+def finish(client, token: str, c: dict, name: str = "manifest-panorama.json", wall_s: float = 84.2, at: dict | None = None) -> dict:
+    """Upload the fixture manifest's rendered tiles and complete the claim. `at`
+    gets `at["complete"]`, the time.monotonic() just before the complete: the
+    call that wakes a read waiting on the job (the uploads before it wake none)."""
     m = fixture_manifest(name, c)
     upload_outputs(client, token, c, rendered_tiles(m))
+    if at is not None:
+        at["complete"] = time.monotonic()
     res = complete(client, token, c, m, wall_s=wall_s)
     assert res.status_code == 200, res.text
     return res.json()
