@@ -152,6 +152,7 @@ No page or endpoint changed, so there is nothing to click on the served site: `s
   * `test_claim_long_poll_woken_by_a_submit`: `… not woken by the submit: its waits on render:claim ended [False] …`
 * **The affected files on SQLite** (the seven files, `test_pf14e_long_poll.py`, `test_pf14g_timing_bounds.py`, `test_billing_pf2.py`, `test_billing.py`, `test_pf2c_billing_tidy.py`, `test_pf2d_billing_followups.py`, `test_render_worker.py`): **164 passed, 5 skipped** (the `postgres`-marked tests and a site check without `out/`) in 294 s.
 * **Postgres 17.10** (a throwaway `initdb` cluster in the session's temp folder, port 55471, `timezone = 'Asia/Baghdad'`, stopped and deleted afterwards). The seven files, `test_billing_pf2.py` and `test_pf14g_timing_bounds.py` with `TEST_APP_DATABASE_URL` + `TEST_DATABASE_URL`: **134 passed, 1 skipped** (`test_pf9_pf12_meet.py`'s site check, `out/` not built) in 477 s.
+* **Verify gate:** `scripts/autopilot-verify.ps1` (absolute `-File` path) green on the docs commit's tree: lint, build (compiled in 64 s), pytest **964 passed + 19 skipped** (983 collected) in 707 s, `out/index.html` checked; 1,021 s in all.
 * **Scope 4: every other upper wall-clock bound in `server/tests`** (grep for `took <`, `elapsed <`, `monotonic() - … <`, `time.time() - … <`, `perf_counter`, plus `datetime.now()` against a `timedelta` and deadline loops):
 
   | Where (this branch) | What it bounds | Verdict |
