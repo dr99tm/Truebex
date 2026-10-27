@@ -402,11 +402,12 @@ def test_jobs_status_long_poll_rev(client, setup, wakeups):
     # A heartbeat while the read waits: its notify ends the wait, long before the deadline.
     reader = LongPoll(lambda: client.get(f"/jobs/{rec['job_id']}", params={"rev": rev, "wait_s": wait_s}, headers=rj(a)))
     wakeups.until_waiting(key)
+    t = time.monotonic()  # the heartbeat wakes the read
     assert heartbeat(client, token, c, 0.3).status_code == 200
     res = reader.answer()
     assert res.status_code == 200 and res.json()["rev"] > rev
     wakeups.assert_woken(key, "the heartbeat")
-    assert reader.took < wait_s / 2
+    assert reader.since(t) < wait_s / 2
     # An unchanged rev waits the whole wait_s: its deadline ends the wait, not a wake-up.
     wakeups.clear()
     started = time.monotonic()
@@ -836,13 +837,14 @@ def test_share_live_follows_the_set(client, setup, wakeups):
     reader = LongPoll(lambda: client.get("/s/k3J9xQ2aTf/live", params={"rev": data["rev"], "wait_s": wait_s}))
     wakeups.until_waiting(key)
     push_touch(client, a, pid, MOVED)
-    finish(client, token, claimed(client, token), "manifest-tiles.json", wall_s=20)
+    at: dict[str, float] = {}  # finish() stamps at["complete"] just before the call that wakes the read
+    finish(client, token, claimed(client, token), "manifest-tiles.json", wall_s=20, at=at)
     res = reader.answer()
     assert res.status_code == 200, res.text
     moved = res.json()
     assert moved["rev"] > data["rev"] and moved["manifest"]["faces_rendered"] == 13
     wakeups.assert_woken(key, "the tiles job")
-    assert reader.took < wait_s / 2
+    assert reader.since(at["complete"]) < wait_s / 2
     # Only the share's own account's set; another panorama id is not live.
     shares["k3J9xQ2aTf"]["account_id"] = a.user_id + 1000
     error_of(client.get("/s/k3J9xQ2aTf/live"), 404, "not_found")

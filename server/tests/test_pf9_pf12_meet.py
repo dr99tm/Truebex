@@ -220,13 +220,14 @@ def test_key_reads_a_followed_set_after_its_own_edit(client, wakeups):
     waiting_on, wait_s = queue.job_key(set_id), queue.STATUS_WAIT_MAX_S
     reader = LongPoll(lambda: client.get(url, params={"rev": 1, "wait_s": wait_s}, headers=kh(key, **PL)))
     wakeups.until_waiting(waiting_on)
-    finish(client, token, tiles, "manifest-tiles.json", wall_s=20)
+    at: dict[str, float] = {}  # finish() stamps at["complete"] just before the call that wakes the read
+    finish(client, token, tiles, "manifest-tiles.json", wall_s=20, at=at)
     res = reader.answer()
     after = res.json()
     assert res.status_code == 200 and after["rev"] == 2 and after["at_seq"] == head + 1
     assert after["manifest"]["faces_rendered"] == 13 and after["job_id"] == tiles["job"]["job_id"]
     wakeups.assert_woken(waiting_on, "the tiles job")
-    assert reader.took < wait_s / 2
+    assert reader.since(at["complete"]) < wait_s / 2
 
     # A viewer's phone reads the same render through the session route; the viewer's own key lists the same sets.
     assert client.get(f"/projects/{pid}/panoramas/{set_id}", headers=sam.web).json() == after

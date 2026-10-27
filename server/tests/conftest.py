@@ -324,11 +324,16 @@ def wakeups(monkeypatch):
 
 class LongPoll:
     """One request on its own thread, started at once (the test client takes
-    calls from any thread); `answer()` joins it with a hang guard."""
+    calls from any thread); `answer()` joins it with a hang guard.
+
+    `took` runs from the thread's start, so it also counts the test's own calls
+    made while the read waits: bound a woken read from just before the call that
+    sends the notify instead, with `since(t)` (PF14g). `took` serves lower bounds."""
 
     def __init__(self, call) -> None:
         self.res = None
         self.took: float | None = None
+        self.answered: float | None = None  # time.monotonic() when the call returned
         self._error: BaseException | None = None
         self._thread = threading.Thread(target=self._run, args=(call,), daemon=True)
         self._thread.start()
@@ -340,7 +345,13 @@ class LongPoll:
         except BaseException as exc:  # raised again in the test by answer()
             self._error = exc
         finally:
-            self.took = time.monotonic() - started
+            self.answered = time.monotonic()
+            self.took = self.answered - started
+
+    def since(self, t: float) -> float:
+        """The seconds from `t` (a `time.monotonic()`) to the answer."""
+        assert self.answered is not None, "the long poll has not answered"
+        return self.answered - t
 
     def answer(self, guard_s: float = 40.0):
         self._thread.join(guard_s)

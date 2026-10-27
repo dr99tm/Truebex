@@ -111,10 +111,11 @@ def test_worker_wrapper_failure_and_cancel(client, rig, monkeypatch):
 
     t = threading.Thread(target=cancel_soon)
     t.start()
-    started = time.monotonic()
     assert runner.run_once(wait_s=0) == "cancelled"
     t.join()
-    assert time.monotonic() - started < 6  # the app was killed, not waited for
+    # The app was killed, not waited for: it writes its manifest only after its 8 s sleep. (A clock bound here also
+    # timed the claim, the inputs and the app's interpreter start, which a busy PC stretches: PF14g.)
+    assert not (Path(rig["cfg"].work_dir) / rec["job_id"] / "out" / "manifest.json").exists()
     end = job(client, rj(a), rec["job_id"])
     assert end["state"] == "cancelled" and end["cost_units"] is None
     with SessionLocal() as db:

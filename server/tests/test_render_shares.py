@@ -92,13 +92,14 @@ def test_published_share_follows_the_set(client, followed, monkeypatch, wakeups)
     reader = LongPoll(lambda: client.get(f"/s/{slug}/live", params={"rev": state["rev"], "wait_s": wait_s}, headers=CONTRACT))
     wakeups.until_waiting(key)
     push_touch(client, a, pid, MOVED)
-    finish(client, token, claimed(client, token), "manifest-tiles.json")
+    at: dict[str, float] = {}  # finish() stamps at["complete"] just before the call that wakes the read
+    finish(client, token, claimed(client, token), "manifest-tiles.json", at=at)
     res = reader.answer()
     assert res.status_code == 200, res.text
     moved = res.json()
     assert moved["rev"] > state["rev"] and moved["manifest"]["faces_rendered"] == 13
     wakeups.assert_woken(key, "the tiles job")
-    assert reader.took < wait_s / 2
+    assert reader.since(at["complete"]) < wait_s / 2
 
     # Ending the share ends its live view (410, as the share page answers).
     assert client.delete(f"/shares/{share['share_id']}", headers=web(a.session)).status_code == 200

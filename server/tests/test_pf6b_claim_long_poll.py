@@ -170,12 +170,13 @@ def test_claim_long_poll_woken_by_a_submit(client, setup, wakeups):
     # A job submitted while the claim waits (the route's longest wait) wakes it.
     poll = LongPoll(lambda: claim(client, token, wait_s=queue.CLAIM_WAIT_MAX_S))
     wakeups.until_waiting(queue.CLAIM_KEY)
+    t = time.monotonic()  # the submit wakes the claim
     rec = submitted(client, rj(a), project_id=setup["pid"], at_seq=setup["head"])
     res = poll.answer()
     assert res.status_code == 200, res.text
     assert res.json()["job"]["job_id"] == rec["job_id"] and res.json()["job"]["attempts"] == 0
     wakeups.assert_woken(queue.CLAIM_KEY, "the submit")
-    assert poll.took < queue.CLAIM_WAIT_MAX_S / 2
+    assert poll.since(t) < queue.CLAIM_WAIT_MAX_S / 2
 
 
 def test_claim_without_notify_claim_waits_to_its_deadline(client, setup, wakeups, monkeypatch):

@@ -20,7 +20,7 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 
 from app import tasks
-from app.billing import consent, jobs, providers, service
+from app.billing import consent, jobs, paddle_provider, providers, service
 from app.billing.base import NotSupported
 from app.config import get_settings
 from app.database import SessionLocal
@@ -224,10 +224,24 @@ def test_billing_paddle_webhook_signature(client, paddle):
     assert paddle_post(client, ev).status_code == 200
     ev2 = paddle.event("subscription.updated", {"id": "sub_x", "status": "active", "custom_data": {}})
     assert paddle_post(client, ev2, secret="pdl_ntfset_wrong").status_code == 400
-    assert paddle_post(client, ev2, ts=int(time.time()) - 301).status_code == 400
-    assert paddle_post(client, ev2, ts=int(time.time()) + 301).status_code == 400
+    assert paddle_post(client, ev2, ts=int(time.time()) - (paddle_provider.SIGNATURE_TOLERANCE_S + 60)).status_code == 400
+    assert paddle_post(client, ev2, ts=int(time.time()) + (paddle_provider.SIGNATURE_TOLERANCE_S + 60)).status_code == 400
     res = client.post("/billing/webhooks/paddle", content=json.dumps(ev2).encode())
     assert res.status_code == 400
+
+
+def test_billing_paddle_signature_window_edge():
+    """The 300 s window by an explicit clock (PF14g): 300 s old or ahead is inside, 300.5 s is not. `now` is far
+    from 0, because verify_signature reads `now or time.time()` (now=0.0 would mean the real clock)."""
+    body, signed_at, window = b'{"event_type": "subscription.updated"}', 2_000_000_000, paddle_provider.SIGNATURE_TOLERANCE_S
+    header = paddle_provider.sign(SECRET, body, signed_at)
+    for off in (0, window, -window):
+        paddle_provider.verify_signature(SECRET, body, header, now=signed_at + off)
+    for off in (window + 0.5, -(window + 0.5), window + 1, -(window + 1)):
+        with pytest.raises(paddle_provider.WebhookError, match="stale Paddle signature"):
+            paddle_provider.verify_signature(SECRET, body, header, now=signed_at + off)
+    with pytest.raises(paddle_provider.WebhookError, match="invalid Paddle signature"):  # inside it, the HMAC decides
+        paddle_provider.verify_signature("pdl_ntfset_wrong", body, header, now=signed_at + window)
 
 
 def test_billing_paddle_subscription_lifecycle(client, paddle):

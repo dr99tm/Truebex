@@ -1796,3 +1796,20 @@ an ASCII spelling of a buyable tier (a misspelling, `free`, `enterprise`, a non-
 buyable tier, and the other parameters (`?interval=`, `?currency=`, `?seats=`, `?code=`, `?org=`) are read as before
 (`src/lib/billing-link.ts`). Signed out, the login page keeps the link and returns to it. Doc:
 `docs/roadmap/40/PF2f-billing-link-plan-case.md`.
+
+## Test time bounds from the change (PF14g)
+
+The server tests that time a woken long poll (job status, the share live view, the published share, the pull, the
+`/v1` panorama read and its PF9 x PF12 meet, the worker claim) bound the time from the call that wakes the read, not
+from the reader's start. `LongPoll.since(t)` in `server/tests/conftest.py` gives the seconds from `t`, taken just
+before the heartbeat, the push, the submit or a tiles job's complete (`finish(..., at=at)` stamps it after the tile
+uploads). The test's own writes while the read waits no longer count, so a busy PC no longer fails these tests, and
+`wakeups.assert_woken` still fails them when the wake-up is missing. The Paddle webhook test signs its stale cases a
+minute outside the 300 s window, and the exact edge has a unit test with an explicit clock. Two `ast` guards in
+`server/tests/test_pf14g_timing_bounds.py` keep both from coming back. Doc:
+`docs/roadmap/40/PF14g-timing-bounds-from-the-change.md`.
+
+```powershell
+cd server
+.venv/Scripts/python.exe -m pytest tests/test_pf14g_timing_bounds.py tests/test_render.py -k 'live or long_poll or pf14g' -q
+```

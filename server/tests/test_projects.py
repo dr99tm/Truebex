@@ -273,12 +273,13 @@ def test_pull_long_poll_wakes_on_push(client, wakeups):
     reader = LongPoll(lambda: client.get(f"/projects/{pid}/ops", params={"after": 0, "wait_s": wait_s}, headers=a.dev))
     wakeups.until_waiting(pid)
     assert waiters.waiting_count(pid) == 1
+    t = time.monotonic()  # the push wakes the read
     pushed(client, a.dev, pid, a.replica, [delta_op(a.author_id, [hex32()])])
     res = reader.answer()
     assert res.status_code == 200, res.text
     assert [op["server_seq"] for op in res.json()["ops"]] == [1]
     wakeups.assert_woken(pid, "the push")
-    assert reader.took < wait_s / 2
+    assert reader.since(t) < wait_s / 2
     assert waiters.waiting_count(pid) == 0
 
     # Nothing new: the pull holds for wait_s, then answers empty. Its deadline ends the wait; the bound is

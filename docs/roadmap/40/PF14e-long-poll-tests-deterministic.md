@@ -156,3 +156,4 @@ No page or endpoint changed, so there is nothing to click on the served site (`s
   5. *`server/scripts/starved_pytest.py`* gives the human test its two commands. It loads only the one core it pins to, never every core.
 * **Contract:** none. Owner, at merge: nothing to apply in the Unreal repo's `contracts\`.
 * **Carry-over → which feature:** the worker claim long poll's wake-up (`notify_claim`) has no test that times it. If one is wanted, it is a PF6 follow-up on the same `wakeups` recipe.
+* **Later (PF14g, 2026-10-27):** the "well before the deadline" bound now runs from the call that wakes the read (`reader.since(t)`), not from the reader's start (`took`); see `PF14g-timing-bounds-from-the-change.md`.
