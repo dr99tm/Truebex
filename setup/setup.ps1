@@ -47,10 +47,14 @@ function Expand-Text([string]$s) {
     return $s
 }
 
+# Adds PATH entries that installers wrote to the registry, keeping this process's own entries.
 function Update-SessionPath {
-    $machine = [Environment]::GetEnvironmentVariable('Path', 'Machine')
-    $user = [Environment]::GetEnvironmentVariable('Path', 'User')
-    $env:Path = (@($machine, $user) | Where-Object { $_ }) -join ';'
+    $saved = @([Environment]::GetEnvironmentVariable('Path', 'Machine'), [Environment]::GetEnvironmentVariable('Path', 'User')) -join ';'
+    $parts = New-Object System.Collections.Generic.List[string]
+    foreach ($p in (($saved + ';' + $env:Path) -split ';')) {
+        if ($p -and -not $parts.Contains($p)) { $parts.Add($p) }
+    }
+    $env:Path = $parts -join ';'
 }
 
 # Finds a tool: PATH first, then the spec's known install paths. Returns the first copy whose version fits,
@@ -119,11 +123,23 @@ function Get-Winget {
     throw 'winget could not be installed; install App Installer from the Microsoft Store and re-run'
 }
 
+# Runs a snippet from requirements.psd1 in a child PowerShell through a temporary .ps1 file (passing it with
+# -Command would let PowerShell 5.1 strip its double quotes). Returns the last native exit code.
+function Invoke-Snippet([string]$code) {
+    $file = Join-Path ([IO.Path]::GetTempPath()) ("setup-step-" + [guid]::NewGuid().ToString('N') + '.ps1')
+    $body = "`$global:LASTEXITCODE = 0`r`n$code`r`nif (`$LASTEXITCODE) { exit `$LASTEXITCODE }`r`n"
+    [IO.File]::WriteAllText($file, $body, (New-Object Text.UTF8Encoding $true))
+    try {
+        & powershell -NoProfile -ExecutionPolicy Bypass -File $file | Out-Host
+        return $LASTEXITCODE
+    } finally { Remove-Item $file -ErrorAction SilentlyContinue }
+}
+
 function Install-Tool($tool) {
     if ($tool.Install) {
         Write-Host "== $($tool.Name): $($tool.Install)" -ForegroundColor Cyan
-        & powershell -NoProfile -ExecutionPolicy Bypass -Command (Expand-Text $tool.Install)
-        if ($LASTEXITCODE -ne 0) { throw "Installing $($tool.Name) failed (exit $LASTEXITCODE)" }
+        $code = Invoke-Snippet (Expand-Text $tool.Install)
+        if ($code -ne 0) { throw "Installing $($tool.Name) failed (exit $code)" }
         return
     }
     if (-not $tool.Winget) { throw "$($tool.Name) has no installer in requirements.psd1; install it by hand" }
@@ -143,6 +159,8 @@ function Install-Tool($tool) {
 
 $script:Found = @{}
 $rows = New-Object System.Collections.ArrayList
+# A parent process started before an earlier install (an SSM agent, an old terminal) passes a stale PATH.
+Update-SessionPath
 
 # 1. Tools
 foreach ($tool in $Spec.Tools) {
@@ -174,8 +192,8 @@ if (-not $Check -and -not $SkipProject) {
         Write-Host "== $($step.Name) (in $dir): $cmd" -ForegroundColor Cyan
         Push-Location $dir
         try {
-            & powershell -NoProfile -ExecutionPolicy Bypass -Command $cmd
-            if ($LASTEXITCODE -ne 0) { throw "Step '$($step.Name)' failed (exit $LASTEXITCODE)" }
+            $code = Invoke-Snippet $cmd
+            if ($code -ne 0) { throw "Step '$($step.Name)' failed (exit $code)" }
         } finally { Pop-Location }
     }
 }

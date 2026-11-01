@@ -22,13 +22,21 @@ apt_install() {
   DEBIAN_FRONTEND=noninteractive $SUDO apt-get install -y -qq "$@" >/dev/null 2>&1
 }
 
+# Node 24 from nodejs.org into ~/.local/node, linked into /usr/local/bin (root) or ~/.local/bin.
+install_node() {
+  local base=https://nodejs.org/dist/latest-v24.x tar bin
+  tar=$(curl -fsSL "$base/SHASUMS256.txt" | grep -oE 'node-v[0-9.]+-linux-x64\.tar\.xz' | head -1) || return 1
+  mkdir -p "$HOME/.local/node" && curl -fsSL "$base/$tar" | tar -xJ -C "$HOME/.local/node" --strip-components=1 || return 1
+  bin=/usr/local/bin; [ -w "$bin" ] || { bin="$HOME/.local/bin"; mkdir -p "$bin"; }
+  for t in node npm npx; do ln -sf "$HOME/.local/node/bin/$t" "$bin/$t"; done
+  export PATH="$bin:$PATH"; hash -r
+}
+
 # node >=22 <26
 nv=$(command -v node >/dev/null && ver node --version)
 if { [ -z "$nv" ] || ! at_least "$nv" 22.0 || at_least "$nv" 26.0; } && [ "$CHECK" = 0 ]; then
-  log "installing node 24 with fnm"
-  curl -fsSL https://fnm.vercel.app/install | bash -s -- --skip-shell >/dev/null 2>&1
-  export PATH="$HOME/.local/share/fnm:$PATH"; eval "$(fnm env)"; fnm install 24 >/dev/null && fnm default 24
-  nv=$(ver node --version)
+  log "installing node 24"; install_node
+  nv=$(command -v node >/dev/null && ver node --version)
 fi
 
 # python 3.12 (the pins don't install on 3.13+)
@@ -46,17 +54,20 @@ fi
 if [ "$CHECK" = 0 ]; then
   if [ -n "$nv" ]; then log "npm ci"; npm ci --no-audit --no-fund >/dev/null 2>&1 || npm ci --no-audit --no-fund; fi
   if [ -n "$PY" ]; then
-    [ -x server/.venv/bin/python ] || { log "server venv"; "$PY" -m venv server/.venv || { apt_install python3.12-venv && "$PY" -m venv server/.venv; }; }
+    # Debian/Ubuntu split venv/ensurepip into pythonX.Y-venv; a venv made without it has no pip.
+    "$PY" -c 'import ensurepip' 2>/dev/null || apt_install python3.12-venv
+    server/.venv/bin/python -m pip --version >/dev/null 2>&1 || { log "server venv"; "$PY" -m venv --clear server/.venv; }
     log "server packages"; server/.venv/bin/python -m pip install --disable-pip-version-check -q -r server/requirements-dev.txt
   fi
   [ -f .env.local ] || cp .env.example .env.local
 fi
 
-[ "$QUIET" = 1 ] && [ "$missing" = 0 ] && [ -n "$nv" ] && [ -n "$PY" ] && exit 0
+[ "$QUIET" = 1 ] && [ -n "$nv" ] && [ -n "$PY" ] && [ -d node_modules ] && exit 0
 echo "Truebex platform: setup check"
 [ -n "$nv" ] && at_least "$nv" 22.0 && ! at_least "$nv" 26.0 && report ok tool node "$nv" || report MISSING tool node ">=22 <26 (have ${nv:-none})"
 [ -n "$PY" ] && report ok tool python "$(ver $PY --version) ($PY)" || report MISSING tool python "3.12.x"
-[ -x server/.venv/bin/python ] && report ok venv server/.venv "" || report MISSING venv server/.venv "run without --check"
+server/.venv/bin/python -m pip --version >/dev/null 2>&1 && report ok venv server/.venv "" || report MISSING venv server/.venv "run without --check"
+server/.venv/bin/python -c 'import fastapi, pytest' 2>/dev/null && report ok deps "server packages" "" || report MISSING deps "server packages" "pip install -r server/requirements-dev.txt"
 [ -d node_modules ] && report ok deps node_modules "" || report MISSING deps node_modules "npm ci"
 command -v pg_ctl >/dev/null || ls /usr/lib/postgresql/*/bin/pg_ctl >/dev/null 2>&1 \
   && report ok tool postgres "binaries" || report warn tool postgres "optional: postgres-marked tests (apt install postgresql)"
