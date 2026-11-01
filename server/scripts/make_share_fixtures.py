@@ -1,11 +1,15 @@
 """Write PF5's own share fixtures (share-bundle.md §9 shapes) into
 tests/fixtures/share/.
 
-    .venv\\Scripts\\python.exe scripts\\make_share_fixtures.py [--out DIR] [--check]
+    .venv\\Scripts\\python.exe scripts\\make_share_fixtures.py [--out DIR] [--check [--portable]]
 
 Deterministic: re-running reproduces the JSON byte for byte, and the images
 and the PDF too with the same Pillow build; `--check` builds everything in
-memory and fails when a file in the folder differs. PF5 wrote these as the
+memory and fails when a file in the folder differs. The committed JPEGs come
+from the owner's Windows Pillow wheel: another platform's build anti-aliases a
+few edge pixels differently, so `--check --portable` (what CI on Linux runs)
+compares the JPEGs by their decoded pixels and the manifests with the image
+hashes and sizes mapped to the committed ones; everything else stays exact. PF5 wrote these as the
 contract's first fixtures; since PF5b (share-bundle 1.1) the contract's set is
 the app's own (tests/contracts/share-bundle/, copied by
 scripts/sync-contract-fixtures.ps1) and this three-room house stays the
@@ -31,7 +35,7 @@ import json
 import math
 from pathlib import Path
 
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageChops, ImageDraw, ImageFont
 
 SERVER = Path(__file__).resolve().parents[1]
 OUT = SERVER / "tests" / "fixtures" / "share"
@@ -423,12 +427,80 @@ def build() -> dict[str, bytes]:
     return out
 
 
+# A different Pillow/FreeType/libjpeg build moves well under 1% of the pixels
+# (anti-aliased edges and text); a real change to a room moves far more.
+PORTABLE_MEAN_DIFF = 1.0
+PORTABLE_CHANGED_SHARE = 0.02
+
+
+def _pixel_problem(committed: bytes, fresh: bytes) -> str | None:
+    a = Image.open(io.BytesIO(committed)).convert("RGB")
+    b = Image.open(io.BytesIO(fresh)).convert("RGB")
+    if a.size != b.size:
+        return f"size {a.size} != {b.size}"
+    hist = ImageChops.difference(a, b).convert("L").histogram()
+    total = sum(hist)
+    mean = sum(i * n for i, n in enumerate(hist)) / total
+    changed = 1 - hist[0] / total
+    if mean > PORTABLE_MEAN_DIFF or changed > PORTABLE_CHANGED_SHARE:
+        return f"pixels differ (mean {mean:.3f}, {changed:.2%} changed)"
+    return None
+
+
+def _without_bytes(obj):
+    if isinstance(obj, dict):
+        return {k: _without_bytes(v) for k, v in obj.items() if k != "bytes"}
+    if isinstance(obj, list):
+        return [_without_bytes(v) for v in obj]
+    return obj
+
+
+def check_portable(out: Path, built: dict[str, bytes]) -> list[str]:
+    """What differs, allowing another platform's raster output (see the docstring)."""
+    problems = []
+    sha_map = {}
+    for name, data in built.items():
+        path = out / name
+        if not path.is_file():
+            problems.append(f"missing: {name}")
+            continue
+        committed = path.read_bytes()
+        if committed == data:
+            continue
+        if name.endswith(".jpg"):
+            problem = _pixel_problem(committed, data)
+            if problem:
+                problems.append(f"differs: {name}: {problem}")
+            sha_map[hashlib.sha256(data).hexdigest()] = hashlib.sha256(committed).hexdigest()
+    for name, data in built.items():
+        path = out / name
+        if not name.endswith(".json") or not path.is_file():
+            continue
+        text = data.decode("utf-8")
+        for fresh_sha, committed_sha in sha_map.items():
+            text = text.replace(fresh_sha, committed_sha)
+        if _without_bytes(json.loads(text)) != _without_bytes(json.loads(path.read_text(encoding="utf-8"))):
+            problems.append(f"differs: {name}")
+    for name, data in built.items():
+        path = out / name
+        if not name.endswith((".jpg", ".json")) and path.is_file() and path.read_bytes() != data:
+            problems.append(f"differs: {name}")
+    return problems
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--out", type=Path, default=OUT)
     parser.add_argument("--check", action="store_true", help="fail when a file in --out differs from a fresh build")
+    parser.add_argument("--portable", action="store_true", help="with --check: allow another platform's Pillow raster output")
     args = parser.parse_args(argv)
     built = build()
+    if args.check and args.portable:
+        problems = check_portable(args.out, built)
+        for line in problems:
+            print(line)
+        print("up to date (portable)" if not problems else f"{len(problems)} problem(s): run without --check and commit")
+        return 1 if problems else 0
     if args.check:
         stale = [name for name, data in built.items() if not (args.out / name).is_file() or (args.out / name).read_bytes() != data]
         for name in stale:
