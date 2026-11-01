@@ -21,7 +21,7 @@ import { EventEmitter } from 'node:events';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { connect } from 'node:net';
 import { homedir } from 'node:os';
-import { join } from 'node:path';
+import { isAbsolute, join } from 'node:path';
 import { LineReader, frame } from './jsonrpc.mjs';
 
 export const WIRE = 'truebex-agent-wire/1';
@@ -35,7 +35,9 @@ export function instancesDir(env = process.env) {
 export function pipePath(name) {
   if (!name) { return ''; }
   if (name.startsWith('\\\\.\\pipe\\') || name.startsWith('//./pipe/')) { return name; }
-  return process.platform === 'win32' ? `\\\\.\\pipe\\${name}` : join('/tmp', name);
+  if (process.platform === 'win32') { return `\\\\.\\pipe\\${name}`; }
+  // A Unix socket path the app (or the instance file) already spelled out is used as is.
+  return isAbsolute(name) ? name : join('/tmp', name);
 }
 
 function alive(pid) {
