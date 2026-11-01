@@ -89,13 +89,14 @@ repo's `contracts/` first.
 
 ## Tests that do not run in CI (and why)
 
-CI on ubuntu-latest runs the whole suite with a Postgres 16 service. Six tests skip there by design:
+CI on ubuntu-latest runs the whole suite with a Postgres 16 service. Five tests skip there by design (a sixth,
+`test_pf12_mcp_package.py::test_sync_mcp_copies_the_landed_bridge`, needs PowerShell: it runs on GitHub's
+runners, which ship `pwsh`, and skips on a Linux machine without it):
 
 | Test | Why it skips |
 |---|---|
 | `test_ops.py` (WMI disk check) | Windows only |
 | `test_render_worker.py` (Ctrl+C worker) | needs Windows PowerShell |
-| `test_pf12_mcp_package.py` (`mcp-bundle-manifest`) | needs PowerShell (`pwsh`) |
 | `test_pf6a_render_jobs_1_1.py`, `test_pf7e_marketplace_1_2.py`, `test_pf11c_render_jobs_1_2.py` (app blob checks) | need the Unreal app repository beside this one |
 
 The share-fixture check (`test_pf5b_share_fixtures_up_to_date`) compares the fixture JPEGs by their pixels off Windows
