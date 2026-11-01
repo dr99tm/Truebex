@@ -64,3 +64,7 @@ cd server && python -m venv .venv && .venv/bin/pip install -r requirements.txt -
 - Write non-ASCII or invisible characters in source as `chr(0x…)` / `String.fromCodePoint(…)`, and scan written
   files for stray control bytes: tool escapes have turned `\a` into BEL and `K` into the Kelvin sign before.
 - Production deploy and anything touching the live API, billing or DNS needs the owner's OK.
+
+## Machine setup
+
+On a new machine or cloud container run `bash setup/setup.sh` (Linux) or `setup\setup.ps1` (Windows, `-With postgres,sdk,mobile,…`) first; `-Check` / `--check` only checks. `setup/README.md` lists every tool, version and file git does not carry; update `setup/requirements.psd1` and `setup.sh` when a requirement changes.
