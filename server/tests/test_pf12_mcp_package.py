@@ -222,7 +222,8 @@ class ReplayPipe:
         self.pipe, self.token = info["pipe"], info["token"]
 
     def stop(self) -> tuple[int, str, str]:
-        self.proc.stdin.close()
+        # communicate() closes stdin itself (the EOF the replay waits for); closing it
+        # first makes Python 3.12's POSIX communicate() fail flushing a closed file.
         try:
             out, err = self.proc.communicate(timeout=10)
         except subprocess.TimeoutExpired:

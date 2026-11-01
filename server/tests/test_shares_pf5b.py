@@ -282,10 +282,14 @@ def test_pf5b_rule_messages_one_per_id():
 
 
 def test_pf5b_share_fixtures_up_to_date():
-    """PF5's own set moved to tests/fixtures/share/; its script writes and checks it there."""
+    """PF5's own set moved to tests/fixtures/share/; its script writes and checks it there.
+    The JPEGs are byte-exact only on the Windows Pillow build that wrote them; elsewhere
+    (CI on Linux) the check compares their pixels (set SHARE_FIXTURES_BYTE_EXACT=1 to force bytes)."""
     assert (SHARE_FIXTURES / "pano-2048-kitchen.jpg").is_file()
+    exact = sys.platform == "win32" or os.environ.get("SHARE_FIXTURES_BYTE_EXACT") == "1"
     run = subprocess.run(
-        [sys.executable, str(ROOT / "server" / "scripts" / "make_share_fixtures.py"), "--check"],
+        [sys.executable, str(ROOT / "server" / "scripts" / "make_share_fixtures.py"), "--check",
+         *([] if exact else ["--portable"])],
         capture_output=True, text=True, timeout=300, cwd=ROOT / "server",
     )
     assert run.returncode == 0, run.stdout + run.stderr
