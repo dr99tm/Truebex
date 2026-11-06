@@ -130,7 +130,7 @@ Website: https://truebex.com/
 |---|---|---|
 | Page name | 75 | Truebex |
 | Category (up to 3) | — | **Software Company** (first) · Architectural Designer · Interior Design Studio *(if "Software Company" isn't offered, type "Software" and take the closest; last resort: Science, Technology & Engineering)* |
-| Username | 50 | truebex → facebook.com/truebex |
+| Username | 50 | TruebexOfficial → facebook.com/TruebexOfficial (facebook.com/truebex was not available) |
 | Website | — | the Facebook link (§1) |
 | Email | — | contact@truebex.com |
 | Phone / WhatsApp | — | the WhatsApp business number (§10), if you want it public |
@@ -249,7 +249,7 @@ Website: https://truebex.com/
 | Channel name | 100 | Truebex |
 | Handle | 3–30 | @Truebex |
 | Links | 14 | title **truebex.com** → the YouTube link (§1); **Download for Windows** → `https://truebex.com/download/`; then each other profile as it goes live |
-| Contact email | — | contact@truebex.com — **only once that mailbox receives mail** (§12) |
+| Contact email | — | contact@truebex.com |
 | Profile picture | 800 × 800 | `export/avatar.png` |
 | Banner | 2560 × 1440, safe area 1546 × 423 in the centre | `export/youtube-banner.png` |
 | Video watermark | 150 × 150 | `export/youtube-watermark.png` |
@@ -374,22 +374,20 @@ We’re building Truebex, a design platform for architects, interior designers a
 | **support@truebex.com** | people who use the app: install, licence, account, bugs | download page, in-app feedback replies, WhatsApp |
 | **sales@truebex.com** | demos, plans, teams and organisations, Enterprise, suppliers | "Request a demo", pricing page (Team / Enterprise), LinkedIn |
 
-### Before you publish them: they must receive and send mail
+### How the addresses work
 
-Today nothing receives mail at truebex.com: the DNS (Cloudflare, `infra/tofu`) has SPF, DKIM and a **strict
-DMARC** (`p=quarantine; adkim=s; aspf=s`, `infra/tofu/variables.tf:81`) but no MX records, and the server's
-mail settings use **hello@truebex.com** (`MAIL_FROM`, `SUPPORT_EMAIL`, `ALERT_EMAIL` in
-`infra/secrets/server.env.example`, the DMARC report address). Two ways to make the three addresses work:
+Mail in: Cloudflare Email Routing sends contact@ and support@ to the `truebex-support` Worker (the Desk), and a
+catch-all sends every other address to the same Worker, which forwards non-support mail to Gmail.
 
-1. **Hosted mailboxes** (one paid user with the three as aliases, or three users): receive and send properly,
-   DKIM signed for truebex.com. Simplest and most trustworthy for payment providers.
-2. **Cloudflare Email Routing** (free, receive only) forwarding all three to your Gmail, plus "Send mail as"
-   through the same SMTP relay the server uses. Without that relay, replies sent "as" support@ from Gmail
-   fail the strict DMARC and land in spam.
+Mail out: Amazon SES in Frankfurt (eu-central-1), with production access. The truebex.com domain is verified, DKIM
+is on, `bounce.truebex.com` is the MAIL FROM domain, and bounces and complaints go to the `truebex-ses-alerts`
+topic.
 
-Then decide about **hello@truebex.com**: keep it as the server's sender, or move `SUPPORT_EMAIL` to
-support@truebex.com and route hello@ to the same inbox. And change `SITE.email` in `src/lib/constants.ts`
-(today `dr99tm@gmail.com`, shown on the website) to contact@truebex.com.
+The website shows `SITE.email` (contact@) and `SITE.supportEmail` (support@) from `src/lib/constants.ts`.
+
+Still open: the API server's mail settings use **hello@truebex.com** (`MAIL_FROM`, `SUPPORT_EMAIL`, `ALERT_EMAIL` in
+`infra/secrets/server.env.example`). Mail to hello@ reaches the catch-all, so it isn't lost, but customers see a
+third address. Decide whether to move `SUPPORT_EMAIL` to support@truebex.com.
 
 ### Signatures
 
@@ -427,22 +425,22 @@ password).
 
 | Platform | Handle | URL | Created | v2 text in | Login email | 2FA on | In `SOCIAL` |
 |---|---|---|---|---|---|---|---|
-| YouTube | @Truebex | https://www.youtube.com/@Truebex (ID: https://www.youtube.com/channel/UCDcvENr5BAZOJlmAa0B7q-Q) | 2026-10-16 | | | | |
-| Facebook | truebex | | | | | | n/a (not in `SOCIAL` yet) |
-| Instagram | truebex | | | | | | |
-| LinkedIn | truebex | | | | | | |
-| X | @truebex | | | | | | |
-| TikTok | @truebex | | | | | | |
+| YouTube | @Truebex | https://www.youtube.com/@Truebex (ID: https://www.youtube.com/channel/UCDcvENr5BAZOJlmAa0B7q-Q) | 2026-10-16 | | | | yes |
+| Facebook | TruebexOfficial | https://www.facebook.com/TruebexOfficial | | | | | yes |
+| Instagram | truebex | https://www.instagram.com/truebex/ | | | | | yes |
+| LinkedIn | truebex | Not confirmed: linkedin.com/company/truebex does not exist, and the Facebook page links a personal profile, /in/truebex | | | | | |
+| X | @truebex | Taken by an unrelated account since 2014; the Facebook page links to it by mistake | | | | | |
+| TikTok | @truebex | Taken by an unrelated account | | | | | |
 | Threads | @truebex | | | | | | n/a (not in `SOCIAL` yet) |
 | Pinterest | truebex | | | | | | n/a (not in `SOCIAL` yet) |
 | Reddit | u/truebex | | | | | | n/a (not in `SOCIAL` yet) |
 | WhatsApp Business | — | | | | | | n/a |
 | contact@truebex.com | — | — | | — | — | | `SITE.email` |
-| support@truebex.com | — | — | | — | — | | server `SUPPORT_EMAIL` |
+| support@truebex.com | — | — | | — | — | | `SITE.supportEmail`; server `SUPPORT_EMAIL` is still hello@ |
 | sales@truebex.com | — | — | | — | — | | |
 
-`SOCIAL` today lists LinkedIn, Instagram, YouTube, TikTok and X. Facebook, Threads, Pinterest, Reddit and
-WhatsApp need an entry (and an icon in the footer) before their links can show on the website.
+`SOCIAL` lists LinkedIn, Instagram, YouTube, Facebook, TikTok and X, and the website shows the ones with a URL.
+Threads, Pinterest, Reddit and WhatsApp need an entry before their links can show on the website.
 
 ---
 

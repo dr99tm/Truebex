@@ -22,7 +22,7 @@ export default function TermsPage() {
       <ul>
         <li>You need a valid email address or Google account to sign up.</li>
         <li>Keep your sign-in details and API keys secret. You are responsible for activity under your account and keys.</li>
-        <li>Tell us promptly at {SITE.email} if you think your account or a key has been compromised, and revoke the key from your dashboard.</li>
+        <li>Tell us promptly at {SITE.supportEmail} if you think your account or a key has been compromised, and revoke the key from your dashboard.</li>
       </ul>
 
       <h2>The API</h2>
@@ -40,7 +40,7 @@ export default function TermsPage() {
             <strong>{item.title}:</strong> {item.text}
           </li>
         ))}
-        <li>If something goes wrong with a payment, contact us at {SITE.email} and we will make it right.</li>
+        <li>If something goes wrong with a payment, contact us at {SITE.supportEmail} and we will make it right.</li>
       </ul>
 
       <h2>Your content</h2>

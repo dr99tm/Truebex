@@ -31,7 +31,8 @@ export const SITE = {
   title: "Truebex — Imagine More. Build Better.",
   description:
     "Building design software for architects and interior designers: explore more options, compare finishes in context and experience the space before you build.",
-  email: "dr99tm@gmail.com",
+  email: "contact@truebex.com",
+  supportEmail: "support@truebex.com",
 } as const;
 
 // The home page's hero (Hero.tsx).
@@ -1250,11 +1251,13 @@ export const FOOTER = {
 } as const;
 
 // Social accounts: the footer's Follow column and the Organization `sameAs`
-// show only the ones with a URL. The owner sets them from the launch plan.
+// show only the ones with a URL. Add one only after opening the profile: the
+// truebex handles on X and TikTok belong to unrelated people.
 export const SOCIAL: readonly { id: string; label: string; url: string }[] = [
   { id: "linkedin", label: "LinkedIn", url: "" },
-  { id: "instagram", label: "Instagram", url: "" },
-  { id: "youtube", label: "YouTube", url: "" },
+  { id: "instagram", label: "Instagram", url: "https://www.instagram.com/truebex/" },
+  { id: "youtube", label: "YouTube", url: "https://www.youtube.com/@Truebex" },
+  { id: "facebook", label: "Facebook", url: "https://www.facebook.com/TruebexOfficial" },
   { id: "tiktok", label: "TikTok", url: "" },
   { id: "x", label: "X", url: "" },
 ];
