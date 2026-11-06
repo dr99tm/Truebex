@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Section } from "@/components/layout/Section";
 import { Button } from "@/components/ui/Button";
 import { FadeInWhenVisible } from "@/components/animations/FadeInWhenVisible";
+import { CONTACT_CTA } from "@/lib/constants";
 
 // Google Apps Script Web App URL — set NEXT_PUBLIC_SHEETS_URL in .env.local
 const SHEETS_URL = process.env.NEXT_PUBLIC_SHEETS_URL ?? "";
@@ -69,13 +70,11 @@ export function CTAContact() {
         <div className="relative z-10 mx-auto max-w-2xl text-center">
           <FadeInWhenVisible>
             <h2 className="text-2xl font-bold tracking-tight sm:text-3xl md:text-5xl">
-              Ready to Design What{" "}
-              <span className="gradient-text">Will Actually Exist?</span>
+              {CONTACT_CTA.titleStart}{" "}
+              <span className="gradient-text">{CONTACT_CTA.titleAccent}</span>
             </h2>
             <p className="mt-6 text-lg text-text-secondary">
-              See a building designed, daylit and refined in one live
-              session. Request a demo and we&apos;ll show you Truebex on a
-              project like yours.
+              {CONTACT_CTA.body}
             </p>
           </FadeInWhenVisible>
 

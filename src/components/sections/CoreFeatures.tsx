@@ -10,7 +10,7 @@ import {
   StaggerChildren,
   staggerItem,
 } from "@/components/animations/StaggerChildren";
-import { FEATURES, FEATURE_PAGE_UI, ROADMAP_PAGE } from "@/lib/constants";
+import { FEATURES, FEATURES_SECTION, FEATURE_PAGE_UI, ROADMAP_PAGE } from "@/lib/constants";
 import { homeRoadmap, roadmapIcon, STATUS_CLASS } from "@/lib/roadmap";
 import { cn } from "@/lib/utils";
 
@@ -20,8 +20,8 @@ export function CoreFeatures() {
     <Section id="features">
       <FadeInWhenVisible>
         <SectionHeading
-          title="What only Truebex does"
-          subtitle="Nine capabilities at the heart of the platform, all shipping today."
+          title={FEATURES_SECTION.title}
+          subtitle={FEATURES_SECTION.subtitle}
         />
       </FadeInWhenVisible>
 
