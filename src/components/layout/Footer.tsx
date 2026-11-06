@@ -77,6 +77,11 @@ export function Footer({ locale = "en" }: { locale?: "en" | "ar" }) {
                 </a>
               </li>
               <li>
+                <a href={`mailto:${SITE.supportEmail}`} className="transition-colors hover:text-text-primary" dir="ltr">
+                  {SITE.supportEmail}
+                </a>
+              </li>
+              <li>
                 <Link href={ar ? "/ar/#contact" : "/#contact"} className="transition-colors hover:text-text-primary">
                   {t.demo}
                 </Link>
