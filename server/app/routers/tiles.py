@@ -4,6 +4,9 @@ GET /tiles/{sha256}.jpg   one tile, immutable and cacheable forever, any origin
                           (WebGL refuses cross-origin textures without CORS).
                           With a CDN in front of the bucket, tiles_base points
                           there and this route only redirects.
+GET /tiles/{sha256}.png   render-jobs 1.4 (PF6d): a face's id or depth PNG,
+GET /tiles/{sha256}.json  a face's ids or the manifest's tour; the same rules
+                          (one key per extension).
 GET /s/{slug}/live        a live share's followed set (share-bundle MINOR
                           proposal): long-poll on `rev`, no credential.
 """
@@ -26,7 +29,7 @@ from ..storage import get_store
 
 router = APIRouter(tags=["tiles"], dependencies=[enveloped()], include_in_schema=False)
 share_router = APIRouter(tags=["shares"], dependencies=[contract("share-bundle", 1, 1)])
-_TILE = re.compile(r"^([0-9a-f]{64})\.jpg$")
+_TILE = re.compile(r"^([0-9a-f]{64})\.(jpg|png|json)$")
 PUBLIC = {"Cache-Control": tiles.IMMUTABLE, "Access-Control-Allow-Origin": "*", "X-Content-Type-Options": "nosniff"}
 NO_STORE = {"Cache-Control": "no-store", "X-Robots-Tag": "noindex, nofollow", "Referrer-Policy": "no-referrer"}
 
@@ -36,13 +39,13 @@ def tile(name: str):
     match = _TILE.match(name)
     if match is None:
         raise ContractError("not_found", 404, "No such tile.")
-    key = tiles.tile_key(match.group(1))
+    key = tiles.tile_key(match.group(1), match.group(2))
     store = get_store()
     if store.stat(key) is None:
         raise ContractError("not_found", 404, "No such tile.", headers={"Access-Control-Allow-Origin": "*"})
     file_path = getattr(store, "file_path", None)
     if file_path is not None:
-        return FileResponse(file_path(key), media_type="image/jpeg", headers=PUBLIC)
+        return FileResponse(file_path(key), media_type=tiles.MEDIA_TYPES[match.group(2)], headers=PUBLIC)
     return RedirectResponse(
         store.signed_get_url(key, expires_in=3600),
         status_code=307,

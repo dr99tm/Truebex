@@ -9,7 +9,10 @@ the claim's signed URLs, checking each SHA-256 -> write the job file (§6.1,
 with `project.snapshot_seq`, the sequence the snapshot stands at) -> run
 `Truebex.exe -mwrender=<job.json>` (CL3) with no window, sending a heartbeat
 every 30 s from a thread and killing the app when the platform answers
-`cancel` or `lease_lost` -> upload `out_dir/tiles/*` (and a pack's files)
+`cancel` or `lease_lost` -> upload `out_dir/tiles/*` (and a pack's files;
+render-jobs 1.4: a rendered face's `id`, `ids` and `depth` files and the
+manifest's `tour`, `<sha256>.png` / `.json` beside the tiles; an update's
+tour equal to its base's need not be written again)
 through the job-output upload the claim opened (share-bundle §5, 8 MiB parts,
 resumable) -> complete with the measured wall time, or fail with the code the
 app wrote in `out_dir/error.json`, else the code its exit code stands for
@@ -51,8 +54,11 @@ import urllib.request
 from dataclasses import dataclass, field
 from pathlib import Path
 
-CONTRACT = "render-jobs/1.3"
+CONTRACT = "render-jobs/1.4"
 UPLOADS = "share-bundle/1.0"
+# render-jobs 1.4.0 (PR5): a face's files beside its tiles in out_dir/tiles/, and their upload types.
+FACE_FILES = {"id": "png", "ids": "json", "depth": "png"}
+FILE_TYPES = {"png": "image/png", "json": "application/json"}
 RETRY_STATUSES = {408, 429, 500, 502, 503, 504, 530}
 NOT_RETRYABLE = {"bad_input", "doc_too_new"}
 FAIL_CODES = {"bad_input", "render_crash", "out_of_memory", "timeout", "engine_error", "doc_too_new"}
@@ -445,6 +451,14 @@ class Runner:
         tail = log_path.read_bytes()[-LOG_TAIL:].decode("utf-8", errors="replace")
         return code, wall, tail
 
+    @staticmethod
+    def base_tour(out: Path) -> str | None:
+        """The tour of the base manifest the claim handed over (`<work>/base.json`)."""
+        try:
+            return json.loads((out.parent / "base.json").read_text(encoding="utf-8")).get("tour")
+        except (OSError, ValueError, AttributeError):
+            return None
+
     def outputs(self, kind: str, out: Path) -> tuple[dict, list[Path], dict[str, str]]:
         manifest = json.loads((out / "manifest.json").read_text(encoding="utf-8"))
         files: list[Path] = []
@@ -459,6 +473,18 @@ class Runner:
                 for face in view.get("faces", {}).values():
                     if face.get("rendered"):
                         files += [out / "tiles" / f"{sha}.jpg" for row in face.get("tiles", []) for sha in row]
+                        # render-jobs 1.4 (PR5): the face's id / depth PNGs and ids JSON, beside its tiles.
+                        for key, ext in FACE_FILES.items():
+                            if isinstance(face.get(key), str):
+                                files.append(out / "tiles" / f"{face[key]}.{ext}")
+                                types[face[key]] = FILE_TYPES[ext]
+            tour = manifest.get("tour")
+            if isinstance(tour, str):
+                # An update may carry its base's tour without writing it again.
+                path = out / "tiles" / f"{tour}.json"
+                if path.is_file() or tour != self.base_tour(out):
+                    files.append(path)
+                    types[tour] = FILE_TYPES["json"]
         missing = [p.name for p in files if not p.is_file()]
         if missing:
             raise InputError(f"the app named {len(missing)} files it did not write, e.g. {missing[0]}")
