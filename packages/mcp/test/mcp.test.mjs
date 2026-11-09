@@ -16,13 +16,14 @@ import { SERVER_VERSION, SUPPORTED_VERSIONS } from '../lib/server.mjs';
 const TOOL_NAMES = ['read_state', 'find', 'explain', 'place', 'move', 'resize', 'fill', 'apply_theme', 'export_pdf', 'export_panorama', 'undo', 'get_tunables', 'set_tunable'];
 // AI5 (contract 1.3.0): the creation skills and the scoped remove, after propose_variants in the file.
 const AI5_TOOLS = ['create_layout', 'create_theme', 'create_fills', 'create_object', 'create_material', 'write_sheet_text', 'remove'];
-const MCP_TOOLS = [...TOOL_NAMES, ...AI5_TOOLS];
+const PL1_TOOLS = ['set_properties'];   // roadmap 40 / PL1 (contract 1.4.0, section 5.27)
+const MCP_TOOLS = [...TOOL_NAMES, ...AI5_TOOLS, ...PL1_TOOLS];
 
 test('mcp-tools-json-valid', () => {
   const { doc } = loadToolsFile(join(MCP_DIR, 'tools.json'));
   assert.deepEqual(toolsFileProblems(doc), []);
   // AI2: the file also carries the assistant-only propose_variants; MCP lists the other thirteen.
-  assert.deepEqual(doc.tools.map((t) => t.name), [...TOOL_NAMES, 'propose_variants', ...AI5_TOOLS]);
+  assert.deepEqual(doc.tools.map((t) => t.name), [...TOOL_NAMES, 'propose_variants', ...AI5_TOOLS, ...PL1_TOOLS]);
   assert.deepEqual(surfacesOf(doc.tools.find((t) => t.name === 'propose_variants')), ['assistant']);
   assert.deepEqual(publicTools(doc).map((t) => t.name), MCP_TOOLS);
   const perms = Object.fromEntries(doc.tools.map((t) => [t.name, t._meta['com.truebex/permission']]));
@@ -97,7 +98,7 @@ test('mcp-legacy-initialize', async (t) => {
   assert.equal(init.result.resultType, undefined);
   s.send({ jsonrpc: '2.0', method: 'notifications/initialized' });
   const list = await s.request('tools/list', {});
-  assert.equal(list.result.tools.length, 20);
+  assert.equal(list.result.tools.length, 21);
   assert.equal(list.result.resultType, undefined);
   const call = await s.request('tools/call', { name: 'place', arguments: { kind: 'window', host: 'wall#42', width_mm: 1200 } });
   assert.equal(call.result.isError, false);
@@ -166,7 +167,7 @@ test('mcp-no-app', async (t) => {
   const s = spawnServer({ TRUEBEX_AGENT_INSTANCES_DIR: emptyInstances() });
   t.after(() => s.close());
   const list = await s.request('tools/list', { _meta: modernMeta() });
-  assert.equal(list.result.tools.length, 20);
+  assert.equal(list.result.tools.length, 21);
   const call = await s.request('tools/call', { _meta: modernMeta(), name: 'read_state', arguments: {} });
   assert.equal(call.result.isError, true);
   assert.equal(call.result.structuredContent.code, 'app_not_running');
