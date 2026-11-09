@@ -1,5 +1,5 @@
-"""Render jobs as their owner sees them (contract render-jobs v1.3, 5.1-5.6; a
-1.0, 1.1 or 1.2 client is served the same: 1.1.0, 1.2.0 and 1.3.0 are additive).
+"""Render jobs as their owner sees them (contract render-jobs v1.4, 5.1-5.6; a
+1.0 to 1.3 client is served the same: 1.1.0, 1.2.0, 1.3.0 and 1.4.0 are additive).
 
 Auth: a device token (the app), a session (the website, PF9) or an API key
 (PF12, metered like every developer call). 5.2 is `async`: it long-polls on
@@ -28,7 +28,7 @@ from ..render import queue, quotas, service
 from ..security import API_KEY_PREFIX
 from ..uploads.credentials import WORKER_TOKEN_PREFIX
 
-router = APIRouter(prefix="/jobs", tags=["jobs"], dependencies=[contract("render-jobs", 1, 3)])
+router = APIRouter(prefix="/jobs", tags=["jobs"], dependencies=[contract("render-jobs", 1, 4)])
 _bearer = HTTPBearer(auto_error=False)
 MAX_BODY_BYTES = 2 * 1024 * 1024
 PRIVATE = {"Cache-Control": "private, no-store"}

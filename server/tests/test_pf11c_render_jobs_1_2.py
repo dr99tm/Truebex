@@ -56,7 +56,7 @@ WIND_BLOBS = {
     "wind-speed_ratio.bin": "7b7ba43425dc179a08ceda8b33960bc13a2917bc",
     "wind-velocity.bin": "0a8f4835a563d7d8a2af5537a61912bf45e2cd79",
 }
-ECHO = "render-jobs/1.3"  # PF6c: every route answers 1.3 since 1.3.0 (CL4)
+ECHO = "render-jobs/1.4"  # PF6c: every route answers 1.3 since 1.3.0 (CL4); PF6d: 1.4 since 1.4.0 (PR5)
 RJ12 = {"X-Truebex-Contract": "render-jobs/1.2"}  # what AN3's client sends, still served
 KINDS = ("wind", "airflow")
 # The app's study (CadAnalysisJobs.cpp) sends every 1.2 key; wind-result.json echoes them.
@@ -940,7 +940,8 @@ def test_pf11c_wind_surroundings_and_terrain(tmp_path):
 # --- render-jobs on every route ---------------------------------------------------------------------
 # PF6c moved test_pf11c_routes_echo_render_jobs_1_2 and test_pf11c_clients_and_documents_speak_1_2 to
 # test_pf6c_render_jobs_1_3.py as test_pf6c_echo_1_3 and test_pf6c_clients_and_documents_speak_1_3: every
-# route answers render-jobs/1.3 since 1.3.0 (CL4) and still takes AN3's 1.2 (RJ12).
+# route answers render-jobs/1.3 since 1.3.0 (CL4) and still takes AN3's 1.2 (RJ12). PF6d moved both on to
+# test_pf6d_render_jobs_1_4.py (test_pf6d_echo_1_4, test_pf6d_clients_and_documents_speak_1_4): 1.4 since 1.4.0.
 
 
 def test_pf11c_profiles_estimates_and_catalogue(client, rig):

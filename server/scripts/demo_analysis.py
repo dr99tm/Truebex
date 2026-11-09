@@ -1,5 +1,5 @@
 """Submit and follow analysis jobs as the desktop app does (PF11, PF11c; contract
-render-jobs 1.2; the header 1.3 since PF6c), for testing beside the app's wind study (AN3).
+render-jobs 1.2; the header 1.3 since PF6c, 1.4 since PF6d), for testing beside the app's wind study (AN3).
 
     cd server
     .venv\\Scripts\\python.exe scripts\\demo_analysis.py --token tbx_dev_… catalogue
@@ -35,7 +35,7 @@ from pathlib import Path
 
 import requests
 
-JOBS = {"X-Truebex-Contract": "render-jobs/1.3"}
+JOBS = {"X-Truebex-Contract": "render-jobs/1.4"}
 UPLOADS = {"X-Truebex-Contract": "share-bundle/1.0"}
 # Two rooms of the app's export of Z0-baseline.tbxp (tests/contracts/render-jobs/wind-geometry.bin:
 # x -0.15..26.15 m, y -0.15..9.15 m): a south window, a door between them, a north window.

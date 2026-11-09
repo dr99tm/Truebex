@@ -4226,7 +4226,7 @@
   "info": {
     "description": "Projects, exports, shares, the marketplace, supplier feeds and webhooks, with an API key from https://truebex.com/dashboard/keys/ sent as `Authorization: Bearer tbx_live_…` or `X-API-Key`. Each operation names the scope it needs in `x-truebex-scope`. Errors use one envelope: `{detail, code, status, request_id, retry_after_s, data}`.",
     "title": "Truebex developer API",
-    "version": "1.3.0"
+    "version": "1.4.0"
   },
   "openapi": "3.1.0",
   "paths": {
@@ -5365,7 +5365,7 @@
         "tags": [
           "jobs"
         ],
-        "x-truebex-contract": "render-jobs/1.3",
+        "x-truebex-contract": "render-jobs/1.4",
         "x-truebex-scope": "projects:read"
       },
       "post": {
@@ -5493,7 +5493,7 @@
         "tags": [
           "jobs"
         ],
-        "x-truebex-contract": "render-jobs/1.3",
+        "x-truebex-contract": "render-jobs/1.4",
         "x-truebex-scope": "jobs:write"
       }
     },
@@ -5577,7 +5577,7 @@
         "tags": [
           "jobs"
         ],
-        "x-truebex-contract": "render-jobs/1.3",
+        "x-truebex-contract": "render-jobs/1.4",
         "x-truebex-scope": "projects:read"
       }
     },
@@ -5698,7 +5698,7 @@
         "tags": [
           "jobs"
         ],
-        "x-truebex-contract": "render-jobs/1.3",
+        "x-truebex-contract": "render-jobs/1.4",
         "x-truebex-scope": "projects:read"
       }
     },
@@ -5803,7 +5803,7 @@
         "tags": [
           "jobs"
         ],
-        "x-truebex-contract": "render-jobs/1.3",
+        "x-truebex-contract": "render-jobs/1.4",
         "x-truebex-scope": "jobs:write"
       }
     },
@@ -5908,7 +5908,7 @@
         "tags": [
           "jobs"
         ],
-        "x-truebex-contract": "render-jobs/1.3",
+        "x-truebex-contract": "render-jobs/1.4",
         "x-truebex-scope": "projects:read"
       }
     },

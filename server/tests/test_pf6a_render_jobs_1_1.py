@@ -233,6 +233,17 @@ def test_pf6a_apps_set_is_pr3s_three_rooms():
 # --- a followed panorama of the app's three views, and its update ------------------------------
 
 
+def as_sent(views: list[dict]) -> list[dict]:
+    """The views as the worker sent them: without the `version` and `op_seq` the
+    platform fills on every face (PF6d, render-jobs 1.4.0)."""
+    out = copy.deepcopy(views)
+    for v in out:
+        for face in v["faces"].values():
+            face.pop("version", None)
+            face.pop("op_seq", None)
+    return out
+
+
 def live_house(job_id: str) -> dict:
     m = copy.deepcopy(house("6" * 32))
     m["panoramas"][0]["live_job_id"] = job_id  # p1, the start panorama
@@ -257,7 +268,7 @@ def test_pf6a_followed_panorama_and_update_with_the_apps_manifests(client):
     out = client.get(f"/jobs/{follow['job_id']}/output", headers=rj(a)).json()
     pano = fixture("manifest-panorama.json")
     assert out["project_id"] == APP_PROJECT == pano["project_id"] and out["faces_rendered"] == 18
-    assert out["views"] == pano["views"] and out["tiles_base"] == "http://testserver/tiles"
+    assert as_sent(out["views"]) == pano["views"] and out["tiles_base"] == "http://testserver/tiles"
     for sha in sorted(tiles.all_tiles(out))[:5]:
         assert client.get(f"/tiles/{sha}.jpg").content == (FIX / "tiles" / f"{sha}.jpg").read_bytes()
 
@@ -267,7 +278,7 @@ def test_pf6a_followed_panorama_and_update_with_the_apps_manifests(client):
     assert len(queued) == 1 and queued[0]["views"] == VIEWS and queued[0]["changed_count"] == len(MOVED)
     c2 = claimed(client, token)
     assert c2["job"]["changed"] == MOVED and c2["job"]["base_job_id"] == follow["job_id"]
-    assert client.get(c2["inputs"]["base_manifest_url"]).json()["views"] == pano["views"]
+    assert as_sent(client.get(c2["inputs"]["base_manifest_url"]).json()["views"]) == pano["views"]
     assert [o["touched"] for o in client.get(c2["inputs"]["ops_url"]).json()["ops"]][-1] == MOVED
     rev = job(client, rj(a), follow["job_id"])["rev"]
     finish(client, token, c2, "manifest-tiles.json", wall_s=30)
@@ -277,7 +288,7 @@ def test_pf6a_followed_panorama_and_update_with_the_apps_manifests(client):
     assert after["rev"] > rev and after["state"] == "succeeded" and after["at_seq"] == moved_at
     part = fixture("manifest-tiles.json")
     now = client.get(f"/jobs/{follow['job_id']}/output", headers=rj(a)).json()
-    assert now["job_id"] == c2["job"]["job_id"] and now["views"] == part["views"]
+    assert now["job_id"] == c2["job"]["job_id"] and as_sent(now["views"]) == part["views"]
     assert (now["faces_rendered"], now["faces_reused"]) == (13, 5)
     assert faces(now, VIEW_LIVING)["n"] == (True, "light") and faces(now, VIEW_BEDROOM)["w"] == (True, "changed")
 
@@ -285,18 +296,19 @@ def test_pf6a_followed_panorama_and_update_with_the_apps_manifests(client):
     share = published(client, a.token, live_house(follow["job_id"]))
     state = client.get(f"/s/{share['slug']}/live", params={"panorama": "p1"}, headers=SHARE)
     assert state.status_code == 200, state.text
-    assert state.json()["manifest"]["views"] == part["views"] and state.json()["job_id"] == c2["job"]["job_id"]
+    assert as_sent(state.json()["manifest"]["views"]) == part["views"] and state.json()["job_id"] == c2["job"]["job_id"]
     key = make_key(client, a.session, ["projects:read"])
     v1 = client.get(f"/v1/projects/{pid}/panoramas/{follow['job_id']}", headers=kh(key, **PL))
     assert v1.status_code == 200, v1.text
-    assert v1.json()["manifest"]["views"] == part["views"] and v1.json()["manifest"]["faces_rendered"] == 13
+    assert as_sent(v1.json()["manifest"]["views"]) == part["views"] and v1.json()["manifest"]["faces_rendered"] == 13
 
 
 # --- render-jobs/1.1 on every route ------------------------------------------------------------
 
 
-# PF11c: every route answers render-jobs/1.2 since 1.2.0 (AN3), PF6c 1.3 since 1.3.0 (CL4); 1.0 and 1.1 are still served.
-ECHO = "render-jobs/1.3"
+# PF11c: every route answers render-jobs/1.2 since 1.2.0 (AN3), PF6c 1.3 since 1.3.0 (CL4), PF6d 1.4 since 1.4.0
+# (PR5); 1.0 and 1.1 are still served.
+ECHO = "render-jobs/1.4"
 
 
 def _versions(send, label: str) -> None:
@@ -375,25 +387,25 @@ def test_pf6a_routes_echo_render_jobs_1_1(client):
 
 def test_pf6a_no_router_or_client_left_on_1_0():
     """The routers, the worker wrapper, the website's client, the developer
-    document and the SDKs all speak render-jobs/1.1 (1.2 since PF11c, 1.3 since PF6c)."""
+    document and the SDKs all speak render-jobs/1.1 (1.2 since PF11c, 1.3 since PF6c, 1.4 since PF6d)."""
     app_dir = ROOT / "server" / "app"
     for path in app_dir.rglob("*.py"):
         text = path.read_text(encoding="utf-8")
         assert 'contract("render-jobs", 1, 0)' not in text and "render-jobs/1.0" not in text, path
     for name in ("jobs.py", "workers.py", "analysis.py", "v1/jobs.py"):
-        assert 'contract("render-jobs", 1, 3)' in (app_dir / "routers" / name).read_text(encoding="utf-8"), name
-    assert 'CONTRACT = "render-jobs/1.3"' in (ROOT / "worker" / "truebex_worker.py").read_text(encoding="utf-8")
-    assert '"X-Truebex-Contract": "render-jobs/1.3"' in (ROOT / "src" / "lib" / "jobs.ts").read_text(encoding="utf-8")
-    assert '"render-jobs/1.3"' in (ROOT / "server" / "scripts" / "demo_render.py").read_text(encoding="utf-8")
+        assert 'contract("render-jobs", 1, 4)' in (app_dir / "routers" / name).read_text(encoding="utf-8"), name
+    assert 'CONTRACT = "render-jobs/1.4"' in (ROOT / "worker" / "truebex_worker.py").read_text(encoding="utf-8")
+    assert '"X-Truebex-Contract": "render-jobs/1.4"' in (ROOT / "src" / "lib" / "jobs.ts").read_text(encoding="utf-8")
+    assert '"render-jobs/1.4"' in (ROOT / "server" / "scripts" / "demo_render.py").read_text(encoding="utf-8")
     doc = json.loads((ROOT / "openapi" / "v1.json").read_text(encoding="utf-8"))
     jobs_ops = [op for p, item in doc["paths"].items() if p.startswith("/v1/jobs") for op in item.values()]
     assert jobs_ops and {op["x-truebex-contract"] for op in jobs_ops} == {ECHO}
     for sdk in (ROOT / "sdks" / "python" / "truebex" / "_operations.py", ROOT / "sdks" / "js" / "src" / "operations.mjs"):
         text = sdk.read_text(encoding="utf-8")
-        assert "render-jobs/1.0" not in text and text.count("render-jobs/1.3") == len(jobs_ops), sdk
+        assert "render-jobs/1.0" not in text and text.count("render-jobs/1.4") == len(jobs_ops), sdk
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
-    assert "render-jobs/1.0" not in readme and "`X-Truebex-Contract: render-jobs/1.3`" in readme
-    # RJ, the tests' own header, is what CL3's client sends.
+    assert "render-jobs/1.0" not in readme and "`X-Truebex-Contract: render-jobs/1.4`" in readme
+    # RJ, the tests' own header, is what the app sends (PR5's headset since PF6d).
     assert RJ == {"X-Truebex-Contract": ECHO}
 
 

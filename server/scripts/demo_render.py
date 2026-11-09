@@ -1,5 +1,6 @@
 """Submit and follow cloud render jobs as the desktop app does (PF6, contract
-render-jobs v1.3 since PF6c: CL4's follow sets), for testing without the app.
+render-jobs v1.3 since PF6c: CL4's follow sets; v1.4 since PF6d: PR5's
+headset faces), for testing without the app.
 
     cd server
     .venv\\Scripts\\python.exe scripts\\demo_render.py --token tbx_dev_… submit --project <id> --follow
@@ -18,7 +19,8 @@ lists the account's jobs (5.3, newest first) with the keys CL4 reads. `show`
 prints one record (5.2): its state, `follow`, `base_job_id` (a followed set's
 tiles job names the set), `output_job_id` (a follow job: the job 5.5 serves
 now) and a tiles job's `trigger` (the operations it was queued for). `output`
-prints which job's manifest 5.5 serves and its faces. `usage` prints this
+prints which job's manifest 5.5 serves and its faces: since PF6d each face's
+`version`, `op_seq` and 1.4 files (`id`, `ids`, `depth`) and the set's `tour`. `usage` prints this
 month's cost units (5.6). Get a device token with `demo_replica.py login …
 --trial`. API: --api (default http://127.0.0.1:8000).
 """
@@ -30,7 +32,7 @@ import sys
 
 import requests
 
-JOBS = {"X-Truebex-Contract": "render-jobs/1.3"}
+JOBS = {"X-Truebex-Contract": "render-jobs/1.4"}
 LOG = {"X-Truebex-Contract": "project-log/1.0"}
 # The saved views of the app's fixtures (CL3: PR3-pano-rooms.tbxp): bedroom, entry, living.
 VIEWS = ["ecaf16d70fa5862cbba8f2288b9fd593", "8388104cbff98d2dba07fd23c19c83b5", "aee49319c0d48a7a953f247b52c948be"]
@@ -110,6 +112,17 @@ def cmd_output(args) -> None:
     faces = f"{out.get('faces_rendered')} faces rendered, {out.get('faces_reused')} carried"
     print(f"5.5 on {args.job}: the manifest of job {out['job_id']} at operation {out['at_seq']}, {faces}")
     print(f"  tiles_base: {out.get('tiles_base')}")
+    # render-jobs 1.4 (PF6d): each face's version, op_seq and pick files, the set's tour.
+    tour = out.get("tour")
+    print(f"  tour: {tour}")
+    for view in out.get("views") or []:
+        print(f"  view {view.get('view')} ({view.get('title')}):")
+        for name, face in (view.get("faces") or {}).items():
+            picks = " ".join(f"{key} {face[key][:12]}" for key in ("id", "ids", "depth") if face.get(key)) or "no pick files"
+            version, op_seq = face.get("version"), face.get("op_seq")
+            print(f"    {name}: version {version}, op_seq {op_seq}, {face.get('reason')}; {picks}")
+    if args.json:
+        print(json.dumps(out, indent=2))
 
 
 def cmd_usage(args) -> None:
@@ -135,8 +148,9 @@ def main(argv: list[str] | None = None) -> int:
     p = sub.add_parser("show", help="one job's record (5.2): follow, base_job_id, output_job_id, trigger")
     p.add_argument("--job", required=True)
     p.add_argument("--json", action="store_true", help="print the whole record")
-    p = sub.add_parser("output", help="which job's manifest 5.5 serves")
+    p = sub.add_parser("output", help="which job's manifest 5.5 serves, each face's version and files (1.4)")
     p.add_argument("--job", required=True)
+    p.add_argument("--json", action="store_true", help="print the whole manifest")
     sub.add_parser("usage", help="this month's cost units")
     args = parser.parse_args(argv)
     commands = {"submit": cmd_submit, "watch": cmd_watch, "jobs": cmd_jobs, "show": cmd_show, "output": cmd_output, "usage": cmd_usage}
