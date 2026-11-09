@@ -163,7 +163,7 @@ def test_claim_long_poll_woken_by_a_submit(client, setup, wakeups):
     # Nothing queued: only the deadline ends the claim, with 204.
     empty = LongPoll(lambda: claim(client, token, wait_s=1))
     res = empty.answer()
-    assert res.status_code == 204 and res.headers["X-Truebex-Contract"] == "render-jobs/1.3"
+    assert res.status_code == 204 and res.headers["X-Truebex-Contract"] == "render-jobs/1.4"
     wakeups.assert_deadline(queue.CLAIM_KEY)
     assert empty.took >= 0.9
     wakeups.clear()

@@ -9,7 +9,8 @@ Unfollow cancels them by it, CloudPano.cpp:525) and a tiles job's `trigger`
 (the operations it was queued for: CL4's stage table stamps another writer's
 edit T0 / T1 from it). The worker keeps starting from the newest picture: the
 claim names it `base_manifest_job_id`. Every render-jobs route answers
-render-jobs/1.3 and still takes 1.0-1.2 (PF11c's two echo tests moved here).
+render-jobs/1.3 and still takes 1.0-1.2 (PF11c's two echo tests moved here; PF6d moved
+them on to test_pf6d_render_jobs_1_4.py with render-jobs/1.4).
 """
 
 import json
@@ -29,15 +30,13 @@ from app.projects.models import ProjectOp
 from app.render import live, pools, tiles
 from app.render.models import RenderJob, RenderSet
 
-from .analysis_helpers import put_inputs
 from .licence_helpers import error_of
-from .pf12_helpers import ALL_SCOPES, PL, kh, make_key
+from .pf12_helpers import PL, kh, make_key
 from .project_helpers import FIXTURES as PROJECT_LOG, Person, delta_op, hex32, invite_and_accept, pull, pushed
 from .render_helpers import (
     APP_PROJECT,
     FIX,
     MOVED,
-    RJ,
     VIEWS,
     admin,
     claim,
@@ -50,16 +49,12 @@ from .render_helpers import (
     push_touch,
     rj,
     submitted,
-    wk,
 )
 from .test_pf4a_project_log_1_1 import APP_BLOBS, git_blob_id
-from .test_pf11c_render_jobs_1_2 import KINDS as ANALYSIS_KINDS, wind_job_body
 
 ROOT = Path(__file__).resolve().parents[2]
 OUT = ROOT / "out"
 APP_REPO = Path(r"T:\unreal5_7_4_projects\truebex_compact")
-ECHO = "render-jobs/1.3"
-SENT = ("render-jobs/1.0", "render-jobs/1.1", "render-jobs/1.2", "render-jobs/1.3", None)
 TRIGGER_KEYS = {"op_ids", "first_seq", "last_seq", "first_op_at", "first_accepted_at", "authors"}
 # project-log 1.2.1 (CL4, app 5bf7ba130, on app main bc06615c6): the phone's fill.
 CL4_COMMIT = "5bf7ba130"
@@ -438,130 +433,9 @@ def test_pf6c_tiles_need_no_header_or_token(client, rig):
 
 
 # --- render-jobs/1.3 on every route (PF11c's two tests, moved) ----------------------------------------
-
-
-def _versions(send, label: str) -> None:
-    """`send(headers)` answers with the 1.3 echo for 1.0, 1.1, 1.2, 1.3 and no
-    contract header, and 400 `contract_version` for 2.0."""
-    for sent in SENT:
-        extra = {} if sent is None else {"X-Truebex-Contract": sent}
-        res = send(extra)
-        assert res.status_code < 400, (label, sent, res.status_code, res.text)
-        assert res.headers["X-Truebex-Contract"] == ECHO, (label, sent)
-    body = error_of(send({"X-Truebex-Contract": "render-jobs/2.0"}), 400, "contract_version")
-    assert body["data"]["supported"] == [ECHO], label
-
-
-def test_pf6c_echo_1_3(client, rig):
-    a, token, pid, head = rig["a"], rig["token"], rig["pid"], rig["head"]
-    dev = {"Authorization": f"Bearer {a.token}"}
-    wrk = {"Authorization": f"Bearer {token}"}
-    body = {"kind": "panorama", "project_id": pid, "at_seq": head, "views": VIEWS}
-    _versions(lambda h: client.post("/jobs", json=body, headers={**dev, **h, "Idempotency-Key": hex32()}), "5.1")
-    _versions(lambda h: client.get("/jobs", headers={**dev, **h}), "5.3")
-    _versions(lambda h: client.get("/jobs/usage", headers={**dev, **h}), "5.6")
-    _versions(lambda h: client.get("/analysis/catalogue", headers={**dev, **h}), "analysis")
-    rec = jobs_of(client, a)[0]
-    _versions(lambda h: client.get(f"/jobs/{rec['job_id']}", headers={**dev, **h}), "5.2")
-    not_ready = client.get(f"/jobs/{rec['job_id']}/output", headers=rj(a))
-    assert not_ready.status_code == 409 and not_ready.headers["X-Truebex-Contract"] == ECHO
-    queued = [submitted(client, rj(a), **body)["job_id"] for _ in range(len(SENT) + 1)]
-    to_cancel = iter(queued)
-    _versions(lambda h: client.post(f"/jobs/{next(to_cancel)}/cancel", headers={**dev, **h}), "5.4")
-    assert client.post(f"/jobs/{queued[-1]}/cancel", headers=rj(a)).status_code == 200  # the one 2.0 left
-
-    # /workers: a claim's 200 and 204 answers are written by hand (workers.ECHO); 5.1's five jobs are claimed.
-    claim_body = {"worker_id": "pc-rtx", "kinds": ["panorama"], "app_version": "1.1.0", "doc_version_max": 38, "wait_s": 0}
-    for sent in SENT:
-        extra = {} if sent is None else {"X-Truebex-Contract": sent}
-        res = client.post("/workers/claim", json=claim_body, headers={**wrk, **extra})
-        assert res.status_code == 200 and res.headers["X-Truebex-Contract"] == ECHO, (sent, res.text)
-        c = res.json()
-        _versions(lambda h: client.post(
-            f"/workers/jobs/{c['job']['job_id']}/heartbeat", json={"lease_id": c["lease_id"], "progress": 0.5, "message": "m"},
-            headers={**wrk, **h},
-        ), "5.8")
-        fail = {"lease_id": c["lease_id"], "code": "bad_input", "message": "t", "retryable": False}
-        _versions(lambda h: client.post(f"/workers/jobs/{c['job']['job_id']}/fail", json=fail, headers={**wrk, **h}), "5.10")
-    nothing = client.post("/workers/claim", json=claim_body, headers=wk(token))
-    assert nothing.status_code == 204 and nothing.headers["X-Truebex-Contract"] == ECHO
-    error_of(client.post("/workers/claim", json=claim_body, headers={**wrk, "X-Truebex-Contract": "render-jobs/2.0"}), 400, "contract_version")
-    submitted(client, rj(a), **body)
-    c = claimed(client, token, kinds=["panorama"])
-    done = finish(client, token, c)
-    assert done["state"] == "succeeded"
-    for sent in SENT[:-1]:
-        again = client.post(
-            f"/workers/jobs/{c['job']['job_id']}/complete",
-            json={"lease_id": c["lease_id"], "output": {}, "usage": {"wall_s": 1, "class": "gpu-std"}},
-            headers={**wrk, "X-Truebex-Contract": sent},
-        )
-        assert again.status_code == 200 and again.headers["X-Truebex-Contract"] == ECHO, sent  # 5.9 repeats per lease
-    _versions(lambda h: client.get(f"/jobs/{c['job']['job_id']}/output", headers={**dev, **h}), "5.5")
-
-    # The analysis kinds' routes (PF11c's rig) and /v1/jobs (PF12).
-    cpu = issue_worker(client, rig["admin"], name="cpu-eu-01", kinds=ANALYSIS_KINDS, cls="cpu-8")
-    geometry, ids = (FIX / "wind-geometry.bin").read_bytes(), (FIX / "wind-entities.bin").read_bytes()
-    put_inputs(client, a.dev, geometry, ids)
-    wind = wind_job_body(geometry, ids)
-    _versions(lambda h: client.post("/jobs", json=wind, headers={**dev, **h, "Idempotency-Key": hex32()}), "5.1 wind")
-    cpu_claim = client.post(
-        "/workers/claim", json={**claim_body, "worker_id": "cpu-eu-01", "kinds": list(ANALYSIS_KINDS), "doc_version_max": 0},
-        headers={"Authorization": f"Bearer {cpu}", "X-Truebex-Contract": "render-jobs/1.2"},
-    )
-    assert cpu_claim.status_code == 200 and cpu_claim.headers["X-Truebex-Contract"] == ECHO, cpu_claim.text
-    key = make_key(client, a.session, ALL_SCOPES)
-    _versions(lambda h: client.get("/v1/jobs", headers=kh(key, **h)), "v1 5.3")
-    _versions(lambda h: client.get("/v1/jobs/usage", headers=kh(key, **h)), "v1 5.6")
-    _versions(lambda h: client.get(f"/v1/jobs/{c['job']['job_id']}", headers=kh(key, **h)), "v1 5.2")
-    _versions(lambda h: client.post("/v1/jobs", json=body, headers=kh(key, **h, **{"Idempotency-Key": hex32()})), "v1 5.1")
-    missing = client.get(f"/jobs/{hex32()}", headers=rj(a))
-    assert missing.status_code == 404 and missing.headers["X-Truebex-Contract"] == ECHO
-    # RJ, the tests' own header, is what CL4's client sends.
-    assert RJ == {"X-Truebex-Contract": ECHO}
-
-
-def test_pf6c_clients_and_documents_speak_1_3():
-    """The routers, the worker wrapper, the website's client, the demo scripts,
-    the developer document and the SDKs speak render-jobs/1.3; the record's
-    1.3.0 keys are documented; the web still names PF11c's airflow kind."""
-    app_dir = ROOT / "server" / "app"
-    for name in ("jobs.py", "workers.py", "analysis.py", "v1/jobs.py"):
-        source = (app_dir / "routers" / name).read_text(encoding="utf-8")
-        assert 'contract("render-jobs", 1, 3)' in source and 'contract("render-jobs", 1, 2)' not in source, name
-    assert 'ECHO = {"X-Truebex-Contract": "render-jobs/1.3"}' in (app_dir / "routers" / "workers.py").read_text(encoding="utf-8")
-    assert 'CONTRACT = "render-jobs/1.3"' in (ROOT / "worker" / "truebex_worker.py").read_text(encoding="utf-8")
-    jobs_ts = (ROOT / "src" / "lib" / "jobs.ts").read_text(encoding="utf-8")
-    assert '"X-Truebex-Contract": "render-jobs/1.3"' in jobs_ts and '"airflow"' in jobs_ts.split("export type JobKind", 1)[1].split(";", 1)[0]
-    record_ts = jobs_ts.split("export interface JobRecord", 1)[1].split("\n}", 1)[0]
-    assert "output_job_id: string | null;" in record_ts and "base_job_id: string | null;" in record_ts and "trigger?: JobTrigger | null;" in record_ts
-    assert '"airflow"' in (ROOT / "src" / "app" / "dashboard" / "admin" / "render" / "page.tsx").read_text(encoding="utf-8")
-    for script in ("demo_analysis.py", "demo_render.py", "demo_mobile.py"):
-        source = (ROOT / "server" / "scripts" / script).read_text(encoding="utf-8")
-        assert '"render-jobs/1.3"' in source, script
-        assert not re.search(r"render-jobs/1\.[012]\b", source), script
-    assert '"jobs": "render-jobs/1.3"' in (ROOT / "server" / "scripts" / "export_openapi.py").read_text(encoding="utf-8")
-    doc = json.loads((ROOT / "openapi" / "v1.json").read_text(encoding="utf-8"))
-    jobs_ops = [op for p, item in doc["paths"].items() if p.startswith("/v1/jobs") for op in item.values()]
-    assert jobs_ops and {op["x-truebex-contract"] for op in jobs_ops} == {ECHO}
-    assert "airflow" in doc["components"]["schemas"]["JobRequest"]["properties"]["kind"]["enum"]
-    assert tuple(int(x) for x in doc["info"]["version"].split(".")) >= (1, 3, 0)  # the document grew
-    record = doc["components"]["schemas"]["Job"]["properties"]
-    assert {"follow", "base_job_id", "output_job_id", "trigger"} <= set(record)
-    for key in ("base_job_id", "output_job_id", "trigger"):
-        assert record[key].get("description"), key
-    assert set(doc["components"]["schemas"]["JobTrigger"]["properties"]) == TRIGGER_KEYS
-    for sdk in (ROOT / "sdks" / "python" / "truebex" / "_operations.py", ROOT / "sdks" / "js" / "src" / "operations.mjs"):
-        source = sdk.read_text(encoding="utf-8")
-        assert not re.search(r"render-jobs/1\.[012]\b", source) and source.count(ECHO) == len(jobs_ops), sdk
-    assert "class JobTrigger(" in (ROOT / "sdks" / "python" / "truebex" / "models.py").read_text(encoding="utf-8")
-    assert re.search(r"^\s+JobTrigger: \{", (ROOT / "sdks" / "js" / "src" / "schema.d.ts").read_text(encoding="utf-8"), re.M)
-    constants = (ROOT / "src" / "lib" / "constants.ts").read_text(encoding="utf-8")
-    assert 'airflow: "Airflow study"' in constants
-    demo = (ROOT / "server" / "scripts" / "demo_analysis.py").read_text(encoding="utf-8")
-    assert "--wind-job" in demo and '"entities"' in demo
-    render_demo = (ROOT / "server" / "scripts" / "demo_render.py").read_text(encoding="utf-8")
-    assert 'add_parser("show"' in render_demo and 'add_parser("output"' in render_demo and "output_job_id" in render_demo
+# PF6d moved test_pf6c_echo_1_3 and test_pf6c_clients_and_documents_speak_1_3 on to
+# test_pf6d_render_jobs_1_4.py as test_pf6d_echo_1_4 and test_pf6d_clients_and_documents_speak_1_4: every
+# route answers render-jobs/1.4 since 1.4.0 (PR5) and still takes CL4's 1.3.
 
 
 @pytest.mark.skipif(not (OUT / "developers" / "jobs" / "index.html").exists(), reason="out/ not built (run npm run build)")

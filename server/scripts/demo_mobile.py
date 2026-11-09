@@ -45,7 +45,7 @@ sys.path.insert(0, str(SERVER))
 
 from scripts.demo_replica import LICENCE, LOG, UPLOADS, Api  # noqa: E402
 
-JOBS = {"X-Truebex-Contract": "render-jobs/1.3"}
+JOBS = {"X-Truebex-Contract": "render-jobs/1.4"}
 FIXTURES = SERVER / "tests" / "contracts"
 DIGEST = FIXTURES / "project-digest" / "digest-house.json"
 

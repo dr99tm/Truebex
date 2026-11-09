@@ -24,6 +24,15 @@ faces, 256 px tiles, levels 256 and 512); a job file without
 `project.project_id` gets the fixture's (CL3 reads it from the snapshot). A
 `pack` job writes one small file.
 
+FAKE_TRUEBEX_FACE_FILES=1 writes render-jobs 1.4's headset files as CL3's
+worker will (PR5; CL3 does not yet): per rendered face an `id` (8-bit grey PNG
+at levels[0] px, a few entities in bands), its `ids` (truebex-ids/1) and a
+`depth` (16-bit grey PNG, millimetres) under tiles/ as `<sha256>.png` /
+`.json`, and the face's `version` (1, then the base face's + 1) and `op_seq`
+(the job's at_seq); a carried face keeps the base face's; a panorama writes a
+truebex-tour/1 tour (a node per view, linked in order), an update carries the
+base's tour without writing it again.
+
 FAKE_TRUEBEX_FAIL=<code> fails with that 5.10 code: error.json and the code's
 exit (2 bad_input, 3 doc_too_new, 4 render_crash, 5 out_of_memory, 6 timeout,
 7 engine_error; 4 for any other); FAKE_TRUEBEX_EXIT=<n> exits n (alone: with
@@ -36,8 +45,10 @@ import hashlib
 import json
 import os
 import shutil
+import struct
 import sys
 import time
+import zlib
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -46,6 +57,8 @@ JOB_KEYS = ("schema", "job_id", "kind", "quality", "seed", "project", "views", "
 FACES = ("n", "e", "s", "w", "u", "d")
 # -mwrender's exit codes (render-jobs 1.1.0, 5.10 per code).
 EXIT = {"bad_input": 2, "doc_too_new": 3, "render_crash": 4, "out_of_memory": 5, "timeout": 6, "engine_error": 7}
+PNG_SIGNATURE = bytes([0x89]) + b"PNG" + bytes([0x0D, 0x0A, 0x1A, 0x0A])
+FACE_KEYS = ("id", "ids", "depth", "version", "op_seq")
 
 
 def fail(out: Path, code: str, message: str, status: int | None = None) -> int:
@@ -90,6 +103,54 @@ def render(job: dict, base: dict | None) -> tuple[list[dict], int, int, dict]:
                 faces[f] = {"rendered": False, "reason": "carried", "tiles": before["faces"][f]["tiles"]}
         views.append({**after, "view": vid, "faces": faces})
     return views, rendered, 6 * len(views) - rendered, moved["ms"]
+
+
+def _chunk(kind: bytes, data: bytes) -> bytes:
+    return struct.pack(">I", len(data)) + kind + data + struct.pack(">I", zlib.crc32(kind + data) & 0xFFFFFFFF)
+
+
+def grey_png(px: int, bits: int, row_value) -> bytes:
+    """A px x px grey PNG (CadVrEdits' formats: 8-bit id, 16-bit depth), one value a row."""
+    raw = b"".join(bytes(1) + row_value(y).to_bytes(bits // 8, "big") * px for y in range(px))
+    ihdr = struct.pack(">IIBBBBB", px, px, bits, 0, 0, 0, 0)
+    return PNG_SIGNATURE + _chunk(b"IHDR", ihdr) + _chunk(b"IDAT", zlib.compress(raw)) + _chunk(b"IEND", b"")
+
+
+def put(out: Path, data: bytes, ext: str) -> str:
+    sha = hashlib.sha256(data).hexdigest()
+    (out / "tiles" / f"{sha}.{ext}").write_bytes(data)
+    return sha
+
+
+def face_files(out: Path, view: str, name: str, face: dict, px: int) -> None:
+    """A rendered face's id, ids and depth, from its first tile's hash (a new picture, new files)."""
+    seed = hashlib.sha256(f"{view}/{name}/{face['tiles'][0][0]}".encode()).hexdigest()
+    n, shift, start = 1 + int(seed[:2], 16) % 6, int(seed[2:4], 16), int(seed[4:7], 16)
+    ids = [None] + [hashlib.md5(f"{seed}/{k}".encode()).hexdigest() for k in range(1, n + 1)]
+    face["id"] = put(out, grey_png(px, 8, lambda y: ((y + shift) * (n + 1) // px) % (n + 1)), "png")
+    face["ids"] = put(out, json.dumps({"schema": "truebex-ids/1", "ids": ids}, separators=(",", ":")).encode(), "json")
+    face["depth"] = put(out, grey_png(px, 16, lambda y: 0 if y < px // 8 else 800 + start + 8 * y), "png")
+
+
+def headset_files(out: Path, job: dict, base: dict | None, views: list[dict], at_seq: int) -> str | None:
+    """render-jobs 1.4 on the views (FAKE_TRUEBEX_FACE_FILES): the faces' files and
+    numbers; the tour's hash (a panorama writes it, an update carries the base's)."""
+    before = {v["view"]: v for v in (base or {}).get("views") or []}
+    for view in views:
+        for name, face in view["faces"].items():
+            was = (before.get(view["view"]) or {}).get("faces", {}).get(name) or {}
+            if face["rendered"]:
+                face_files(out, view["view"], name, face, view["levels"][0])
+                face["version"] = was.get("version", 1) + 1 if job["kind"] == "tiles" else 1
+                face["op_seq"] = at_seq
+            else:
+                face.update({k: was[k] for k in FACE_KEYS if k in was})
+    if job["kind"] != "panorama":
+        return (base or {}).get("tour")
+    nodes = [{"id": f"node-{i}", "title": v.get("title") or v["view"], "view": v["view"]} for i, v in enumerate(views)]
+    links = [{"from": f"node-{i - 1}", "to": f"node-{i}", "auto": True} for i in range(1, len(views))]
+    tour = {"format": "truebex-tour/1", "start": "node-0", "nodes": nodes, "links": links}
+    return put(out, json.dumps(tour).encode(), "json")
 
 
 def run(job_path: Path, job: dict) -> int:
@@ -155,6 +216,7 @@ def run(job_path: Path, job: dict) -> int:
                 for row in face["tiles"]:
                     for sha in row:
                         shutil.copyfile(FIXTURES / "tiles" / f"{sha}.jpg", out / "tiles" / f"{sha}.jpg")
+    tour = headset_files(out, job, base, views, at_seq) if os.environ.get("FAKE_TRUEBEX_FACE_FILES") == "1" else None
     manifest = {
         "schema": "truebex-tiles/1",
         "job_id": job["job_id"],
@@ -167,6 +229,8 @@ def run(job_path: Path, job: dict) -> int:
         "faces_reused": reused,
         "ms": ms,
     }
+    if tour:
+        manifest["tour"] = tour
     (out / "manifest.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
     faces_ms = [{"view": v["view"], "face": f, "rendered": x["rendered"], "reason": x["reason"]} for v in views for f, x in v["faces"].items()]
     (out / "render-log.json").write_text(

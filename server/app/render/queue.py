@@ -529,6 +529,7 @@ def complete(
     from ..analysis import kinds as analysis_kinds, results as analysis_results  # PF11
 
     analysis = analysis_kinds.is_analysis(job.kind)
+    base = None
     if job.kind == "pack":
         errors = tiles.check_pack(output, job)
         blobs: dict = {}
@@ -554,6 +555,8 @@ def complete(
     manifest.pop("tiles_base", None)
     if analysis:
         manifest = analysis_results.stored(manifest)  # PF11c: 5.5 fills `files` itself
+    elif job.kind != "pack":
+        manifest = tiles.settled(manifest, job, base)  # PF6d: version, op_seq, carried files and tour
     if job.kind == "pack":
         tiles.publish_pack(db, job, manifest, blobs)
     elif analysis:

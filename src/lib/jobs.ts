@@ -1,12 +1,12 @@
 "use client";
 
-// Cloud render jobs (contract render-jobs v1.3, PF6, PF6a, PF11c and PF6c) as the website uses them:
+// Cloud render jobs (contract render-jobs v1.4, PF6, PF6a, PF11c, PF6c and PF6d) as the website uses them:
 // the Cloud page (usage, recent jobs, cancel, the live preview, the overage
 // cap) and the render admin (queue, workers, tokens).
 import { ApiError, api } from "@/lib/api";
 import { CLOUD } from "@/lib/constants";
 
-const CONTRACT = { "X-Truebex-Contract": "render-jobs/1.3" };
+const CONTRACT = { "X-Truebex-Contract": "render-jobs/1.4" };
 
 export type JobKind = "panorama" | "tiles" | "pack" | "wind" | "energy" | "acoustics" | "texture" | "airflow";
 export type JobState = "queued" | "claimed" | "running" | "succeeded" | "failed" | "cancelled" | "expired";
@@ -54,6 +54,17 @@ export interface TileFace {
   reason: string;
   /** Per level, its tiles row by row from the top-left (SHA-256). */
   tiles: string[][];
+  // render-jobs 1.4.0 (PF6d, PR5's headset): `<tiles_base>/<sha256>.png` / `.json`.
+  /** An 8-bit grey PNG at levels[0] px: each pixel the index of the entity seen there. */
+  id?: string;
+  /** Its truebex-ids/1 JSON: index -> entity id, 0 = nothing. */
+  ids?: string;
+  /** A 16-bit grey PNG at levels[0] px: millimetres from the eye, 0 = nothing. */
+  depth?: string;
+  /** 1 = the set's first render, + 1 each time a tiles job renders the face. */
+  version?: number;
+  /** The at_seq of the job that last rendered the face. */
+  op_seq?: number;
 }
 
 export interface TileView {
@@ -74,6 +85,8 @@ export interface TileManifest {
   views: TileView[];
   faces_rendered: number;
   faces_reused: number;
+  /** render-jobs 1.4.0: a truebex-tour/1 file (`<tiles_base>/<sha256>.json`) whose nodes name the views. */
+  tour?: string;
 }
 
 export interface CloudUsage {

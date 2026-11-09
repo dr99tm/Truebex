@@ -1,4 +1,4 @@
-"""The worker protocol (contract render-jobs v1.3, 5.7-5.10).
+"""The worker protocol (contract render-jobs v1.4, 5.7-5.10).
 
 Auth: a worker token (`tbx_wrk_…`), scoped to kinds; a revoked one answers
 401 `worker_revoked`. 5.7 is an `async` long-poll (`wait_s` ≤ 20, inside
@@ -33,9 +33,9 @@ from ..render.models import Worker
 from ..render.workers import get_worker
 
 log = logging.getLogger("truebex.render.claim")
-router = APIRouter(prefix="/workers", tags=["workers"], dependencies=[contract("render-jobs", 1, 3)])
+router = APIRouter(prefix="/workers", tags=["workers"], dependencies=[contract("render-jobs", 1, 4)])
 # 5.7 answers with its own Response, which the dependency's echo does not reach.
-ECHO = {"X-Truebex-Contract": "render-jobs/1.3"}
+ECHO = {"X-Truebex-Contract": "render-jobs/1.4"}
 COMPLETE_MAX_BYTES = 8 * 1024 * 1024
 
 

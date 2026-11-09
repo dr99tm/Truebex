@@ -1,4 +1,4 @@
-"""Shared helpers for the render tests (PF6, contract render-jobs 1.1.0; the header 1.2 since PF11c, 1.3 since PF6c)."""
+"""Shared helpers for the render tests (PF6, contract render-jobs 1.1.0; the header 1.2 since PF11c, 1.3 since PF6c, 1.4 since PF6d)."""
 
 import copy
 import hashlib
@@ -14,7 +14,7 @@ from app.models import Subscription
 from .conftest import make_admin, signup
 from .project_helpers import UPLOADS, Person, create, delta_op, hex32, pushed, snapshot
 
-RJ = {"X-Truebex-Contract": "render-jobs/1.3"}  # what the app sends since CL4 (PF6c)
+RJ = {"X-Truebex-Contract": "render-jobs/1.4"}  # what PR5's headset sends (PF6d); CL4's 1.3 is still served
 # The app's own set (CL3, render-jobs 1.1.0 §9), copied byte for byte.
 FIX = Path(__file__).parent / "contracts" / "render-jobs"
 # PF6's and PF11's stand-ins the app has no copy of (claim.json, the wind result).

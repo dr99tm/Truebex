@@ -3,6 +3,8 @@
 | Key                              | Holds                                   | Cache                                  |
 |----------------------------------|-----------------------------------------|----------------------------------------|
 | `tiles/<sha256>.jpg`             | one JPEG tile, shared by every job      | public, immutable, any origin (CDN)    |
+| `tiles/<sha256>.png`             | 1.4: a face's `id` (8-bit grey) or `depth` (16-bit grey) PNG at `levels[0]` px | the same       |
+| `tiles/<sha256>.json`            | 1.4: a face's `ids` (`truebex-ids/1`) or the manifest's `tour` (`truebex-tour/1`) | the same    |
 | `jobs/{job_id}/manifest.json`    | the §6.2 manifest (no `tiles_base`)     | private; served by 5.5                 |
 | `jobs/{job_id}/render-log.json`  | per-step and per-face milliseconds      | private                                |
 | `jobs/{job_id}/error.json`, `log-tail.txt` | a failure's code and last 64 KiB | private                                |
@@ -16,10 +18,28 @@ stored long ago is written again, so the collector sees it as new) and leaves
 the upload's copy to `uploads.expire`. Carried faces keep the base manifest's
 hashes. `render.tiles.gc` deletes tiles no manifest of the last 90 days, no
 set's newest and no running job's base names.
+
+PF6d (render-jobs 1.4.0, PR5's headset faces): a face may name `id`, `ids` and
+`depth` files and carry `version` and `op_seq`, the manifest a `tour` file.
+One key per extension, beside the colour tiles, published, served and
+collected the same way. 5.9 checks each file a rendered face (or the tour)
+names: in the upload or already stored; a PNG's signature and IHDR (width =
+height = the view's `levels[0]`, grey, 8 bits for `id`, 16 for `depth`; the
+pixels are not decoded); `ids` a `truebex-ids/1` list of at most 256 with
+`ids[0]` null; the tour `truebex-tour/1` whose every node names a view of the
+manifest. The server keeps the numbers: a rendered face is version 1 on a
+panorama and the base face's + 1 on a tiles job, with the job's `at_seq` as
+`op_seq`; a carried face keeps the base's (a base stored before 1.4: version
+1, its `at_seq`). A worker may send them; a value that disagrees is refused,
+an omitted one is filled. A carried face keeps the base's files and an update
+without a tour keeps the base's.
 """
 
+import copy
 import json
 import re
+import struct
+import zlib
 from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import or_, select
@@ -43,12 +63,23 @@ GC_GRACE = timedelta(days=1)
 # A reused tile older than this is written again so the collector keeps it.
 REFRESH_AFTER = timedelta(days=30)
 _SHA = re.compile(r"^[0-9a-f]{64}$")
-_TILE_KEY = re.compile(r"^tiles/([0-9a-f]{64})\.jpg$")
+_HEX32 = re.compile(r"^[0-9a-fA-F]{32}$")
+_TILE_KEY = re.compile(r"^tiles/([0-9a-f]{64})\.(jpg|png|json)$")
 _MANIFEST_KEY = re.compile(r"^jobs/([0-9a-f]{32})/manifest\.json$")
+# The public store's files by extension (1.4 added png and json).
+MEDIA_TYPES = {"jpg": "image/jpeg", "png": "image/png", "json": "application/json"}
+# render-jobs 1.4.0: a face's files (key -> extension) and the manifest's tour.
+FACE_FILES = {"id": "png", "ids": "json", "depth": "png"}
+IDS_SCHEMA = "truebex-ids/1"
+TOUR_FORMAT = "truebex-tour/1"
+MAX_IDS = 256  # an 8-bit index
+MAX_JSON_BYTES = 1024 * 1024
+PNG_SIGNATURE = bytes([0x89]) + b"PNG" + bytes([0x0D, 0x0A, 0x1A, 0x0A])
+PNG_BITS = {"id": 8, "depth": 16}
 
 
-def tile_key(sha256: str) -> str:
-    return f"tiles/{sha256}.jpg"
+def tile_key(sha256: str, ext: str = "jpg") -> str:
+    return f"tiles/{sha256}.{ext}"
 
 
 def manifest_key(job_id: str) -> str:
@@ -74,8 +105,9 @@ def latest_key(follow_job_id: str) -> str:
 
 
 def tiles_base() -> str:
-    """Where `<sha256>.jpg` is fetched: TILES_BASE_URL, else the CDN in front
-    of the bucket, else this API's public /tiles route."""
+    """Where `<sha256>.jpg` (and 1.4's `.png` / `.json`) is fetched:
+    TILES_BASE_URL, else the CDN in front of the bucket, else this API's
+    public /tiles route."""
     s = get_settings()
     if s.tiles_base_url:
         return s.tiles_base_url.rstrip("/")
@@ -172,6 +204,7 @@ def check_manifest(m: object, job: RenderJob) -> list[dict]:
                 e.add(f"{fp}.reason", "reason", "reason is changed, light or full when rendered, carried when not.")
             if job.kind == "panorama" and not face["rendered"]:
                 e.add(f"{fp}.rendered", "full", "a panorama job renders every face.")
+            _check_face_keys(e, fp, face)
             tiles = face.get("tiles")
             if not isinstance(tiles, list) or len(tiles) != len(levels):
                 e.add(f"{fp}.tiles", "tiles", "tiles has one list per level.")
@@ -185,7 +218,33 @@ def check_manifest(m: object, job: RenderJob) -> list[dict]:
         e.add("views", "view", "the manifest covers every view of the job.")
     if total > MAX_TILES:
         e.add("views", "too_many", f"A manifest names at most {MAX_TILES} tiles.")
+    if "tour" in m and not _is_sha(m["tour"]):
+        e.add("tour", "tour", "tour is the SHA-256 of the set's truebex-tour/1 file.")
     return e.items
+
+
+_FILE_WHAT = {
+    "id": "an 8-bit grey PNG of entity indexes",
+    "ids": "its truebex-ids/1 JSON",
+    "depth": "a 16-bit grey PNG of millimetres",
+}
+
+
+def _is_sha(value: object) -> bool:
+    return isinstance(value, str) and _SHA.match(value) is not None
+
+
+def _check_face_keys(e: _Errors, fp: str, face: dict) -> None:
+    """1.4's optional keys of a face: their types only (5.9 reads the files)."""
+    for key, what in _FILE_WHAT.items():
+        if key in face and not _is_sha(face[key]):
+            e.add(f"{fp}.{key}", key, f"{key} is the SHA-256 of {what}.")
+    if ("id" in face) != ("ids" in face):
+        e.add(fp, "ids", "id and ids come together (ids names the entity of each index in id).")
+    if "version" in face and not (_is_int(face["version"]) and face["version"] >= 1):
+        e.add(f"{fp}.version", "version", "version is a whole number, 1 or more.")
+    if "op_seq" in face and not (_is_int(face["op_seq"]) and face["op_seq"] >= 0):
+        e.add(f"{fp}.op_seq", "op_seq", "op_seq is a whole number: the at_seq of the job that last rendered the face.")
 
 
 def faces_of(m: dict):
@@ -197,6 +256,21 @@ def faces_of(m: dict):
 
 def all_tiles(m: dict) -> set[str]:
     return {sha for _, _, _, face in faces_of(m) for row in face["tiles"] for sha in row}
+
+
+def face_files(face: dict) -> list[tuple[str, str, str]]:
+    """(key, SHA-256, extension) of the 1.4 files a face names."""
+    return [(key, face[key], ext) for key, ext in FACE_FILES.items() if _is_sha(face.get(key))]
+
+
+def all_files(m: dict) -> set[str]:
+    """Every store key a manifest names: its colour tiles, its faces' 1.4
+    files and its tour."""
+    keys = {tile_key(sha) for sha in all_tiles(m)}
+    keys |= {tile_key(sha, ext) for _, _, _, face in faces_of(m) for _, sha, ext in face_files(face)}
+    if _is_sha(m.get("tour")):
+        keys.add(tile_key(m["tour"], "json"))
+    return keys
 
 
 def check_pack(m: object, job: RenderJob) -> list[dict]:
@@ -234,41 +308,199 @@ def declared(db: Session, job: RenderJob) -> set[str]:
     return {f["sha256"] for f in (session.files if session is not None else [])}
 
 
+def _base_faces(base: dict | None) -> dict:
+    return {(vid, f): face for _, vid, f, face in faces_of(base)} if base else {}
+
+
+def _version(face: dict | None) -> int:
+    v = (face or {}).get("version")
+    return v if _is_int(v) and v >= 1 else 1
+
+
+def expected_version(job: RenderJob, face: dict, before: dict | None, base: dict | None) -> tuple[int, int]:
+    """(version, op_seq) a face of this job's output answers: a rendered face
+    1 on a panorama, the base face's + 1 on a tiles job, at the job's at_seq;
+    a carried face the base's (a base stored before 1.4: 1, its at_seq)."""
+    if face["rendered"]:
+        return (_version(before) + 1 if job.kind == "tiles" and before is not None else 1), job.at_seq
+    seq = (before or {}).get("op_seq")
+    return _version(before), seq if _is_int(seq) else (base or {}).get("at_seq", job.at_seq)
+
+
+def _read_head(store, source: str, n: int) -> bytes:
+    with store.open(source) as fh:
+        return fh.read(n)
+
+
+def png_header(head: bytes) -> tuple[int, int, int, int] | None:
+    """(width, height, bit depth, colour type) from a PNG's first 33 bytes:
+    the signature, then an IHDR chunk whose CRC holds; None otherwise."""
+    if len(head) < 33 or head[:8] != PNG_SIGNATURE or head[8:16] != struct.pack(">I", 13) + b"IHDR":
+        return None
+    if struct.unpack(">I", head[29:33])[0] != zlib.crc32(head[12:29]) & 0xFFFFFFFF:
+        return None
+    width, height, depth, colour = struct.unpack(">IIBB", head[16:26])
+    return width, height, depth, colour
+
+
+def _check_png(store, source: str, key: str, px: int) -> str | None:
+    bits = PNG_BITS[key]
+    want = f"{key} is a {bits}-bit grey PNG of {px} x {px} px (the view's levels[0])"
+    header = png_header(_read_head(store, source, 33))
+    if header is None:
+        return f"{want}; this file is not a PNG."
+    width, height, depth, colour = header
+    if (width, height) != (px, px):
+        return f"{want}; this one is {width} x {height} px."
+    if colour != 0 or depth != bits:
+        return f"{want}; this one is {depth}-bit, colour type {colour}."
+    return None
+
+
+def _read_json(store, source: str, size: int) -> object:
+    if size > MAX_JSON_BYTES:
+        raise ValueError(f"larger than {MAX_JSON_BYTES} bytes")
+    with store.open(source) as fh:
+        return json.loads(fh.read(MAX_JSON_BYTES + 1).decode("utf-8"))
+
+
+def _check_ids(store, source: str, size: int) -> str | None:
+    want = f'ids is a {IDS_SCHEMA} file: {{"schema": "{IDS_SCHEMA}", "ids": [null, "<32 hex>", ...]}}, at most {MAX_IDS} ids'
+    try:
+        doc = _read_json(store, source, size)
+    except (ValueError, UnicodeDecodeError) as exc:
+        return f"{want}; this file is not JSON ({exc.__class__.__name__})."
+    ids = doc.get("ids") if isinstance(doc, dict) else None
+    if not isinstance(doc, dict) or doc.get("schema") != IDS_SCHEMA or not isinstance(ids, list):
+        return f"{want}; this one is not."
+    if not 1 <= len(ids) <= MAX_IDS:
+        return f"{want}; this one lists {len(ids)}."
+    if ids[0] is not None:
+        return f"{want}; ids[0] (nothing seen) is null."
+    for n, entity in enumerate(ids[1:], 1):
+        if entity is not None and not (isinstance(entity, str) and _HEX32.match(entity)):
+            return f"{want}; ids[{n}] is not an entity id."
+    return None
+
+
+def _check_tour(store, source: str, size: int, views: set[str]) -> str | None:
+    want = f"tour is a {TOUR_FORMAT} file whose every node names a view of the manifest"
+    try:
+        doc = _read_json(store, source, size)
+    except (ValueError, UnicodeDecodeError) as exc:
+        return f"{want}; this file is not JSON ({exc.__class__.__name__})."
+    nodes = doc.get("nodes") if isinstance(doc, dict) else None
+    if not isinstance(doc, dict) or doc.get("format") != TOUR_FORMAT or not isinstance(nodes, list) or not nodes:
+        return f"{want}; this one is not (format {TOUR_FORMAT}, one node or more)."
+    for n, node in enumerate(nodes):
+        if not isinstance(node, dict) or node.get("view") not in views:
+            return f"{want}; nodes[{n}] names no view of the manifest."
+    return None
+
+
 def verify_tiles(db: Session, job: RenderJob, m: dict, base: dict | None) -> tuple[list[dict], dict]:
     """Every rendered tile complete in the claim's output upload (or already
-    in the store), every carried face as in the base manifest. Returns
-    (errors, the upload's blobs by SHA-256)."""
+    in the store), every carried face as in the base manifest; 1.4: every
+    file a rendered face or the tour names there too and of its format, a
+    carried face's files the base's, version and op_seq as the server counts
+    them. Returns (errors, the upload's blobs by store key)."""
     e = _Errors()
-    rendered = {sha for _, _, _, face in faces_of(m) if face["rendered"] for row in face["tiles"] for sha in row}
-    sent = declared(db, job)
-    blobs = {sha: b for sha, b in uploads.blobs_by_sha(db, job.account_id, sorted(rendered & sent)).items()}
     store = get_store()
-    for sha in sorted(rendered - set(blobs)):
-        if store.stat(tile_key(sha)) is None:
-            e.add("output", "file_missing", "This tile is not complete in the output upload.", sha256=sha)
-    base_faces = {(vid, f): face["tiles"] for _, vid, f, face in faces_of(base)} if base else {}
-    for i, vid, f, face in faces_of(m):
-        if face["rendered"]:
+    # Store key -> where it is named: [(path, key, levels[0])]; colour tiles have no check of their own.
+    wanted: dict[str, list[tuple[str, str, int]]] = {}
+    for i, _, f, face in faces_of(m):
+        if not face["rendered"]:
             continue
-        if base_faces.get((vid, f)) != face["tiles"]:
-            e.add(f"views[{i}].faces.{f}", "carried", "A carried face keeps the base manifest's tiles.")
+        for row in face["tiles"]:
+            for sha in row:
+                wanted.setdefault(tile_key(sha), [])
+        for key, sha, ext in face_files(face):
+            wanted.setdefault(tile_key(sha, ext), []).append((f"views[{i}].faces.{f}.{key}", key, m["views"][i]["levels"][0]))
+    if _is_sha(m.get("tour")):
+        wanted.setdefault(tile_key(m["tour"], "json"), []).append(("tour", "tour", 0))
+    shas = {_TILE_KEY.match(k).group(1) for k in wanted}
+    sent = declared(db, job)
+    by_sha = uploads.blobs_by_sha(db, job.account_id, sorted(shas & sent))
+    blobs: dict = {}
+    views = {v["view"] for v in m["views"]}
+    for store_key in sorted(wanted):
+        sha = _TILE_KEY.match(store_key).group(1)
+        blob = by_sha.get(sha)
+        if blob is not None:
+            blobs[store_key] = blob
+            source, size = blob.storage_key, blob.bytes
+        else:
+            info = store.stat(store_key)
+            if info is None:
+                if not wanted[store_key]:
+                    e.add("output", "file_missing", "This tile is not complete in the output upload.", sha256=sha)
+                for path, _, _ in wanted[store_key]:
+                    e.add(path, "file_missing", "This file is not complete in the output upload.", sha256=sha)
+                continue
+            source, size = store_key, info.size
+        checked: dict[tuple[str, int], str | None] = {}
+        for path, key, px in wanted[store_key]:
+            if (key, px) not in checked:
+                if key == "tour":
+                    checked[(key, px)] = _check_tour(store, source, size, views)
+                elif key == "ids":
+                    checked[(key, px)] = _check_ids(store, source, size)
+                else:
+                    checked[(key, px)] = _check_png(store, source, key, px)
+            if checked[(key, px)]:
+                e.add(path, key, checked[(key, px)], sha256=sha)
+    before_of = _base_faces(base)
+    for i, vid, f, face in faces_of(m):
+        fp = f"views[{i}].faces.{f}"
+        before = before_of.get((vid, f))
+        if not face["rendered"]:
+            if (before or {}).get("tiles") != face["tiles"]:
+                e.add(fp, "carried", "A carried face keeps the base manifest's tiles.")
+            for key in FACE_FILES:
+                if key in face and face[key] != (before or {}).get(key):
+                    e.add(f"{fp}.{key}", "carried", f"A carried face keeps the base manifest's {key}.")
+        version, op_seq = expected_version(job, face, before, base)
+        if "version" in face and face["version"] != version:
+            e.add(f"{fp}.version", "version", f"version is {version}: 1 on the set's first render, + 1 each time a tiles job renders the face.")
+        if "op_seq" in face and face["op_seq"] != op_seq:
+            e.add(f"{fp}.op_seq", "op_seq", f"op_seq is {op_seq}: the at_seq of the job that last rendered the face.")
     return e.items, blobs
 
 
+def settled(m: dict, job: RenderJob, base: dict | None) -> dict:
+    """The manifest as stored (1.4): every face with its version and op_seq,
+    a carried face with the base's files, an update without a tour with the
+    base's. Keys the worker sent stay as sent (5.9 checked them)."""
+    out = copy.deepcopy(m)
+    before_of = _base_faces(base)
+    for _, vid, f, face in faces_of(out):
+        before = before_of.get((vid, f))
+        if not face["rendered"] and before is not None:
+            for key in FACE_FILES:
+                if key not in face and _is_sha(before.get(key)):
+                    face[key] = before[key]
+        version, op_seq = expected_version(job, face, before, base)
+        face.setdefault("version", version)
+        face.setdefault("op_seq", op_seq)
+    if "tour" not in out and base is not None and job.kind == "tiles" and _is_sha(base.get("tour")):
+        out["tour"] = base["tour"]
+    return out
+
+
 def publish_tiles(db: Session, blobs: dict, now: datetime) -> int:
-    """Copy each uploaded tile into the public store once (again when the
-    stored copy is old, so a running collector cannot take it)."""
+    """Copy each uploaded file (by its store key: a tile, 1.4's png and json)
+    into the public store once (again when the stored copy is old, so a
+    running collector cannot take it)."""
     store = get_store()
     copied = 0
-    for sha, blob in blobs.items():
-        key = tile_key(sha)
+    for key, blob in blobs.items():
         info = store.stat(key)
         modified = info.modified_at if info is not None else None
         if modified is not None and modified.tzinfo is None:
             modified = modified.replace(tzinfo=timezone.utc)
         if info is None or (modified is not None and modified < now - REFRESH_AFTER):
             with store.open(blob.storage_key) as fh:
-                store.put(key, fh, content_type="image/jpeg", cache_control=IMMUTABLE)
+                store.put(key, fh, content_type=MEDIA_TYPES[key.rsplit(".", 1)[1]], cache_control=IMMUTABLE)
             copied += 1
     return copied
 
@@ -298,7 +530,8 @@ def publish_pack(db: Session, job: RenderJob, m: dict, blobs: dict) -> None:
 
 
 def referenced(db: Session, now: datetime) -> set[str]:
-    """Tiles named by a manifest of the last 90 days or by any set's newest."""
+    """The store keys (tiles, 1.4's png and json) named by a manifest of the
+    last 90 days or by any set's newest."""
     keys = set(
         db.scalars(
             select(RenderJob.output_key).where(
@@ -321,8 +554,8 @@ def referenced(db: Session, now: datetime) -> set[str]:
         m = read_json(key)
         if m and m.get("schema", "").startswith("truebex-tiles/"):
             try:
-                out |= all_tiles(m)
-            except (KeyError, TypeError):
+                out |= all_files(m)
+            except (KeyError, TypeError, AttributeError):
                 continue
     return out
 
@@ -333,7 +566,7 @@ def gc(db: Session, now: datetime) -> int:
     removed = 0
     for info in store.list("tiles/"):
         match = _TILE_KEY.match(info.key)
-        if match is None or match.group(1) in keep:
+        if match is None or info.key in keep:
             continue
         if info.modified_at is not None and info.modified_at > now - GC_GRACE:
             continue  # a job may be completing with it right now

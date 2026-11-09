@@ -1824,3 +1824,30 @@ log-safe, so the project log takes it as an action (`ops.LOG_SAFE_TOOLS`, seven 
 `args.items` is a list of 1–200 objects and leaves each item to the replica. Re-sync as in the PF12b section with
 `-AppRepo` pointing at a checkout or snapshot that has the app's 2c842b8f1; the PF12e checks are
 `server\tests\test_pf12e_agent_interface.py`. Doc: `docs/roadmap/40/PF12e-agent-interface-1-4-0.md`.
+
+## Headset faces on render-jobs 1.4 (PF6d)
+
+The render routes (`/jobs`, `/workers`, `/analysis`, `/v1/jobs`) answer `X-Truebex-Contract: render-jobs/1.4` and still
+take 1.0 to 1.3. A worker's tile manifest may now name, per face, the files the headset app (PR5) picks with: `id` (an
+8-bit grey PNG at the view's first level, each pixel the index of the entity seen there), `ids` (its `truebex-ids/1`
+JSON: index to entity id, 0 = nothing) and `depth` (a 16-bit grey PNG, millimetres from the eye), and the manifest a
+`tour` (a `truebex-tour/1` file whose nodes name its views). On completion the platform checks each file (a PNG's
+header: size, grey, bit depth; the JSON's schema and views), stores it beside the colour tiles as
+`tiles/<sha256>.png` or `tiles/<sha256>.json`, and serves it from `tiles_base` like a tile (public, immutable, any
+origin). Every face of a stored manifest carries `version` (1 on the first render, + 1 each time an update re-renders
+the face) and `op_seq` (the operation it was last rendered at), counted by the platform whether or not the worker sends
+them, so the headset refetches only the faces an edit changed. Carried faces keep their files; the tile collector keeps
+every file a kept manifest names. A 1.3 worker's manifest is still accepted. The worker wrapper uploads the files the
+renderer writes beside its tiles; `worker/tests/fake_truebex.py` writes them with `FAKE_TRUEBEX_FACE_FILES=1`. Doc:
+`docs/roadmap/40/PF6d-render-jobs-1-4-0.md`.
+
+```powershell
+cd server
+$env:FAKE_TRUEBEX_FACE_FILES = '1'
+.venv/Scripts/python.exe scripts/demo_render.py --token tbx_dev_... submit --project <project id> --follow
+.venv/Scripts/python.exe ../worker/truebex_worker.py --config worker.toml --once
+.venv/Scripts/python.exe scripts/demo_render.py --token tbx_dev_... output --job <panorama job id>
+curl.exe -s http://127.0.0.1:8000/tiles/<a face's depth hash>.png -o depth.png
+```
+
+`output` prints the set's tour and, per face, its `version`, `op_seq` and file hashes.

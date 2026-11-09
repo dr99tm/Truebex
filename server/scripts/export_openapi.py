@@ -31,7 +31,7 @@ from pathlib import Path
 SERVER = Path(__file__).resolve().parents[1]
 ROOT = SERVER.parent
 OUT = ROOT / "openapi" / "v1.json"
-API_VERSION = "1.3.0"
+API_VERSION = "1.4.0"
 BASE_URL = "https://api.truebex.com"
 CLIENTS_OUT = ROOT / "openapi" / "clients.json"
 CLIENTS_VERSION = "1.0.0"
@@ -53,7 +53,7 @@ MARKET = {
 # (tests/test_pf12_openapi_sdks.py checks the routes echo the same).
 CONTRACTS = {
     "projects": "project-log/1.2",
-    "jobs": "render-jobs/1.3",
+    "jobs": "render-jobs/1.4",
     "uploads": "share-bundle/1.1",
     "shares": "share-bundle/1.1",
     "market": "marketplace-api/1.2",
