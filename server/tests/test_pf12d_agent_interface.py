@@ -29,11 +29,14 @@ CALLS = {
     "write_sheet_text": {"sheet": "A-101", "blocks": [{"title": "Notes", "lines": ["Bedrooms: {count:bedrooms}"]}], "choose": -1},
     "remove": {"refs": ["wall#12", "room#3"]},
 }
-LOG_SAFE = ("place", "move", "resize", "fill", "apply_theme", "set_tunable")
 
 
 def _tools() -> dict:
     return json.loads(PKG_TOOLS.read_text(encoding="utf-8"))
+
+
+# tools.json's log-safe edits in §5's order (PF12e: from the file, so set_properties, 1.4.0, joins without an edit here).
+LOG_SAFE = tuple(t["name"] for t in _tools()["tools"] if t["_meta"].get("com.truebex/logSafe") and t["_meta"]["com.truebex/permission"] == "edit")
 
 
 def _creation_op(author: str, tool: str, *, base_seq: int = 0) -> dict:
@@ -51,7 +54,7 @@ def _creation_op(author: str, tool: str, *, base_seq: int = 0) -> dict:
 def test_project_log_refuses_creation_tools(client):
     """create_layout and remove, and the other five AI5 tools, are class edit but not log-safe (tools.json 1.3.0):
     an action with any of them is refused 422 on ops[0].action.tool, from a session, a device and an API key,
-    and nothing is stored. ops.LOG_SAFE_TOOLS is unchanged."""
+    and nothing is stored. ops.LOG_SAFE_TOOLS is the file's log-safe edits (set_properties joined them in 1.4.0)."""
     by_name = {t["name"]: t for t in _tools()["tools"]}
     for tool in AI5_TOOLS:
         meta = by_name[tool]["_meta"]

@@ -14,7 +14,7 @@ from app.projects import ops
 from .licence_helpers import error_of
 from .pf12_helpers import ROOT, node
 from .project_helpers import Person, action_op, create, hex32, pull, push, pushed
-from .test_pf12_mcp_package import ASSISTANT_ONLY, MCP_ORDER, on_mcp, surfaces_of
+from .test_pf12_mcp_package import ASSISTANT_ONLY, LOG_SAFE_EDITS, MCP_ORDER, on_mcp, surfaces_of
 from .test_site_pf13 import OUT, Doc, built  # noqa: F401  (built is a fixture)
 
 PKG_TOOLS = ROOT / "packages" / "mcp" / "tools.json"
@@ -95,7 +95,8 @@ def test_log_safe_tools_follow_tools_json():
     a read marked logSafe (get_tunables today) never travels in the log."""
     doc = _tools()
     edits = [t["name"] for t in doc["tools"] if t["_meta"].get("com.truebex/logSafe") and t["_meta"]["com.truebex/permission"] == "edit"]
-    assert list(ops.LOG_SAFE_TOOLS) == edits == ["place", "move", "resize", "fill", "apply_theme", "set_tunable"]
+    # The one literal list (LOG_SAFE_EDITS): seven since agent-interface 1.4.0 (PL1's set_properties, PF12e).
+    assert list(ops.LOG_SAFE_TOOLS) == edits == LOG_SAFE_EDITS
     assert not set(ops.LOG_SAFE_TOOLS) & ASSISTANT_ONLY and "get_tunables" not in ops.LOG_SAFE_TOOLS
 
 
