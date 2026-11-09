@@ -260,6 +260,7 @@ step 4 uses the pytest.
   4. §1 still says "the eleven tools (thirteen since 1.1.0 …)" and §6.5's example `"version": "1.1.0"` (PATCH).
   5. PF12c's carry-overs 1–3 are unchanged in 1.3.0: `get_tunables` `logSafe: true`, no `ok` in its output schema,
      "roadmap 40 / TU1" in its description. PF12b's carry-overs 1–3 too (the bridge did not change).
+  6. Agent-interface 1.4.0 (PL1's `set_properties`, 21 on MCP) is followed by PF12e (`PF12e-agent-interface-1-4-0.md`), which carries 1–5 on.
 * **Contract proposals (for the owner to write; nothing changed from here):**
   * **§11 platform cells:** `create_layout` · `create_theme` · `create_fills` · `create_object` · `create_material` ·
     `write_sheet_text` → "PF12d (docs): done"; `remove` → "PF12d (docs): done"; `tools/list` → "PF12d (package, docs):

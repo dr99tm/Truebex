@@ -1814,6 +1814,17 @@ cd server
 .venv/Scripts/python.exe -m pytest tests/test_pf14g_timing_bounds.py tests/test_render.py -k 'live or long_poll or pf14g' -q
 ```
 
+## MCP package, docs and project log on agent-interface 1.4.0 (PF12e)
+
+`packages/mcp/` and `src/content/tools.json` hold the app's `tools.json` 1.4.0: 22 tools, of which the MCP server
+lists 21, PL1's `set_properties` last (a room's code, name and type, a storey's code and name, a door's or window's
+name; 1–200 items as one undo step). `/developers/mcp/` documents it from the file (its `items` listed under "Each
+item:") and says what a batch does; the package README lists every tool and names no count. `set_properties` is
+log-safe, so the project log takes it as an action (`ops.LOG_SAFE_TOOLS`, seven edits); the push checks only that its
+`args.items` is a list of 1–200 objects and leaves each item to the replica. Re-sync as in the PF12b section with
+`-AppRepo` pointing at a checkout or snapshot that has the app's 2c842b8f1; the PF12e checks are
+`server\tests\test_pf12e_agent_interface.py`. Doc: `docs/roadmap/40/PF12e-agent-interface-1-4-0.md`.
+
 ## Headset faces on render-jobs 1.4 (PF6d)
 
 The render routes (`/jobs`, `/workers`, `/analysis`, `/v1/jobs`) answer `X-Truebex-Contract: render-jobs/1.4` and still
