@@ -51,8 +51,13 @@ AUTHOR_KINDS = ("person", "agent")
 # agent-interface.md §5: the tools that may travel as log `action` operations;
 # `place` only for objects and products. `set_tunable` since agent-interface 1.1.0
 # (§5.18, TU1): it names a tunable, no entity, so its `touched` is empty (§6.2).
-LOG_SAFE_TOOLS = ("place", "move", "resize", "fill", "apply_theme", "set_tunable")
+# `set_properties` since agent-interface 1.4.0 (§5.27, PL1): plain field writes (a room's code, name
+# and type, a storey's code and name, a door's or window's name); its `touched` is its targets' ids.
+LOG_SAFE_TOOLS = ("place", "move", "resize", "fill", "apply_theme", "set_tunable", "set_properties")
 PLACE_LOG_SAFE_KINDS = ("object", "product")
+# PF12e: the push checks set_properties' items only as a list of 1..200 objects (§5.27's bound); what
+# an item sets is the replica's to check, as it checks every other tool's arguments.
+SET_PROPERTIES_MAX_ITEMS = 200
 _B64_MAX_CHARS = 4 * ((MAX_DELTA_BYTES + 2) // 3)
 _IN_CHUNK = 500
 
@@ -130,6 +135,14 @@ def _check_action(action: dict, where: str) -> None:
         raise _invalid(f"{where}.args", "an object")
     if tool == "place" and args.get("kind") not in PLACE_LOG_SAFE_KINDS:
         raise _invalid(f"{where}.args.kind", "place travels in the log only for object and product")
+    if tool == "set_properties":
+        items = args.get("items")
+        if not (
+            isinstance(items, list)
+            and 1 <= len(items) <= SET_PROPERTIES_MAX_ITEMS
+            and all(isinstance(item, dict) for item in items)
+        ):
+            raise _invalid(f"{where}.args.items", f"set_properties takes 1 to {SET_PROPERTIES_MAX_ITEMS} items, each an object")
     if action.get("permission") != "edit":
         raise _invalid(f"{where}.permission", "log actions carry the edit permission")
     # PF4a: optional. agent-interface §6.4 adds them to a live call; a kernel
