@@ -238,8 +238,8 @@ step 4 uses the pytest.
     `test_pf12_mcp_package.py`, `test_site_pf12.py`, `test_pf12_api.py` — 43 passed in 32 s; `test_projects.py`,
     `test_projects_orgs.py`, `test_pf4a_project_log_1_1.py`, `test_pf4b_project_log_1_2.py`, `test_mobile.py` — 73
     passed in 102 s (the app's 92 tables in both databases).
-  * **The verify gate** (`scripts/autopilot-verify.ps1`: lint, build, pytest on SQLite, the `out/` check): see the
-    final line below.
+  * **The verify gate** (`scripts/autopilot-verify.ps1` with an absolute `-File` path: lint, build, pytest on SQLite,
+    the `out/` check): GREEN in 581 s, 991 collected, 972 passed and 19 skipped (the Postgres-only tests), pytest 529 s.
 * **Deviations from the brief and why:**
   1. *The item list* reads `props.code` under the `items` row's "Each item:", not `items[].props.code` (Decision
      above); the tests check the full paths through `_walk` and the page's lines.
