@@ -10,7 +10,7 @@ import xml.etree.ElementTree as ET
 import pytest
 
 from .pf12_helpers import ROOT, node
-from .test_pf12_mcp_package import AI5_TOOLS, ASSISTANT_ONLY, MCP_ORDER, Bridge, on_mcp
+from .test_pf12_mcp_package import AI5_TOOLS, ASSISTANT_ONLY, MCP_ORDER, PL1_TOOLS, Bridge, on_mcp
 from .test_pf12_mcp_package import meta as mcp_meta
 from .test_site_pf13 import OUT, SITE, Doc, built  # noqa: F401  (built is a fixture)
 
@@ -165,6 +165,8 @@ def test_docs_generated_from_tools_json(built):
     listed = on_mcp(doc)
     assert [t["name"] for t in listed] == MCP_ORDER and len(listed) == len(doc["tools"]) - len(ASSISTANT_ONLY)
     assert set(AI5_TOOLS) <= {t["name"] for t in listed}
+    # 1.4.0: PL1's set_properties is the last section (21 on the mcp surface).
+    assert set(PL1_TOOLS) <= {t["name"] for t in listed} and listed[-1]["name"] == "set_properties"
     assert [el["attrs"]["data-tool"] for el in page.all("section", data_tool=True)] == [t["name"] for t in listed]
     for path in (OUT / "developers" / "mcp").rglob("*"):
         if path.is_file():
@@ -235,6 +237,23 @@ def test_docs_generated_from_tools_json(built):
     assert lines["rooms"] == "rooms object[] · required · 1–16 items", lines["rooms"]
     assert lines["rooms[].area_m2"] == "rooms[].area_m2 number · required · 1 to 200 — target clear floor area"
     assert '"living" | "kitchen"' in lines["rooms[].type"] and '"store"' in lines["rooms[].type"]
+    # PL1's set_properties (1.4.0): the items row (1-200 items) lists each item's fields, its props object's
+    # among them (items[].props.code, .name, .type: under the items row's "Each item:", as PF12d lists an array
+    # argument's items, `props.code`).
+    numbering = _rows_within(page, page.all("section", data_tool="set_properties")[0])
+    item_rows = {el["attrs"]["data-argument"]: _cells(page, el) for el in numbering if el["tag"] == "tr" and "data-argument" in el["attrs"]}
+    assert list(item_rows) == ["items", "dry_run", "request_id"], list(item_rows)
+    assert item_rows["items"][:4] == ["items", "object[]", "yes", "1–200 items"], item_rows["items"]
+    each = next(el for el in numbering if el["tag"] == "tr" and el["attrs"].get("data-fields-of") == "items")
+    assert page.text(each).startswith("Each item:"), page.text(each)[:40]
+    item_lines = {el["attrs"]["data-field"]: page.text(el) for el in _row_elements(page, each) if el["tag"] == "li"}
+    assert list(item_lines) == ["target", "props", "props.code", "props.name", "props.type"], list(item_lines)
+    assert item_lines["target"].startswith("target string · required · ≤ 64 chars — room#id"), item_lines["target"]
+    assert item_lines["props"] == "props object · required", item_lines["props"]
+    assert item_lines["props.code"] == "props.code string · ≤ 64 chars — a room's number (G.01) or a storey's code", item_lines["props.code"]
+    assert item_lines["props.name"] == "props.name string · ≤ 80 chars", item_lines["props.name"]
+    assert item_lines["props.type"].startswith("props.type string · ≤ 64 chars — a room's type"), item_lines["props.type"]
+    assert "Class: edit" in page.text(page.all("section", data_tool="set_properties")[0])
     # TU1's two tools: the untyped value reads as what set_tunable takes, next to its description; get_tunables'
     # limits as the file gives them.
     tunable = {el["attrs"]["data-argument"]: _cells(page, el) for el in _rows_within(page, page.all("section", data_tool="set_tunable")[0]) if el["tag"] == "tr" and "data-argument" in el["attrs"]}
@@ -249,7 +268,8 @@ def test_docs_generated_from_tools_json(built):
     # "Also travels in the project log" only where the log takes the tool: a log-safe edit (project-log §6.2), not
     # get_tunables, a read the app's file marks logSafe (PF12c carry-over).
     in_log = [t["name"] for t in listed if "Also travels in the project log" in page.text(page.all("section", data_tool=t["name"])[0])]
-    assert in_log == ["place", "move", "resize", "fill", "apply_theme", "set_tunable"], in_log
+    log_safe_edits = [t["name"] for t in listed if t["_meta"].get("com.truebex/logSafe") and t["_meta"]["com.truebex/permission"] == "edit"]
+    assert in_log == log_safe_edits and "set_properties" in in_log, in_log  # PF12e: from the file, set_properties since 1.4.0
     # Truebex's own _meta (router, surfaces, requires ids) never reaches the page.
     assert "com.truebex/" not in html and "kernel:" not in html and "registry:" not in html
     for tool in doc["tools"]:
