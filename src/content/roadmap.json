@@ -51,7 +51,7 @@
         "IO3",
         "IO4"
       ],
-      "status": "planned",
+      "status": "shipped",
       "home": true
     },
     {
@@ -64,7 +64,7 @@
         "IO5",
         "IO6"
       ],
-      "status": "planned"
+      "status": "shipped"
     },
     {
       "id": "handover",
@@ -76,7 +76,7 @@
         "IO7",
         "IO8"
       ],
-      "status": "planned"
+      "status": "shipped"
     },
     {
       "id": "structure",
@@ -90,7 +90,7 @@
         "MD3",
         "MD4"
       ],
-      "status": "planned"
+      "status": "shipped"
     },
     {
       "id": "materials",
@@ -103,7 +103,7 @@
         "MD6",
         "MD10"
       ],
-      "status": "planned"
+      "status": "shipped"
     },
     {
       "id": "clashes",
@@ -114,7 +114,7 @@
       "plan_ids": [
         "MD9"
       ],
-      "status": "planned"
+      "status": "shipped"
     },
     {
       "id": "services",
@@ -129,7 +129,7 @@
         "ME4",
         "ME5"
       ],
-      "status": "planned",
+      "status": "in_progress",
       "home": true
     },
     {
@@ -144,7 +144,7 @@
         "DC3",
         "DC4"
       ],
-      "status": "planned"
+      "status": "shipped"
     },
     {
       "id": "quantities",
@@ -156,7 +156,7 @@
         "DC5",
         "DC6"
       ],
-      "status": "planned"
+      "status": "shipped"
     },
     {
       "id": "reports",
@@ -172,7 +172,7 @@
         "AN5",
         "AN6"
       ],
-      "status": "planned",
+      "status": "shipped",
       "home": true
     },
     {
@@ -186,7 +186,7 @@
         "PR4",
         "PF5"
       ],
-      "status": "in_progress"
+      "status": "shipped"
     },
     {
       "id": "headset",
@@ -198,7 +198,7 @@
         "PR1",
         "PR5"
       ],
-      "status": "planned"
+      "status": "in_progress"
     },
     {
       "id": "room-themes",
@@ -209,7 +209,7 @@
       "plan_ids": [
         "PR2"
       ],
-      "status": "planned"
+      "status": "shipped"
     },
     {
       "id": "together",
@@ -224,7 +224,7 @@
         "PF3",
         "PF4"
       ],
-      "status": "in_progress",
+      "status": "shipped",
       "home": true
     },
     {
@@ -240,7 +240,7 @@
         "PF9",
         "PF10"
       ],
-      "status": "in_progress",
+      "status": "shipped",
       "home": true
     },
     {
@@ -257,7 +257,7 @@
         "PF7",
         "PF8"
       ],
-      "status": "in_progress",
+      "status": "shipped",
       "home": true
     },
     {
@@ -276,7 +276,7 @@
         "AI7",
         "PF11"
       ],
-      "status": "in_progress",
+      "status": "shipped",
       "home": true
     },
     {
@@ -290,7 +290,7 @@
         "AU2",
         "AU3"
       ],
-      "status": "planned"
+      "status": "shipped"
     },
     {
       "id": "scripting",
@@ -312,7 +312,7 @@
       "plan_ids": [
         "LO1"
       ],
-      "status": "planned",
+      "status": "shipped",
       "home": true
     },
     {
@@ -328,7 +328,7 @@
         "PF1",
         "PF2"
       ],
-      "status": "in_progress"
+      "status": "shipped"
     },
     {
       "id": "developers",
@@ -339,7 +339,7 @@
       "plan_ids": [
         "PF12"
       ],
-      "status": "planned"
+      "status": "shipped"
     },
     {
       "id": "reliability",
@@ -351,7 +351,7 @@
         "OP1",
         "PF14"
       ],
-      "status": "in_progress"
+      "status": "shipped"
     }
   ]
 }
