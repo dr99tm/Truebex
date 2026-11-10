@@ -54,6 +54,11 @@ class Plan:
     # (an integer, or None = no limit).
     features: tuple[str, ...]
     limits: dict[str, int | None]
+    # Shown on the site and by GET /billing/plans. An unlisted tier (Studio
+    # since 2026-11-10) is neither shown nor sold, yet an existing
+    # subscriber keeps it: entitlements, webhooks and the plan name still
+    # read it from here.
+    listed: bool = True
 
     def price(self, interval: str, currency: str) -> Price | None:
         for p in self.prices:
@@ -102,6 +107,7 @@ def _plan(raw: dict[str, Any]) -> Plan:
         max_api_keys=int(api.get("max_api_keys", 0)),
         features=tuple(sorted(set(raw.get("features") or ()))),
         limits=dict(raw.get("limits") or {}),
+        listed=bool(raw.get("listed", True)),
     )
 
 

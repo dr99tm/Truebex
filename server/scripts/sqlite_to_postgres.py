@@ -99,6 +99,8 @@ def _models() -> list[Table]:
     from app.render import models as _render  # noqa: F401  (PF6, and metering's meter_daily)
     from app.ai import models as _ai  # noqa: F401  (PF11: ai_*, and analysis_weather)
     from app.webhooks import models as _webhooks  # noqa: F401  (PF12)
+    from app.support import models as _support  # noqa: F401  (support API)
+    from app import password_reset as _password_reset  # noqa: F401  (password reset links)
 
     return list(Base.metadata.sorted_tables)  # parents before children
 

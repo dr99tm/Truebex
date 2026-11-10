@@ -4,6 +4,10 @@ The amounts below are the owner's (the PF2a task, 2026-10-09; the pricing
 guide GD7 was still a stub). They live in `server/app/catalogue.json`; this
 file pins them so a stray edit fails loudly. Team is per seat and annual
 only; the founding offer is 30 % off the annual prices.
+
+2026-11-10 (the owner): Studio is unlisted and no longer sold (the same as Pro
+until its extras ship; its prices stay pinned as what an existing subscriber
+pays), and Team's annual seat is USD 1,490 and EUR 1,340 (GBP 1,190 unchanged).
 """
 
 import io
@@ -31,17 +35,18 @@ PLAN = {
         ("year", "USD"): 99000, ("year", "GBP"): 79000, ("year", "EUR"): 89000,
     },
     # Per seat, a year; no monthly price.
-    "team": {("year", "USD"): 178800, ("year", "GBP"): 119000, ("year", "EUR"): 139000},
+    "team": {("year", "USD"): 149000, ("year", "GBP"): 119000, ("year", "EUR"): 134000},
 }
-# The annual prices at 30 % off.
+# The tiers sold online and shown (Studio is neither since 2026-11-10).
+SOLD = ("pro", "team")
+# The annual prices at 30 % off (the offer covers the tiers sold).
 FOUNDING_YEAR = {
     ("pro", "USD"): 20300, ("pro", "GBP"): 16800, ("pro", "EUR"): 18900,
-    ("studio", "USD"): 69300, ("studio", "GBP"): 55300, ("studio", "EUR"): 62300,
-    ("team", "USD"): 125160, ("team", "GBP"): 83300, ("team", "EUR"): 97300,
+    ("team", "USD"): 104300, ("team", "GBP"): 83300, ("team", "EUR"): 93800,
 }
 # What the site shows for Team per seat per month: the annual charge / 12,
 # billed annually (src/lib/catalogue.ts perMonthOfYear).
-TEAM_PER_MONTH = {"USD": 14900, "GBP": 9917, "EUR": 11583}
+TEAM_PER_MONTH = {"USD": 12417, "GBP": 9917, "EUR": 11167}
 
 
 def per_month_of_year(amount_minor: int) -> int:
@@ -65,6 +70,8 @@ def test_pf2a_catalogue_prices_per_plan():
     assert tiers["free"]["prices"] == [] and not tiers["free"]["purchasable"]
     assert tiers["enterprise"]["prices"] == [] and not tiers["enterprise"]["purchasable"]
     assert (tiers["pro"]["per_seat"], tiers["studio"]["per_seat"], tiers["team"]["per_seat"]) == (False, False, True)
+    assert [t["id"] for t in CATALOGUE["tiers"] if t["purchasable"]] == list(SOLD)
+    assert tiers["studio"]["listed"] is False and tiers["studio"]["purchasable"] is False
     assert tiers["team"]["min_seats"] == 2
     assert not any(p["interval"] == "month" for p in tiers["team"]["prices"]), "Team is never monthly"
     # The plan objects the API charges from read the same numbers.
@@ -78,7 +85,7 @@ def test_pf2a_founding_offer():
         "total": 300,
         "discount_percent": 30,
         "ends_at": "2027-01-31T23:59:59Z",
-        "tiers": ["pro", "studio", "team"],
+        "tiers": ["pro", "team"],
         "intervals": ["year"],
     }
     assert FOUNDING.total == 300 and FOUNDING.discount_percent == 30
@@ -88,6 +95,7 @@ def test_pf2a_founding_offer():
         assert FOUNDING.covers(tier_id, "year")
         assert not FOUNDING.covers(tier_id, "month"), "founding prices are the annual ones"
     assert not FOUNDING.covers("free", "year") and not FOUNDING.covers("enterprise", "year")
+    assert not FOUNDING.covers("studio", "year"), "Studio is not sold"
 
 
 def test_pf2a_team_per_month_derived():
@@ -108,13 +116,14 @@ def test_pf2a_team_per_month_derived():
 def test_pf2a_plans_endpoint_serves_the_plan(client):
     cat = client.get("/billing/plans").json()
     tiers = {t["id"]: t for t in cat["tiers"]}
-    for tier_id, want in PLAN.items():
+    for tier_id in SOLD:
         got = {(p["interval"], p["currency"]): p["amount_minor"] for p in tiers[tier_id]["prices"]}
-        assert got == want, tier_id
+        assert got == PLAN[tier_id], tier_id
     assert tiers["enterprise"]["prices"] == []
+    assert "studio" not in tiers, "unlisted"
     f = cat["founding"]
     assert (f["total"], f["remaining"], f["discount_percent"]) == (300, 300, 30)
-    assert f["tiers"] == ["pro", "studio", "team"] and f["intervals"] == ["year"]
+    assert f["tiers"] == ["pro", "team"] and f["intervals"] == ["year"]
     assert f["ends_at"].startswith("2027-01-31T23:59:59")
 
 
@@ -165,7 +174,7 @@ def test_pf2a_founding_is_annual_only(client, paddle):
 
 def test_pf2a_founding_ends_on_a_move_to_monthly(client, paddle):
     h = signup(client)
-    buy(client, h, paddle, tier="studio", interval="year", currency="EUR")
+    buy(client, h, paddle, tier="pro", interval="year", currency="EUR")
     sub = client.get("/billing/subscription", headers=h).json()
     assert sub["founding"] is True and sub["interval"] == "year"
     res = client.post("/billing/change", json={"interval": "month"}, headers=h)
@@ -173,7 +182,7 @@ def test_pf2a_founding_ends_on_a_move_to_monthly(client, paddle):
     assert (res.json()["interval"], res.json()["founding"]) == ("month", False)
     sub_id = local_sub().provider_subscription_id
     price = paddle.STATE["subscriptions"][sub_id]["items"][0]["price"]
-    assert int(price["unit_price"]["amount"]) == PLAN["studio"][("month", "EUR")]
+    assert int(price["unit_price"]["amount"]) == PLAN["pro"][("month", "EUR")]
     # Its founding place stays taken.
     assert client.get("/billing/plans").json()["founding"]["remaining"] == 299
 
@@ -183,8 +192,8 @@ def test_pf2a_founding_ends_on_a_move_to_monthly(client, paddle):
 
 def expected_keys() -> set[str]:
     keys = set()
-    for tier_id, prices in PLAN.items():
-        for (interval, currency), amount in prices.items():
+    for tier_id in SOLD:
+        for (interval, currency), amount in PLAN[tier_id].items():
             keys.add(f"truebex_{tier_id}_{interval}_{currency.lower()}_{amount}")
     for (tier_id, currency), amount in FOUNDING_YEAR.items():
         keys.add(f"truebex_{tier_id}_year_{currency.lower()}_{amount}_founding")
@@ -205,7 +214,8 @@ def test_pf2a_sync_prices_targets():
 
     targets = sync_prices.targets()
     assert {t.lookup_key for t in targets} == expected_keys()
-    assert len(targets) == 24  # 6 + 6 + 3 list prices, 9 founding (annual)
+    assert len(targets) == 15  # 6 + 3 list prices, 6 founding (annual); never Studio
+    assert not any(t.tier == "studio" for t in targets)
     assert all(t.interval == "year" for t in targets if t.founding)
     assert not any(t.tier == "team" and t.interval == "month" for t in targets)
     assert all(t.per_seat and t.min_seats == 2 for t in targets if t.tier == "team")
@@ -224,14 +234,14 @@ def test_pf2a_sync_prices_paddle_regenerates(client, paddle):
         db.commit()
 
     out = run_main(["--provider", "paddle", "--env", "sandbox", "--dry-run"])
-    assert "24 prices, 24 new" in out
-    assert out.count("(would create)") == 24 and not paddle.STATE["prices"]
+    assert "15 prices, 15 new" in out
+    assert out.count("(would create)") == 15 and not paddle.STATE["prices"]
     for key in expected_keys():
         assert key in out, key
 
     out = run_main(["--provider", "paddle", "--env", "sandbox"])
-    assert "24 prices, 24 new" in out
-    assert len(paddle.STATE["prices"]) == 24
+    assert "15 prices, 15 new" in out
+    assert len(paddle.STATE["prices"]) == 15
     by_key = {p["custom_data"]["lookup_key"]: p for p in paddle.STATE["prices"].values()}
     assert set(by_key) == expected_keys()
     pro_founding = by_key["truebex_pro_year_usd_20300_founding"]
@@ -242,12 +252,12 @@ def test_pf2a_sync_prices_paddle_regenerates(client, paddle):
     with SessionLocal() as db:
         rows = list(db.scalars(select(ProviderPrice).where(ProviderPrice.provider == "paddle")))
         active = {(r.tier, r.interval, r.currency, r.amount_minor, r.founding) for r in rows if r.active}
-        assert len(active) == 24
+        assert len(active) == 15
         old = next(r for r in rows if r.provider_price_id == "pri_placeholder")
         assert old.active is False and old.tier == "pro", "kept for old subscribers, never sold"
 
     out = run_main(["--provider", "paddle", "--env", "sandbox", "--dry-run"])
-    assert "24 prices, 0 new" in out and "(would create)" not in out
+    assert "15 prices, 0 new" in out and "(would create)" not in out
 
 
 def test_pf2a_sync_prices_stripe_dry_run(client, monkeypatch):
@@ -272,19 +282,19 @@ def test_pf2a_sync_prices_stripe_dry_run(client, monkeypatch):
     monkeypatch.setattr(stripe.Product, "create", forbidden)
 
     out = run_main(["--provider", "stripe", "--env", "sandbox", "--dry-run"])
-    assert "24 prices, 24 new" in out and out.count("(would create)") == 24
+    assert "15 prices, 15 new" in out and out.count("(would create)") == 15
     for key in expected_keys():
         assert key in out, key
 
     existing.update({k: f"price_{i}" for i, k in enumerate(sorted(expected_keys()))})
     out = run_main(["--provider", "stripe", "--env", "sandbox", "--dry-run"])
-    assert "24 prices, 0 new" in out
+    assert "15 prices, 0 new" in out
     with SessionLocal() as db:
         assert not list(db.scalars(select(ProviderPrice).where(ProviderPrice.provider == "stripe"))), \
             "a dry run writes no provider_prices"
 
 
-@pytest.mark.parametrize("tier_id", ["pro", "studio", "team"])
+@pytest.mark.parametrize("tier_id", SOLD)
 def test_pf2a_stripe_prices_cover_the_plan(stripe_prices, tier_id):
     for (interval, currency), amount in PLAN[tier_id].items():
         assert f"truebex_{tier_id}_{interval}_{currency.lower()}_{amount}" in stripe_prices

@@ -281,7 +281,7 @@ def test_org_second_live_subscription_conflict(client, paddle):
     # ...and a personal subscription does not block buying for an organisation.
     org2 = make_org(client, h["owner"], "Studio South")
     org_checkout(client, h["owner"], org2["id"])
-    assert client.post("/billing/checkout", json=checkout_body(tier="studio"), headers=h["owner"]).status_code == 409
+    assert client.post("/billing/checkout", json=checkout_body(tier="pro", interval="year"), headers=h["owner"]).status_code == 409
 
     # A failed renewal keeps the organisation on its subscription: fixed
     # under Manage, never bought twice.
@@ -376,15 +376,17 @@ def test_org_billing_management_roles(client, paddle):
     assert "/portal/ctm_" in client.post("/billing/portal", json=q, headers=h["billing"]).json()["url"]
     assert client.post("/billing/portal", headers=h["owner"]).status_code == 404  # no personal one
 
-    # Team is annual only (PF2a), so the billing role changes the tier: to Studio
-    # (one seat, none given out yet), then back to Team.
-    res = client.post("/billing/change", json={"tier": "studio", **q}, headers=h["billing"])
+    # Team is annual only (PF2a), so the billing role changes the tier: to Pro
+    # annual (one seat, none given out yet), then back to Team. Studio is no
+    # longer sold (2026-11-10), so a move to it is refused.
+    assert client.post("/billing/change", json={"tier": "studio", **q}, headers=h["billing"]).status_code == 400
+    res = client.post("/billing/change", json={"tier": "pro", **q}, headers=h["billing"])
     assert res.status_code == 200, res.text
-    assert res.json()["tier"] == "studio" and res.json()["interval"] == "year" and res.json()["org_id"] == org["id"]
+    assert res.json()["tier"] == "pro" and res.json()["interval"] == "year" and res.json()["org_id"] == org["id"]
     (sub,) = org_subs(org["id"])
-    assert sub.plan == "studio" and sub.interval == "year"
+    assert sub.plan == "pro" and sub.interval == "year"
     price = paddle.STATE["subscriptions"][sub.provider_subscription_id]["items"][0]["price"]
-    assert price["custom_data"]["tier"] == "studio" and price["billing_cycle"]["interval"] == "year"
+    assert price["custom_data"]["tier"] == "pro" and price["billing_cycle"]["interval"] == "year"
     res = client.post("/billing/change", json={"tier": "team", **q}, headers=h["billing"])
     assert res.status_code == 200 and res.json()["tier"] == "team" and res.json()["seats"] == 2, res.text
     # A change that leaves fewer seats than are assigned is refused.

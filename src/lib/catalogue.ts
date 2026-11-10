@@ -22,6 +22,9 @@ export interface Tier {
   name: string;
   rank: number;
   purchasable: boolean;
+  /** False: neither shown nor sold (Studio since 2026-11-10); absent = listed.
+   *  Its existing subscribers keep it (src/lib/plans.ts still names it). */
+  listed?: boolean;
   per_seat: boolean;
   min_seats: number;
   features: string[];
@@ -49,16 +52,18 @@ export interface Catalogue {
 }
 
 /**
- * What the public pages show: the catalogue's prices and founding offer only
- * once they are final. Placeholder prices stay off /pricing/, the home teaser
- * and the JSON-LD offers (every paid tier reads "Price at launch"); the
- * billing page still lists them from GET /billing/plans.
+ * What the public pages show: the listed tiers only (an unlisted tier is on
+ * no page, comparison or JSON-LD offer), and the catalogue's prices and
+ * founding offer only once they are final. Placeholder prices stay off
+ * /pricing/, the home teaser and the JSON-LD offers (every paid tier reads
+ * "Price at launch"); the billing page still lists them from GET /billing/plans.
  */
 export function publicCatalogue(catalogue: Catalogue): Catalogue {
-  if (catalogue.prices_final !== false) return catalogue;
+  const listed = { ...catalogue, tiers: catalogue.tiers.filter((t) => t.listed !== false) };
+  if (catalogue.prices_final !== false) return listed;
   return {
-    ...catalogue,
-    tiers: catalogue.tiers.map((t) => ({ ...t, prices: [] })),
+    ...listed,
+    tiers: listed.tiers.map((t) => ({ ...t, prices: [] })),
     founding: null,
   };
 }

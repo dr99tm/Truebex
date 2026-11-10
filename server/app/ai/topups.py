@@ -44,7 +44,7 @@ def start(db: Session, user: User, pack_id: str, currency: str, consent_version:
     plan = credits.plan_of(db, user)
     if credits.FEATURE not in plan.features:
         raise ContractError(
-            "plan_required", 403, "AI credits come with Pro, Studio, Team and the trial.",
+            "plan_required", 403, "AI credits come with Pro, Team and the trial.",
             {"feature": credits.FEATURE, "plan": plan.id, "plan_needed": credits.plan_needed(plan)},
         )
     pack = credits.pack(pack_id)

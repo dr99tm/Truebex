@@ -1,0 +1,14 @@
+Hello,
+
+Your Truebex code is:
+
+$code
+
+Enter it in the secure form in the Truebex support chat. It works once, for
+$minutes minutes (until $expires).
+
+Nobody from Truebex will ask you to read this code out or to send it as a chat
+message. If you did not ask for it, ignore this e-mail and nothing changes.
+
+Truebex
+https://truebex.com/

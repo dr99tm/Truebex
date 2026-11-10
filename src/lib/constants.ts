@@ -297,7 +297,7 @@ export const FAQS = [
   },
   {
     q: "What do I need to run Truebex?",
-    a: "A Windows PC with a modern graphics card. An NVIDIA RTX card unlocks the highest lighting quality, including ray tracing and path tracing.",
+    a: "A Windows PC with a modern graphics card. A card with hardware ray tracing unlocks the highest lighting quality, including ray tracing and path tracing.",
   },
   {
     q: "Is there an API for developers?",
@@ -309,7 +309,7 @@ export const FAQS = [
   },
   {
     q: "How can I pay?",
-    a: "Pro and Studio are billed monthly or annually by card, and Team annually per seat. VAT or sales tax for your country is shown before you pay and on your invoice, and you can cancel renewal at any time. Online payment is rolling out; the pricing page shows every plan and what it includes.",
+    a: "Pro is billed monthly or annually by card, and Team annually per seat. You choose a plan and pay from Billing in your dashboard: VAT or sales tax for your country is shown before you pay and on your invoice. You can cancel renewal at any time. When online payment isn't available, Billing says so and how to reach us.",
   },
 ] as const;
 
@@ -552,7 +552,7 @@ export const CHECKOUT = {
 export const TERMS_PAID_PLANS = [
   {
     title: "Plans",
-    text: "Pro and Studio are for one person, billed monthly or annually. Team is billed annually, per seat. The price, tax and total are shown before you pay.",
+    text: "Pro is for one person, billed monthly or annually. Team is billed annually, per seat. The price, tax and total are shown before you pay.",
   },
   {
     title: "Our reseller",
@@ -622,7 +622,7 @@ export interface TierCopy {
 export const PRICING = {
   title: "Pricing",
   description:
-    "Truebex pricing: start free with the full modeller and measured daylight, then move to Pro, Studio, Team or Enterprise, billed monthly or annually.",
+    "Truebex pricing: start free with the full modeller and measured daylight, then move to Pro, billed monthly or annually, or to Team or Enterprise.",
   eyebrow: "Pricing",
   heading: "Truebex pricing",
   intro:
@@ -683,6 +683,8 @@ export const PRICING = {
       cta: "Choose Pro",
       highlighted: true,
     },
+    // Unlisted (catalogue `listed: false`, 2026-11-10): no page shows it until
+    // its share links and cloud panoramas ship; kept for when it returns.
     studio: {
       description: "For studios that present and share their work every week.",
       highlights: [
@@ -695,7 +697,7 @@ export const PRICING = {
     team: {
       description: "For practices that buy a seat for each person.",
       highlights: [
-        "Everything in Studio",
+        "Everything in Pro",
         "A seat for each person, on one invoice",
         { text: "Several people in one model", roadmap: true },
       ],
@@ -788,7 +790,7 @@ export const PRICING = {
   faq: [
     {
       q: "Is Truebex free to use?",
-      a: "Yes. Free is the full modeller with measured daylight, surface fills and the asset library, with no time limit. Projects have one storey, and PDF and DXF exports carry a watermark.",
+      a: "Yes. Free is the full modeller with measured daylight and surface fills, with no time limit. Projects have one storey, PDF and DXF exports carry a watermark, and the asset library comes with Pro.",
     },
     {
       q: "How does the Pro trial work?",
@@ -900,7 +902,7 @@ export const FEATURE_PAGES: readonly FeaturePageCopy[] = [
       },
       {
         q: "What hardware do I need for the best lighting?",
-        a: "A Windows PC with a modern graphics card. An NVIDIA RTX card unlocks the highest lighting quality, including ray tracing and path tracing.",
+        a: "A Windows PC with a modern graphics card. A card with hardware ray tracing unlocks the highest lighting quality, including ray tracing and path tracing.",
       },
       {
         q: "Can Truebex produce a daylight report?",
@@ -1190,6 +1192,45 @@ export const SSO_LOGIN = {
   breakGlassHelp: "Your organisation requires single sign-on. Owners can sign in once with a password and the break-glass code.",
 } as const;
 
+// Password reset by e-mail (/forgot-password/, /reset-password/; the API's
+// /auth/password/forgot and /auth/password/reset). The link carries its token
+// in the URL fragment, which never reaches a server, a log or analytics.
+export const PASSWORD_RESET = {
+  forgotLink: "Forgot password?",
+  forgot: {
+    metaTitle: "Reset your password",
+    metaDescription: "Ask for a one-time link to choose a new password for your Truebex account.",
+    h1: "Reset your password",
+    intro: "Enter the e-mail address of your Truebex account and we'll send you a link to choose a new password.",
+    emailLabel: "Email address",
+    submit: "Send the link",
+    busy: "Sending…",
+    sentTitle: "Check your inbox",
+    sent: "If an account exists for {email}, we've sent it a link to reset the password. The link works once, for 30 minutes.",
+    sentHelp: "Nothing yet? Check your spam folder, or ask again in a few minutes.",
+    sso: "If your organisation signs in with single sign-on, use Continue with SSO on the Log in page instead.",
+    back: "Back to Log in",
+  },
+  reset: {
+    metaTitle: "Choose a new password",
+    metaDescription: "Choose a new password for your Truebex account with the link from your e-mail.",
+    h1: "Choose a new password",
+    intro: "Set the new password for your Truebex account. You're signed in as soon as it's saved.",
+    password: "New password",
+    confirm: "Confirm the new password",
+    rule: "At least 8 characters.",
+    mismatch: "The two passwords don't match.",
+    submit: "Save and sign in",
+    busy: "Saving…",
+    done: "Your new password is saved. Taking you to your dashboard…",
+    missing: "Open this page from the link in your reset e-mail.",
+    expired: "This reset link has expired or was already used.",
+    again: "Ask for a new link",
+    ssoRequired: "Your organisation signs in with single sign-on, so its accounts don't use a password here.",
+    toLogin: "Go to Log in",
+  },
+} as const;
+
 export const SSO_CALLBACK = {
   metaTitle: "Signing you in",
   working: "Signing you in…",
@@ -1448,7 +1489,7 @@ export const AR_HOME = {
         name: "الفريق",
         description: "للمكاتب التي تشتري مقعدًا لكل شخص.",
         highlights: [
-          "كل ما في خطة الاستوديو",
+          "كل ما في الخطة الاحترافية",
           "مقعد لكل شخص، بفاتورة واحدة",
           { text: "عدة أشخاص في نموذج واحد", roadmap: true },
         ],
@@ -1485,7 +1526,7 @@ export const AR_HOME = {
       },
       {
         q: "ماذا أحتاج لتشغيل Truebex؟",
-        a: "حاسوب يعمل بنظام Windows مع بطاقة رسوميات حديثة. بطاقة NVIDIA RTX تتيح أعلى جودة للإضاءة، بما فيها تتبّع الأشعة وتتبّع المسارات.",
+        a: "حاسوب يعمل بنظام Windows مع بطاقة رسوميات حديثة. البطاقة التي تدعم تتبّع الأشعة عتاديًا تتيح أعلى جودة للإضاءة، بما فيها تتبّع الأشعة وتتبّع المسارات.",
       },
       {
         q: "هل التطبيق متاح بالعربية؟",
@@ -1497,7 +1538,7 @@ export const AR_HOME = {
       },
       {
         q: "كيف أدفع؟",
-        a: "المدفوعات قيد الإطلاق، وصفحة الأسعار تعرض الخطط وما تشمله كل خطة.",
+        a: "تُدفع الخطة الاحترافية بالبطاقة شهريًا أو سنويًا، وخطة الفريق سنويًا لكل مقعد. تختار خطتك وتدفع من صفحة الفوترة في لوحة التحكم، وتظهر ضريبة القيمة المضافة أو ضريبة المبيعات لبلدك قبل الدفع وعلى فاتورتك. ويمكنك إلغاء التجديد في أي وقت. وحين لا يكون الدفع الإلكتروني متاحًا، تخبرك صفحة الفوترة بذلك وبطريقة التواصل معنا.",
       },
     ],
   },
@@ -2361,7 +2402,7 @@ export const PROJECTS = {
     busy: "Deleting…",
   },
   errors: {
-    plan: "Cloud projects come with Pro, Studio, Team and the 14-day trial.",
+    plan: "Cloud projects come with Pro, Team and the 14-day trial.",
     planCta: "See plans",
     generic: "Something went wrong.",
   },
@@ -2421,7 +2462,7 @@ export const CLOUD = {
     unit: "cost units",
     label: "Cost units used this month",
     unlimited: "{used} cost units used. Your plan has no monthly limit.",
-    none: "Cloud rendering comes with Pro, Studio, Team and the 14-day trial.",
+    none: "Cloud rendering comes with Pro, Team and the 14-day trial.",
     planCta: "See plans",
     help: "One cost unit is one minute of rendering on the standard machine. Only finished jobs count; failed and cancelled jobs cost nothing.",
     reserved: "{n} cost units are held for jobs still running.",
@@ -2466,7 +2507,7 @@ export const CLOUD = {
   },
   overage: {
     title: "Past the allowance",
-    text: "Studio and Team can keep rendering past the monthly allowance, up to a cap you set, at {price} a cost unit, added to the next bill.",
+    text: "Your plan can keep rendering past the monthly allowance, up to a cap you set, at {price} a cost unit, added to the next bill.",
     label: "Monthly cap, in cost units",
     save: "Save cap",
     saving: "Saving…",
@@ -2542,7 +2583,7 @@ export const CLOUD_AI = {
     texture: "Material textures",
   },
   locked: {
-    text: "AI credits come with Pro, Studio, Team and the 14-day trial.",
+    text: "AI credits come with Pro, Team and the 14-day trial.",
     cta: "See plans",
   },
   balance: {

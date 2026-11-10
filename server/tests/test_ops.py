@@ -312,6 +312,8 @@ def test_worker_process_registers_every_feature_job(tmp_path):
         "projects.purge_deleted",
         "projects.presence.sweep",
         "idempotency.expire",
+        "support.codes.purge",
+        "auth.password_resets.purge",
     ):
         assert job in names, job
 

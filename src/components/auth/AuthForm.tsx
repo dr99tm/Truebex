@@ -8,12 +8,12 @@ import { GoogleButton } from "@/components/auth/GoogleButton";
 import { LogoMark } from "@/components/brand/Logo";
 import { ApiError } from "@/lib/api";
 import { login, register, safeNext } from "@/lib/auth";
-import { SSO_LOGIN } from "@/lib/constants";
+import { PASSWORD_RESET, SSO_LOGIN } from "@/lib/constants";
 import { ssoStart } from "@/lib/orgs";
 
 type Mode = "login" | "signup";
 
-const inputClass =
+export const inputClass =
   "w-full rounded-[var(--radius-button)] border border-border bg-surface px-4 py-3 text-text-primary placeholder:text-text-muted outline-none transition-colors focus:border-accent/50";
 
 function AuthFormInner({ mode }: { mode: Mode }) {
@@ -102,8 +102,14 @@ function AuthFormInner({ mode }: { mode: Mode }) {
             onChange={(e) => setPassword(e.target.value)}
             className={inputClass}
           />
-          {isSignup && (
+          {isSignup ? (
             <p className="text-xs text-text-muted">At least 8 characters.</p>
+          ) : (
+            <p className="text-right text-sm">
+              <a href="/forgot-password/" className="text-accent hover:underline">
+                {PASSWORD_RESET.forgotLink}
+              </a>
+            </p>
           )}
           {ssoRequired && !isSignup && (
             <div className="space-y-2">

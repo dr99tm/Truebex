@@ -5,6 +5,11 @@ The app starts a link (5.1) and gets a single-use code plus a poll secret
 website, sees the device name and presses Approve or Deny (5.3). The app
 polls (5.2) no faster than `interval_s` and receives a session token once.
 Codes live 600 s; expired and spent rows are purged by a job.
+
+The support API (routers/support.py) starts the same codes with purpose
+"support" for a customer signing in from a chat: approved on the same page,
+polled with `poll_account`, which answers the account id and never a session.
+Neither poll answers the other's codes.
 """
 
 import hashlib
@@ -58,8 +63,16 @@ def verify_url(code: str) -> str:
 
 
 def start(
-    db: Session, *, device_name: str, fingerprint: str, app_version: str, now: datetime
+    db: Session,
+    *,
+    device_name: str,
+    fingerprint: str,
+    app_version: str,
+    now: datetime,
+    purpose: str | None = None,
 ) -> tuple[LinkCode, str]:
+    """`purpose` "support": a link the Truebex Desk started for a chat; only
+    `poll_account` answers it (with the account id), never `poll`."""
     secret = secrets.token_urlsafe(32)
     code = _new_code()
     while db.get(LinkCode, code) is not None:
@@ -73,6 +86,7 @@ def start(
         status="pending",
         created_at=now,
         expires_at=now + LIFETIME,
+        purpose=purpose,
     )
     db.add(row)
     db.commit()
@@ -85,9 +99,12 @@ def _expired() -> ContractError:
     )
 
 
-def poll(db: Session, poll_secret: str, now: datetime) -> dict:
+def _polled(db: Session, poll_secret: str, now: datetime, purpose: str | None) -> User | None:
+    """Pace and stamp the row behind `poll_secret`: None while pending, the
+    approving user once (the row is then spent). A row of another purpose
+    reads as unknown."""
     row = db.scalar(select(LinkCode).where(LinkCode.poll_secret_hash == hash_secret(poll_secret)))
-    if row is None or row.status == "spent" or now >= clock.aware(row.expires_at):
+    if row is None or row.purpose != purpose or row.status == "spent" or now >= clock.aware(row.expires_at):
         raise _expired()
     if row.status == "denied":
         raise ContractError("link_denied", 403, "Sign-in was denied in the browser.")
@@ -104,13 +121,28 @@ def poll(db: Session, poll_secret: str, now: datetime) -> dict:
     row.last_poll_at = now
     if row.status == "pending":
         db.commit()
-        return {"status": "pending"}
-    # Approved: hand the session over exactly once.
+        return None
+    # Approved: hand it over exactly once.
     user = db.get(User, row.user_id)
     row.status = "spent"
     db.commit()
     if user is None:
         raise _expired()
+    return user
+
+
+def poll_account(db: Session, poll_secret: str, now: datetime) -> dict:
+    """The support API's poll: the approving account's id, never a session."""
+    user = _polled(db, poll_secret, now, "support")
+    if user is None:
+        return {"status": "pending", "user_id": None}
+    return {"status": "approved", "user_id": user.id}
+
+
+def poll(db: Session, poll_secret: str, now: datetime) -> dict:
+    user = _polled(db, poll_secret, now, None)
+    if user is None:
+        return {"status": "pending"}
     token = Token(access_token=create_access_token(str(user.id)), user=user_out(user))
     return {"status": "approved", "token": token.model_dump(mode="json")}
 

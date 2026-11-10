@@ -77,6 +77,8 @@ DENY_NAMES = [
     "Unreal", "Unity", "Epic Games", "Lumen", "Nanite", "DLSS", "Blender",
     "3ds Max", "Cinema 4D", "Planner 5D", "Floorplanner", "Homestyler",
     "ريفيت", "أوتوكاد", "سكتش أب",
+    # Hardware vendors too (the owner, 2026-11-10): "a card with hardware ray tracing".
+    "NVIDIA", "RTX", "GeForce",
 ]
 PLACEHOLDER_WORDS = re.compile(r"GD7|GD6|TODO|placeholder|lorem ipsum", re.I)
 # A catalogue whose prices are not final yet (PF2's placeholders): the public
@@ -220,7 +222,9 @@ def catalogue_path() -> Path:
 
 def public_view(cat: dict) -> dict:
     """What the public pages show (src/lib/catalogue.ts publicCatalogue):
-    prices and the founding offer only once `prices_final` is not false."""
+    the listed tiers only (Studio is unlisted since 2026-11-10), and prices
+    and the founding offer only once `prices_final` is not false."""
+    cat = {**cat, "tiers": [t for t in cat["tiers"] if t.get("listed", True)]}
     if cat.get("prices_final") is not False:
         return cat
     return {**cat, "tiers": [{**t, "prices": []} for t in cat["tiers"]], "founding": None}
@@ -359,13 +363,17 @@ def test_site_pf13_catalogue_placeholder_shape():
     for t in tiers:
         assert isinstance(t["prices"], list)
         assert isinstance(t["per_seat"], bool) and t["min_seats"] >= 1
-        assert bool(t["prices"]) == t["purchasable"], t["id"]
+        # Priced = sold, except an unlisted tier, which keeps the prices its
+        # existing subscribers pay.
+        assert bool(t["prices"]) == (t["purchasable"] or t.get("listed") is False), t["id"]
         for interval in {p["interval"] for p in t["prices"]}:
             got = sorted(p["currency"] for p in t["prices"] if p["interval"] == interval)
             assert got == sorted(cat["currencies"]), (t["id"], interval)
     assert {"total", "discount_percent", "ends_at", "tiers", "intervals"} <= set(cat["founding"])
     assert set(cat["founding"]["tiers"]) <= {t["id"] for t in tiers if t["purchasable"]}
-    assert [t["purchasable"] for t in tiers] == [False, True, True, True, False]
+    assert [t["purchasable"] for t in tiers] == [False, True, False, True, False]
+    # Studio: unlisted and not sold (2026-11-10), the same as Pro until its extras ship.
+    assert [t.get("listed", True) for t in tiers] == [True, True, False, True, True]
 
 
 def test_site_pf13_catalogue_api_quotas_match_plans():
@@ -526,22 +534,21 @@ def test_site_pf13_placeholder_prices_stay_private():
 # The owner's pricing plan (PF2a), as /pricing/ must show it. Kept apart from
 # the catalogue so a wrong number there cannot pass its own test
 # (tests/test_pf2a_prices.py pins catalogue.json to the same plan).
+# The prices the pages show. Studio is unlisted since 2026-11-10 (never on a
+# page); Team's annual seat is USD 1,490 and EUR 1,340 from that day.
 PF2A_LIST = {
     ("pro", "month", "GBP"): 2400, ("pro", "month", "USD"): 2900, ("pro", "month", "EUR"): 2700,
     ("pro", "year", "GBP"): 24000, ("pro", "year", "USD"): 29000, ("pro", "year", "EUR"): 27000,
-    ("studio", "month", "GBP"): 7900, ("studio", "month", "USD"): 9900, ("studio", "month", "EUR"): 8900,
-    ("studio", "year", "GBP"): 79000, ("studio", "year", "USD"): 99000, ("studio", "year", "EUR"): 89000,
-    ("team", "year", "GBP"): 119000, ("team", "year", "USD"): 178800, ("team", "year", "EUR"): 139000,
+    ("team", "year", "GBP"): 119000, ("team", "year", "USD"): 149000, ("team", "year", "EUR"): 134000,
 }
 # Team per seat per month: the annual charge / 12, billed annually.
-PF2A_TEAM_PER_MONTH = {"GBP": 9917, "USD": 14900, "EUR": 11583}
+PF2A_TEAM_PER_MONTH = {"GBP": 9917, "USD": 12417, "EUR": 11167}
 # The annual prices at 30 % off.
 PF2A_FOUNDING = {
     ("pro", "GBP"): 16800, ("pro", "USD"): 20300, ("pro", "EUR"): 18900,
-    ("studio", "GBP"): 55300, ("studio", "USD"): 69300, ("studio", "EUR"): 62300,
-    ("team", "GBP"): 83300, ("team", "USD"): 125160, ("team", "EUR"): 97300,
+    ("team", "GBP"): 83300, ("team", "USD"): 104300, ("team", "EUR"): 93800,
 }
-PF2A_NAMES = {"pro": "Pro", "studio": "Studio", "team": "Team"}
+PF2A_NAMES = {"pro": "Pro", "team": "Team"}
 
 
 def pf2a_allowed(currency: str | None = None) -> set[tuple[str, int]]:
@@ -617,8 +624,9 @@ def test_site_pf2a_pricing_amounts_exact(built):
     # The founding banner speaks of annual plans (catalogue founding.intervals).
     banner = doc.text(doc.all(data_founding=True)[0])
     for words in ("300 founding seats", "30 % off annual plans", "31 January 2027",
-                  "Pro £168", "Studio £553", "Team £833 per seat"):
+                  "Pro £168", "Team £833 per seat"):
         assert words in banner, words
+    assert "Studio" not in doc.visible_text(), "Studio is unlisted"
     faq = " ".join(doc.faq_visible())
     assert "Can I pay for Team monthly?" in faq and "Price at launch" not in doc.visible_text()
 
@@ -640,8 +648,9 @@ def test_site_pf2a_teasers_and_developers(built):
     text = dev.visible_text()
     assert not amounts(text), "no price on /developers/"
     rows = [dev.text(r) for r in dev.all("tr")]
-    for name in ("Free", "Pro", "Studio", "Team", "Enterprise"):
+    for name in ("Free", "Pro", "Team", "Enterprise"):
         assert any(r.startswith(name) for r in rows), name
+    assert not any(r.startswith("Studio") for r in rows), "Studio is unlisted"
 
 
 def test_site_pf2a_every_interval_and_currency(tmp_path):

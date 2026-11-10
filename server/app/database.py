@@ -161,6 +161,12 @@ _ADDED_COLUMNS.setdefault("projects", []).append(("comments_rev", "BIGINT"))
 # PF6c, every job that is not a set's tiles job).
 _ADDED_COLUMNS.setdefault("render_jobs", []).append(("trigger", "JSON"))
 
+# Support API (the Truebex Desk's gates, routers/support.py): when an account
+# proved its address with a one-time e-mail code (NULL = never), and a link
+# code's purpose ("support" = started by the Desk; NULL = a device's).
+_ADDED_COLUMNS["users"].append(("email_verified_at", _TIMESTAMP))
+_ADDED_COLUMNS.setdefault("link_codes", []).append(("purpose", "VARCHAR(16)"))
+
 
 def _migrate(bind: Engine) -> None:
     insp = inspect(bind)
@@ -226,6 +232,8 @@ def init_db(bind: Engine | None = None, *, seed: bool = True) -> None:
     from .render import models as _render_models  # noqa: F401  (PF6, and metering's meter_daily)
     from .ai import models as _ai_models  # noqa: F401  (PF11: ai_*, and analysis_weather)
     from .webhooks import models as _webhook_models  # noqa: F401  (PF12)
+    from .support import models as _support_models  # noqa: F401  (support API: e-mail codes)
+    from . import password_reset as _password_reset  # noqa: F401  (password reset links)
 
     bind = bind or engine
     Base.metadata.create_all(bind=bind)

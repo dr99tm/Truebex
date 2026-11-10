@@ -10,7 +10,9 @@ each the offer covers, `founding.discount_percent` off: the annual prices of
 product and price, keyed by a lookup key `truebex_<tier>_<interval>_<cur>_<amount>[_founding]`
 (Paddle: the price's custom_data; Stripe: lookup_key), so a second run creates
 nothing. A changed amount is a new price; the old row stays in provider_prices
-(inactive) so webhooks for existing subscribers still map to their tier.
+(inactive) so webhooks for existing subscribers still map to their tier. A tier
+that is no longer sold (`purchasable: false`, e.g. Studio since 2026-11-10) is
+not mirrored: its rows go inactive the same way and keep mapping its subscribers.
 
 Run it whenever a price changes in catalogue.json, with the keys of the environment the
 API runs against (server/.env). Tax: prices follow the provider account's

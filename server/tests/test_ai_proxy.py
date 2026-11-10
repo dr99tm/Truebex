@@ -170,10 +170,10 @@ def test_refuse_when_credits_empty(client, fake):
     assert err["data"]["remaining"] == 0 and err["data"]["plan_needed"] == "studio"
     assert err["data"]["top_up_url"].endswith("/dashboard/cloud/#ai-credits") and err["data"]["resets_at"].endswith("T00:00:00Z")
     assert fake.of_path("/v1/messages") == []
-    # A pro trial is pointed at the next tier.
+    # A pro trial is pointed at the next tier on sale (Team: Studio is no longer sold).
     p = Person(client, "pro@example.com")
     set_remaining(p.user_id, 0)
-    assert error_of(send(client, dev(p), first_turn()), 403, "credits_exhausted")["data"]["plan_needed"] == "studio"
+    assert error_of(send(client, dev(p), first_turn()), 403, "credits_exhausted")["data"]["plan_needed"] == "team"
     # A started turn finishes below zero; the next one is refused.
     set_remaining(a.user_id, 10)
     fake.sse("window/01-find.sse")

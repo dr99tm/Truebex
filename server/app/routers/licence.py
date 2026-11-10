@@ -83,6 +83,9 @@ def lookup_link(
         "app_version": row.app_version,
         "status": row.status,
         "expires_at": clock.rfc3339(row.expires_at),
+        # Additive: "support" = Truebex support asked from a chat (the Desk),
+        # so the page can word it as a chat, not a computer.
+        "purpose": row.purpose or "device",
     }
 
 

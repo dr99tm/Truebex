@@ -86,6 +86,9 @@ class LinkCode(Base):
     last_poll_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    # Support API: "support" for a link the Truebex Desk started for a chat
+    # (its poll answers the account id, never a session); NULL = a device's.
+    purpose: Mapped[str | None] = mapped_column(String(16), nullable=True)
 
 
 class TrialFingerprint(Base):

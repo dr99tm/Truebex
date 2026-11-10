@@ -19,6 +19,7 @@ import { STATIC_CATALOG } from "@/lib/billing-catalog";
 import { linkedTierId } from "@/lib/billing-link";
 import { fill, foundingCovers, foundingPrice, intervalFor, perMonthOfYear } from "@/lib/catalogue";
 import { BILLING, ORG_BILLING } from "@/lib/constants";
+import { planName } from "@/lib/plans";
 import {
   cancelSubscription,
   changePlan,
@@ -77,7 +78,8 @@ type ItemName = { name: string; sized: string };
 /** PF2c: a plan's payment shows its tier; a one-off item's (an AI credit
  *  pack) its own name, with its size when the API knows it. */
 function paymentName(p: Payment, tiers: readonly PlanInfo[]): string {
-  if (!p.item) return tiers.find((t) => t.id === p.plan)?.name ?? p.plan;
+  // An unlisted plan (Studio) is not in the catalogue the API answers: its name comes from the site's copy.
+  if (!p.item) return tiers.find((t) => t.id === p.plan)?.name ?? planName(p.plan);
   const named = (BILLING.history.items as Record<string, ItemName | undefined>)[p.item];
   if (!named) return BILLING.history.otherItem;
   return p.credits ? fill(named.sized, { credits: formatCredits(p.credits) }) : named.name;
@@ -298,7 +300,7 @@ function CurrentPlan({
   const tier = sub?.tier ?? fallbackPlan;
   // An organisation without a subscription has no seats (not a Free plan).
   const orgWithout = isOrg && (!sub || sub.status === "none");
-  const name = orgWithout ? ORG_BILLING.noPlan : (cat.tiers.find((t) => t.id === tier)?.name ?? tier);
+  const name = orgWithout ? ORG_BILLING.noPlan : (cat.tiers.find((t) => t.id === tier)?.name ?? planName(tier));
   // A trial is a subscription row without billing (licence contract 5.6).
   const isTrial = sub?.provider === "trial";
   const hasSub = !!sub?.provider && !isTrial;
@@ -956,6 +958,12 @@ function ChangePanel({
             onChange={(e) => setTierId(e.target.value)}
             className="h-9 rounded-[var(--radius-button)] border border-border bg-background px-2 text-text-primary"
           >
+            {/* A plan no longer sold (Studio) stays shown as the current one until another is chosen. */}
+            {!buyable.some((t) => t.id === sub.tier) && (
+              <option value={sub.tier} disabled>
+                {planName(sub.tier)}
+              </option>
+            )}
             {buyable.map((t) => (
               <option key={t.id} value={t.id}>
                 {t.name}

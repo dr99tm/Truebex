@@ -1,13 +1,13 @@
 {
   "schema": "truebex-catalogue/1",
-  "source": "Tiers, features and limits: contracts/licence-api.md v1.0.0 section 6.3 placeholder matrix (2026-10-09; PF1 copies the GD7 matrix here). Prices, the founding offer and per-seat rules: the owner's pricing plan (PF2a, 2026-10-09). Team is per seat and annual only; founding prices are the annual prices at discount_percent off.",
+  "source": "Tiers, features and limits: contracts/licence-api.md v1.0.0 section 6.3 placeholder matrix (2026-10-09; PF1 copies the GD7 matrix here). Prices, the founding offer and per-seat rules: the owner's pricing plan (PF2a, 2026-10-09). Team is per seat and annual only; founding prices are the annual prices at discount_percent off. Studio is unlisted and not sold (2026-11-10: the same as Pro until its share links and cloud panoramas ship); its prices stay as the record of what an existing subscriber pays. Team annual per seat: USD 1,490, EUR 1,340 (2026-11-10).",
   "prices_final": true,
   "currencies": ["GBP", "USD", "EUR"],
   "founding": {
     "total": 300,
     "discount_percent": 30,
     "ends_at": "2027-01-31T23:59:59Z",
-    "tiers": ["pro", "studio", "team"],
+    "tiers": ["pro", "team"],
     "intervals": ["year"]
   },
   "tiers": [
@@ -50,7 +50,8 @@
       "id": "studio",
       "name": "Studio",
       "rank": 2,
-      "purchasable": true,
+      "purchasable": false,
+      "listed": false,
       "per_seat": false,
       "min_seats": 1,
       "prices": [
@@ -78,8 +79,8 @@
       "min_seats": 2,
       "prices": [
         {"interval": "year", "currency": "GBP", "amount_minor": 119000},
-        {"interval": "year", "currency": "USD", "amount_minor": 178800},
-        {"interval": "year", "currency": "EUR", "amount_minor": 139000}
+        {"interval": "year", "currency": "USD", "amount_minor": 149000},
+        {"interval": "year", "currency": "EUR", "amount_minor": 134000}
       ],
       "features": [
         "ai.byok", "ai.metered", "analysis.reports", "assets.library", "cloud.panoramas", "cloud.sync",

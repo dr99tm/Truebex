@@ -21,6 +21,16 @@ class UserLogin(BaseModel):
     break_glass_code: str | None = Field(default=None, max_length=64)
 
 
+class ForgotPassword(BaseModel):
+    email: EmailStr
+
+
+class ResetPassword(BaseModel):
+    # The link's token (from the URL fragment, never a query string).
+    token: str = Field(min_length=16, max_length=128)
+    password: str = Field(min_length=8, max_length=128)
+
+
 class GoogleLogin(BaseModel):
     # The ID token ("credential") returned by Google Identity Services.
     credential: str = Field(min_length=20, max_length=8192)

@@ -481,8 +481,9 @@ def test_org_seats_and_plan_changes_on_the_organisations_customer(client, on_str
     assert (res.json()["tier"], res.json()["seats"], res.json()["org_id"]) == ("team", 4, org["id"])
     assert on_stripe.modified[-1][0] == "sub_org" and on_stripe.modified[-1][2] == 4
 
-    res = client.post("/billing/change", json={"tier": "studio", "org_id": org["id"]}, headers=billing)
-    assert res.status_code == 200 and res.json()["tier"] == "studio", res.text
+    # Studio is no longer sold (2026-11-10): the move away from Team is to Pro.
+    res = client.post("/billing/change", json={"tier": "pro", "org_id": org["id"]}, headers=billing)
+    assert res.status_code == 200 and res.json()["tier"] == "pro", res.text
     res = client.post("/billing/change", json={"tier": "team", "org_id": org["id"]}, headers=buyer)
     assert res.status_code == 200 and (res.json()["tier"], res.json()["seats"]) == ("team", 2), res.text
     assert [m[0] for m in on_stripe.modified] == ["sub_org"] * 3

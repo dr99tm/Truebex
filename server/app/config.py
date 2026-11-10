@@ -263,6 +263,13 @@ class Settings(BaseSettings):
     # Seconds a delivery may take before it counts as failed.
     webhooks_timeout_s: float = 15.0
 
+    # --- Support API (the Truebex Desk's gates, routers/support.py) ------------------
+    # The secret the Desk signs /internal/support/* requests with (Standard
+    # Webhooks style: `whsec_` + base64 of 32 random bytes; docs/support-api.md).
+    # "whsec_new,whsec_old" accepts either during a rotation. Empty = every
+    # /internal/support route answers 404.
+    support_service_secret: str = ""
+
     # --- Outbound requests pinned to checked addresses (PF14b) ---------------------
     # SSO issuers on loopback or private-network addresses (an identity provider
     # on the office network, the mock provider with API_URL on a LAN address).

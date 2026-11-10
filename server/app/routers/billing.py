@@ -98,10 +98,14 @@ def _price_http(exc: PriceUnavailable) -> HTTPException:
 @router.get("/plans", response_model=BillingCatalog)
 def catalog(db: Session = Depends(get_db)) -> BillingCatalog:
     """Public: tiers, prices per interval and currency, the founding offer and
-    the provider offered at checkout."""
+    the provider offered at checkout. Unlisted tiers (Studio) are left out:
+    nobody new can buy them, and a subscriber's plan name comes from the site's
+    own copy of the catalogue."""
     wayl_on = providers.get_provider("wayl", settings).enabled()
     tiers = []
     for plan in PLANS.values():
+        if not plan.listed:
+            continue
         prices = [
             PriceOut(interval=p.interval, currency=p.currency, amount_minor=p.amount_minor)
             for p in plan.prices
@@ -600,7 +604,12 @@ def invoices(
 ) -> list[InvoiceOut]:
     """VAT invoices from every provider the user has bought through: their
     own, or (PF3a) the organisation's, whichever of its people paid them."""
-    org = _org(db, org_id, current)
+    return invoice_list(db, current, _org(db, org_id, current))
+
+
+def invoice_list(db: Session, current: User, org: Organisation | None) -> list[InvoiceOut]:
+    """GET /billing/invoices' list, newest first (the support API's too). A
+    provider failure raises 502 (`_bad_gateway`)."""
     out: list[InvoiceOut] = []
     for name in ("paddle", "stripe"):
         adapter = providers.get_provider(name, settings)

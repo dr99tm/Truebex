@@ -73,6 +73,8 @@ def _load_jobs() -> None:
     from .render import jobs as _render  # noqa: F401  (PF6: render.*)
     from .ai import jobs as _ai  # noqa: F401  (PF11: ai.*)
     from .webhooks import jobs as _webhooks  # noqa: F401  (PF12: webhooks.*)
+    from .support import jobs as _support  # noqa: F401  (support.codes.purge)
+    from . import password_reset  # noqa: F401  (auth.password_resets.purge)
 
 
 def jobs() -> dict[str, Job]:

@@ -85,7 +85,8 @@ def test_billing_plans_lists_tiers_without_wayl(client):
     res = client.get("/billing/plans")
     assert res.status_code == 200
     cat = res.json()
-    assert [t["id"] for t in cat["tiers"]] == ["free", "pro", "studio", "team", "enterprise"]
+    # Studio is unlisted (2026-11-10): neither shown nor sold.
+    assert [t["id"] for t in cat["tiers"]] == ["free", "pro", "team", "enterprise"]
     assert cat["provider"] == "paddle"
     pro = next(t for t in cat["tiers"] if t["id"] == "pro")
     pairs = {(p["interval"], p["currency"]) for p in pro["prices"]}
@@ -202,7 +203,7 @@ def test_billing_checkout_coupon_passed_to_paddle(client, paddle):
 def test_billing_checkout_conflict_when_subscribed(client, paddle):
     h = signup(client)
     _, events = buy(client, h, paddle)
-    res = client.post("/billing/checkout", json=checkout_body(tier="studio"), headers=h)
+    res = client.post("/billing/checkout", json=checkout_body(tier="pro", interval="year"), headers=h)
     assert res.status_code == 409
     # A failed renewal: the plan lapses, the card is fixed under Manage, and a
     # second subscription cannot be bought on top.
@@ -212,7 +213,7 @@ def test_billing_checkout_conflict_when_subscribed(client, paddle):
     assert me(client, h)["plan"] == "free"
     sub = client.get("/billing/subscription", headers=h).json()
     assert sub["status"] == "past_due" and sub["can_manage"]
-    res = client.post("/billing/checkout", json=checkout_body(tier="studio"), headers=h)
+    res = client.post("/billing/checkout", json=checkout_body(tier="pro", interval="year"), headers=h)
     assert res.status_code == 409
 
 
@@ -728,7 +729,7 @@ def test_billing_no_client_side_plan_grant(client, paddle):
         ("post", "/billing/activate", {"plan": "pro"}),
         ("post", "/billing/seats", {"seats": 9}),
         ("post", "/billing/change", {"tier": "team"}),
-        ("post", "/billing/checkout", checkout_body(tier="studio", status="paid", founding=True)),
+        ("post", "/billing/checkout", checkout_body(tier="pro", status="paid", founding=True)),
         ("post", "/billing/portal", None),
         ("get", "/billing/invoices", None),
     ]
@@ -771,11 +772,11 @@ def test_billing_purchase_ends_trial(client, paddle):
         db.add(Subscription(user_id=uid, plan="pro", provider="trial", status="active",
                             current_period_end=datetime.now(timezone.utc) + timedelta(days=10)))
         db.commit()
-    buy(client, h, paddle, tier="studio")
+    buy(client, h, paddle, tier="team", interval="year", seats=2)
     with SessionLocal() as db:
         trial = db.scalar(select(Subscription).where(Subscription.provider == "trial"))
         assert trial.status == "canceled"
-    assert me(client, h)["plan"] == "studio"
+    assert me(client, h)["plan"] == "team"
 
 
 def test_tasks_registry_and_run_due():

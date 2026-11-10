@@ -101,7 +101,7 @@ def parse_json(raw: bytes) -> object:
 def require_feature(plan) -> None:
     if credits.FEATURE not in plan.features:
         raise ContractError(
-            "plan_required", 403, "Truebex AI comes with Pro, Studio, Team and the trial. Upgrade to use it.",
+            "plan_required", 403, "Truebex AI comes with Pro, Team and the trial. Upgrade to use it.",
             {"feature": credits.FEATURE, "plan": plan.id, "plan_needed": credits.plan_needed(plan)},
         )
 

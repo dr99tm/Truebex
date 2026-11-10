@@ -63,7 +63,8 @@ def test_pf2f_plan_in_any_case_preselects_its_tier(tmp_path):
 def test_pf2f_tier_in_any_case_and_tier_before_plan(tmp_path):
     """?tier= in any case the same, with ?interval=, ?currency= and ?seats=
     applied to the preselected tier as for the lower-case link; ?tier= wins
-    over ?plan=."""
+    over ?plan=. A link to Studio (no longer sold since 2026-11-10, so not in
+    the page's catalogue) preselects the first tier on sale, Pro, in any case."""
     queries = [
         {"tier": "Studio"},
         {"tier": "studio"},
@@ -77,13 +78,13 @@ def test_pf2f_tier_in_any_case_and_tier_before_plan(tmp_path):
     studio, studio_lc, team_over_pro, team_over_pro_lc, team5, team5_lc, studio_y, studio_y_lc = _link(
         [(q, False) for q in queries], tmp_path
     )
-    assert studio["id"] == "studio" and _shown(studio) == _shown(studio_lc) == ("studio", "month", 1, 7900)
+    assert _shown(studio) == _shown(studio_lc) == ("pro", "month", 1, 2400)
     assert team_over_pro["id"] == team_over_pro_lc["id"] == "team"
     assert _shown(team_over_pro) == _shown(team_over_pro_lc) == ("team", "year", 2, 119000)
     assert team5["id"] == "team" and _shown(team5) == _shown(team5_lc)
     assert _shown(team5)[:3] == ("team", "year", 5)  # annual only, the link's seats
-    assert studio_y["id"] == "studio" and _shown(studio_y) == _shown(studio_y_lc)
-    assert _shown(studio_y)[:2] == ("studio", "year")
+    assert _shown(studio_y) == _shown(studio_y_lc)
+    assert _shown(studio_y)[:2] == ("pro", "year")
     assert studio["before"]["tier"] == team5["before"]["tier"] == "pro"  # master's reading
 
 
@@ -96,7 +97,7 @@ def test_pf2f_lower_case_links_unchanged(tmp_path):
     catalogue = json.loads(CATALOGUE.read_text(encoding="utf-8"))
     assert all(re.fullmatch(r"[a-z]+", t["id"]) for t in catalogue["tiers"])
     buyable = [t["id"] for t in catalogue["tiers"] if t["purchasable"]]
-    assert buyable == ["pro", "studio", "team"]
+    assert buyable == ["pro", "team"]  # Studio is no longer sold (2026-11-10)
     pricing = [
         {"tier": tid, "interval": iv, "currency": cur}
         for tid in buyable

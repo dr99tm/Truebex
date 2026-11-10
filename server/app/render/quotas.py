@@ -173,7 +173,7 @@ def set_overage_cap(db: Session, user: User, cap: Decimal) -> Decimal:
     plan = plan_of(db, user)
     if cap > 0 and not overage_allowed(plan):
         raise ContractError(
-            "plan_required", 403, "Going past the monthly allowance comes with Studio and Team.",
+            "plan_required", 403, "Going past the monthly allowance comes with Team.",
             {"feature": "cloud.overage", "plan": plan.id},
         )
     cap = cap.quantize(TENTH)

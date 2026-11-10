@@ -44,6 +44,17 @@ export function login(email: string, password: string, breakGlassCode?: string):
   return signIn("/auth/login", breakGlassCode ? { email, password, break_glass_code: breakGlassCode } : { email, password });
 }
 
+/** Ask for a password reset link. The API answers the same whether or not
+ *  the address has an account. */
+export async function requestPasswordReset(email: string): Promise<void> {
+  await api<{ status: string }>("/auth/password/forgot", { method: "POST", json: { email }, auth: false });
+}
+
+/** Set a new password with the token from a reset link, and sign in. */
+export function resetPassword(token: string, password: string): Promise<AuthResult> {
+  return signIn("/auth/password/reset", { token, password });
+}
+
 /** Exchange a Google Identity Services credential for a Truebex session. */
 export function googleLogin(credential: string): Promise<AuthResult> {
   return signIn("/auth/google", { credential });

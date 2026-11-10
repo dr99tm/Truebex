@@ -45,9 +45,12 @@ def test_catalogue_existing_plans_keep_working(client):
     assert (get_plan("free").monthly_requests, get_plan("free").max_api_keys) == (1_000, 2)
     assert (get_plan("pro").monthly_requests, get_plan("pro").max_api_keys) == (100_000, 20)
     assert get_plan("enterprise").monthly_requests == 5_000_000
-    # Sold online: the tiers PF2 priced (Free and Enterprise are not).
-    assert [p.id for p in PLANS.values() if p.purchasable] == ["pro", "studio", "team"]
+    # Sold online: the tiers PF2 priced (Free and Enterprise are not), less
+    # Studio, unlisted since 2026-11-10 (the same as Pro until its extras ship).
+    assert [p.id for p in PLANS.values() if p.purchasable] == ["pro", "team"]
     assert all(p.prices for p in PLANS.values() if p.purchasable)
+    assert [p.id for p in PLANS.values() if not p.listed] == ["studio"]
+    assert get_plan("studio").prices and not get_plan("studio").purchasable
 
     h = signup(client)
     uid = client.get("/auth/me", headers=h).json()["id"]
@@ -81,4 +84,36 @@ def test_catalogue_existing_plans_keep_working(client):
     # tiers and prices; the API limits above come from the same catalogue).
     tiers = {t["id"]: t for t in client.get("/billing/plans").json()["tiers"]}
     assert tiers["free"]["name"] == "Free" and tiers["pro"]["name"] == "Pro"
-    assert [t["id"] for t in tiers.values() if t["purchasable"]] == ["pro", "studio", "team"]
+    assert [t["id"] for t in tiers.values() if t["purchasable"]] == ["pro", "team"]
+    assert "studio" not in tiers
+
+
+def test_catalogue_unlisted_studio_keeps_its_subscribers(client):
+    """Studio is unlisted and not sold since 2026-11-10 (the same as Pro until
+    its extras ship): /billing/plans leaves it out and checkout refuses it,
+    while an existing Studio subscription keeps its plan, its name and its
+    entitlements."""
+    from app.ai.credits import plan_needed
+    from app.licence.service import account_panel
+
+    from .conftest import checkout_body
+
+    assert "studio" not in {t["id"] for t in client.get("/billing/plans").json()["tiers"]}
+    h = signup(client)
+    res = client.post("/billing/checkout", json=checkout_body(tier="studio"), headers=h)
+    assert res.status_code == 400 and "can't be bought" in res.json()["detail"]
+    # Pro credits point at a tier on sale.
+    assert plan_needed(get_plan("pro")) == "team"
+
+    uid = client.get("/auth/me", headers=h).json()["id"]
+    soon = datetime.now(timezone.utc) + timedelta(days=20)
+    with SessionLocal() as db:
+        db.add(Subscription(user_id=uid, plan="studio", provider="paddle", status="active",
+                            interval="month", currency="GBP", current_period_end=soon))
+        db.commit()
+    assert client.get("/auth/me", headers=h).json()["plan"] == "studio"
+    assert client.get("/billing/subscription", headers=h).json()["tier"] == "studio"
+    with SessionLocal() as db:
+        panel = account_panel(db, db.get(User, uid), None)
+    assert (panel["plan"], panel["plan_name"]) == ("studio", "Studio")
+    assert set(get_plan("studio").features) == set(get_plan("pro").features)

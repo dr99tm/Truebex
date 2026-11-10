@@ -58,6 +58,12 @@ class User(Base):
     # Set by hand for the owner (like "enterprise"); gates /admin/*. Nullable
     # because database._ADDED_COLUMNS adds it to existing databases.
     is_admin: Mapped[bool | None] = mapped_column(Boolean, default=False, nullable=True)
+    # Support API: when the account last proved it controls its address (a
+    # one-time e-mail code, app/support/codes.py). NULL = never verified;
+    # /auth/register does not verify, so its accounts start NULL.
+    email_verified_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
 
 class ApiKey(Base):

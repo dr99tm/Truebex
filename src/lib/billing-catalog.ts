@@ -6,7 +6,10 @@
 import raw from "../../server/app/catalogue.json";
 import type { Catalog, Interval, PlanInfo } from "@/lib/developer";
 
-export const CATALOGUE_TIERS: PlanInfo[] = raw.tiers.map((t) => ({
+// Listed tiers only, as GET /billing/plans answers: an unlisted tier (Studio
+// since 2026-11-10) is not offered; a subscriber's plan name comes from
+// src/lib/plans.ts.
+export const CATALOGUE_TIERS: PlanInfo[] = raw.tiers.filter((t) => !("listed" in t) || t.listed !== false).map((t) => ({
   id: t.id,
   name: t.name,
   purchasable: t.purchasable,

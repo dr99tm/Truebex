@@ -43,6 +43,8 @@ from .uploads import jobs as _upload_jobs  # noqa: F401  (PF5: uploads.expire)
 from .routers import shares, uploads  # PF5
 from .routers import mobile as mobile_router  # PF9: a project's panorama sets for members
 from .routers import market_basket  # PF7b: the Buy this look basket page's route
+from .routers import support as support_router  # the Truebex Desk's signed gates (/internal/support)
+from .support import jobs as _support_jobs  # noqa: F401  (support.codes.purge)
 
 settings = get_settings()
 
@@ -166,3 +168,5 @@ app.include_router(analysis_ai_router.router)
 v1.install(app)
 app.include_router(mobile_router.router)  # PF9
 app.include_router(market_basket.router)  # PF7b
+# The Truebex Desk's server-to-server gates: hidden, signed, 404 without SUPPORT_SERVICE_SECRET
+app.include_router(support_router.router)
