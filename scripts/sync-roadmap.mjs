@@ -12,6 +12,9 @@
 //   unticked, a branch in "Code today"     -> in progress   ("—" = not started)
 //   item: every plan shipped -> shipped; any started or shipped -> in_progress;
 //   else planned.
+// "Shipped" on the site means a customer can have it: while the stable release
+// feed (src/content/releases.json, from `npm run sync:releases`) has no release,
+// a merged item shows as in_progress instead (2026-11-13).
 // Only `status` is written; the public words stay as written by hand, and
 // nothing moves into FEATURES (src/lib/constants.ts) automatically.
 // Runs on the owner's machine before a deploy, never inside the build.
@@ -25,16 +28,18 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
 function usage(msg) {
   if (msg) console.error(`sync-roadmap: ${msg}`);
-  console.error("usage: node scripts/sync-roadmap.mjs <app README.md> <platform README.md> [--roadmap <file>] [--check]");
+  console.error("usage: node scripts/sync-roadmap.mjs <app README.md> <platform README.md> [--roadmap <file>] [--releases <file>] [--check]");
   process.exit(2);
 }
 
 const args = process.argv.slice(2);
 let roadmapFile = path.join(root, "src", "content", "roadmap.json");
+let releasesFile = path.join(root, "src", "content", "releases.json");
 let check = false;
 const trackers = [];
 for (let i = 0; i < args.length; i++) {
   if (args[i] === "--roadmap") roadmapFile = path.resolve(args[++i] ?? usage("--roadmap needs a file"));
+  else if (args[i] === "--releases") releasesFile = path.resolve(args[++i] ?? usage("--releases needs a file"));
   else if (args[i] === "--check") check = true;
   else if (args[i] === "-h" || args[i] === "--help") usage();
   else trackers.push(path.resolve(args[i]));
@@ -82,6 +87,11 @@ function readTracker(file) {
 
 const states = new Map([...readTracker(trackers[0]), ...readTracker(trackers[1])]);
 
+// Nothing is "shipped" to customers before the first published stable release.
+const feed = fs.existsSync(releasesFile) ? JSON.parse(fs.readFileSync(releasesFile, "utf8")) : null;
+const released = Boolean(feed && (feed.latest || (Array.isArray(feed.releases) && feed.releases.length)));
+if (!released) console.log("sync-roadmap: no published release yet, so merged items show as in_progress");
+
 const doc = JSON.parse(fs.readFileSync(roadmapFile, "utf8"));
 const unknown = [];
 const changes = [];
@@ -90,7 +100,7 @@ for (const item of doc.items) {
     if (!states.has(id)) unknown.push(`${item.id}: ${id}`);
     return states.get(id) ?? "planned";
   });
-  const status = plan.every((s) => s === "shipped")
+  const status = plan.every((s) => s === "shipped") && released
     ? "shipped"
     : plan.some((s) => s !== "planned")
       ? "in_progress"
