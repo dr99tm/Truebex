@@ -9,7 +9,7 @@
 | Area | Where (master cc905d3) | Before |
 |---|---|---|
 | Not-found page | no `src/app/not-found.tsx` | Next's default not-found page, exported three times: `out/404.html`, `out/404/index.html`, `out/_not-found/index.html` |
-| Titles | Next's default component + `src/app/layout.tsx:22` `title.default` | two `<title>`s: `404: This page could not be found.` and `Truebex — See It Before You Build It` |
+| Titles | Next's default component + `src/app/layout.tsx:22` `title.default` | two `<title>`s: `404: This page could not be found.` and the site's default title of that time |
 | Robots | Next's own tag + `src/app/layout.tsx:67` `robots` | three tags: `noindex` (Next), then the layout's `index, follow` and googlebot `index, follow, max-image-preview:large` |
 | Body | Next's default | `404 \| This page could not be found.` (black on white, or white on black), under the Navbar, with no link anywhere but the Navbar |
 | Local server | `scripts/serve-out.py` (`SimpleHTTPRequestHandler`) | a missing path answers Python's plain "Error response … 404" page, so no human test ever showed the site's 404 page |
@@ -96,7 +96,7 @@ PF13b's gate (`test_site_pf13b.py`, unchanged) still checks every page's canonic
 About 3 minutes. Set-up, in the worktree: `powershell -NoProfile -ExecutionPolicy Bypass -File scripts\autopilot-serve.ps1`. It prints `serving … on http://127.0.0.1:3185/` (3100 + the task number). If it prints another port, use that port below. No API is needed.
 
 1. In Edge or Chrome, open `http://127.0.0.1:3185/no-such-page/` → the Truebex page: the Navbar, `404 · PAGE NOT FOUND`, **Nothing stands at this address**, one line, and three buttons: `Go to the home page`, `Download for Windows`, `Pricing`. The tab reads `Page not found · Truebex`. Press F12 → Network, then Ctrl+R → the first row, `no-such-page/`, has status **404**.
-2. Click `Go to the home page` → the home page (`http://127.0.0.1:3185/`, "See it before you build it.").
+2. Click `Go to the home page` → the home page (`http://127.0.0.1:3185/`, "Imagine More. Build Better.").
 3. Open `view-source:http://127.0.0.1:3185/no-such-page/`. Ctrl+F `<title` → one match, `<title>Page not found · Truebex</title>`. Ctrl+F `name="robots"` → two matches, both `<meta name="robots" content="noindex"/>`. Ctrl+F `googlebot` → no match. Ctrl+F `canonical` → no match.
 4. Back on the page, F12 → the device toolbar (Ctrl+Shift+M), width 390 → the heading on two lines, the line under it, the three buttons stacked full width, and no sideways scroll.
 5. Open `view-source:http://127.0.0.1:3185/` → `<link rel="canonical" href="https://truebex.com/"/>` and three `<link rel="alternate" hrefLang=…>` tags, as before: `en` → `https://truebex.com/`, `ar` → `https://truebex.com/ar/`, `x-default` → `https://truebex.com/`.
@@ -117,7 +117,7 @@ About 3 minutes. Set-up, in the worktree: `powershell -NoProfile -ExecutionPolic
 
   | Tag | Before | After |
   |---|---|---|
-  | `<title>` | `404: This page could not be found.` and `Truebex — See It Before You Build It` | `Page not found · Truebex` |
+  | `<title>` | `404: This page could not be found.` and the site's default title of that time | `Page not found · Truebex` |
   | robots | `noindex` (Next), `index, follow` (layout) | `noindex` (Next), `noindex` (the page) |
   | googlebot | `index, follow, max-image-preview:large` | none |
   | canonical | none (since PF13b) | none |

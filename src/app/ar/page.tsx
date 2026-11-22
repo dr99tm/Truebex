@@ -1,7 +1,5 @@
 import type { Metadata } from "next";
 import Image from "next/image";
-import Link from "next/link";
-import { Mail } from "lucide-react";
 import { Footer } from "@/components/layout/Footer";
 import { Section } from "@/components/layout/Section";
 import { SectionHeading } from "@/components/ui/SectionHeading";
@@ -11,7 +9,8 @@ import { FaqList } from "@/components/sections/FaqList";
 import { TierCards } from "@/components/pricing/TierCards";
 import { annualSavingPercent, anyPriced } from "@/lib/catalogue";
 import { loadCatalogue } from "@/lib/catalogue-data";
-import { AR_HOME, AUDIENCES, FEATURES, PRICING, PRODUCT_SHOT, SITE } from "@/lib/constants";
+import { ContactButtons } from "@/components/sections/ContactButtons";
+import { AR_HOME, AUDIENCES, FEATURES, PRELAUNCH, PRICING, PRODUCT_SHOT } from "@/lib/constants";
 import { pickTiers } from "@/lib/pricing";
 import { ROADMAP_ITEMS, roadmapIcon, STATUS_CLASS } from "@/lib/roadmap";
 import { faqLd, HOME_LANGUAGES, ldJson, pageMetadata, webPageLd } from "@/lib/seo";
@@ -156,7 +155,8 @@ export default function ArabicHome() {
           </div>
         </Section>
 
-        {/* Pricing teaser */}
+        {/* Pricing teaser (hidden before launch) */}
+        {!PRELAUNCH.hidePricing && (
         <Section id="pricing">
           <SectionHeading title={t.pricing.title} subtitle={t.pricing.subtitle} />
           <TierCards
@@ -173,6 +173,7 @@ export default function ArabicHome() {
             </a>
           </p>
         </Section>
+        )}
 
         {/* Roadmap */}
         <Section id="roadmap">
@@ -224,15 +225,7 @@ export default function ArabicHome() {
                 {t.contact.titleStart} <span className="gradient-text">{t.contact.titleAccent}</span>
               </h2>
               <p className="mt-6 text-lg leading-loose text-text-secondary">{t.contact.body}</p>
-              <div className="mt-10 flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
-                <a href={`mailto:${SITE.email}?subject=Truebex`} className={primary}>
-                  <Mail size={18} className="me-2" aria-hidden />
-                  {t.contact.email}
-                </a>
-                <Link href="/#contact" hrefLang="en" className={secondary}>
-                  {t.contact.form}
-                </Link>
-              </div>
+              <ContactButtons copy={t.contact} privacyHref="/privacy/" />
             </div>
           </Section>
         </section>

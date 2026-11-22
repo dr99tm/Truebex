@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 
 export default function PrivacyPage() {
   return (
-    <LegalPage title="Privacy Policy" updated="October 9, 2026">
+    <LegalPage title="Privacy Policy" updated="November 22, 2026">
       <p>
         This policy explains what information Truebex (&ldquo;we&rdquo;)
         collects when you use truebex.com, your Truebex account, the
@@ -21,6 +21,14 @@ export default function PrivacyPage() {
 
       <h2>What we collect</h2>
       <ul>
+        <li>
+          <strong>The early-adopter and tester list.</strong> If you write to
+          us by email or WhatsApp to join it, we keep your name, the address
+          or number you wrote from, what you tell us about your work, whether
+          you want to be an early adopter or a tester, and the date you
+          agreed. We use it only to manage the list and to reply to you. Ask
+          us at any time and we will remove you.
+        </li>
         <li>
           <strong>Account details.</strong> Your email address and, if you sign
           up with a password, a one-way hash of it (never the password itself).

@@ -18,7 +18,7 @@ import { API_URL, formatDate } from "@/lib/api";
 import { STATIC_CATALOG } from "@/lib/billing-catalog";
 import { linkedTierId } from "@/lib/billing-link";
 import { fill, foundingCovers, foundingPrice, intervalFor, perMonthOfYear } from "@/lib/catalogue";
-import { BILLING, ORG_BILLING } from "@/lib/constants";
+import { BILLING, ORG_BILLING, PLANS_HREF, PRELAUNCH, PRELAUNCH_BILLING } from "@/lib/constants";
 import { planName } from "@/lib/plans";
 import {
   cancelSubscription,
@@ -594,7 +594,19 @@ function BillingManager({ org }: { org: OrgDetail | null }) {
 
       {!org && <OrgsYouBuyFor />}
 
-      {showChoose && (
+      {showChoose && PRELAUNCH.hidePricing && (
+        <Panel className="mt-6" data-prelaunch="plans">
+          <h2 className="font-semibold">{PRELAUNCH_BILLING.heading}</h2>
+          <p className="mt-2 text-sm text-text-secondary">{PRELAUNCH_BILLING.text}</p>
+          <p className="mt-4">
+            <Button href={PLANS_HREF} variant="secondary" size="sm">
+              {PRELAUNCH_BILLING.cta}
+            </Button>
+          </p>
+        </Panel>
+      )}
+
+      {showChoose && !PRELAUNCH.hidePricing && (
         <Panel className="mt-6">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <h2 className="font-semibold">{BILLING.choose.heading}</h2>
@@ -708,7 +720,7 @@ function BillingManager({ org }: { org: OrgDetail | null }) {
                 />
               </label>
               <p className="text-sm">
-                <Link href="/pricing/" className="text-accent hover:underline">
+                <Link href={PLANS_HREF} className="text-accent hover:underline">
                   {BILLING.choose.compare}
                 </Link>
               </p>

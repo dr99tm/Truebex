@@ -33,7 +33,49 @@ export const SITE = {
     "Building design software for architects and interior designers: explore more options, compare finishes in context and experience the space before you build.",
   email: "contact@truebex.com",
   supportEmail: "support@truebex.com",
+  // The WhatsApp number people write to, digits only with the country code
+  // and no "+" (wa.me form). Empty: the site shows no WhatsApp button. Use
+  // only the number whose messages land in Truebex Desk.
+  whatsapp: "",
 } as const;
+
+// Pre-launch (owner, 2026-11-22): no prices or plans on the public site, and
+// the one call to action is to write to us by email or WhatsApp to join the
+// early-adopter or tester list. `hidePricing: false` brings back /pricing/,
+// the home teasers, the Pricing links, the sitemap entry and the JSON-LD
+// offers; nothing else needs to change.
+export const PRELAUNCH: { hidePricing: boolean } = { hidePricing: true };
+
+// How the copy names the ways to write to us: WhatsApp is named only once the
+// site has a number, so no page promises a channel it does not show.
+const hasWhatsApp = Boolean(SITE.whatsapp);
+const WRITE_TO_US = hasWhatsApp ? "Write to us by email or WhatsApp" : "Write to us by email";
+const WRITE_TO_US_AR = hasWhatsApp ? "راسلنا بالبريد الإلكتروني أو عبر واتساب" : "راسلنا بالبريد الإلكتروني";
+
+/** Links without the pricing page or the pricing teaser while pricing is hidden. */
+/** Where "see the plans" links go: the contact section while pricing is hidden. */
+export const PLANS_HREF = PRELAUNCH.hidePricing ? "/#contact" : "/pricing/";
+
+// /pricing/ while pricing is hidden: a short noindex note with the contact buttons.
+export const PRELAUNCH_PLANS = {
+  title: "Early adopters",
+  description: `Truebex is getting ready for its first early adopters and testers. ${WRITE_TO_US} to join the list.`,
+  eyebrow: "Before launch",
+  heading: "Plans are published at launch",
+  intro: `Truebex is getting ready for its first early adopters and testers. ${WRITE_TO_US}, tell us what you design, and we'll add you to the list.`,
+} as const;
+
+// The dashboard's Billing page while pricing is hidden, in place of the plan chooser.
+export const PRELAUNCH_BILLING = {
+  heading: "Paid plans open at launch",
+  text: "Truebex is getting ready for its first early adopters and testers. Write to us and we'll add you to the list.",
+  cta: "Contact us",
+} as const;
+
+function publicLinks<T extends { href: string }>(links: readonly T[]): readonly T[] {
+  return PRELAUNCH.hidePricing ? links.filter((l) => !l.href.includes("pricing")) : links;
+}
+
 
 // The home page's hero (Hero.tsx).
 export const HERO = {
@@ -42,7 +84,7 @@ export const HERO = {
   titleAccent: "Build Better.",
   subtitle:
     "Explore design options, compare materials and finishes in context, check dimensions and areas, and step inside your space in realistic light — before construction begins, in one connected workflow.",
-  primary: { label: "Request a Demo", href: "/#contact" },
+  primary: { label: "Join the early adopters", href: "/#contact" },
   secondary: { label: "Explore the Platform", href: "/#features" },
   note: "Make room for better ideas — and make decisions with greater confidence.",
 } as const;
@@ -65,7 +107,7 @@ export const ABOUT = {
 // Absolute hrefs (/#section, not #section) so the links work from any route,
 // not just the homepage. From /dashboard/ a bare #features would resolve to
 // /dashboard/#features (no such section); /#features navigates home first.
-export const NAV_LINKS = [
+export const NAV_LINKS = publicLinks([
   { label: "Platform", href: "/#features" },
   { label: "How It Works", href: "/#how-it-works" },
   { label: "Who It's For", href: "/#who-its-for" },
@@ -73,11 +115,11 @@ export const NAV_LINKS = [
   { label: "Developers", href: "/developers/" },
   { label: "FAQ", href: "/#faq" },
   { label: "Contact", href: "/#contact" },
-] as const;
+] as const);
 
 export const NAV_UI = {
   login: "Log in",
-  demo: "Request Demo",
+  demo: "Early adopters",
   demoHref: "/#contact",
   dashboard: "Dashboard",
   home: "Truebex home",
@@ -275,8 +317,20 @@ export const PRINCIPLES = [
 export const CONTACT_CTA = {
   titleStart: "Your next project has",
   titleAccent: "more possibilities.",
-  body: "Explore a more connected way to design, compare options and experience your ideas before construction begins. Request a demo and we'll show you Truebex on a project like yours.",
+  body: `Truebex is getting ready for its first early adopters and testers. ${WRITE_TO_US}, tell us what you design, and we'll add you to the list.`,
+  email: "Email us",
+  whatsapp: "Message us on WhatsApp",
+  // The email's subject and the WhatsApp message's first words.
+  subject: "Truebex early adopters",
+  whatsappText: "Hello Truebex, I'd like to join the early-adopter list.",
+  note: "We keep your name, your contact details and what you tell us, only to manage this list and to reply to you. Ask us at any time and we'll remove you.",
+  privacy: "Privacy",
 } as const;
+
+/** The WhatsApp chat link for the site's number, or "" while there is none. */
+export function whatsappHref(text: string): string {
+  return SITE.whatsapp ? `https://wa.me/${SITE.whatsapp}?text=${encodeURIComponent(text)}` : "";
+}
 
 export const FAQS = [
   {
@@ -307,10 +361,19 @@ export const FAQS = [
     q: "Does Truebex work with IFC and DWG files?",
     a: "Today Truebex exports vector PDF and DXF. IFC and DWG import and export are on the roadmap, together with sharing a project with your team.",
   },
-  {
-    q: "How can I pay?",
-    a: "Pro is billed monthly or annually by card, and Team annually per seat. You choose a plan and pay from Billing in your dashboard: VAT or sales tax for your country is shown before you pay and on your invoice. You can cancel renewal at any time. When online payment isn't available, Billing says so and how to reach us.",
-  },
+  ...(PRELAUNCH.hidePricing
+    ? [
+        {
+          q: "How do I become an early adopter or tester?",
+          a: `${WRITE_TO_US} and tell us what you design. We add you to the list and reply to you personally.`,
+        },
+      ]
+    : [
+        {
+          q: "How can I pay?",
+          a: "Pro is billed monthly or annually by card, and Team annually per seat. You choose a plan and pay from Billing in your dashboard: VAT or sales tax for your country is shown before you pay and on your invoice. You can cancel renewal at any time. When online payment isn't available, Billing says so and how to reach us.",
+        },
+      ]),
 ] as const;
 
 // The Download page (/download/) and the dashboard's Download panel. The
@@ -1275,7 +1338,7 @@ export const FOOTER = {
   resources: "Resources",
   contact: "Get in touch",
   follow: "Follow",
-  demo: "Request a demo",
+  demo: "Join the early-adopter list",
   rights: "All rights reserved.",
   links: [
     { label: "Download", href: "/download/" },
@@ -1342,17 +1405,17 @@ export const AR_HOME = {
       "Truebex برنامج لتصميم المباني للمعماريين ومصممي الديكور الداخلي: استكشف خيارات أكثر، وقارن التشطيبات في سياقها، وعِش المساحة قبل أن تبنيها.",
     ogLocale: "ar_AR",
   },
-  nav: [
+  nav: publicLinks([
     { label: "المنصة", href: "/ar/#features" },
     { label: "كيف يعمل", href: "/ar/#how-it-works" },
     { label: "لمن صُمّم", href: "/ar/#who-its-for" },
     { label: "الأسعار", href: "/ar/#pricing" },
     { label: "الأسئلة الشائعة", href: "/ar/#faq" },
     { label: "تواصل معنا", href: "/ar/#contact" },
-  ],
+  ]),
   login: "تسجيل الدخول",
   dashboard: "لوحة التحكم",
-  demo: "اطلب عرضًا توضيحيًا",
+  demo: "أوائل المستخدمين",
   home: "الصفحة الرئيسية لـ Truebex",
   toggleMenu: "فتح القائمة وإغلاقها",
   hero: {
@@ -1361,7 +1424,7 @@ export const AR_HOME = {
     titleAccent: "ابنِ أفضل.",
     subtitle:
       "استكشف خيارات التصميم، وقارن المواد والتشطيبات في سياقها، وتحقّق من الأبعاد والمساحات، وادخل إلى مساحتك في إضاءة واقعية — قبل أن يبدأ البناء، في سير عمل واحد متصل.",
-    primary: { label: "اطلب عرضًا توضيحيًا", href: "/ar/#contact" },
+    primary: { label: "انضم إلى أوائل المستخدمين", href: "/ar/#contact" },
     secondary: { label: "استكشف المنصة", href: "/ar/#features" },
     alt: "ضوء نهار ناعم يدخل عبر مدخل باب إلى غرفة بيضاء هادئة، صُمّمت وأُضيئت في Truebex",
     caption: "ضوء النهار مقيسًا عبر مدخل باب — لقطة من Truebex.",
@@ -1536,18 +1599,31 @@ export const AR_HOME = {
         q: "هل يعمل Truebex مع ملفات IFC وDWG؟",
         a: "يصدّر Truebex اليوم ملفات PDF متجهية وDXF. أما استيراد IFC وDWG وتصديرهما فعلى خارطة الطريق.",
       },
+      ...(PRELAUNCH.hidePricing
+        ? [
+            {
+              q: "كيف أنضم إلى أوائل المستخدمين أو المختبِرين؟",
+              a: `${WRITE_TO_US_AR} وأخبرنا بما تصمّمه. نضيفك إلى القائمة ونردّ عليك شخصيًا.`,
+            },
+          ]
+        : [
       {
         q: "كيف أدفع؟",
         a: "تُدفع الخطة الاحترافية بالبطاقة شهريًا أو سنويًا، وخطة الفريق سنويًا لكل مقعد. تختار خطتك وتدفع من صفحة الفوترة في لوحة التحكم، وتظهر ضريبة القيمة المضافة أو ضريبة المبيعات لبلدك قبل الدفع وعلى فاتورتك. ويمكنك إلغاء التجديد في أي وقت. وحين لا يكون الدفع الإلكتروني متاحًا، تخبرك صفحة الفوترة بذلك وبطريقة التواصل معنا.",
       },
+          ]),
     ],
   },
   contact: {
     titleStart: "لمشروعك القادم",
     titleAccent: "إمكانات أكثر.",
-    body: "اكتشف طريقة أكثر ترابطًا للتصميم ومقارنة الخيارات وعيش أفكارك قبل أن يبدأ البناء. اطلب عرضًا توضيحيًا وسنريك Truebex على مشروع يشبه مشروعك.",
+    body: `يستعد Truebex لاستقبال أوائل المستخدمين والمختبِرين. ${WRITE_TO_US_AR}، وأخبرنا بما تصمّمه، وسنضيفك إلى القائمة.`,
     email: "راسلنا بالبريد الإلكتروني",
-    form: "نموذج طلب العرض (بالإنجليزية)",
+    whatsapp: "راسلنا عبر واتساب",
+    subject: "Truebex early adopters",
+    whatsappText: "مرحبًا Truebex، أودّ الانضمام إلى قائمة أوائل المستخدمين.",
+    note: "نحتفظ باسمك ووسيلة التواصل معك وما تخبرنا به، لإدارة هذه القائمة والرد عليك فقط. اطلب منّا حذفك في أي وقت وسنحذفك.",
+    privacy: "الخصوصية",
   },
   footer: {
     tagline: "تجربة بناء حقيقية",
@@ -1557,7 +1633,7 @@ export const AR_HOME = {
     resources: "مصادر",
     contact: "تواصل",
     follow: "تابعنا",
-    demo: "اطلب عرضًا توضيحيًا",
+    demo: "انضم إلى قائمة أوائل المستخدمين",
     rights: "جميع الحقوق محفوظة.",
     featureNames: {
       daylight: "ضوء النهار",
@@ -3494,10 +3570,10 @@ export const NOT_FOUND = {
   heading: "Nothing stands at this address",
   intro: "The link may be out of date, or the address mistyped. Start again from one of these pages.",
   home: "Go to the home page",
-  links: [
+  links: publicLinks([
     { label: "Download for Windows", href: "/download/" },
     { label: "Pricing", href: "/pricing/" },
-  ],
+  ]),
 } as const;
 
 // PF7e: the orders page opened from an order's link (contract marketplace-api

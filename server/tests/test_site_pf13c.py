@@ -53,6 +53,9 @@ def not_found_copy() -> dict:
     body = m.group(1)
     strings = dict(re.findall(r'^  (\w+):\s*"([^"]*)",', body, re.M))
     links = re.findall(r'\{ label: "([^"]+)", href: "([^"]+)" \}', body)
+    # Before launch the page offers no link to pricing (PRELAUNCH.hidePricing).
+    if re.search(r"export const PRELAUNCH\b[^=]*=\s*\{\s*hidePricing:\s*true", src):
+        links = [(label, href) for label, href in links if "pricing" not in href]
     return {**strings, "links": links}
 
 

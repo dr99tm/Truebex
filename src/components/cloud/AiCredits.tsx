@@ -17,7 +17,7 @@ import {
 } from "@/lib/ai";
 import { formatDate } from "@/lib/api";
 import { fill } from "@/lib/catalogue";
-import { CLOUD_AI } from "@/lib/constants";
+import { CLOUD_AI, PLANS_HREF } from "@/lib/constants";
 import { formatMoney, refreshPayment } from "@/lib/developer";
 import { timeAgo } from "@/lib/time";
 import { cn } from "@/lib/utils";
@@ -368,7 +368,7 @@ export function AiCredits() {
           <h2 className="font-semibold">{CLOUD_AI.title}</h2>
           <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-sm text-text-secondary">{CLOUD_AI.locked.text}</p>
-            <Button href="/pricing/" variant="secondary" size="sm">
+            <Button href={PLANS_HREF} variant="secondary" size="sm">
               {CLOUD_AI.locked.cta}
             </Button>
           </div>

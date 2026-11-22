@@ -122,10 +122,19 @@ paid tier says "Price at launch" while the billing page lists the API's prices.
 
 The slogan: **"Imagine More. Build Better."** (Title Case, two sentences,
 nothing appended). Supporting lines, for headings and campaigns — never
-competing with the slogan: "See it before you build it." · "More than a plan."
-· "Better choices. Better spaces." · "Explore more. Choose better." · "Make
+competing with the slogan: "More than a plan." · "Better choices. Better
+spaces." · "Explore more. Choose better." · "Make
 ideas real." Feature lines still usable inside their own section: "Daylight,
 measured — not painted." · "Make it once, update everywhere."
+
+Retired (owner, 2026-11-22): "See it before you build it." and every variant
+of it. It is in no headline, post, reel, caption, title or alt text, and
+nothing new takes its place: the slogan and the lines above are enough.
+
+Before launch (owner, 2026-11-22): the public site shows no prices and no
+plans (`PRELAUNCH.hidePricing` in `src/lib/constants.ts`). The one call to
+action is to write to us by email or WhatsApp to join the early-adopter or
+tester list; posts and replies quote no price either.
 
 Headline pattern: short outcome statements, often in two beats ("A design is
 more than an image." / "One shared vision. Different perspectives."). Keep

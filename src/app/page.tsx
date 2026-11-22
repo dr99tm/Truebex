@@ -10,7 +10,7 @@ import { FAQ } from "@/components/sections/FAQ";
 import { CTAContact } from "@/components/sections/CTAContact";
 import { Footer } from "@/components/layout/Footer";
 import { loadCatalogue } from "@/lib/catalogue-data";
-import { FAQS } from "@/lib/constants";
+import { FAQS, PRELAUNCH } from "@/lib/constants";
 import { softwareApplicationLd } from "@/lib/pricing";
 import { faqLd, HOME_LANGUAGES, ldJson } from "@/lib/seo";
 
@@ -34,7 +34,7 @@ export default function Home() {
         <HowItWorks />
         <WhoItsFor />
         <WhatMakesItDifferent />
-        <Pricing />
+        {!PRELAUNCH.hidePricing && <Pricing />}
         <FAQ />
         <CTAContact />
       </main>

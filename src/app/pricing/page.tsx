@@ -6,17 +6,43 @@ import { TierCards } from "@/components/pricing/TierCards";
 import { ComparisonTable } from "@/components/pricing/ComparisonTable";
 import { annualSavingPercent, foundingLive } from "@/lib/catalogue";
 import { loadCatalogue } from "@/lib/catalogue-data";
-import { PRICING } from "@/lib/constants";
+import { ContactButtons } from "@/components/sections/ContactButtons";
+import { CONTACT_CTA, PRELAUNCH, PRELAUNCH_PLANS, PRICING } from "@/lib/constants";
 import { pricingFaq, softwareApplicationLd } from "@/lib/pricing";
 import { breadcrumbLd, faqLd, ldJson, pageMetadata, webPageLd } from "@/lib/seo";
 
-export const metadata: Metadata = pageMetadata({
-  title: PRICING.title,
-  description: PRICING.description,
-  path: "/pricing/",
-});
+// Pre-launch: the address stays (old links land here), but the page is a
+// short note with the contact buttons: no plans, no prices, noindex and no
+// canonical, and it is in neither the sitemap nor any menu.
+export const metadata: Metadata = PRELAUNCH.hidePricing
+  ? { title: PRELAUNCH_PLANS.title, description: PRELAUNCH_PLANS.description, robots: { index: false, follow: true } }
+  : pageMetadata({
+      title: PRICING.title,
+      description: PRICING.description,
+      path: "/pricing/",
+    });
+
+function PlansAtLaunch() {
+  return (
+    <>
+      <main className="mx-auto max-w-7xl px-4 pb-24 pt-28 md:px-8" data-prelaunch="plans">
+        <header className="mx-auto max-w-2xl text-center">
+          <p className="text-sm font-medium uppercase tracking-wider text-accent">{PRELAUNCH_PLANS.eyebrow}</p>
+          <h1 className="mt-3 text-3xl font-bold tracking-tight sm:text-5xl">{PRELAUNCH_PLANS.heading}</h1>
+          <p className="mt-5 text-lg text-text-secondary">{PRELAUNCH_PLANS.intro}</p>
+          <ContactButtons copy={CONTACT_CTA} />
+        </header>
+      </main>
+      <Footer />
+    </>
+  );
+}
 
 export default function PricingPage() {
+  return PRELAUNCH.hidePricing ? <PlansAtLaunch /> : <FullPricing />;
+}
+
+function FullPricing() {
   const catalogue = loadCatalogue();
   const faq = pricingFaq(catalogue);
   const ld = ldJson([

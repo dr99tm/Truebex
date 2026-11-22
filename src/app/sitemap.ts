@@ -1,5 +1,5 @@
 import type { MetadataRoute } from "next";
-import { DEVELOPER_DOCS, FEATURE_PAGES, SELL_PAGE, SITE } from "@/lib/constants";
+import { DEVELOPER_DOCS, FEATURE_PAGES, PRELAUNCH, SELL_PAGE, SITE } from "@/lib/constants";
 import { HOME_LANGUAGES } from "@/lib/seo";
 
 export const dynamic = "force-static";
@@ -19,7 +19,10 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: `${SITE.url}/`, lastModified: now, changeFrequency: "weekly", priority: 1, alternates: homeAlternates },
     { url: `${SITE.url}/ar/`, lastModified: now, changeFrequency: "weekly", priority: 0.9, alternates: homeAlternates },
     { url: `${SITE.url}/download/`, lastModified: now, changeFrequency: "weekly", priority: 0.9 },
-    { url: `${SITE.url}/pricing/`, lastModified: now, changeFrequency: "weekly", priority: 0.9 },
+    // Pre-launch: /pricing/ is a noindex note, so it stays out of the sitemap.
+    ...(PRELAUNCH.hidePricing
+      ? []
+      : [{ url: `${SITE.url}/pricing/`, lastModified: now, changeFrequency: "weekly" as const, priority: 0.9 }]),
     ...FEATURE_PAGES.map((p) => ({
       url: `${SITE.url}/features/${p.slug}/`,
       lastModified: now,

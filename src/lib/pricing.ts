@@ -1,7 +1,7 @@
 // Server-side pricing helpers: the FAQ entries that apply to the catalogue,
 // and the SoftwareApplication JSON-LD shared by the home and pricing pages.
 import { anyPriced, fill, foundingLive, offersLd, type Catalogue } from "@/lib/catalogue";
-import { FEATURES, PRICING, PRODUCT_SHOT, SITE } from "@/lib/constants";
+import { FEATURES, PRELAUNCH, PRICING, PRODUCT_SHOT, SITE } from "@/lib/constants";
 
 /** Names joined as a list: "Pro, Studio and Team". */
 function nameList(names: string[]): string {
@@ -67,6 +67,7 @@ export function softwareApplicationLd(catalogue: Catalogue): object {
     screenshot: `${SITE.url}${PRODUCT_SHOT.src}`,
     featureList: FEATURES.map((f) => f.title),
     publisher: { "@id": `${SITE.url}/#organization` },
-    offers: offersLd(catalogue, `${SITE.url}/pricing/`),
+    // Pre-launch: no offers, so no price reaches search engines.
+    ...(PRELAUNCH.hidePricing ? {} : { offers: offersLd(catalogue, `${SITE.url}/pricing/`) }),
   };
 }

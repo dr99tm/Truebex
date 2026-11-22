@@ -84,7 +84,6 @@ Understand the design, compare options with the designer, and experience the pro
 
 The user's preferred candidates during the exploration were:
 
-- See It Before You Build It
 - Make Better Places
 - Make It Real
 - Beyond the Plan
@@ -94,9 +93,8 @@ The user's preferred candidates during the exploration were:
 
 The chosen direction is **Imagine More. Build Better.** because it balances creativity with real-world outcomes. It is short, has a strong two-part rhythm, and speaks both to the designer's desire to explore ideas and the owner or developer's desire for better project decisions.
 
-Other useful lines may be used as supporting headings or campaign copy, but should not compete with the main slogan:
+Other useful lines may be used as supporting headings or campaign copy, but should not compete with the main slogan. (One early candidate and its supporting variant were retired by the owner on 2026-11-22 and are removed from this brief; the brand voice skill names it so it is never used again.)
 
-- **See it before you build.** — a clear supporting message about pre-construction experience.
 - **More than a plan.** — useful for explaining that Truebex goes beyond conventional drawings.
 - **Better choices. Better spaces.** — a concise summary of the product philosophy.
 - **Explore more. Choose better.** — describes the decision-making process.

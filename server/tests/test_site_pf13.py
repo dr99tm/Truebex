@@ -288,6 +288,20 @@ def constants_text() -> str:
     return CONSTANTS.read_text(encoding="utf-8")
 
 
+def pricing_hidden() -> bool:
+    """`PRELAUNCH.hidePricing` in src/lib/constants.ts (the owner, 2026-11-22: no
+    prices or plans on the public site before launch)."""
+    return bool(re.search(r"export const PRELAUNCH\b[^=]*=\s*\{\s*hidePricing:\s*true", constants_text()))
+
+
+# The tests of the public pricing page, the home teasers and the JSON-LD offers
+# run again the day hidePricing is false; until then tests/test_site_prelaunch.py
+# checks that none of it is built.
+needs_public_pricing = pytest.mark.skipif(
+    pricing_hidden(), reason="pricing is hidden before launch (PRELAUNCH.hidePricing): see test_site_prelaunch.py"
+)
+
+
 def const_block(name: str) -> str:
     m = re.search(rf"export const {name}\b.*?\n\}}( as const)?;", constants_text(), re.S)
     if not m:
@@ -411,6 +425,7 @@ def test_site_pf13_content_files_valid():
 # --- pricing ---------------------------------------------------------------------
 
 
+@needs_public_pricing
 def test_site_pf13_pricing_page(built):
     doc = page("pricing/index.html")
     assert len(doc.all("h1")) == 1
@@ -447,6 +462,7 @@ def test_site_pf13_pricing_page(built):
             assert "per seat" in card, tier["id"]
 
 
+@needs_public_pricing
 def test_site_pf13_pricing_matches_catalogue(built):
     cat = catalogue()
     table = {(t["id"], p["interval"], p["currency"]): p["amount_minor"] for t, p in priced(cat)}
@@ -568,6 +584,7 @@ def pf2a_build(built) -> None:
         pytest.skip("the owner keeps prices at 'Price at launch' (prices_final false)")
 
 
+@needs_public_pricing
 def test_site_pf2a_pricing_amounts_exact(built):
     """out/pricing/index.html shows exactly the owner's amounts: in GBP (the
     static render) every list price, Team's per-month figure and the
@@ -631,6 +648,7 @@ def test_site_pf2a_pricing_amounts_exact(built):
     assert "Can I pay for Team monthly?" in faq and "Price at launch" not in doc.visible_text()
 
 
+@needs_public_pricing
 def test_site_pf2a_teasers_and_developers(built):
     """The home teaser and /ar/ show the same numbers from the catalogue (GBP:
     Pro monthly with its annual price, Team's per-month figure and annual
@@ -698,6 +716,7 @@ def test_site_pf2a_every_interval_and_currency(tmp_path):
             assert "per seat" in text and "from 2 seats" in text, key
 
 
+@needs_public_pricing
 def test_site_pf13_roadmap_rows_labelled(built):
     doc = page("pricing/index.html")
     rows = doc.all("tr", data_feature=True)
@@ -875,9 +894,11 @@ def test_site_pf13_sitemap_complete(built):
     ns = {"s": "http://www.sitemaps.org/schemas/sitemap/0.9", "x": "http://www.w3.org/1999/xhtml"}
     root = ET.parse(OUT / "sitemap.xml").getroot()
     urls = {u.find("s:loc", ns).text: u for u in root.findall("s:url", ns)}
-    for path in ["/", "/pricing/", "/roadmap/", "/ar/", "/changelog/",
+    for path in ["/", "/roadmap/", "/ar/", "/changelog/",
                  *[f"/features/{s}/" for s in FEATURE_SLUGS]]:
         assert f"{SITE}{path}" in urls, path
+    # Before launch /pricing/ is a noindex note and stays out of the sitemap.
+    assert (f"{SITE}/pricing/" in urls) is (not pricing_hidden())
     for path in ("/", "/ar/"):
         links = {l.get("hreflang"): l.get("href") for l in urls[f"{SITE}{path}"].findall("x:link", ns)}
         assert links == {"en": f"{SITE}/", "ar": f"{SITE}/ar/", "x-default": f"{SITE}/"}, path
@@ -1011,6 +1032,7 @@ def test_site_pf13_no_competitor_names(built):
         assert not m, f"{p.relative_to(OUT)} names {m.group(0) if m else ''}"
 
 
+@needs_public_pricing
 def test_site_pf13_json_ld_in_step(built):
     cat = catalogue()
     home = page("index.html")
@@ -1037,6 +1059,7 @@ def test_site_pf13_json_ld_in_step(built):
         assert doc.faq_visible(), rel
 
 
+@needs_public_pricing
 def test_site_pf13_home_teaser_and_nav(built):
     home = page("index.html")
     cards = home.all("article", data_tier=True)

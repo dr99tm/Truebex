@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/Button";
 import { kindLabel } from "@/lib/ai";
 import { formatDate } from "@/lib/api";
 import { fill } from "@/lib/catalogue";
-import { CLOUD } from "@/lib/constants";
+import { CLOUD, PLANS_HREF } from "@/lib/constants";
 import {
   cancelJob,
   formatCu,
@@ -42,7 +42,7 @@ function Allowance({ usage }: { usage: CloudUsage }) {
     return (
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-sm text-text-secondary">{CLOUD.meter.none}</p>
-        <Button href="/pricing/" variant="secondary" size="sm">
+        <Button href={PLANS_HREF} variant="secondary" size="sm">
           {CLOUD.meter.planCta}
         </Button>
       </div>
