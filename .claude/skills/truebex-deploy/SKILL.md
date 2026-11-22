@@ -176,6 +176,21 @@ with WAL archived by wal-g to a backup bucket at a second provider. Everything i
 - `start-server.bat` / `start-tunnel.bat` are for local use only. Never route `api.truebex.com` to the
   PC again: a second API with its own `auth.db` would take writes nobody sees (`infra/CUTOVER.md`).
 
+## Before launch: no prices in public (the owner, 2026-11-22)
+
+Two switches, set the same way:
+
+- the website: `PRELAUNCH.hidePricing` in `src/lib/constants.ts` (true = no prices, plans, Pricing links,
+  offers in the JSON-LD or `/pricing/` in the sitemap; the call to action is contact only);
+- the API: `HIDE_PRICES=true` in the API's settings (today `X:\Truebex\server\.env` on the owner's PC, since
+  the API runs there), then restart the "Truebex API (port 8001)" task. `GET /billing/plans` then carries no
+  amount and `POST /billing/checkout` answers 503.
+
+Check after a deploy: `https://api.truebex.com/billing/plans` has `"prices": []` on every tier, and
+`server/tests/test_site_prelaunch.py` passes on the build. To show prices again set both back, rebuild the
+site and restart the API. `SITE.whatsapp` holds the Desk's WhatsApp Business number (digits only); empty
+means the site shows email only.
+
 ## Secrets and switches
 
 Every secret lives only in `infra/secrets/*.sops.env` (encrypted with sops; the age key is on the owner's PC,

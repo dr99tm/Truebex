@@ -63,6 +63,13 @@ class Settings(BaseSettings):
     # Background jobs (server/app/tasks.py): inline | worker | off.
     background_tasks: str = "inline"
 
+    # Pre-launch (the owner, 2026-11-22): while true the public catalogue
+    # (GET /billing/plans) carries no price and no founding offer, and
+    # nothing can be bought (POST /billing/checkout answers 503). The website
+    # has its own switch, PRELAUNCH.hidePricing in src/lib/constants.ts; set
+    # both the same way (tests/test_prelaunch_prices.py).
+    hide_prices: bool = False
+
     # Wayl (Iraq: QiCard, FIB, ZainCash). Dormant: off unless WAYL_ENABLED
     # is true AND its keys are set. Never offered on the website.
     wayl_enabled: bool = False

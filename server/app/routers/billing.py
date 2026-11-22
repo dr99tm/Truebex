@@ -101,16 +101,19 @@ def catalog(db: Session = Depends(get_db)) -> BillingCatalog:
     the provider offered at checkout. Unlisted tiers (Studio) are left out:
     nobody new can buy them, and a subscriber's plan name comes from the site's
     own copy of the catalogue."""
+    # Pre-launch (HIDE_PRICES): the tiers are named, with no price, no
+    # founding offer and no provider, so no page or client can show an amount.
+    hidden = settings.hide_prices
     wayl_on = providers.get_provider("wayl", settings).enabled()
     tiers = []
     for plan in PLANS.values():
         if not plan.listed:
             continue
-        prices = [
+        prices = [] if hidden else [
             PriceOut(interval=p.interval, currency=p.currency, amount_minor=p.amount_minor)
             for p in plan.prices
         ]
-        if wayl_on and plan.id == "pro":
+        if wayl_on and plan.id == "pro" and not hidden:
             # Dormant regional rail: only with WAYL_ENABLED, never on the site.
             prices.append(
                 PriceOut(interval="month", currency="IQD", amount_minor=settings.wayl_price_pro_iqd)
@@ -125,10 +128,12 @@ def catalog(db: Session = Depends(get_db)) -> BillingCatalog:
                 prices=prices,
             )
         )
-    offered = providers.checkout_provider(settings)
+    offered = None if hidden else providers.checkout_provider(settings)
     founding = service.founding_status(db)
     # The offer is shown only while it can be bought.
     founding["enabled"] = founding["enabled"] and offered is not None
+    if hidden:
+        founding = {**founding, "total": 0, "remaining": 0, "discount_percent": 0, "ends_at": None, "tiers": [], "intervals": []}
     return BillingCatalog(
         tiers=tiers,
         founding=FoundingOut(**founding),
@@ -424,6 +429,12 @@ def checkout(
     current: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> CheckoutResponse:
+    if settings.hide_prices:
+        # Pre-launch: nothing is on sale, whatever a client still shows.
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Paid plans open at launch. Write to contact@truebex.com to join the early adopters.",
+        )
     # PF3a: buying for an organisation is for its owner and billing roles.
     org = _org(db, payload.org_id, current)
     # Today's placeholder consent, or GD5 7.4's box once the wording is
