@@ -47,8 +47,11 @@ def test_prelaunch_checkout_sells_nothing(client, hidden):
     assert "launch" in res.json()["detail"]
 
 
-def test_prices_show_again_when_the_switch_is_off(client):
-    assert get_settings().hide_prices is False, "off by default: only the deployed .env turns it on"
+def test_prices_show_again_when_the_switch_is_off(client, monkeypatch):
+    # Off by default: only the deployed .env turns it on. Read from the field, not
+    # from get_settings(), which also reads this PC's server/.env (the live API's).
+    assert type(get_settings()).model_fields["hide_prices"].default is False
+    monkeypatch.setattr(get_settings(), "hide_prices", False)
     body = client.get("/billing/plans").json()
     pro = next(t for t in body["tiers"] if t["id"] == "pro")
     assert {"interval": "month", "currency": "GBP", "amount_minor": 2400} in pro["prices"]
