@@ -36,7 +36,7 @@ export const SITE = {
   // The WhatsApp number people write to, digits only with the country code
   // and no "+" (wa.me form). Empty: the site shows no WhatsApp button. Use
   // only the number whose messages land in Truebex Desk.
-  whatsapp: "",
+  whatsapp: "9647872964489",
 } as const;
 
 // Pre-launch (owner, 2026-11-22): no prices or plans on the public site, and
