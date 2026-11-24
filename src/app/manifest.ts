@@ -6,7 +6,7 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "Truebex — True Building Experience",
     short_name: "Truebex",
-    description: "The building design platform where daylight is measured and surfaces design themselves.",
+    description: "The building design platform to explore more options and experience the space before you build.",
     // PF9: installing Truebex opens the mobile web client; its sign-in pages
     // (/login/, /signup/) stay inside the installed window.
     id: "/app/",

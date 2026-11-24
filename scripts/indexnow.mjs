@@ -2,7 +2,7 @@
 // Tell search engines (Bing, and every engine that shares IndexNow) which
 // truebex.com pages changed. Run by the owner after a deploy.
 //
-//   node scripts/indexnow.mjs /pricing/ /features/daylight/      (paths or full URLs)
+//   node scripts/indexnow.mjs /pricing/ /features/surfaces/      (paths or full URLs)
 //   node scripts/indexnow.mjs --sitemap                          (every URL in out/sitemap.xml)
 //   node scripts/indexnow.mjs --dry-run /pricing/                (print the request, send nothing)
 //

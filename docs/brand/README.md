@@ -11,7 +11,7 @@ social-media image. To change the brand, change this folder, run the script, the
 | `logo/truebex-mark.svg`, `logo/truebex-wordmark.svg` | the logo sources (vector) |
 | `logo/figma/` | the Figma masters as exported (reference only) |
 | `fonts/` | Open Sans (SIL OFL, `OFL.txt`): the website's web font and the images' fallback |
-| `images/daylight-doorway.png` | the one clean in-app capture the banners use |
+| `images/room-eye-level.png` | the one clean in-app capture the banners use (a room at eye level) |
 | `make_brand_assets.py` | renders everything in `export/` from the sources above |
 | `export/` | **upload from here**: avatar, covers, banners, watermark, lockups, SVG logo set |
 
@@ -41,7 +41,7 @@ right, Arabic included.
 ## Change the brand
 
 1. Edit the source: `brand.json` (colours, slogan, fonts, spacing), `logo/*.svg` (new logo),
-   `images/daylight-doorway.png` (a new clean capture), or the wording in `social-media.md`.
+   `images/room-eye-level.png` (a new clean capture), or the wording in `social-media.md`.
 2. Render the images:
 
    ```

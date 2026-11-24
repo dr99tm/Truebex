@@ -41,14 +41,13 @@ real searches, share-ready previews, and repeated distribution.
 |---|---|---|
 | Brand | truebex, truebex app | `/` |
 | Pricing | truebex pricing, truebex free, building design software price | `/pricing/` |
-| Daylight design | daylight design software, natural light simulation for architects, how much light will my room get | `/features/daylight/` |
 | Parametric surfaces | wall panel design software, parametric wall pattern, feature wall design tool | `/features/surfaces/` |
 | Reuse / consistency | reusable design assets architecture, update design across units | `/features/assets/` |
 | Drawings | automatic drawing sheets, architectural sheet set, vector PDF drawings | `/features/sheets/` |
 | Products (roadmap) | building products marketplace, furniture prices in design software | `/features/marketplace/` (future tense until it ships) |
 | Suppliers | sell on truebex, sell furniture to architects, list building products for designers | `/suppliers/` (PF13a: the portal in the present tense, the in-app marketplace "On the roadmap"; the portal `/supplier/` itself is noindex) |
 | Fresh content | truebex roadmap, truebex changelog, truebex release notes | `/roadmap/`, `/changelog/` (+ `/changelog/feed.xml`) |
-| Interior | interior design software with real lighting, wall panelling design | future `/use-cases/interior-design/` |
+| Interior | interior design software, wall panelling design | future `/use-cases/interior-design/` |
 | Developers | truebex api, architecture api | `/developers/` |
 | Regional (Gulf / MENA, Arabic) | برنامج تصميم معماري, تصميم داخلي ثلاثي الأبعاد, برنامج تصميم مباني | `/ar/`: a large, under-served market; prices in GBP, USD and EUR on `/pricing/` |
 
@@ -57,13 +56,13 @@ generic listicle: real captures, concrete numbers, a short how-to, an FAQ.
 
 ## Content engine (what to publish next, in order)
 
-Built (PF13, 2026-10-09): `/pricing/`, `/features/{daylight,surfaces,assets,sheets,marketplace}/`
+Built (PF13, 2026-10-09): `/pricing/`, `/features/{surfaces,assets,sheets,marketplace}/`
 (copy in `FEATURE_PAGES`), `/roadmap/`, `/changelog/` with its Atom feed, and `/ar/`.
 PF13a (2026-10-11): `/suppliers/` (Sell on Truebex, copy in `SELL_PAGE`), linked from the footer and the marketplace page.
 
 1. Clean captures for the feature pages: put a clean frame per page in
    `T:\unreal5_7_4_projects\truebex_compact\Brand\Truebex\captures\<page>.png` and run
-   `py -3.12 scripts/make_web_assets.py --features`; until then each page shows the shared doorway capture.
+   `py -3.12 scripts/make_web_assets.py --features`; until then each page shows the shared capture.
 2. `/use-cases/interior-design/`: panels, fills and assets on a real interior.
 3. A changelog entry per release (`npm run sync:releases`) and per shipped milestone (`src/content/history.json`); fresh content signals an active product.
 4. More Arabic pages once the app speaks Arabic (LO1), each paired with its English page through `hreflang`.
@@ -79,10 +78,10 @@ Never write comparison pages against named products (see brand-voice positioning
 ## Distribution playbook (where views actually come from)
 
 Short real captures of the app outperform any copy. For each feature, cut a
-10–20 s clip (place a window → daylight pours into the room; resize a wall → the pattern re-flows) and post it natively:
+10–20 s clip (resize a wall → the pattern re-flows; change an asset → every copy updates) and post it natively:
 
 - **X / LinkedIn / Instagram Reels / TikTok / YouTube Shorts** — same clip, platform-native caption, one line + link. Architects and interior designers live on LinkedIn and Instagram.
-- **Reddit** — r/architecture, r/InteriorDesign and other design communities. Lead with the daylight clip; post as a builder sharing work, not an ad; answer every comment.
+- **Reddit** — r/architecture, r/InteriorDesign and other design communities. Lead with the surfaces clip; post as a builder sharing work, not an ad; answer every comment.
 - **ArchDaily / Archinect** product listings, **Product Hunt** launch day (prepare: OG card, clean captures, first comment with the story).
 - Every share uses a page URL with a matching OG card — test previews with the LinkedIn Post Inspector and X card validator.
 - Ask early users for a 1-line quote + capture; add them as testimonials (with permission) — social proof converts the traffic.

@@ -1,5 +1,4 @@
 import {
-  Sun,
   Layers,
   FileText,
   Paintbrush,
@@ -83,7 +82,7 @@ export const HERO = {
   titleStart: "Imagine More.",
   titleAccent: "Build Better.",
   subtitle:
-    "Explore design options, compare materials and finishes in context, check dimensions and areas, and step inside your space in realistic light — before construction begins, in one connected workflow.",
+    "Explore design options, compare materials and finishes in context, check dimensions and areas, and step inside your space at full scale — before construction begins, in one connected workflow.",
   primary: { label: "Join the early adopters", href: "/#contact" },
   secondary: { label: "Explore the Platform", href: "/#features" },
   note: "Make room for better ideas — and make decisions with greater confidence.",
@@ -151,19 +150,11 @@ export const FEATURES = [
       "Try paint, wallpaper, panelling and three-dimensional patterns on any wall, floor or ceiling. Patterns re-flow on their own when the wall grows, shrinks or gains an opening.",
   },
   {
-    id: "light",
-    href: "/features/daylight/",
-    icon: Sun,
-    title: "Light that follows the design",
-    description:
-      "Every window and door measures the sky and sun outside it and lets that light in. Move a window or open a door, and the light in every room follows.",
-  },
-  {
     id: "experience",
     icon: Eye,
     title: "Experience the space",
     description:
-      "Walk the rooms at eye level and full scale to judge proportion, circulation and feel, and render any view in ray-traced light. Stepping inside with a headset is on the roadmap.",
+      "Walk the rooms at eye level and full scale to judge proportion, circulation and feel. Stepping inside with a headset is on the roadmap.",
   },
   {
     id: "understand",
@@ -185,10 +176,10 @@ export const FEATURES = [
 
 // The one capture the site shows (clean frames only — no HUD or labels).
 export const PRODUCT_SHOT = {
-  src: "/images/product/daylight-doorway.jpg",
-  wide: "/images/product/daylight-doorway-wide.jpg",
-  alt: "Soft daylight falling through a doorway into a quiet white room, designed and lit in Truebex",
-  caption: "Daylight measured through a doorway — captured in Truebex.",
+  src: "/images/product/room-eye-level.jpg",
+  wide: "/images/product/room-eye-level-wide.jpg",
+  alt: "A room modelled in Truebex, seen at eye level",
+  caption: "A room in Truebex, seen at eye level and full scale.",
   width: 1600,
   height: 1196,
 } as const;
@@ -211,7 +202,7 @@ export const STEPS = [
     number: "02",
     title: "Compare",
     description:
-      "Review materials, finishes and furnishings in context, in the light each room receives.",
+      "Review materials, finishes and furnishings in context.",
   },
   {
     number: "03",
@@ -299,7 +290,7 @@ export const PRINCIPLES = [
   {
     title: "Understand the space",
     description:
-      "Go beyond flat images to judge layout, proportion, materials and light.",
+      "Go beyond flat images to judge layout, proportion and materials.",
   },
   {
     title: "Make informed choices earlier",
@@ -338,10 +329,6 @@ export const FAQS = [
     a: "Truebex is building design software for Windows. Architects and interior designers use it to explore design options, compare materials and finishes in context, check dimensions and areas, experience the space at full scale and produce the drawings — all from one connected model.",
   },
   {
-    q: "How is the lighting in Truebex different?",
-    a: "Each window and door measures the sky and sun outside it and lets that exact amount of light into the room. Move a window, widen a door or add a wall, and the light in every room responds — including rooms that only receive light through another room.",
-  },
-  {
     q: "What are dynamic surface fills?",
     a: "Patterns that understand the surface they sit on. You set the rules — what goes at the start, the end, the centre or in between — and Truebex lays them out, re-flowing them whenever the wall or its openings change.",
   },
@@ -351,7 +338,7 @@ export const FAQS = [
   },
   {
     q: "What do I need to run Truebex?",
-    a: "A Windows PC with a modern graphics card. A card with hardware ray tracing unlocks the highest lighting quality, including ray tracing and path tracing.",
+    a: "A Windows PC with a modern graphics card. A card with hardware ray tracing unlocks the highest image quality, including ray tracing and path tracing.",
   },
   {
     q: "Is there an API for developers?",
@@ -400,7 +387,7 @@ export const DOWNLOAD = {
   requirementsTitle: "What you need",
   requirements: [
     "A Windows 10 or Windows 11 PC (64-bit).",
-    "A modern graphics card. A card with hardware ray tracing unlocks the highest lighting quality, including ray tracing and path tracing.",
+    "A modern graphics card. A card with hardware ray tracing unlocks the highest image quality, including ray tracing and path tracing.",
     "About 450 MB of disk space for the installed app.",
   ],
   accountTitle: "Your licence lives in your account",
@@ -685,11 +672,11 @@ export interface TierCopy {
 export const PRICING = {
   title: "Pricing",
   description:
-    "Truebex pricing: start free with the full modeller and measured daylight, then move to Pro, billed monthly or annually, or to Team or Enterprise.",
+    "Truebex pricing: start free with the full modeller and every surface tool, then move to Pro, billed monthly or annually, or to Team or Enterprise.",
   eyebrow: "Pricing",
   heading: "Truebex pricing",
   intro:
-    "Start free with the full modeller and measured daylight. Upgrade when Truebex becomes part of your daily work.",
+    "Start free with the full modeller. Upgrade when Truebex becomes part of your daily work.",
   teaserTitle: "Pricing",
   teaserSubtitle:
     "Start free with the full modeller. Upgrade when Truebex becomes part of your daily work.",
@@ -722,9 +709,8 @@ export const PRICING = {
   },
   tiers: {
     free: {
-      description: "The full modeller with measured daylight and every surface tool.",
+      description: "The full modeller with every surface tool.",
       highlights: [
-        "Measured daylight, ray tracing and path tracing",
         "Self-arranging surface fills and finishes",
         "One storey per project",
         "Vector PDF and DXF export, with a watermark",
@@ -735,7 +721,7 @@ export const PRICING = {
       href: "/signup/",
     },
     pro: {
-      description: "For designers who draw, light and present every day.",
+      description: "For designers who draw and present every day.",
       highlights: [
         "Everything in Free, on every storey",
         "Exports without a watermark",
@@ -794,17 +780,18 @@ export const PRICING = {
     "Everything each plan includes. Rows marked “On the roadmap” describe work that has not shipped yet.",
   // One row per key of the entitlement matrix (catalogue features and
   // limits), plus the developer API. `roadmap: true` = not shipped yet.
+  // `lighting.full` has no row: every plan has it, and light is not a
+  // selling point (owner, 2026-11-24).
   comparison: [
     {
-      title: "Design and light",
+      title: "Design",
       rows: [
-        { key: "lighting.full", kind: "feature", label: "Measured daylight, ray tracing and path tracing" },
         { key: "storeys", kind: "limit", label: "Storeys per project" },
         { key: "assets.library", kind: "feature", label: "Asset library: change once, update everywhere" },
         { key: "render.panorama", kind: "feature", label: "Panorama renders", roadmap: true },
         { key: "vr.pc", kind: "feature", label: "Walk the model in a PC headset", roadmap: true },
         { key: "mep", kind: "feature", label: "Building services: ducts, pipes and circuits", roadmap: true },
-        { key: "analysis.reports", kind: "feature", label: "Daylight, energy, sound and wind reports", roadmap: true },
+        { key: "analysis.reports", kind: "feature", label: "Energy, sound and wind reports", roadmap: true },
       ],
     },
     {
@@ -853,7 +840,7 @@ export const PRICING = {
   faq: [
     {
       q: "Is Truebex free to use?",
-      a: "Yes. Free is the full modeller with measured daylight and surface fills, with no time limit. Projects have one storey, PDF and DXF exports carry a watermark, and the asset library comes with Pro.",
+      a: "Yes. Free is the full modeller, surface fills included, with no time limit. Projects have one storey, PDF and DXF exports carry a watermark, and the asset library comes with Pro.",
     },
     {
       q: "How does the Pro trial work?",
@@ -920,60 +907,6 @@ export interface FeaturePageCopy {
 
 export const FEATURE_PAGES: readonly FeaturePageCopy[] = [
   {
-    slug: "daylight",
-    nav: "Daylight",
-    title: "Daylight design software",
-    description:
-      "Daylight design software that measures the light through every window and door as you draw, so you see how bright each room is before you build it.",
-    eyebrow: "Measured daylight",
-    h1: "Daylight design, measured through every opening",
-    intro:
-      "Every window and door in Truebex reads the sky and the sun on its far side and lets exactly that light into the room. Move an opening, widen a door or add a wall, and the light in every room follows while you draw.",
-    stepsTitle: "How it works",
-    steps: [
-      { title: "Place the openings", description: "Draw walls and drop in windows and doors. Each opening knows the sky and the sun outside it." },
-      { title: "Light is measured, not painted", description: "Each opening measures what it sees and passes exactly that light into the room behind it." },
-      { title: "Light travels room to room", description: "Open an interior door and a dark room borrows light from a bright one, as it would on site." },
-      { title: "Judge it at full quality", description: "Switch on ray tracing or path tracing for the final look on a modern graphics card." },
-    ],
-    sections: [
-      {
-        title: "Rooms lit through other rooms",
-        body: "A hallway with no window of its own still gets the light that reaches it through doors. Truebex passes the measured light on from opening to opening, so inner rooms look as bright, or as dim, as they will be.",
-      },
-      {
-        title: "A project that remembers its light",
-        body: "Lighting setups and the exact view (camera, section and storey) are saved inside the project, and every lighting change can be undone like any other edit.",
-      },
-      {
-        title: "Fast enough to design with",
-        body: "An edit costs only what it changes. Moving a wall in a full building takes milliseconds (240 ms became 4.3 ms in our benchmark), so the light keeps up with the idea.",
-      },
-    ],
-    capture: {
-      alt: "Daylight measured through a doorway: soft light falling into a quiet white room, designed and lit in Truebex",
-      caption: "Daylight measured through a doorway, captured in Truebex.",
-    },
-    faq: [
-      {
-        q: "How does Truebex measure daylight?",
-        a: "Each window and door samples the sky and the sun on its outside face and lets that measured amount of light into the room. The result changes as soon as an opening, a wall or the sun position changes.",
-      },
-      {
-        q: "Do rooms without windows get light?",
-        a: "Yes, when they connect to a lit room. Open an interior door and the light measured at that doorway passes on into the next room.",
-      },
-      {
-        q: "What hardware do I need for the best lighting?",
-        a: "A Windows PC with a modern graphics card. A card with hardware ray tracing unlocks the highest lighting quality, including ray tracing and path tracing.",
-      },
-      {
-        q: "Can Truebex produce a daylight report?",
-        a: "Not yet. Daylight reports with lux, daylight factor and sun hours are on the roadmap.",
-      },
-    ],
-  },
-  {
     slug: "surfaces",
     nav: "Surfaces",
     title: "Parametric wall panel design",
@@ -1005,8 +938,8 @@ export const FEATURE_PAGES: readonly FeaturePageCopy[] = [
       },
     ],
     capture: {
-      alt: "A room designed in Truebex, with daylight falling through a doorway onto clean wall surfaces",
-      caption: "A room designed and lit in Truebex.",
+      alt: "A room designed in Truebex, its clean wall surfaces seen at eye level",
+      caption: "A room designed in Truebex.",
     },
     faq: [
       {
@@ -1059,8 +992,8 @@ export const FEATURE_PAGES: readonly FeaturePageCopy[] = [
       },
     ],
     capture: {
-      alt: "A daylit room designed in Truebex, where walls and details are reusable assets",
-      caption: "A room designed and lit in Truebex.",
+      alt: "A room designed in Truebex, where walls and details are reusable assets",
+      caption: "A room designed in Truebex.",
     },
     faq: [
       {
@@ -1109,8 +1042,8 @@ export const FEATURE_PAGES: readonly FeaturePageCopy[] = [
       },
     ],
     capture: {
-      alt: "A daylit room designed in Truebex, the model its drawing sheets are made from",
-      caption: "The model behind the sheets, designed and lit in Truebex.",
+      alt: "A room designed in Truebex, the model its drawing sheets are made from",
+      caption: "The model behind the sheets, designed in Truebex.",
     },
     faq: [
       {
@@ -1223,7 +1156,7 @@ export const ROADMAP_PAGE = {
 export const CHANGELOG = {
   title: "Changelog",
   description:
-    "The Truebex changelog: every release and milestone, from measured daylight and self-arranging surfaces to drawing sheets, finishes and the asset library.",
+    "The Truebex changelog: every release and milestone, from self-arranging surfaces to drawing sheets, finishes and the asset library.",
   eyebrow: "Changelog",
   heading: "Truebex changelog",
   intro:
@@ -1423,11 +1356,11 @@ export const AR_HOME = {
     titleStart: "تخيّل أكثر.",
     titleAccent: "ابنِ أفضل.",
     subtitle:
-      "استكشف خيارات التصميم، وقارن المواد والتشطيبات في سياقها، وتحقّق من الأبعاد والمساحات، وادخل إلى مساحتك في إضاءة واقعية — قبل أن يبدأ البناء، في سير عمل واحد متصل.",
+      "استكشف خيارات التصميم، وقارن المواد والتشطيبات في سياقها، وتحقّق من الأبعاد والمساحات، وادخل إلى مساحتك بمقياسها الكامل — قبل أن يبدأ البناء، في سير عمل واحد متصل.",
     primary: { label: "انضم إلى أوائل المستخدمين", href: "/ar/#contact" },
     secondary: { label: "استكشف المنصة", href: "/ar/#features" },
-    alt: "ضوء نهار ناعم يدخل عبر مدخل باب إلى غرفة بيضاء هادئة، صُمّمت وأُضيئت في Truebex",
-    caption: "ضوء النهار مقيسًا عبر مدخل باب — لقطة من Truebex.",
+    alt: "غرفة مصمّمة في Truebex كما تبدو بمستوى النظر",
+    caption: "غرفة في Truebex، بمستوى النظر وبالمقياس الكامل.",
   },
   about: {
     title: "التصميم أكثر من مجرد صورة.",
@@ -1451,15 +1384,10 @@ export const AR_HOME = {
         description:
           "جرّب الطلاء وورق الجدران والألواح والأنماط ثلاثية الأبعاد على أي جدار أو أرضية أو سقف. تعيد الأنماط ترتيب نفسها حين يطول الجدار أو يقصر أو تُضاف إليه فتحة.",
       },
-      light: {
-        title: "ضوء يتبع التصميم",
-        description:
-          "تقيس كل نافذة وكل باب السماء والشمس خارجها وتُدخل ذلك الضوء. حرّك نافذة أو افتح بابًا، فيتبعه الضوء في كل غرفة.",
-      },
       experience: {
         title: "عِش المساحة",
         description:
-          "تجوّل في الغرف بمستوى النظر وبالمقياس الكامل لتحكم على التناسب والحركة والإحساس، واعرض أي مشهد بإضاءة تتبّع الأشعة. أما الدخول بنظارة العرض فعلى خارطة الطريق.",
+          "تجوّل في الغرف بمستوى النظر وبالمقياس الكامل لتحكم على التناسب والحركة والإحساس. أما الدخول بنظارة العرض فعلى خارطة الطريق.",
       },
       understand: {
         title: "افهمه ووثّقه",
@@ -1478,7 +1406,7 @@ export const AR_HOME = {
     subtitle: "الهدف: فهم واضح ومشترك للمساحة قبل الالتزام بالبناء.",
     items: [
       { number: "01", title: "استكشف", description: "ارسم التصميم وطوّر تخطيطات وأشكالًا وأفكارًا بديلة. كل تعديل يحدّث النموذج لحظة تجريه." },
-      { number: "02", title: "قارن", description: "راجع المواد والتشطيبات والأثاث في سياقها، وفي الضوء الذي تتلقاه كل غرفة." },
+      { number: "02", title: "قارن", description: "راجع المواد والتشطيبات والأثاث في سياقها." },
       { number: "03", title: "افهم", description: "تحقّق من الأبعاد ومساحات الغرف أثناء العمل، لتعرف ما يتطلّبه كل خيار." },
       { number: "04", title: "عِش التجربة", description: "ادخل إلى المساحة بمقياسها الكامل وانظر إليها بعين من سيستخدمها." },
       { number: "05", title: "حسّن", description: "ناقش الخيارات، وعدّل، ورتّب لوحات الرسم من النسخة التي تختارها." },
@@ -1526,9 +1454,8 @@ export const AR_HOME = {
     tiers: {
       free: {
         name: "المجانية",
-        description: "المصمّم الكامل مع ضوء نهار مقيس، مجانًا وبلا حدّ زمني.",
+        description: "المصمّم الكامل، مجانًا وبلا حدّ زمني.",
         highlights: [
-          "ضوء نهار مقيس، وتتبّع الأشعة وتتبّع المسارات",
           "طابق واحد لكل مشروع",
           "تصدير PDF وDXF بعلامة مائية",
           "جرّب الخطة الاحترافية مجانًا 14 يومًا",
@@ -1538,7 +1465,7 @@ export const AR_HOME = {
       },
       pro: {
         name: "الاحترافية",
-        description: "لمن يرسم ويُضيء ويعرض تصاميمه كل يوم.",
+        description: "لمن يرسم ويعرض تصاميمه كل يوم.",
         highlights: [
           "كل ما في المجانية، على كل الطوابق",
           "تصدير بلا علامة مائية",
@@ -1571,7 +1498,7 @@ export const AR_HOME = {
       together: { title: "فريقك في نموذج واحد", description: "عدة أشخاص في مشروع واحد، مع سجل لكل تغيير يمكنك الرجوع إليه." },
       "prices-itself": { title: "نموذج يسعّر نفسه", description: "منتجات حقيقية بأسعار ومخزون حيّ لكل منطقة، فيتحدّث جدول الكميات أثناء الرسم." },
       everywhere: { title: "على هاتفك وفي نظارة العرض", description: "صور بانورامية تُعرض في السحابة وتتحدّث لحظة أي تغيير." },
-      reports: { title: "تقارير ضوء النهار والطاقة والصوت والرياح", description: "نتائج مقيسة من النموذج الحقيقي الواحد." },
+      reports: { title: "تقارير الطاقة والصوت والرياح", description: "نتائج مقيسة من النموذج الحقيقي الواحد." },
       arabic: { title: "العربية، من اليمين إلى اليسار", description: "التطبيق كله بالعربية، مع الوحدات المترية والإمبراطورية." },
     },
   },
@@ -1584,12 +1511,8 @@ export const AR_HOME = {
         a: "Truebex برنامج لتصميم المباني يعمل على Windows. يستخدمه المعماريون ومصممو الديكور الداخلي لاستكشاف خيارات التصميم، ومقارنة المواد والتشطيبات في سياقها، والتحقّق من الأبعاد والمساحات، وعيش المساحة بمقياسها الكامل، وإخراج الرسومات — كل ذلك من نموذج واحد متصل.",
       },
       {
-        q: "كيف تختلف الإضاءة في Truebex؟",
-        a: "تقيس كل نافذة وكل باب السماء والشمس خارجها وتُدخل ذلك القدر من الضوء بالضبط إلى الغرفة. حرّك نافذة أو وسّع بابًا أو أضف جدارًا، فيستجيب الضوء في كل غرفة — حتى الغرف التي لا يصلها الضوء إلا عبر غرفة أخرى.",
-      },
-      {
         q: "ماذا أحتاج لتشغيل Truebex؟",
-        a: "حاسوب يعمل بنظام Windows مع بطاقة رسوميات حديثة. البطاقة التي تدعم تتبّع الأشعة عتاديًا تتيح أعلى جودة للإضاءة، بما فيها تتبّع الأشعة وتتبّع المسارات.",
+        a: "حاسوب يعمل بنظام Windows مع بطاقة رسوميات حديثة. البطاقة التي تدعم تتبّع الأشعة عتاديًا تتيح أعلى جودة للصورة، بما فيها تتبّع الأشعة وتتبّع المسارات.",
       },
       {
         q: "هل التطبيق متاح بالعربية؟",
@@ -1636,7 +1559,6 @@ export const AR_HOME = {
     demo: "انضم إلى قائمة أوائل المستخدمين",
     rights: "جميع الحقوق محفوظة.",
     featureNames: {
-      daylight: "ضوء النهار",
       surfaces: "الأسطح",
       assets: "الأصول",
       sheets: "لوحات الرسم",
@@ -3298,7 +3220,7 @@ export const SELL_PAGE = {
   eyebrow: "For suppliers",
   h1: "Sell your products on Truebex",
   intro:
-    "Truebex is where architects and interior designers draw rooms and see their daylight measured. The supplier portal is open: apply, build your catalogue with prices and stock for every region you deliver to, and keep it current from a spreadsheet or a feed.",
+    "Truebex is where architects and interior designers design rooms and compare materials and finishes in context. The supplier portal is open: apply, build your catalogue with prices and stock for every region you deliver to, and keep it current from a spreadsheet or a feed.",
   cta: { label: "Apply as a supplier", href: "/supplier/signup/" },
   ctaNote: "You apply with a Truebex account: sign in, or create one, on the next page.",
   offerTitle: "What you get",

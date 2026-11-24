@@ -5,7 +5,7 @@ import { FEATURE_PAGES } from "@/lib/constants";
 import { breadcrumbLd, faqLd, ldJson, pageMetadata, webPageLd } from "@/lib/seo";
 import { downloadCta, featureCapture } from "@/lib/site-routes";
 
-// Static export: exactly these five pages, nothing else under /features/.
+// Static export: exactly these four pages, nothing else under /features/.
 export const dynamicParams = false;
 
 export function generateStaticParams() {

@@ -7,7 +7,7 @@ Sources (edit these to change the brand):
     brand.json                 name, slogan, colours, fonts, logo spacing
     logo/truebex-mark.svg      the T/J glyph (any fill; the colour comes from brand.json)
     logo/truebex-wordmark.svg  the "Truebex" wordmark
-    images/daylight-doorway.png  the clean in-app capture used on banners
+    images/room-eye-level.png    the clean in-app capture used on banners
     fonts/                     Open Sans (fallback when Segoe UI is not installed)
 
 Writes export/ (all committed; upload from there):

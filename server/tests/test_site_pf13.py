@@ -33,10 +33,9 @@ CONTENT = ROOT / "src" / "content"
 CONSTANTS = ROOT / "src" / "lib" / "constants.ts"
 
 TIER_IDS = ["free", "pro", "studio", "team", "enterprise"]
-FEATURE_SLUGS = ["daylight", "surfaces", "assets", "sheets", "marketplace"]
+FEATURE_SLUGS = ["surfaces", "assets", "sheets", "marketplace"]
 # The cluster phrase each feature page's h1 must carry (SEO keyword map).
 FEATURE_PHRASES = {
-    "daylight": "daylight",
     "surfaces": "wall panel",
     "assets": "asset",
     "sheets": "drawing sheets",
@@ -67,6 +66,9 @@ SHIPPED_KEYS = {
     "devices",
     "api.monthly_requests",
 }
+# Matrix keys /pricing/ deliberately leaves out of the comparison: every plan
+# has full lighting, and light is not a selling point (owner, 2026-11-24).
+UNLISTED_KEYS = {"lighting.full"}
 BEACON = "static.cloudflareinsights.com/beacon.min.js"
 # Brand rule 1: no other design software, engine or engine feature named.
 DENY_NAMES = [
@@ -725,7 +727,8 @@ def test_site_pf13_roadmap_rows_labelled(built):
     matrix = {k for t in cat["tiers"] for k in t["features"]} | {
         k for t in cat["tiers"] for k in t["limits"]
     }
-    assert matrix <= keys, f"matrix rows missing: {matrix - keys}"
+    assert matrix - UNLISTED_KEYS <= keys, f"matrix rows missing: {matrix - UNLISTED_KEYS - keys}"
+    assert not keys & UNLISTED_KEYS, keys & UNLISTED_KEYS
     for row in rows:
         key = row["attrs"]["data-feature"]
         text = doc.text(row)
@@ -992,7 +995,7 @@ def test_site_pf13_verification_and_social(built):
 def test_site_pf13_indexnow_dry_run():
     exe = node()
     res = subprocess.run(
-        [exe, str(ROOT / "scripts" / "indexnow.mjs"), "--dry-run", "/pricing/", f"{SITE}/features/daylight/"],
+        [exe, str(ROOT / "scripts" / "indexnow.mjs"), "--dry-run", "/pricing/", f"{SITE}/features/surfaces/"],
         capture_output=True, text=True, encoding="utf-8", timeout=60,
     )
     assert res.returncode == 0, res.stderr
@@ -1000,7 +1003,7 @@ def test_site_pf13_indexnow_dry_run():
     assert body["host"] == "truebex.com"
     assert re.fullmatch(r"[0-9a-f]{32}", body["key"])
     assert body["keyLocation"] == f"{SITE}/{body['key']}.txt"
-    assert body["urlList"] == [f"{SITE}/pricing/", f"{SITE}/features/daylight/"]
+    assert body["urlList"] == [f"{SITE}/pricing/", f"{SITE}/features/surfaces/"]
     bad = subprocess.run(
         [exe, str(ROOT / "scripts" / "indexnow.mjs"), "--dry-run", "https://example.com/x/"],
         capture_output=True, text=True, encoding="utf-8", timeout=60,
@@ -1019,6 +1022,24 @@ def test_site_pf13_no_placeholder_text(built):
             text = p.read_text(encoding="utf-8")
         m = PLACEHOLDER_WORDS.search(text)
         assert not m, f"{p.relative_to(OUT)}: {m.group(0) if m else ''}"
+
+
+def test_site_pf13_no_daylight(built):
+    """The owner, 2026-11-24: daylight and light are not a selling point, so the
+    daylight feature page is gone and no page the site writes headlines it.
+    The changelog is left out: its release notes come from the app's feed."""
+    assert not (OUT / "features" / "daylight").exists()
+    assert "daylight" not in (OUT / "sitemap.xml").read_text(encoding="utf-8").lower()
+    banned = re.compile("daylight|sunlight|" + chr(0x636) + chr(0x648) + chr(0x621) + " " + "".join(
+        chr(c) for c in (0x627, 0x644, 0x646, 0x647, 0x627, 0x631)), re.I)  # «ضوء النهار»
+    for p in html_files():
+        if "changelog" in p.relative_to(OUT).parts:
+            continue
+        doc = Doc(p.read_text(encoding="utf-8"))
+        m = banned.search(doc.visible_text())
+        assert not m, f"{p.relative_to(OUT)}: {m.group(0) if m else ''}"
+        for img in doc.all("img"):
+            assert "daylight" not in img["attrs"].get("src", ""), (p.relative_to(OUT), img["attrs"])
 
 
 def test_site_pf13_no_competitor_names(built):
@@ -1066,5 +1087,5 @@ def test_site_pf13_home_teaser_and_nav(built):
     assert len(cards) == 3
     assert home.all("a", href="/pricing/"), "Pricing nav link and See all plans"
     assert any(home.text(a) == "See all plans" and a["attrs"]["href"] == "/pricing/" for a in home.all("a"))
-    for slug in FEATURE_SLUGS[:4]:
+    for slug in FEATURE_SLUGS[:3]:
         assert home.all("a", href=f"/features/{slug}/"), slug

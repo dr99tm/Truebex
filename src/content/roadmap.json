@@ -14,8 +14,8 @@
       "title": "Drawings and quantities"
     },
     {
-      "id": "light",
-      "title": "Light, comfort and analysis"
+      "id": "analysis",
+      "title": "Comfort and analysis"
     },
     {
       "id": "share",
@@ -160,10 +160,10 @@
     },
     {
       "id": "reports",
-      "title": "Daylight, energy, sound and wind reports",
+      "title": "Energy, sound and wind reports",
       "description": "Measured results from the one true model, on demand or as you work.",
       "icon": "Wind",
-      "theme": "light",
+      "theme": "analysis",
       "plan_ids": [
         "AN1",
         "AN2",
@@ -178,7 +178,7 @@
     {
       "id": "present",
       "title": "Panoramas, tours and share links",
-      "description": "Panoramas, 360° tours, videos and sun studies, shared with a link that opens on any phone.",
+      "description": "Panoramas, 360° tours and videos, shared with a link that opens on any phone.",
       "icon": "Share2",
       "theme": "share",
       "plan_ids": [
@@ -263,7 +263,7 @@
     {
       "id": "assistant",
       "title": "An assistant that edits the model",
-      "description": "Ask for a window on the north wall and it appears, with the light measured and the change undoable.",
+      "description": "Ask for a window on the north wall and it appears, as an edit you can undo.",
       "icon": "Bot",
       "theme": "assistant",
       "plan_ids": [

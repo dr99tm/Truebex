@@ -40,7 +40,7 @@ its limit (counts in brackets).
 | Contact / Support / Sales | contact@truebex.com · support@truebex.com · sales@truebex.com (§12) |
 | WhatsApp | *(the business number — see §10)* |
 | Avatar | the T/J mark, grey `#CBCBCB` on the dark ground `#232323` — `export/avatar.png` (§14) |
-| Banner | the lockup and slogan beside the daylight-through-a-doorway capture — one file per platform in `export/` (§14) |
+| Banner | the lockup and slogan beside the room-at-eye-level capture — one file per platform in `export/` (§14) |
 | Fonts | Segoe UI (the app's font, in images only) → Open Sans (the website's web font, `fonts/`) |
 | Colours | ground `#232323`, logo `#CBCBCB`, accent `#A0CEFF` |
 

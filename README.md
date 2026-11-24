@@ -3,9 +3,9 @@
 Website, account portal and developer API for **Truebex — True Building
 Experience**, live at **https://truebex.com**.
 
-Truebex itself is a desktop building design platform: measured daylight,
-self-arranging surfaces, assets that update everywhere. This repo is everything
-around it on the web:
+Truebex itself is a desktop building design platform: self-arranging
+surfaces, assets that update everywhere, drawing sheets that lay themselves
+out. This repo is everything around it on the web:
 
 - **Marketing site:** a static Next.js export on GitHub Pages.
 - **Dashboard:** sign in with Google or email, manage API keys, see usage, and handle billing.
@@ -778,8 +778,8 @@ the flag on; setting `WAYL_ENABLED=true` with its keys brings back
   Bing tags) and `SOCIAL` in `constants.ts`; empty values switch each off. The
   IndexNow key is `public/<32 hex>.txt`; run `npm run indexnow -- --sitemap`
   after a deploy.
-- **Product image:** the site shows a single clean capture (daylight through
-  a doorway). Add more only if they have no HUD or labels.
+- **Product image:** the site shows a single clean capture (a room at eye
+  level). Add more only if they have no HUD or labels.
 - **Project skills** (Claude Code picks these up automatically in this repo):
   - `truebex-brand-voice`: voice, claims rules, visual tokens.
   - `truebex-seo`: per-page checklist, keyword map, indexing and distribution playbook.

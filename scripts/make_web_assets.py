@@ -136,20 +136,20 @@ def crop_hud(path: str, top: int = 96) -> Image.Image:
 
 
 def product_shots() -> dict[str, Image.Image]:
-    """The one capture the site shows: daylight through a doorway.
+    """The one capture the site shows: a room at eye level.
 
     Writes the full frame (4:3) and a wide 16:9 crop for the hero showcase.
     Only clean captures belong here — no HUD, labels or debug overlays.
     """
     im = crop_hud(f"{SHOTS}/face8F.png", 50)
-    shots = {"daylight-doorway": im}
+    shots = {"room-eye-level": im}
     full = im.resize((1600, round(im.height * 1600 / im.width)), Image.LANCZOS)
-    full.save(out("public", "images", "product", "daylight-doorway.jpg"), quality=86, optimize=True, progressive=True)
-    # 16:9, keeping the doorway and the light falling through it.
+    full.save(out("public", "images", "product", "room-eye-level.jpg"), quality=86, optimize=True, progressive=True)
+    # 16:9, keeping the doorway in the frame.
     h = round(im.width * 9 / 16)
     top = round((im.height - h) * 0.45)
     wide = im.crop((0, top, im.width, top + h)).resize((1600, 900), Image.LANCZOS)
-    wide.save(out("public", "images", "product", "daylight-doorway-wide.jpg"), quality=86, optimize=True, progressive=True)
+    wide.save(out("public", "images", "product", "room-eye-level-wide.jpg"), quality=86, optimize=True, progressive=True)
     return shots
 
 
@@ -161,7 +161,6 @@ def product_shots() -> dict[str, Image.Image]:
 # caption in FEATURE_PAGES (src/lib/constants.ts) to describe the new frame.
 CLEAN_FRAMES = f"{UE}/Brand/Truebex/captures"
 FEATURE_FRAMES = {
-    "daylight": "daylight.png",  # light through windows and doors, rooms lit through rooms
     "surfaces": "surfaces.png",  # a panelled wall with a fill re-flowed around an opening
     "assets": "assets.png",      # one wall-face asset placed across several rooms
     "sheets": "sheets.png",      # a generated sheet (plan or section) as exported
@@ -173,7 +172,7 @@ def feature_shots() -> None:
     """Crop each feature page's clean frame to 16:10 at 1600x1000.
 
     A page whose clean frame does not exist yet is skipped: it keeps the
-    shared doorway capture, never a frame with a HUD.
+    shared capture, never a frame with a HUD.
     """
     w, h = FEATURE_SIZE
     for slug, name in FEATURE_FRAMES.items():
@@ -203,7 +202,7 @@ def og_image(shots: dict[str, Image.Image]) -> None:
     grid(img, 120, 14)
 
     # Product capture on the right, fading into the page on its left edge.
-    shot = shots["daylight-doorway"]
+    shot = shots["room-eye-level"]
     sh = H
     sw = round(shot.width * sh / shot.height)
     shot = shot.resize((sw, sh), Image.LANCZOS).convert("RGBA")

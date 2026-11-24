@@ -18,8 +18,10 @@ on the site has to keep that promise.
 ## Messaging (from the owner's brief, 2026-10-20)
 
 Source: `docs/brand/messaging-brief.md` (the brief as given, plus the table of
-which of its claims ship). It replaces the daylight-first positioning of
-2026-10-07: daylight is one capability among several, not the message.
+which of its claims ship). It replaces the earlier positioning of 2026-10-07.
+
+Daylight and light are not a selling point (owner, 2026-11-24): never headline
+or feature them in public copy.
 
 1. **Lead with the outcome, not the feature list.** More options explored →
    better-informed decisions → fewer avoidable surprises → better spaces.
@@ -43,16 +45,15 @@ which of its claims ship). It replaces the daylight-first positioning of
    no "<tool> alternative", no "<tool>-style", no engine feature names
    (render tech, upscalers) and no engine trademarks. Describe what Truebex
    does in its own words. (Internal docs and code may name the stack.)
-2. **Features serve the outcome.** The home page's six capability cards
-   (`FEATURES`) are: design with precision, materials and finishes, light
-   that follows the design, experiencing the space, understanding and
-   documenting it (areas, schedules, sheets), and keeping every decision
-   connected (assets, instant edits). Areas and walking the rooms may be
-   named when they serve "understand" and "experience"; never headline basic
-   modelling on its own.
+2. **Features serve the outcome.** The home page's five capability cards
+   (`FEATURES`) are: design with precision, materials and finishes,
+   experiencing the space, understanding and documenting it (areas,
+   schedules, sheets), and keeping every decision connected (assets, instant
+   edits). Areas and walking the rooms may be named when they serve
+   "understand" and "experience"; never headline basic modelling on its own.
 3. **One image, clean.** Only show captures with no HUD, labels or debug
-   overlays. Today the site uses exactly one: daylight through a doorway
-   (`public/images/product/daylight-doorway*.jpg`). Add others only when they
+   overlays. Today the site uses exactly one: a room at eye level
+   (`public/images/product/room-eye-level*.jpg`). Add others only when they
    are equally clean and beautiful.
 
 ## The one rule: only claim what ships
@@ -70,10 +71,8 @@ headline the distinctive ones (rule 2):
 walls, rooms/regions, doors/windows (openings), slabs, stairs, arcs/ellipses,
 groups, reference planes, dimension locks, constraints; wall-face panels,
 nested regions, dynamic fills ("fill tree"), face-as-asset library + asset
-workbench (edit an asset, every instance updates); sweeps; global
-illumination, sun/sky, measured opening light (interior doors pass light on),
-ray tracing, path tracing; lighting profiles and the view saved in the
-project, lighting on the undo stack; section cuts, storey navigator;
+workbench (edit an asset, every instance updates); sweeps; the view saved in
+the project; section cuts, storey navigator;
 `.tbxp` projects / `.tbxa` assets; edits in milliseconds (drag 240 ms →
 4.3 ms benchmark). Since roadmap 39 (2026-10-07): sheets auto-created with
 our own vector PDF (selectable text, fillable forms) and DXF writers;
@@ -87,12 +86,16 @@ registry with embedded / linked saves and placeholders; the asset browser;
 texture import (BC1–BC7, mips) and mesh import (glTF, GLB, OBJ, FBX) with the
 Object Composer; one UI kit with a live theme; 445 MB install, 4.6 s cold
 start. Also shipped but *not* marketed (table stakes): live room areas,
-first-person walk mode, the self-driving test harness (FastEye).
+first-person walk mode, the self-driving test harness (FastEye). Shipped and
+never marketed (owner, 2026-11-24): the light engine (global illumination,
+sun/sky, measured opening light, ray tracing, path tracing, lighting profiles,
+lighting on the undo stack). Ray tracing may appear only as a plain hardware
+fact in the system requirements ("a card with hardware ray tracing").
 
 **Not shipped — roadmap only** (label "On the roadmap", never present tense):
 IFC and DWG exchange, several people on one model (cloud projects, history),
 the marketplace with live regional prices and the live cost model, cloud
-panoramas on phones and headsets, daylight / energy / sound / wind reports,
+panoramas on phones and headsets, energy / sound / wind reports,
 building services (MEP), the assistant that edits the model, Arabic UI.
 Content lives in `src/content/roadmap.json` (words by hand; `status` from
 `scripts/sync-roadmap.mjs`, which reads both roadmap trackers); never move an
@@ -116,7 +119,7 @@ paid tier says "Price at launch" while the billing page lists the API's prices.
 |---|---|
 | Precise — numbers, units, named features ("4.3 ms", "30 days") | Vague superlatives ("revolutionary", "next-gen", "seamless") |
 | Calm and confident — short declarative sentences | Hype, exclamation marks, ALL CAPS |
-| Architect-literate — walls, openings, slabs, sections, daylight | Engine/render jargon or any third-party product name |
+| Architect-literate — walls, openings, slabs, sections | Engine/render jargon or any third-party product name |
 | Visual — what you *see* and *feel* in the space | Abstract platform-speak ("unified ecosystem", "single source of truth") |
 | Honest about limits | Implying features we don't have |
 
@@ -124,8 +127,8 @@ The slogan: **"Imagine More. Build Better."** (Title Case, two sentences,
 nothing appended). Supporting lines, for headings and campaigns — never
 competing with the slogan: "More than a plan." · "Better choices. Better
 spaces." · "Explore more. Choose better." · "Make
-ideas real." Feature lines still usable inside their own section: "Daylight,
-measured — not painted." · "Make it once, update everywhere."
+ideas real." Feature line still usable inside its own section: "Make it
+once, update everywhere."
 
 Retired (owner, 2026-11-22): "See it before you build it." and every variant
 of it. It is in no headline, post, reel, caption, title or alt text, and
@@ -141,7 +144,7 @@ more than an image." / "One shared vision. Different perspectives."). Keep
 H2s ≤ 8 words, subtitles one sentence.
 
 Vocabulary: say *explore, compare, understand, experience, refine, decide,
-design, space, room, materials, finishes, light, connected workflow*. Avoid
+design, space, room, materials, finishes, connected workflow*. Avoid
 *metaverse, AI-powered* (unless true), *synergy*, *VR* (say "headset", and
 only as "on the roadmap"), *walkthrough* (say "walk the rooms" / "step
 inside"), *area calculation*, *world-leading* or any other unprovable

@@ -31,8 +31,6 @@ export const metadata: Metadata = {
     "Truebex",
     "building design platform",
     "architectural design software",
-    "daylight design",
-    "daylight simulation for architects",
     "parametric wall panels",
     "interior design software",
     "3D building design",
