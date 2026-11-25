@@ -52,7 +52,10 @@ or feature them in public copy.
    edits). Areas and walking the rooms may be named when they serve
    "understand" and "experience"; never headline basic modelling on its own.
 3. **One image, clean.** Only show captures with no HUD, labels or debug
-   overlays. Today the site uses exactly one: a room at eye level
+   overlays. "Labels" means the app's interface (tool labels, status, frame-rate
+   and debug text); on a plan, section or sheet, room names, dimensions and
+   drawing annotations stay: they are the architecture (owner, 2026-11-25).
+   Today the site uses exactly one: a room at eye level
    (`public/images/product/room-eye-level*.jpg`). Add others only when they
    are equally clean and beautiful.
 
